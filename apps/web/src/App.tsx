@@ -1,48 +1,61 @@
-import { applyAction, createGame, currentPlayer, type GameState } from '@aop/engine'
-import { FACTIONS } from '@aop/content'
+import { applyAction, createGame, type GameState } from '@aop/engine'
 import { useState } from 'react'
-import { MapCanvas } from './MapCanvas'
+import { MainMenu } from './screens/MainMenu'
+import { NewGameSetup } from './screens/NewGameSetup'
+import { GameScreen } from './screens/GameScreen'
+import { GameOverScreen } from './screens/GameOverScreen'
+import type { GameSetupConfig } from './types'
 
-function newDemoGame(): GameState {
-  return createGame({
-    seed: 1,
-    mapSize: 'small',
-    players: [
-      { id: 'you', name: 'You', faction: 'pirates', isAI: false },
-      { id: 'ai-1', name: 'Cpt. Blackwood', faction: 'british', isAI: true },
-      { id: 'ai-2', name: 'Cpt. Delgado', faction: 'spanish', isAI: true },
-    ],
-  })
-}
+type Screen = 'menu' | 'setup' | 'game' | 'game-over'
 
 export function App() {
-  const [game, setGame] = useState(newDemoGame)
-  const player = currentPlayer(game)
+  const [screen, setScreen] = useState<Screen>('menu')
+  const [game, setGame] = useState<GameState | null>(null)
+  const [lastSetupConfig, setLastSetupConfig] = useState<GameSetupConfig | null>(null)
 
-  function endTurn() {
-    let next = applyAction(game, { type: 'endTurn', playerId: player.id })
-    // Placeholder AI: end turn immediately. Real AI arrives in Phase 1.
-    while (next.status === 'active' && currentPlayer(next).isAI) {
-      next = applyAction(next, { type: 'endTurn', playerId: currentPlayer(next).id })
+  function handleStartNewGame(config: GameSetupConfig) {
+    const newGame = createGame({
+      seed: config.seed,
+      mapSize: config.mapSize,
+      players: config.players,
+    })
+    setLastSetupConfig(config)
+    setGame(newGame)
+    setScreen('game')
+  }
+
+  function handleGameStateChange(newGame: GameState) {
+    if (newGame.status === 'finished') {
+      setGame(newGame)
+      setScreen('game-over')
+    } else {
+      setGame(newGame)
     }
-    setGame(next)
+  }
+
+  function handleRematch() {
+    if (lastSetupConfig) {
+      handleStartNewGame(lastSetupConfig)
+    }
+  }
+
+  function handleReturnToMenu() {
+    setScreen('menu')
+    setGame(null)
   }
 
   return (
     <div className="app">
-      <header className="hud">
-        <h1>Age of Plunder</h1>
-        <span className="turn-info">
-          Round {game.round} — {player.name} ({FACTIONS[player.faction].name}) —{' '}
-          {player.resources.gold} gold
-        </span>
-        <button className="primary" onClick={endTurn} disabled={player.isAI}>
-          End Turn
-        </button>
-      </header>
-      <div className="map-container">
-        <MapCanvas seed={game.config.seed} />
-      </div>
+      {screen === 'menu' && <MainMenu onStart={() => setScreen('setup')} />}
+      {screen === 'setup' && (
+        <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
+      )}
+      {screen === 'game' && game && (
+        <GameScreen game={game} onStateChange={handleGameStateChange} />
+      )}
+      {screen === 'game-over' && game && (
+        <GameOverScreen game={game} onRematch={handleRematch} onMenuClick={handleReturnToMenu} />
+      )}
     </div>
   )
 }
