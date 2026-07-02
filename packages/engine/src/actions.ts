@@ -28,7 +28,18 @@ export interface MoveCaptainAction {
   to: Coord
 }
 
-export type Action = EndTurnAction | ResignAction | MoveCaptainAction
+/**
+ * Attack an enemy captain within one tile. Resolves the combat pipeline, writes
+ * back casualties, and eliminates any captain (and player) whose ship is sunk.
+ */
+export interface AttackCaptainAction {
+  type: 'attackCaptain'
+  playerId: string
+  captainId: string
+  targetCaptainId: string
+}
+
+export type Action = EndTurnAction | ResignAction | MoveCaptainAction | AttackCaptainAction
 
 export class InvalidActionError extends Error {
   constructor(

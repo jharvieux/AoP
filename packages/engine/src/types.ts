@@ -1,4 +1,5 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { CombatStatsData } from './combat'
 import type { GameMap } from './map'
 import type { RngState } from './rng'
 
@@ -42,6 +43,12 @@ export interface GameConfig {
   seed: number
   mapSize: MapSize
   players: PlayerConfig[]
+  /**
+   * Combat-relevant stats snapshot, injected from @aop/content by the caller so
+   * the engine holds no balance data. Frozen into the match for replay/authority
+   * determinism. Required before any combat action can resolve.
+   */
+  combatStats?: CombatStatsData
 }
 
 export interface PlayerState {
