@@ -66,6 +66,9 @@ snapshots. RNG is seeded per match so combat rolls and encounter spawns replay i
 
 ## 5. Server (Supabase)
 
+_Full multiplayer spec — schema, RLS, edge function contracts, threat model — lives in
+[MULTIPLAYER.md](MULTIPLAYER.md)._
+
 - **Auth**: Supabase Auth (email + OAuth). Guest play for single-player.
 - **Postgres** (row-level security on everything):
   - `profiles` — user data
