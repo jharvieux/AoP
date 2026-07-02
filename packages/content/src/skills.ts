@@ -25,9 +25,6 @@ export interface SkillDef {
 /** Cumulative XP required to *be* at level N (1-based; index 0 is level 1's floor, 0). */
 export const CAPTAIN_XP_THRESHOLDS: readonly number[] = [0, 150, 400, 800, 1400]
 
-/** XP a captain earns for a decisive drill win — the only combat XP source until real ship-to-ship combat (#4/#12/#18) lands. */
-export const DRILL_WIN_XP = 40
-
 function tree(factionId: FactionId, entries: readonly Omit<SkillDef, 'factionId'>[]): SkillDef[] {
   return entries.map((e) => ({ ...e, factionId }))
 }
