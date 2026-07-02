@@ -1,4 +1,4 @@
-import type { FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { FactionId, MapSize, ResourcePool, TileCoord } from '@aop/shared'
 import type { RngState } from './rng'
 
 export interface PlayerConfig {
@@ -38,6 +38,8 @@ export interface CityState {
   id: string
   ownerId: string
   name: string
+  /** Placeholder deterministic placement (see placement.ts) until real map gen (#6) lands. */
+  position: TileCoord
   buildings: string[]
   /** True once this city has constructed a building this round (HoMM one-build-per-turn rule). */
   builtThisRound: boolean
@@ -70,6 +72,13 @@ export interface GameState {
   players: PlayerState[]
   cities: CityState[]
   captains: CaptainState[]
+  /**
+   * Every tile each player has ever seen, keyed by playerId, values are
+   * "x,y" tile keys. Currently-visible tiles are recomputed on demand by
+   * visibility.ts's visibleState() selector — only the persistent history
+   * needs to live in state.
+   */
+  exploredTiles: Record<string, string[]>
   rngState: RngState
   /** Total actions applied; doubles as the action-log sequence cursor. */
   actionCount: number

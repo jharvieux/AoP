@@ -1,13 +1,17 @@
+import { MAP_DIMENSIONS } from '@aop/shared'
 import { describe, expect, it } from 'vitest'
 import {
   applyAction,
   createGame,
+  currentlyVisibleTiles,
   currentPlayer,
   InvalidActionError,
   nextFloat,
   nextInt,
   replay,
   seedRng,
+  tilesInRadius,
+  visibleState,
   type Action,
   type ContentCatalog,
   type GameConfig,
@@ -399,5 +403,54 @@ describe('recruit & garrisons', () => {
     )
     expect(state.captains.find((c) => c.id === captain.id)!.troopsAboard.deckhand).toBe(2)
     expect(state.cities.find((c) => c.id === city.id)!.garrison.deckhand).toBe(3)
+  })
+})
+
+describe('visibility', () => {
+  it('places every starting city within the map bounds, deterministically for the same seed', () => {
+    const a = createGame(testConfig(4))
+    const b = createGame(testConfig(4))
+    expect(a.cities.map((c) => c.position)).toEqual(b.cities.map((c) => c.position))
+
+    const { width, height } = MAP_DIMENSIONS[a.config.mapSize]
+    for (const city of a.cities) {
+      expect(city.position.x).toBeGreaterThanOrEqual(0)
+      expect(city.position.x).toBeLessThan(width)
+      expect(city.position.y).toBeGreaterThanOrEqual(0)
+      expect(city.position.y).toBeLessThan(height)
+    }
+  })
+
+  it('tilesInRadius clips to the map edge instead of returning out-of-bounds tiles', () => {
+    const tiles = tilesInRadius({ x: 0, y: 0 }, 2, 'small')
+    expect(tiles.every((t) => t.x >= 0 && t.y >= 0)).toBe(true)
+    expect(tiles).toContainEqual({ x: 0, y: 0 })
+    expect(tiles).toContainEqual({ x: 2, y: 2 })
+  })
+
+  it('sees only tiles around its own cities, not an opponent city', () => {
+    const state = createGame(testConfig(2))
+    const p1City = state.cities.find((c) => c.ownerId === 'p1')!
+    const p2City = state.cities.find((c) => c.ownerId === 'p2')!
+
+    const p1Visible = currentlyVisibleTiles(state, 'p1')
+    expect(p1Visible).toContainEqual(p1City.position)
+    expect(p1Visible).not.toContainEqual(p2City.position)
+  })
+
+  it('accumulates explored tiles across turns and keeps them after they leave current view', () => {
+    let state = createGame(testConfig(2))
+    const before = visibleState(state, 'p1')
+    expect(before.explored.length).toBeGreaterThan(0)
+    expect(before.explored).toEqual(expect.arrayContaining(before.visible))
+
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+
+    // Static cities mean currently-visible tiles don't change round to round,
+    // but every visible tile must still show up as explored history too.
+    const after = visibleState(state, 'p1')
+    expect(after.explored).toEqual(expect.arrayContaining(after.visible))
+    expect(state.exploredTiles.p1!.length).toBe(after.explored.length)
   })
 })

@@ -1,6 +1,8 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
+import { placeCities } from './placement'
 import { seedRng } from './rng'
 import type { CaptainState, CityState, GameConfig, GameState } from './types'
+import { accumulateExploredTiles } from './visibility'
 
 const STARTING_GOLD = 1000
 
@@ -17,8 +19,13 @@ export function createGame(config: GameConfig): GameState {
   }
 
   const startingBuildings = config.startingBuildings ?? []
+  const [rngState, positions] = placeCities(
+    seedRng(config.seed),
+    config.players.length,
+    config.mapSize,
+  )
 
-  return {
+  const withoutVision: GameState = {
     config,
     round: 1,
     currentPlayerIndex: 0,
@@ -30,10 +37,11 @@ export function createGame(config: GameConfig): GameState {
       resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
       eliminated: false,
     })),
-    cities: config.players.map((p): CityState => ({
+    cities: config.players.map((p, i): CityState => ({
       id: `${p.id}-capital`,
       ownerId: p.id,
       name: `${p.name}'s Capital`,
+      position: positions[i]!,
       buildings: [...startingBuildings],
       builtThisRound: false,
       garrison: {},
@@ -48,10 +56,18 @@ export function createGame(config: GameConfig): GameState {
           troopsAboard: {},
         }))
       : [],
-    rngState: seedRng(config.seed),
+    exploredTiles: {},
+    rngState,
     actionCount: 0,
     status: 'active',
     winnerId: null,
+  }
+
+  return {
+    ...withoutVision,
+    exploredTiles: Object.fromEntries(
+      config.players.map((p) => [p.id, accumulateExploredTiles(withoutVision, p.id)]),
+    ),
   }
 }
 

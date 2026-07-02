@@ -10,6 +10,7 @@ import type { ContentCatalog } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { currentPlayer } from './game'
 import type { GameState } from './types'
+import { accumulateExploredTiles } from './visibility'
 
 /**
  * The single entry point for mutating game state. Pure: returns a new state,
@@ -44,6 +45,17 @@ export function applyAction(state: GameState, action: Action, catalog: ContentCa
     case 'transferTroops':
       next = transferTroops(state, action, catalog)
       break
+  }
+
+  // Fold newly-visible tiles into the acting player's exploration history.
+  // Cheap and idempotent today (cities are static); it starts earning its
+  // keep once captains gain map positions and can move (#8).
+  next = {
+    ...next,
+    exploredTiles: {
+      ...next.exploredTiles,
+      [action.playerId]: accumulateExploredTiles(next, action.playerId),
+    },
   }
 
   return { ...next, actionCount: state.actionCount + 1 }

@@ -52,3 +52,15 @@ export interface TileCoord {
   x: number
   y: number
 }
+
+export interface MapDimensions {
+  width: number
+  height: number
+}
+
+/** Tile-grid size per MapSize. Real terrain generation lands with #6; this is the shared geometry. */
+export const MAP_DIMENSIONS: Record<MapSize, MapDimensions> = {
+  small: { width: 24, height: 24 },
+  medium: { width: 36, height: 36 },
+  large: { width: 48, height: 48 },
+}
