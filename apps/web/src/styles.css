@@ -97,3 +97,88 @@ button.primary {
 button.primary:active {
   filter: brightness(0.85);
 }
+
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary.secondary {
+  background: #2a5580;
+  color: #e8dcc0;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+  display: flex;
+  align-items: flex-end;
+  z-index: 10;
+}
+
+.sheet {
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #122f4d;
+  border-top: 2px solid #2a5580;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+}
+
+.sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sheet__close {
+  min-height: 44px;
+  min-width: 44px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.building-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.building-option {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border: 1px solid #2a5580;
+  border-radius: 8px;
+  background: #0e2740;
+  color: inherit;
+  cursor: pointer;
+}
+
+.building-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.building-option__cost {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.building-option__hint {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-top: 2px;
+}

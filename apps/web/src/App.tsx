@@ -7,6 +7,7 @@ import {
 } from '@aop/engine'
 import { BUILDINGS, FACTIONS } from '@aop/content'
 import { useState } from 'react'
+import { CityScreen } from './CityScreen'
 import { MapCanvas } from './MapCanvas'
 import { ResourceHud } from './ResourceHud'
 
@@ -28,7 +29,9 @@ function newDemoGame(): GameState {
 
 export function App() {
   const [game, setGame] = useState(newDemoGame)
+  const [cityScreenOpen, setCityScreenOpen] = useState(false)
   const player = currentPlayer(game)
+  const homeCity = game.cities.find((c) => c.ownerId === player.id)
 
   function endTurn() {
     let next = applyAction(game, { type: 'endTurn', playerId: player.id }, CATALOG)
@@ -39,6 +42,17 @@ export function App() {
     setGame(next)
   }
 
+  function build(buildingId: string) {
+    if (!homeCity) return
+    setGame(
+      applyAction(
+        game,
+        { type: 'construct', playerId: player.id, cityId: homeCity.id, buildingId },
+        CATALOG,
+      ),
+    )
+  }
+
   return (
     <div className="app">
       <header className="hud">
@@ -47,6 +61,13 @@ export function App() {
           Round {game.round} — {player.name} ({FACTIONS[player.faction].name})
         </span>
         <ResourceHud resources={player.resources} />
+        <button
+          className="primary secondary"
+          onClick={() => setCityScreenOpen(true)}
+          disabled={!homeCity || player.isAI}
+        >
+          City
+        </button>
         <button className="primary" onClick={endTurn} disabled={player.isAI}>
           End Turn
         </button>
@@ -54,6 +75,15 @@ export function App() {
       <div className="map-container">
         <MapCanvas seed={game.config.seed} />
       </div>
+      {cityScreenOpen && homeCity && (
+        <CityScreen
+          city={homeCity}
+          faction={player.faction}
+          resources={player.resources}
+          onClose={() => setCityScreenOpen(false)}
+          onBuild={build}
+        />
+      )}
     </div>
   )
 }

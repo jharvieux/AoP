@@ -14,7 +14,15 @@ export interface ResignAction {
   playerId: string
 }
 
-export type Action = EndTurnAction | ResignAction
+/** Construct a building in one of the player's cities. HoMM-style: one build per city per turn. */
+export interface ConstructBuildingAction {
+  type: 'construct'
+  playerId: string
+  cityId: string
+  buildingId: string
+}
+
+export type Action = EndTurnAction | ResignAction | ConstructBuildingAction
 
 export class InvalidActionError extends Error {
   constructor(

@@ -1,9 +1,12 @@
-import type { ResourcePool } from '@aop/shared'
+import type { FactionId, ResourcePool } from '@aop/shared'
 
 /**
- * Building tree shared by all factions (per-faction flavor can layer on
- * later without changing this shape). `requires` names a prerequisite
- * building id in the same city — the construction action enforces it.
+ * Building tree shared by all factions mechanically; `FACTION_BUILDING_NAMES`
+ * layers per-faction flavor text on top without forking the tree shape.
+ * `requires` names a prerequisite building id in the same city — the
+ * construction action enforces it. One tree per category, HoMM-style:
+ * economy (resource income), recruitment (unlocks unit tiers, see
+ * @aop/content's UnitDef.tier), fortification (city defense bonus).
  */
 
 export type BuildingCategory = 'economy' | 'recruitment' | 'fortification'
@@ -18,6 +21,10 @@ export interface BuildingDef {
   produces: Partial<ResourcePool>
   /** Prerequisite building id, if any. */
   requires?: string
+  /** Highest unit recruitment tier this building unlocks (recruitment category only). */
+  unlocksTier?: 1 | 2 | 3 | 4
+  /** Flat defense bonus applied to the garrison during a city assault (fortification only). */
+  defenseBonus?: number
 }
 
 export const BUILDINGS: Record<string, BuildingDef> = {
@@ -60,7 +67,88 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: { gold: 60 },
     requires: 'townhall',
   },
+  barracks: {
+    id: 'barracks',
+    name: 'Barracks',
+    category: 'recruitment',
+    cost: { gold: 150 },
+    produces: {},
+    requires: 'townhall',
+    unlocksTier: 1,
+  },
+  garrisonHall: {
+    id: 'garrisonHall',
+    name: 'Garrison Hall',
+    category: 'recruitment',
+    cost: { gold: 400, timber: 20 },
+    produces: {},
+    requires: 'barracks',
+    unlocksTier: 2,
+  },
+  fortressArmory: {
+    id: 'fortressArmory',
+    name: 'Fortress Armory',
+    category: 'recruitment',
+    cost: { gold: 900, iron: 30 },
+    produces: {},
+    requires: 'garrisonHall',
+    unlocksTier: 3,
+  },
+  grandArsenal: {
+    id: 'grandArsenal',
+    name: 'Grand Arsenal',
+    category: 'recruitment',
+    cost: { gold: 1800, iron: 60, rum: 20 },
+    produces: {},
+    requires: 'fortressArmory',
+    unlocksTier: 4,
+  },
+  palisade: {
+    id: 'palisade',
+    name: 'Palisade',
+    category: 'fortification',
+    cost: { gold: 120, timber: 20 },
+    produces: {},
+    requires: 'townhall',
+    defenseBonus: 10,
+  },
+  stoneWall: {
+    id: 'stoneWall',
+    name: 'Stone Wall',
+    category: 'fortification',
+    cost: { gold: 500, iron: 15 },
+    produces: {},
+    requires: 'palisade',
+    defenseBonus: 30,
+  },
+  citadel: {
+    id: 'citadel',
+    name: 'Citadel',
+    category: 'fortification',
+    cost: { gold: 1400, iron: 40 },
+    produces: {},
+    requires: 'stoneWall',
+    defenseBonus: 70,
+  },
 }
 
 /** Buildings every starting city has before the player builds anything. */
 export const STARTING_BUILDINGS: readonly string[] = ['townhall']
+
+/**
+ * Per-faction flavor names layered over the shared building tree — e.g. the
+ * Pirates' "Barracks" is the British "Drill Yard". Falls back to the
+ * mechanical name in `BUILDINGS` when a faction has no override.
+ */
+export const FACTION_BUILDING_NAMES: Partial<Record<FactionId, Record<string, string>>> = {
+  pirates: { barracks: 'Cutthroat Den', palisade: 'Driftwood Barricade' },
+  british: { barracks: 'Drill Yard', palisade: 'Redoubt' },
+  spanish: { barracks: 'Cuartel', palisade: 'Empalizada' },
+  dutch: { barracks: 'Schutterij Hall', palisade: 'Aardwerk' },
+}
+
+/** The display name for a building, honoring per-faction flavor overrides. */
+export function buildingDisplayName(buildingId: string, factionId: FactionId): string {
+  const override = FACTION_BUILDING_NAMES[factionId]?.[buildingId]
+  return override ?? BUILDINGS[buildingId]?.name ?? buildingId
+}

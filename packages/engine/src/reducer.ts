@@ -1,5 +1,5 @@
-import { addResources } from '@aop/shared'
-import { InvalidActionError, type Action } from './actions'
+import { addResources, canAfford, subtractResources } from '@aop/shared'
+import { InvalidActionError, type Action, type ConstructBuildingAction } from './actions'
 import type { ContentCatalog } from './content'
 import { playerIncome } from './economy'
 import { currentPlayer } from './game'
@@ -29,9 +29,52 @@ export function applyAction(state: GameState, action: Action, catalog: ContentCa
     case 'resign':
       next = advanceTurn(eliminatePlayer(state, action.playerId), catalog)
       break
+    case 'construct':
+      next = construct(state, action, catalog)
+      break
   }
 
   return { ...next, actionCount: state.actionCount + 1 }
+}
+
+function construct(
+  state: GameState,
+  action: ConstructBuildingAction,
+  catalog: ContentCatalog,
+): GameState {
+  const city = state.cities.find((c) => c.id === action.cityId)
+  if (!city || city.ownerId !== action.playerId) {
+    throw new InvalidActionError(`No city ${action.cityId} owned by ${action.playerId}`, action)
+  }
+  if (city.builtThisRound) {
+    throw new InvalidActionError(`${city.id} has already built this turn`, action)
+  }
+  if (city.buildings.includes(action.buildingId)) {
+    throw new InvalidActionError(`${city.id} already has ${action.buildingId}`, action)
+  }
+  const def = catalog.buildings[action.buildingId]
+  if (!def) {
+    throw new InvalidActionError(`Unknown building ${action.buildingId}`, action)
+  }
+  if (def.requires && !city.buildings.includes(def.requires)) {
+    throw new InvalidActionError(`${action.buildingId} requires ${def.requires} first`, action)
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  if (!canAfford(player.resources, def.cost)) {
+    throw new InvalidActionError(`${action.playerId} cannot afford ${action.buildingId}`, action)
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId ? { ...p, resources: subtractResources(p.resources, def.cost) } : p,
+    ),
+    cities: state.cities.map((c) =>
+      c.id === city.id
+        ? { ...c, buildings: [...c.buildings, action.buildingId], builtThisRound: true }
+        : c,
+    ),
+  }
 }
 
 function eliminatePlayer(state: GameState, playerId: string): GameState {

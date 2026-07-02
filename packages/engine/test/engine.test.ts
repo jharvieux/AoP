@@ -188,3 +188,81 @@ describe('economy', () => {
     expect(state.players[1]!.resources.gold).toBeGreaterThan(goldAfterResign)
   })
 })
+
+describe('construct', () => {
+  function economyConfig(playerCount = 2): GameConfig {
+    return { ...testConfig(playerCount), startingBuildings: ['townhall'] }
+  }
+
+  it('builds a building, charges its cost, and marks the city as built this round', () => {
+    let state = createGame(economyConfig())
+    const city = state.cities[0]!
+    state = applyAction(
+      state,
+      { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'sawmill' },
+      testCatalog,
+    )
+    const updated = state.cities.find((c) => c.id === city.id)!
+    expect(updated.buildings).toContain('sawmill')
+    expect(updated.builtThisRound).toBe(true)
+    expect(state.players[0]!.resources.gold).toBe(1000 - 200)
+  })
+
+  it('rejects a second build in the same city before the round wraps', () => {
+    let state = createGame(economyConfig())
+    const city = state.cities[0]!
+    state = applyAction(
+      state,
+      { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'sawmill' },
+      testCatalog,
+    )
+    expect(() =>
+      applyAction(
+        state,
+        { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'sawmill' },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects a building whose prerequisite is missing', () => {
+    const state = createGame({ ...economyConfig(), startingBuildings: [] })
+    const city = state.cities[0]!
+    expect(() =>
+      applyAction(
+        state,
+        { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'sawmill' },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects construction the player cannot afford', () => {
+    const richCatalog = {
+      buildings: { ...testCatalog.buildings, expensive: { produces: {}, cost: { gold: 999999 } } },
+    }
+    const state = createGame(economyConfig())
+    const city = state.cities[0]!
+    expect(() =>
+      applyAction(
+        state,
+        { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'expensive' },
+        richCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('lets each city build again after the round wraps', () => {
+    let state = createGame(economyConfig())
+    const city = state.cities[0]!
+    state = applyAction(
+      state,
+      { type: 'construct', playerId: 'p1', cityId: city.id, buildingId: 'sawmill' },
+      testCatalog,
+    )
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    const updated = state.cities.find((c) => c.id === city.id)!
+    expect(updated.builtThisRound).toBe(false)
+  })
+})
