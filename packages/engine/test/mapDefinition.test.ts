@@ -1,0 +1,187 @@
+import { describe, expect, it } from 'vitest'
+import type { Coord } from '@aop/shared'
+import {
+  captainsOf,
+  createGame,
+  generateMap,
+  mapToDefinition,
+  replay,
+  validateMapDefinition,
+  type Action,
+  type GameConfig,
+  type MapDefinition,
+  type Tile,
+} from '../src'
+import { GAME_SETUP, MAP_VALIDATION_LIMITS } from './fixtures'
+
+/** A blank all-deep-water map of the given size, with no start positions. */
+function blankMap(width: number, height: number): MapDefinition {
+  const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+    type: 'deep',
+    island: -1,
+  }))
+  return { width, height, tiles, startPositions: [] }
+}
+
+function setTile(map: MapDefinition, c: Coord, type: Tile['type'], island: number) {
+  map.tiles[c.y * map.width + c.x] = { type, island }
+}
+
+function testConfig(playerCount = 2): GameConfig {
+  const factions = ['pirates', 'british', 'spanish', 'dutch'] as const
+  return {
+    seed: 7,
+    mapSize: 'medium',
+    setup: GAME_SETUP,
+    players: Array.from({ length: playerCount }, (_, i) => ({
+      id: `p${i + 1}`,
+      name: `Player ${i + 1}`,
+      faction: factions[i % factions.length]!,
+      isAI: i > 0,
+    })),
+  }
+}
+
+describe('mapToDefinition', () => {
+  it('captures a generated map as an equal but independent copy', () => {
+    const map = generateMap(7, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const def = mapToDefinition(map)
+    expect(def).toEqual(map)
+    def.tiles[0]!.type = 'land'
+    expect(map.tiles[0]!.type).not.toBe('land')
+  })
+})
+
+describe('validateMapDefinition', () => {
+  it('accepts a generated map with no errors', () => {
+    const map = generateMap(11, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('flags a tile-count mismatch and stops further (tile-indexed) checks', () => {
+    const def: MapDefinition = {
+      width: 5,
+      height: 5,
+      tiles: [],
+      startPositions: [{ x: 0, y: 0 }],
+    }
+    const result = validateMapDefinition(def, MAP_VALIDATION_LIMITS)
+    expect(result.valid).toBe(false)
+    expect(result.errors.map((e) => e.code)).toContain('tile-count-mismatch')
+    // Bails out before indexing the (too-short) tiles array for the start position.
+    expect(result.errors.map((e) => e.code)).not.toContain('start-not-water')
+  })
+
+  it('flags out-of-bounds map dimensions', () => {
+    const map = blankMap(10, 10)
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toEqual(
+      expect.arrayContaining(['width-out-of-bounds', 'height-out-of-bounds']),
+    )
+  })
+
+  it('flags a start position that is not on water', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 1, y: 1 }, 'land', 0)
+    map.startPositions = [{ x: 1, y: 1 }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('start-not-water')
+  })
+
+  it('flags a water start position with no adjacent port', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('start-not-coastal')
+  })
+
+  it('flags duplicate start positions', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [
+      { x: 5, y: 5 },
+      { x: 5, y: 5 },
+    ]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('duplicate-start-position')
+  })
+
+  it('flags start positions crowded closer than the minimum distance', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [
+      { x: 5, y: 5 },
+      { x: 6, y: 5 },
+    ]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('starts-too-close')
+  })
+
+  it('flags home islands whose land areas are too unbalanced', () => {
+    const map = blankMap(24, 24)
+    // Island 0: a generous 3x3 block of land (9 tiles).
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) setTile(map, { x, y }, 'land', 0)
+    }
+    // Island 1: a single land tile.
+    setTile(map, { x: 20, y: 20 }, 'land', 1)
+    map.startPositions = [
+      { x: 5, y: 0 },
+      { x: 19, y: 19 },
+    ]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('home-island-imbalance')
+  })
+
+  it('flags start positions that cannot reach each other by sea', () => {
+    const map = blankMap(10, 10)
+    // A solid land row splits the map into two disconnected water bodies —
+    // no single 8-directional step can cross a full row of land.
+    for (let x = 0; x < map.width; x++) setTile(map, { x, y: 5 }, 'land', 9)
+    map.startPositions = [
+      { x: 5, y: 0 },
+      { x: 5, y: 9 },
+    ]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('start-unreachable')
+  })
+})
+
+describe('createGame with an authored map', () => {
+  function authoredConfig(playerCount: number): GameConfig {
+    const map = generateMap(3, 'small', playerCount, GAME_SETUP.homeIslandRadius)
+    const config = testConfig(playerCount)
+    return { ...config, mapDefinition: mapToDefinition(map) }
+  }
+
+  it('validates clean under content limits before use', () => {
+    const config = authoredConfig(3)
+    const result = validateMapDefinition(config.mapDefinition!, MAP_VALIDATION_LIMITS)
+    expect(result.valid).toBe(true)
+  })
+
+  it('plays on the authored map instead of generating one', () => {
+    const config = authoredConfig(3)
+    const state = createGame(config)
+    expect(state.map).toEqual(config.mapDefinition)
+  })
+
+  it('replays identically with an authored map, same as a generated one', () => {
+    const config = authoredConfig(2)
+    const base = createGame(config)
+    const cap1 = captainsOf(base, 'p1')[0]!
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const a = replay(createGame(config), log)
+    const b = replay(createGame(config), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(captainsOf(a, 'p1')[0]!.id).toBe(cap1.id)
+  })
+
+  it('rejects an authored map whose start-position count does not match the player count', () => {
+    const config = authoredConfig(4)
+    const mismatched = { ...config, players: config.players.slice(0, 2) }
+    expect(() => createGame(mismatched)).toThrow(/start positions/)
+  })
+})

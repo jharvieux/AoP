@@ -1,5 +1,6 @@
 import { FACTIONS } from '@aop/content'
 import type { GameState } from '@aop/engine'
+import { useTheme } from '../theme/ThemeContext'
 
 interface GameOverScreenProps {
   game: GameState
@@ -8,6 +9,7 @@ interface GameOverScreenProps {
 }
 
 export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenProps) {
+  const { factionName } = useTheme()
   const winner = game.players.find((p) => p.id === game.winnerId)
   const isPlayerWinner = game.winnerId === 'player-0'
   const isDraw = game.winnerId === null
@@ -24,7 +26,9 @@ export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenP
         {winner && (
           <div className="winner-info">
             <h2>{winner.name}</h2>
-            <p className="winner-faction">{FACTIONS[winner.faction].name} prevails</p>
+            <p className="winner-faction">
+              {factionName(winner.faction, FACTIONS[winner.faction].name)} prevails
+            </p>
           </div>
         )}
 

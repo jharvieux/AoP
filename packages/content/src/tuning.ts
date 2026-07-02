@@ -157,3 +157,31 @@ export const AI_TUNING: AiTuning = {
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
 }
+
+/**
+ * Bounds an authored {@link MapDefinition} (@aop/engine, #62) must satisfy.
+ * Mirrors the engine's `MapValidationLimits` shape so `validateMapDefinition`
+ * can be called with this data without the engine importing @aop/content.
+ */
+export interface MapValidationLimits {
+  minSize: number
+  maxSize: number
+  minPlayers: number
+  maxPlayers: number
+  minStartDistance: number
+  maxHomeIslandAreaRatio: number
+}
+
+export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
+  // Matches the smallest/largest entries in the engine's MAP_DIMENSIONS table
+  // (see map.ts) so authored maps span the same range generated ones do.
+  minSize: 24,
+  maxSize: 40,
+  minPlayers: 2,
+  maxPlayers: 8,
+  // Same crowding floor the generated-map fairness tests enforce (map.test.ts).
+  minStartDistance: 5,
+  // Generated maps are perfectly symmetric (ratio 1); authored maps get
+  // slack for hand-sculpted islands that aren't pixel-identical.
+  maxHomeIslandAreaRatio: 1.5,
+}

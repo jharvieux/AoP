@@ -3,6 +3,7 @@ import type { AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
 import type { GameMap } from './map'
+import type { MapDefinition } from './mapDefinition'
 import type { RngState } from './rng'
 import type { StandingOrder } from './tactics'
 
@@ -94,9 +95,17 @@ export interface GameSetup {
 }
 
 export interface GameConfig {
-  /** Seed for map generation and all in-game randomness. */
+  /** Seed for all in-game randomness (and for map generation when {@link mapDefinition} is absent). */
   seed: number
   mapSize: MapSize
+  /**
+   * An authored map (#62) to play instead of generating one from `seed` +
+   * `mapSize`. `seed` still drives every other RNG draw (combat, economy,
+   * AI), so an authored map replays exactly as deterministically as a
+   * generated one. Callers are responsible for validating it first via
+   * {@link validateMapDefinition} — `createGame` does not re-validate.
+   */
+  mapDefinition?: MapDefinition
   players: PlayerConfig[]
   /** Opening-state balance data (economy, captain loadout, map geometry). */
   setup: GameSetup

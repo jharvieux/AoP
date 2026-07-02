@@ -3,6 +3,7 @@ import { AI_TUNING, FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
 import type { PlayerConfig, TroopStack } from '@aop/engine'
 import { buildCatalog } from '../catalog'
+import { useTheme } from '../theme/ThemeContext'
 import type { GameSetupConfig } from '../types'
 
 interface NewGameSetupProps {
@@ -36,6 +37,7 @@ function createDefaultPlayer(index: number): PlayerConfig {
 }
 
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
+  const { factionName } = useTheme()
   const [mapSize, setMapSize] = useState<MapSize>('small')
   const [playerCount, setPlayerCount] = useState(2)
   const [players, setPlayers] = useState<PlayerConfig[]>(
@@ -153,7 +155,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
                 >
                   {FACTIONS_ARRAY.map((faction) => (
                     <option key={faction.id} value={faction.id}>
-                      {faction.name}
+                      {factionName(faction.id, faction.name)}
                     </option>
                   ))}
                 </select>

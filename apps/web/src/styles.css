@@ -535,3 +535,42 @@ button.primary.secondary {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.text-input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #2a5580;
+  border-radius: 6px;
+  background: #0b1d2d;
+  color: #e8dcc0;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #c9a227;
+}
+
+.theme-editor h3 {
+  margin: 20px 0 8px;
+  font-size: 1.1rem;
+}
+
+.theme-asset-row {
+  align-items: center;
+}
+
+.theme-asset-preview {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #0b1d2d;
+}
+
+.theme-error {
+  color: #e0685a;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
