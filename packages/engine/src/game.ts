@@ -2,6 +2,7 @@ import { EMPTY_RESOURCES, type Coord } from '@aop/shared'
 import { replenishAvailability } from './economy'
 import { spawnEncounters } from './encounters'
 import { generateMap, tileIndex, type GameMap } from './map'
+import { mapToDefinition } from './mapDefinition'
 import { seedRng, type RngState } from './rng'
 import type { Captain, CityState, EncounterState, GameConfig, GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
@@ -30,12 +31,18 @@ export function createGame(config: GameConfig): GameState {
   }
 
   const { setup, content } = config
-  const map = generateMap(
-    config.seed,
-    config.mapSize,
-    config.players.length,
-    setup.homeIslandRadius,
-  )
+  // An authored map (#62) stands in for generation; `seed` still drives every
+  // other RNG draw, so replays stay deterministic either way. Clone
+  // defensively so mutating the caller's object can't leak into GameState.
+  const map = config.mapDefinition
+    ? mapToDefinition(config.mapDefinition)
+    : generateMap(config.seed, config.mapSize, config.players.length, setup.homeIslandRadius)
+
+  if (map.startPositions.length !== config.players.length) {
+    throw new Error(
+      `Map has ${map.startPositions.length} start positions but the game has ${config.players.length} players`,
+    )
+  }
 
   const captains: Captain[] = config.players.map((p, i) => ({
     id: `cap-${p.id}`,

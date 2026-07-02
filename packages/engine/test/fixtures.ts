@@ -1,4 +1,4 @@
-import type { AiTuning, CombatTuning, GameSetup, TacticsTuning } from '../src'
+import type { AiTuning, CombatTuning, GameSetup, MapValidationLimits, TacticsTuning } from '../src'
 
 /**
  * Balance-tuning fixtures for engine tests. In production these come from
@@ -54,4 +54,13 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+}
+
+export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
+  minSize: 24,
+  maxSize: 40,
+  minPlayers: 2,
+  maxPlayers: 8,
+  minStartDistance: 5,
+  maxHomeIslandAreaRatio: 1.5,
 }
