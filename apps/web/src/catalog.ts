@@ -1,4 +1,11 @@
-import { BUILDINGS, CAPTAIN_XP_THRESHOLDS, FACTIONS, SHIP_CLASSES, SKILLS } from '@aop/content'
+import {
+  BUILDINGS,
+  CAPTAIN_XP_THRESHOLDS,
+  ENCOUNTERS,
+  FACTIONS,
+  SHIP_CLASSES,
+  SKILLS,
+} from '@aop/content'
 import type { ContentCatalog } from '@aop/engine'
 
 /**
@@ -50,5 +57,6 @@ export function buildCatalog(): ContentCatalog {
       ]),
     ),
     captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
+    encounters: ENCOUNTERS,
   }
 }

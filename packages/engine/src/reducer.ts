@@ -1,4 +1,10 @@
-import { addResources, canAfford, chebyshevDistance, subtractResources } from '@aop/shared'
+import {
+  addResources,
+  canAfford,
+  chebyshevDistance,
+  subtractResources,
+  type ResourcePool,
+} from '@aop/shared'
 import {
   InvalidActionError,
   type Action,
@@ -8,6 +14,7 @@ import {
   type GainCaptainXpAction,
   type MoveCaptainAction,
   type RecruitUnitAction,
+  type ResolveEncounterAction,
   type SetStandingOrdersAction,
   type TransferTroopsAction,
   type UpgradeShipAction,
@@ -19,8 +26,9 @@ import {
   type Combatant,
   type CombatResult,
 } from './combat'
-import type { ContentCatalog } from './content'
+import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
+import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { currentPlayer } from './game'
 import { tileAt } from './map'
 import { findPath } from './pathfinding'
@@ -38,12 +46,29 @@ import type { Captain, CityState, GameState, TroopStack } from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /**
+ * What a captain learned from resolving a random encounter (#23) — the result of
+ * the seeded roll, surfaced to the client's outcome dialog. Fully derived from the
+ * pre-action RNG state, so replays reproduce it exactly.
+ */
+export interface EncounterOutcome {
+  encounterId: string
+  kind: EncounterKind
+  choice: string
+  success: boolean
+  reward: Partial<ResourcePool>
+  xpGained: number
+  troopsGained?: TroopStack
+  troopsLost: TroopStack[]
+}
+
+/**
  * Optional structured result of the last action, surfaced to the client without
- * living in the (replayable) GameState. Currently only combat produces one.
+ * living in the (replayable) GameState. Combat and encounters each produce one.
  */
 export interface ActionOutcome {
   state: GameState
   battleReport?: BattleReport
+  encounterOutcome?: EncounterOutcome
 }
 
 /**
@@ -70,6 +95,7 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
 
   let next: GameState
   let battleReport: BattleReport | undefined
+  let encounterOutcome: EncounterOutcome | undefined
   switch (action.type) {
     case 'endTurn':
       next = advanceTurn(state)
@@ -107,6 +133,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
     case 'upgradeShip':
       next = upgradeShip(state, action)
       break
+    case 'resolveEncounter': {
+      const result = resolveEncounter(state, action)
+      next = result.state
+      encounterOutcome = result.outcome
+      break
+    }
   }
 
   // Fold newly-visible tiles (cities + captain positions) into the acting
@@ -121,6 +153,7 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
 
   const outcome: ActionOutcome = { state: { ...next, actionCount: state.actionCount + 1 } }
   if (battleReport) outcome.battleReport = battleReport
+  if (encounterOutcome) outcome.encounterOutcome = encounterOutcome
   return outcome
 }
 
@@ -539,6 +572,80 @@ function upgradeShip(state: GameState, action: UpgradeShipAction): GameState {
   }
 }
 
+function resolveEncounter(
+  state: GameState,
+  action: ResolveEncounterAction,
+): { state: GameState; outcome: EncounterOutcome } {
+  const content = requireContent(state, action)
+  if (!content.encounters) {
+    throw new InvalidActionError('No encounter content configured for this match', action)
+  }
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (captain.movementPoints < 1) {
+    throw new InvalidActionError('Captain has no movement left to engage', action)
+  }
+  const encounter = state.encounters.find((e) => e.id === action.encounterId)
+  if (!encounter || !encounter.active) {
+    throw new InvalidActionError(`No active encounter ${action.encounterId}`, action)
+  }
+  if (chebyshevDistance(captain.position, encounter.position) > 1) {
+    throw new InvalidActionError('Encounter is not within reach', action)
+  }
+  const kindDef = content.encounters[encounter.kind]
+  const choiceDef = kindDef.choices[action.choice]
+  if (!choiceDef) {
+    throw new InvalidActionError(`'${action.choice}' is not a ${encounter.kind} choice`, action)
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const cost = choiceDef.cost ?? {}
+  if (!canAfford(player.resources, cost)) {
+    throw new InvalidActionError(`${action.playerId} cannot afford this encounter choice`, action)
+  }
+
+  const shipDef = content.ships[captain.shipClassId]
+  const crewCapacity = shipDef
+    ? effectiveShipStats(shipDef, captain.shipUpgrades).crewCapacity
+    : Infinity
+  const result = resolveEncounterChoice(
+    choiceDef,
+    player.faction,
+    captain.troops,
+    crewCapacity,
+    state.rngState,
+  )
+
+  const respawnRound = kindDef.respawnDelay > 0 ? state.round + kindDef.respawnDelay : null
+  const settled: GameState = {
+    ...state,
+    rngState: result.rng,
+    players: state.players.map((p) =>
+      p.id === player.id
+        ? { ...p, resources: addResources(subtractResources(p.resources, cost), result.reward) }
+        : p,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id
+        ? { ...c, troops: result.troops, xp: c.xp + result.xpGained, movementPoints: 0 }
+        : c,
+    ),
+    encounters: state.encounters.map((e) =>
+      e.id === encounter.id ? { ...e, active: false, respawnRound } : e,
+    ),
+  }
+
+  const outcome: EncounterOutcome = {
+    encounterId: encounter.id,
+    kind: encounter.kind,
+    choice: action.choice,
+    success: result.success,
+    reward: result.reward,
+    xpGained: result.xpGained,
+    troopsLost: result.troopsLost,
+  }
+  if (result.troopsGained) outcome.troopsGained = result.troopsGained
+  return { state: settled, outcome }
+}
+
 /**
  * After a battle: any player with no captains left is eliminated, the game ends
  * if one (or none) remains, and if the acting player was just eliminated the turn
@@ -608,8 +715,13 @@ function advanceTurn(state: GameState): GameState {
       })
     : state.cities
 
+  // Consumed encounters respawn once their delay elapses (#23).
+  const encounters = roundAdvanced
+    ? reactivateEncounters(state.encounters, round)
+    : state.encounters
+
   return refreshMovement(
-    { ...state, currentPlayerIndex: index, round, players, cities },
+    { ...state, currentPlayerIndex: index, round, players, cities, encounters },
     state.players[index]!.id,
   )
 }

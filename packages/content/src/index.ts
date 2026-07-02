@@ -1,5 +1,6 @@
 export * from './buildings'
 export * from './combat'
+export * from './encounters'
 export * from './factions'
 export * from './ships'
 export * from './skills'

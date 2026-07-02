@@ -1,7 +1,7 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
-import type { ContentCatalog } from './content'
+import type { ContentCatalog, EncounterKind } from './content'
 import type { GameMap } from './map'
 import type { RngState } from './rng'
 import type { StandingOrder } from './tactics'
@@ -131,6 +131,21 @@ export interface PlayerState {
   eliminated: boolean
 }
 
+/**
+ * A random-encounter entity on the map (#23) — a merchant, native village, or
+ * band of settlers a passing captain can interact with. Placed deterministically
+ * by mapgen; plain data so it serializes and replays like everything else.
+ */
+export interface EncounterState {
+  id: string
+  kind: EncounterKind
+  position: Coord
+  /** False once resolved; flips back to true when {@link respawnRound} is reached. */
+  active: boolean
+  /** Round at which a consumed encounter reactivates; null = active, or gone for good. */
+  respawnRound: number | null
+}
+
 export type GameStatus = 'active' | 'finished'
 
 /**
@@ -149,6 +164,8 @@ export interface GameState {
   cities: CityState[]
   /** All captains in play, across all owners. */
   captains: Captain[]
+  /** Random encounters placed by mapgen (#23). Empty when the match has no encounter content. */
+  encounters: EncounterState[]
   /**
    * Every tile each player has ever seen, keyed by playerId, values are
    * "x,y" tile keys. Currently-visible tiles are recomputed on demand by

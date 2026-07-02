@@ -5,6 +5,7 @@
  */
 
 import type { Coord } from '@aop/shared'
+import type { EncounterChoice } from './content'
 import type { StandingOrder, TacticId } from './tactics'
 
 export interface EndTurnAction {
@@ -116,6 +117,19 @@ export interface UpgradeShipAction {
   track: string
 }
 
+/**
+ * Interact with an adjacent random encounter (#23). `choice` must be one the
+ * encounter's kind offers (merchant: trade/rob; natives: trade/fight/quest;
+ * settlers: recruit/escort/raid); the outcome resolves from the seeded RNG.
+ */
+export interface ResolveEncounterAction {
+  type: 'resolveEncounter'
+  playerId: string
+  captainId: string
+  encounterId: string
+  choice: EncounterChoice
+}
+
 export type Action =
   | EndTurnAction
   | ResignAction
@@ -128,6 +142,7 @@ export type Action =
   | GainCaptainXpAction
   | ChooseCaptainSkillAction
   | UpgradeShipAction
+  | ResolveEncounterAction
 
 export class InvalidActionError extends Error {
   constructor(
