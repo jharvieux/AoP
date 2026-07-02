@@ -159,15 +159,5 @@ editor, Capacitor native builds with push notifications.
 
 ## 11. Decisions log
 
-- 2026-07-01 — Match-based **async turns** (not simultaneous, not persistent world).
-- 2026-07-01 — **Hybrid combat** (round tactics + auto-resolve option); tactical battle
-  board for troop combat deferred to Phase 4.
-- 2026-07-01 — **Single-player first** MVP; multiplayer architecture designed in from day one.
-- 2026-07-01 — Stack: **TS monorepo + Supabase (new, separate project) + Vercel**; engine
-  kept pure/portable so the backend can be swapped if the game outgrows it.
-- 2026-07-01 — Title: **Age of Plunder** (package scope `@aop/*`).
-- 2026-07-01 — Match size/pacing: **configurable in the lobby** (2–8 players, multiple map
-  sizes); AI takeover for dropouts is a hard requirement for larger matches.
-- 2026-07-01 — Monetization: **ads + paid remove-ads**; guest single-player, account for
-  multiplayer. Plumbing deferred, design hooks (`entitlements`, `<AdSlot>`) reserved.
-- 2026-07-01 — Art: **stylized 2D sprites** on the Pixi canvas.
+Moved to [/MEMORY.md](../MEMORY.md) (append-only decision log, D-NNN entries; index in
+[/MEMORY-INDEX.md](../MEMORY-INDEX.md)). The founding decisions are D-001 through D-008.
