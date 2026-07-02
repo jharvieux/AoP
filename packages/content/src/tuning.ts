@@ -42,6 +42,52 @@ export interface TacticsTuning {
   outgunnedRatio: number
 }
 
+/**
+ * Weights and thresholds for the single-player AI (#13/#67). Every knob the AI
+ * uses to score a candidate action lives here so difficulty/behavior tuning
+ * never touches @aop/engine, which holds no balance data of its own.
+ */
+export interface AiTuning {
+  /** Minimum strength ratio (mine ÷ enemy) before the AI will attack or advance on a target. */
+  engageMinRatio: number
+  /** Score for a legal attack, scaled by strength ratio. */
+  attackScoreBase: number
+  /** Base score for advancing toward a beatable but distant enemy. */
+  advanceScoreBase: number
+  /** Bonus atop advanceScoreBase, scaled by closeness (1 / (1 + distance)). */
+  advanceDistanceBonus: number
+  /** Gold reserve the AI never spends below — its rainy-day buffer. */
+  minGoldReserve: number
+  /** Utility weight per point of gold a constructible building produces per round. */
+  buildGoldWeight: number
+  /** Utility weight per point of timber produced. */
+  buildTimberWeight: number
+  /** Utility weight per point of iron produced. */
+  buildIronWeight: number
+  /** Utility weight per point of rum produced. */
+  buildRumWeight: number
+  /** Utility weight per recruitment tier a building unlocks. */
+  buildRecruitTierWeight: number
+  /** Utility weight per point of fortification defense bonus. */
+  buildDefenseBonusWeight: number
+  /** Flat utility bonus for the building that unlocks ship upgrades. */
+  buildShipyardBonus: number
+  /** Scales a building's raw utility score into the shared action-score space. */
+  buildScoreScale: number
+  /** Score for recruiting troops, once gold is above the reserve. */
+  recruitScoreBase: number
+  /** Fraction of gold above the reserve the AI will spend recruiting in one action. */
+  recruitSpendFraction: number
+  /** Score for moving troops from a city garrison onto a docked captain's ship. */
+  garrisonToShipScoreBase: number
+  /** Fraction of each garrisoned unit stack the AI keeps in the city for defense. */
+  garrisonReserveFraction: number
+  /** Score for buying the next ship-upgrade level, once gold is above the reserve. */
+  upgradeScoreBase: number
+  /** Score for spending an available captain skill pick. */
+  skillPickScoreBase: number
+}
+
 /** Opening game state: starting economy, captain loadout, and map geometry. */
 export interface GameSetup {
   /** Gold each player starts with. */
@@ -88,4 +134,26 @@ export const GAME_SETUP: GameSetup = {
   cityVisionRadius: 3,
   captainVisionRadius: 2,
   combatWinXp: 40,
+}
+
+export const AI_TUNING: AiTuning = {
+  engageMinRatio: 0.9,
+  attackScoreBase: 100,
+  advanceScoreBase: 10,
+  advanceDistanceBonus: 10,
+  minGoldReserve: 150,
+  buildGoldWeight: 1,
+  buildTimberWeight: 4,
+  buildIronWeight: 6,
+  buildRumWeight: 6,
+  buildRecruitTierWeight: 20,
+  buildDefenseBonusWeight: 1,
+  buildShipyardBonus: 25,
+  buildScoreScale: 0.5,
+  recruitScoreBase: 25,
+  recruitSpendFraction: 0.5,
+  garrisonToShipScoreBase: 30,
+  garrisonReserveFraction: 0.3,
+  upgradeScoreBase: 20,
+  skillPickScoreBase: 90,
 }

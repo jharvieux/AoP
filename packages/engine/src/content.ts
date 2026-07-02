@@ -14,6 +14,10 @@ export interface BuildingLike {
   cost: Partial<ResourcePool>
   requires?: string
   unlocksTier?: 1 | 2 | 3 | 4
+  /** Flat defense bonus applied during a city assault (fortification buildings). */
+  defenseBonus?: number
+  /** True for the building that unlocks the ship-upgrade action at this city. */
+  unlocksShipyard?: boolean
 }
 
 export interface UnitLike {
