@@ -8,14 +8,17 @@ _Last updated: 2026-07-02 (issue-sweep: batches merged, partial results)._
 Extended issue-sweep (Phase 1–3) executed 6 issue batches (split from initial top-20 plan):
 
 **Merged to main:**
+
 - **PR #69 (merged)** — Batch B (Sonnet): #30 Supabase project setup + #57 Dependabot auto-merge workflow. Audit-approved, merged.
 - **PR #72 (merged)** — Batch C (Sonnet): #67 economy-aware AI (5 new decision plans, all balance data in @aop/content). 89/89 engine tests green, audit approved.
 - **PR #71 (merged)** — Batch A-1 (Sonnet): #23 random encounters (seeded outcomes, respawn logic). Fixed engine-invariant violation (moved MIN_START_DISTANCE to @aop/content per D-013), audit re-approved, merged.
 
 **Open (awaiting Supabase):**
+
 - **PR #70 (draft)** — Batch A-2 (Opus): #31 auth, #32 match lifecycle, #33 server-authoritative actions. All implemented, verified, code is ready; CI fails due to missing Supabase cloud project (credentials not available). Split from #23 to unblock single-player features.
 
 **Open (merge conflicts):**
+
 - **PR #74 (open)** — Batch D (Sonnet): #62 custom map format (MapDefinition + pure validation), #64 local theme packs (IndexedDB, UI). Audit-approved (1 CodeQL warning, low real-world risk); has merge conflicts with main (need rebase).
 
 ## Next step
