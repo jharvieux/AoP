@@ -1,4 +1,7 @@
+import { addResources } from '@aop/shared'
 import { InvalidActionError, type Action } from './actions'
+import type { ContentCatalog } from './content'
+import { playerIncome } from './economy'
 import { currentPlayer } from './game'
 import type { GameState } from './types'
 
@@ -6,8 +9,11 @@ import type { GameState } from './types'
  * The single entry point for mutating game state. Pure: returns a new state,
  * never touches the input. Throws InvalidActionError for illegal actions —
  * the server rejects these; a well-behaved client never produces them.
+ *
+ * `catalog` supplies balance data (building/unit/ship defs, ...) from
+ * @aop/content — the engine package itself stays dependency-free.
  */
-export function applyAction(state: GameState, action: Action): GameState {
+export function applyAction(state: GameState, action: Action, catalog: ContentCatalog): GameState {
   if (state.status !== 'active') {
     throw new InvalidActionError('Game is over', action)
   }
@@ -18,10 +24,10 @@ export function applyAction(state: GameState, action: Action): GameState {
   let next: GameState
   switch (action.type) {
     case 'endTurn':
-      next = advanceTurn(state)
+      next = advanceTurn(state, catalog)
       break
     case 'resign':
-      next = advanceTurn(eliminatePlayer(state, action.playerId))
+      next = advanceTurn(eliminatePlayer(state, action.playerId), catalog)
       break
   }
 
@@ -35,7 +41,7 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   }
 }
 
-function advanceTurn(state: GameState): GameState {
+function advanceTurn(state: GameState, catalog: ContentCatalog): GameState {
   const alive = state.players.filter((p) => !p.eliminated)
   if (alive.length <= 1) {
     return {
@@ -55,10 +61,27 @@ function advanceTurn(state: GameState): GameState {
     }
   } while (state.players[index]!.eliminated)
 
-  return { ...state, currentPlayerIndex: index, round }
+  const roundAdvanced = round !== state.round
+  const players = roundAdvanced
+    ? state.players.map((p) =>
+        p.eliminated
+          ? p
+          : { ...p, resources: addResources(p.resources, playerIncome(state, p.id, catalog)) },
+      )
+    : state.players
+
+  const cities = roundAdvanced
+    ? state.cities.map((c) => ({ ...c, builtThisRound: false }))
+    : state.cities
+
+  return { ...state, currentPlayerIndex: index, round, players, cities }
 }
 
 /** Replay an action log against a fresh state — used for loads, replays, and audits. */
-export function replay(initial: GameState, actions: readonly Action[]): GameState {
-  return actions.reduce(applyAction, initial)
+export function replay(
+  initial: GameState,
+  actions: readonly Action[],
+  catalog: ContentCatalog,
+): GameState {
+  return actions.reduce((state, action) => applyAction(state, action, catalog), initial)
 }

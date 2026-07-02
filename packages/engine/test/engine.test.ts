@@ -9,8 +9,16 @@ import {
   replay,
   seedRng,
   type Action,
+  type ContentCatalog,
   type GameConfig,
 } from '../src'
+
+const testCatalog: ContentCatalog = {
+  buildings: {
+    townhall: { produces: { gold: 100 }, cost: {} },
+    sawmill: { produces: { timber: 4 }, cost: { gold: 200 }, requires: 'townhall' },
+  },
+}
 
 function testConfig(playerCount = 3): GameConfig {
   const factions = ['pirates', 'british', 'spanish', 'dutch'] as const
@@ -82,41 +90,41 @@ describe('turn loop', () => {
     expect(state.round).toBe(1)
     expect(currentPlayer(state).id).toBe('p1')
 
-    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
     expect(currentPlayer(state).id).toBe('p2')
     expect(state.round).toBe(1)
 
-    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
-    state = applyAction(state, { type: 'endTurn', playerId: 'p3' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p3' }, testCatalog)
     expect(currentPlayer(state).id).toBe('p1')
     expect(state.round).toBe(2)
   })
 
   it('rejects out-of-turn actions', () => {
     const state = createGame(testConfig(3))
-    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p2' })).toThrow(
+    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)).toThrow(
       InvalidActionError,
     )
   })
 
   it('skips eliminated players', () => {
     let state = createGame(testConfig(3))
-    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
-    state = applyAction(state, { type: 'resign', playerId: 'p2' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'resign', playerId: 'p2' }, testCatalog)
     expect(currentPlayer(state).id).toBe('p3')
-    state = applyAction(state, { type: 'endTurn', playerId: 'p3' })
-    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p3' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
     expect(currentPlayer(state).id).toBe('p3')
   })
 
   it('finishes the game when one player remains', () => {
     let state = createGame(testConfig(3))
-    state = applyAction(state, { type: 'resign', playerId: 'p1' })
+    state = applyAction(state, { type: 'resign', playerId: 'p1' }, testCatalog)
     expect(state.status).toBe('active')
-    state = applyAction(state, { type: 'resign', playerId: 'p2' })
+    state = applyAction(state, { type: 'resign', playerId: 'p2' }, testCatalog)
     expect(state.status).toBe('finished')
     expect(state.winnerId).toBe('p3')
-    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p3' })).toThrow(
+    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p3' }, testCatalog)).toThrow(
       InvalidActionError,
     )
   })
@@ -124,7 +132,7 @@ describe('turn loop', () => {
   it('does not mutate the input state', () => {
     const state = createGame(testConfig(3))
     const snapshot = JSON.parse(JSON.stringify(state))
-    applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
     expect(state).toEqual(snapshot)
   })
 })
@@ -138,9 +146,45 @@ describe('replay determinism', () => {
       { type: 'endTurn', playerId: 'p1' },
       { type: 'endTurn', playerId: 'p2' },
     ]
-    const a = replay(createGame(testConfig(3)), log)
-    const b = replay(createGame(testConfig(3)), log)
+    const a = replay(createGame(testConfig(3)), log, testCatalog)
+    const b = replay(createGame(testConfig(3)), log, testCatalog)
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.actionCount).toBe(log.length)
+  })
+})
+
+describe('economy', () => {
+  function economyConfig(playerCount = 2): GameConfig {
+    return { ...testConfig(playerCount), startingBuildings: ['townhall'] }
+  }
+
+  it('gives every player a starting capital with the configured buildings', () => {
+    const state = createGame(economyConfig())
+    expect(state.cities).toHaveLength(2)
+    expect(state.cities[0]).toMatchObject({ ownerId: 'p1', buildings: ['townhall'] })
+  })
+
+  it('applies city income to every living player once the round advances', () => {
+    let state = createGame(economyConfig())
+    const before = state.players.map((p) => p.resources.gold)
+
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    // Still round 1: no income yet.
+    expect(state.players[0]!.resources.gold).toBe(before[0])
+
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    // Round wrapped: townhall's 100 gold applied to both players.
+    expect(state.players[0]!.resources.gold).toBe(before[0]! + 100)
+    expect(state.players[1]!.resources.gold).toBe(before[1]! + 100)
+  })
+
+  it('does not pay income to eliminated players', () => {
+    let state = createGame(economyConfig(3))
+    state = applyAction(state, { type: 'resign', playerId: 'p1' }, testCatalog)
+    const goldAfterResign = state.players[0]!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p3' }, testCatalog)
+    expect(state.players[0]!.resources.gold).toBe(goldAfterResign)
+    expect(state.players[1]!.resources.gold).toBeGreaterThan(goldAfterResign)
   })
 })

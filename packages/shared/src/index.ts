@@ -26,3 +26,29 @@ export function addResources(a: ResourcePool, b: Partial<ResourcePool>): Resourc
     rum: a.rum + (b.rum ?? 0),
   }
 }
+
+/** True if `pool` has at least `cost` of every resource named in `cost`. */
+export function canAfford(pool: ResourcePool, cost: Partial<ResourcePool>): boolean {
+  return (
+    pool.gold >= (cost.gold ?? 0) &&
+    pool.timber >= (cost.timber ?? 0) &&
+    pool.iron >= (cost.iron ?? 0) &&
+    pool.rum >= (cost.rum ?? 0)
+  )
+}
+
+/** Subtract `cost` from `pool`. Callers must check canAfford first. */
+export function subtractResources(pool: ResourcePool, cost: Partial<ResourcePool>): ResourcePool {
+  return {
+    gold: pool.gold - (cost.gold ?? 0),
+    timber: pool.timber - (cost.timber ?? 0),
+    iron: pool.iron - (cost.iron ?? 0),
+    rum: pool.rum - (cost.rum ?? 0),
+  }
+}
+
+/** Integer 2D tile coordinate on the world map grid. */
+export interface TileCoord {
+  x: number
+  y: number
+}

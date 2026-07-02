@@ -1,6 +1,6 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
 import { seedRng } from './rng'
-import type { GameConfig, GameState } from './types'
+import type { CityState, GameConfig, GameState } from './types'
 
 const STARTING_GOLD = 1000
 
@@ -16,6 +16,8 @@ export function createGame(config: GameConfig): GameState {
     throw new Error('Player ids must be unique')
   }
 
+  const startingBuildings = config.startingBuildings ?? []
+
   return {
     config,
     round: 1,
@@ -27,6 +29,13 @@ export function createGame(config: GameConfig): GameState {
       isAI: p.isAI,
       resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
       eliminated: false,
+    })),
+    cities: config.players.map((p): CityState => ({
+      id: `${p.id}-capital`,
+      ownerId: p.id,
+      name: `${p.name}'s Capital`,
+      buildings: [...startingBuildings],
+      builtThisRound: false,
     })),
     rngState: seedRng(config.seed),
     actionCount: 0,
