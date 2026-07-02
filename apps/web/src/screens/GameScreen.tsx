@@ -7,6 +7,7 @@ import {
   pathCost,
   visibleState,
   type Action,
+  type EncounterChoice,
   type GameState,
   type StandingOrder,
 } from '@aop/engine'
@@ -39,6 +40,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   const [confirmingResign, setConfirmingResign] = useState(false)
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
+  const [encounterId, setEncounterId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
 
@@ -67,6 +69,12 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   const attackTarget = attackTargetId
     ? (game.captains.find((c) => c.id === attackTargetId) ?? null)
     : null
+  const encounter = encounterId
+    ? (game.encounters.find((e) => e.id === encounterId && e.active) ?? null)
+    : null
+  const encounterChoices = encounter
+    ? Object.keys(game.config.content?.encounters?.[encounter.kind]?.choices ?? {})
+    : []
 
   const viewerCity = game.cities.find((c) => c.ownerId === viewer.id)
   const viewerCaptainAtCity = viewerCity
@@ -100,6 +108,19 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
         selectedCaptain.movementPoints >= 1
       ) {
         setAttackTargetId(enemyHere.id)
+      }
+      return
+    }
+
+    const encounterHere = game.encounters.find(
+      (e) => e.active && e.position.x === x && e.position.y === y,
+    )
+    if (encounterHere) {
+      if (
+        chebyshevDistance(selectedCaptain.position, encounterHere.position) <= 1 &&
+        selectedCaptain.movementPoints >= 1
+      ) {
+        setEncounterId(encounterHere.id)
       }
       return
     }
@@ -147,6 +168,19 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
       targetCaptainId: attackTarget.id,
     })
     setAttackTargetId(null)
+    setSelectedCaptainId(null)
+  }
+
+  function resolveEncounter(choice: string) {
+    if (!selectedCaptain || !encounter) return
+    onAction({
+      type: 'resolveEncounter',
+      playerId: viewer.id,
+      captainId: selectedCaptain.id,
+      encounterId: encounter.id,
+      choice: choice as EncounterChoice,
+    })
+    setEncounterId(null)
     setSelectedCaptainId(null)
   }
 
@@ -251,6 +285,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
           map={game.map}
           captains={game.captains}
           cities={game.cities}
+          encounters={game.encounters}
           viewerId={viewer.id}
           visibleKeys={visibleKeys}
           exploredKeys={exploredKeys}
@@ -281,6 +316,36 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
               <button className="primary" onClick={confirmAttack}>
                 Attack
               </button>
+            </section>
+          </div>
+        </div>
+      )}
+
+      {encounter && (
+        <div className="sheet-backdrop" onClick={() => setEncounterId(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet__header">
+              <h2>
+                {encounter.kind === 'merchant'
+                  ? 'A merchant ship hails you'
+                  : encounter.kind === 'natives'
+                    ? 'A native village on the shore'
+                    : 'A band of settlers adrift'}
+              </h2>
+              <button
+                className="sheet__close"
+                onClick={() => setEncounterId(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <section className="button-group">
+              {encounterChoices.map((choice) => (
+                <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
+                  {choice[0]!.toUpperCase() + choice.slice(1)}
+                </button>
+              ))}
             </section>
           </div>
         </div>

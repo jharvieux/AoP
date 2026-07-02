@@ -1,8 +1,9 @@
 import { EMPTY_RESOURCES, type Coord } from '@aop/shared'
 import { replenishAvailability } from './economy'
+import { spawnEncounters } from './encounters'
 import { generateMap, tileIndex, type GameMap } from './map'
-import { seedRng } from './rng'
-import type { Captain, CityState, GameConfig, GameState } from './types'
+import { seedRng, type RngState } from './rng'
+import type { Captain, CityState, EncounterState, GameConfig, GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /** The port tile of a home island — where that seat's capital city sits. */
@@ -67,6 +68,16 @@ export function createGame(config: GameConfig): GameState {
       : base
   })
 
+  // Scatter random encounters from the seeded RNG (#23), then keep the advanced
+  // RNG state so the encounter roll stream is baked into the match deterministically.
+  let rngState: RngState = seedRng(config.seed)
+  let encounters: EncounterState[] = []
+  if (content?.encounters) {
+    const spawned = spawnEncounters(map, content.encounters, rngState, map.startPositions)
+    encounters = spawned.encounters
+    rngState = spawned.rng
+  }
+
   const withoutVision: GameState = {
     config,
     map,
@@ -82,8 +93,9 @@ export function createGame(config: GameConfig): GameState {
     })),
     cities,
     captains,
+    encounters,
     exploredTiles: {},
-    rngState: seedRng(config.seed),
+    rngState,
     actionCount: 0,
     status: 'active',
     winnerId: null,

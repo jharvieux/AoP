@@ -1,4 +1,10 @@
-import { tileIndex, type Captain, type CityState, type GameMap } from '@aop/engine'
+import {
+  tileIndex,
+  type Captain,
+  type CityState,
+  type EncounterState,
+  type GameMap,
+} from '@aop/engine'
 import { Container, Graphics } from 'pixi.js'
 import { useEffect, useRef } from 'react'
 import { usePixiApp } from './usePixiApp'
@@ -26,6 +32,11 @@ const OWN_SHIP = '#3be2a1'
 const ENEMY_SHIP = '#e23b3b'
 const OWN_CITY = '#c9a227'
 const ENEMY_CITY = '#9aa0a6'
+const ENCOUNTER_COLOR = {
+  merchant: '#e0b64f',
+  natives: '#6fbf73',
+  settlers: '#c98bdb',
+} as const
 
 interface Point {
   x: number
@@ -44,6 +55,7 @@ export interface MapCanvasProps {
   map: GameMap
   captains: Captain[]
   cities: CityState[]
+  encounters: EncounterState[]
   viewerId: string
   visibleKeys: Set<string>
   exploredKeys: Set<string>
@@ -89,8 +101,16 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function draw() {
-      const { map, captains, cities, viewerId, visibleKeys, exploredKeys, selectedCaptainId } =
-        propsRef.current
+      const {
+        map,
+        captains,
+        cities,
+        encounters,
+        viewerId,
+        visibleKeys,
+        exploredKeys,
+        selectedCaptainId,
+      } = propsRef.current
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
 
@@ -119,6 +139,17 @@ export function MapCanvas(props: MapCanvasProps) {
       }
 
       entities.clear()
+      // Encounters (#23): a diamond, only where currently in view, so fog hides them.
+      for (const enc of encounters) {
+        if (!enc.active) continue
+        const key = `${enc.position.x},${enc.position.y}`
+        if (!visibleKeys.has(key)) continue
+        const cx = enc.position.x * TILE + TILE / 2
+        const cy = enc.position.y * TILE + TILE / 2
+        const r = TILE / 3
+        entities.poly([cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy])
+        entities.fill(ENCOUNTER_COLOR[enc.kind])
+      }
       for (const city of cities) {
         const key = `${city.position.x},${city.position.y}`
         const own = city.ownerId === viewerId
