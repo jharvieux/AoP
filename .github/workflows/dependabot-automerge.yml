@@ -1,0 +1,82 @@
+name: Dependabot auto-merge
+
+# Reacts to the CI workflow finishing on a Dependabot PR, rather than `pull_request` or
+# `pull_request_target` directly. This keeps the auto-merge logic running with the
+# trusted workflow file from `main` (never a PR-controlled one) while still requiring the
+# `ci` check to have actually passed — no repo-setting change ("Allow auto-merge" stays
+# off) and no dependency on GitHub's own auto-merge queue.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve and verify the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          if [ -z "$NUMBER" ] || [ "$NUMBER" = "null" ]; then
+            echo "No pull request associated with this run; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          author=$(gh pr view "$NUMBER" --repo "$REPO" --json author --jq '.author.login')
+          if [ "$author" != "dependabot[bot]" ]; then
+            echo "PR #$NUMBER was opened by '$author', not Dependabot; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Classify the bump and act
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          title=$(gh pr view "$PR" --repo "$REPO" --json title --jq '.title')
+          labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")')
+
+          is_actions_bump=false
+          case ",$labels," in
+            *,github_actions,*) is_actions_bump=true ;;
+          esac
+
+          # Grouped npm minor/patch PRs (dependabot.yml's `minor-and-patch` group) are
+          # guaranteed by that config to never contain a major bump, so only ungrouped
+          # titles ("Bump <pkg> from X.Y.Z to A.B.C") need a version check.
+          is_major_npm_bump=false
+          if [ "$is_actions_bump" = false ] && \
+             [[ "$title" =~ from\ ([0-9]+)\.[0-9]+\.[0-9]+\ to\ ([0-9]+)\.[0-9]+\.[0-9]+ ]]; then
+            from_major="${BASH_REMATCH[1]}"
+            to_major="${BASH_REMATCH[2]}"
+            if [ "$to_major" -gt "$from_major" ]; then
+              is_major_npm_bump=true
+            fi
+          fi
+
+          if [ "$is_major_npm_bump" = true ]; then
+            echo "PR #$PR is a major npm runtime-dependency bump — leaving it open."
+            gh pr comment "$PR" --repo "$REPO" --body \
+              "Not auto-merging: this is a major-version npm bump. Per the Dependabot auto-merge tiering (#57), only minor/patch npm bumps and GitHub Actions bumps merge automatically — a major bump needs a human look at the changelog for breaking changes."
+          else
+            echo "Auto-merging PR #$PR"
+            gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
+          fi

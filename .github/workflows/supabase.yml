@@ -1,0 +1,41 @@
+name: Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'packages/shared/src/database.types.ts'
+      - '.github/workflows/supabase.yml'
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'packages/shared/src/database.types.ts'
+      - '.github/workflows/supabase.yml'
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `supabase start` applies every migration under supabase/migrations to a fresh
+      # local Postgres — it's the check that they apply cleanly, in order, from zero.
+      - name: Start local stack (applies migrations)
+        run: pnpm exec supabase start
+      - name: Check generated types are committed and up to date
+        run: |
+          pnpm exec supabase gen types typescript --local > /tmp/database.types.ts
+          npx prettier --write /tmp/database.types.ts
+          if ! diff -u packages/shared/src/database.types.ts /tmp/database.types.ts; then
+            echo "::error::packages/shared/src/database.types.ts is stale. Run 'pnpm supabase:types' locally and commit the result."
+            exit 1
+          fi
+      - name: Stop local stack
+        if: always()
+        run: pnpm exec supabase stop

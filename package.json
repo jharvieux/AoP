@@ -12,10 +12,15 @@
     "verify": "pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
     "verify:fast": "pnpm format:check && pnpm typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts && prettier --write packages/shared/src/database.types.ts"
   },
   "devDependencies": {
     "prettier": "^3.5.0",
+    "supabase": "2.102.0",
     "typescript": "^5.7.0"
   },
   "packageManager": "pnpm@11.1.3",
