@@ -2,18 +2,18 @@ import {
   BUILDINGS,
   CAPTAIN_XP_THRESHOLDS,
   FACTIONS,
+  SHIP_CLASSES,
   SHIP_UPGRADE_TRACKS,
   buildingDisplayName,
   skillsForFaction,
   type BuildingDef,
-  type ShipClassDef,
 } from '@aop/content'
 import {
   availableSkillPicks,
+  effectiveShipStats,
   levelForXp,
-  type CaptainState,
+  type Captain,
   type CityState,
-  type ShipStats,
   type StandingOrder,
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
@@ -21,21 +21,14 @@ import { canAfford } from '@aop/shared'
 
 interface CityScreenProps {
   city: CityState
-  captain: CaptainState | undefined
-  shipCrewCapacity: number
-  shipClass: ShipClassDef | undefined
-  shipStats: ShipStats | undefined
+  captain: Captain | undefined
   faction: FactionId
   resources: ResourcePool
   onClose: () => void
   onBuild: (buildingId: string) => void
   onRecruit: (unitId: string) => void
   onTransfer: (direction: 'toShip' | 'toGarrison', unitId: string) => void
-  onSetStandingOrder: (
-    targetType: 'city' | 'captain',
-    targetId: string,
-    order: StandingOrder,
-  ) => void
+  onSetStandingOrders: (orders: StandingOrder[]) => void
   onChooseCaptainSkill: (skillId: string) => void
   onUpgradeShip: (track: string) => void
 }
@@ -47,9 +40,26 @@ const UPGRADE_TRACK_LABELS: Record<string, string> = {
   crewCapacity: 'Crew capacity',
 }
 
-const STANDING_ORDER_LABELS: Record<StandingOrder, string> = {
-  fightToTheShip: 'Fight to the ship',
-  evadeIfOutgunned: 'Evade if outgunned',
+/** Preset defensive plans (main's conditional standing orders, #20). */
+const STANDING_ORDER_PLANS: { id: string; label: string; orders: StandingOrder[] }[] = [
+  {
+    id: 'aggressive',
+    label: 'Aggressive (always broadside)',
+    orders: [{ when: 'always', tactic: 'broadside' }],
+  },
+  {
+    id: 'cautious',
+    label: 'Cautious (evade if outgunned)',
+    orders: [
+      { when: 'outgunned', tactic: 'evade' },
+      { when: 'always', tactic: 'broadside' },
+    ],
+  },
+  { id: 'boarder', label: 'Boarder (always board)', orders: [{ when: 'always', tactic: 'board' }] },
+]
+
+function ordersMatch(a: StandingOrder[] | undefined, b: StandingOrder[]): boolean {
+  return JSON.stringify(a ?? []) === JSON.stringify(b)
 }
 
 function costLabel(cost: BuildingDef['cost']): string {
@@ -60,23 +70,19 @@ function costLabel(cost: BuildingDef['cost']): string {
 }
 
 /**
- * Mobile-friendly bottom-sheet city screen: buildings tree plus a garrison
- * panel for recruiting troops and shuttling them to/from the visiting
- * captain's ship.
+ * Mobile-friendly bottom-sheet city screen: building tree, garrison recruiting
+ * and troop transfer, captain skills, shipyard upgrades, and standing orders.
  */
 export function CityScreen({
   city,
   captain,
-  shipCrewCapacity,
-  shipClass,
-  shipStats,
   faction,
   resources,
   onClose,
   onBuild,
   onRecruit,
   onTransfer,
-  onSetStandingOrder,
+  onSetStandingOrders,
   onChooseCaptainSkill,
   onUpgradeShip,
 }: CityScreenProps) {
@@ -86,9 +92,13 @@ export function CityScreen({
     (max, id) => Math.max(max, BUILDINGS[id]?.unlocksTier ?? 0),
     0,
   )
-  const aboardTotal = captain
-    ? Object.values(captain.troopsAboard).reduce((sum, n) => sum + n, 0)
-    : 0
+  const shipClass = captain ? SHIP_CLASSES.find((s) => s.id === captain.shipClassId) : undefined
+  const shipStats =
+    captain && shipClass ? effectiveShipStats(shipClass, captain.shipUpgrades) : undefined
+  const crewCapacity = shipStats?.crewCapacity ?? 0
+  const aboardTotal = captain ? captain.troops.reduce((sum, t) => sum + t.count, 0) : 0
+  const troopsAboard = (unitId: string) =>
+    captain?.troops.find((t) => t.unitId === unitId)?.count ?? 0
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -134,21 +144,22 @@ export function CityScreen({
         </section>
 
         <section>
-          <h3>
-            Garrison{captain ? ` — ${captain.name} (${aboardTotal}/${shipCrewCapacity})` : ''}
-          </h3>
+          <h3>Garrison{captain ? ` — ${captain.name} (${aboardTotal}/${crewCapacity})` : ''}</h3>
+          {!captain && (
+            <p className="building-option__hint">
+              Dock a captain next to the city to load or unload troops.
+            </p>
+          )}
           <ul className="building-list">
             {roster.map((unit) => {
               const available = city.unitAvailability[unit.id] ?? 0
               const garrisoned = city.garrison[unit.id] ?? 0
-              const aboard = captain?.troopsAboard[unit.id] ?? 0
+              const aboard = troopsAboard(unit.id)
               const locked = unit.tier > unlockedTier
               const canRecruit =
                 !locked && available > 0 && canAfford(resources, { gold: unit.goldCost })
-              const canLoad =
-                !locked && garrisoned > 0 && !!captain && aboardTotal < shipCrewCapacity
-              const canUnload = !locked && aboard > 0
-
+              const canLoad = !locked && garrisoned > 0 && !!captain && aboardTotal < crewCapacity
+              const canUnload = !locked && aboard > 0 && !!captain
               return (
                 <li key={unit.id} className="garrison-row">
                   <span className="garrison-row__name">{unit.name}</span>
@@ -174,45 +185,29 @@ export function CityScreen({
           </ul>
         </section>
 
-        <section>
-          <h3>Standing orders</h3>
-          <p className="building-option__hint">
-            Consulted by the combat driver when this garrison or fleet is attacked while you're
-            offline.
-          </p>
-          <ul className="building-list">
-            <li className="garrison-row">
-              <span className="garrison-row__name">Garrison — {city.name}</span>
-              <div className="garrison-row__actions">
-                {(Object.keys(STANDING_ORDER_LABELS) as StandingOrder[]).map((order) => (
-                  <button
-                    key={order}
-                    disabled={city.standingOrder === order}
-                    onClick={() => onSetStandingOrder('city', city.id, order)}
-                  >
-                    {STANDING_ORDER_LABELS[order]}
-                  </button>
-                ))}
-              </div>
-            </li>
-            {captain && (
-              <li className="garrison-row">
-                <span className="garrison-row__name">Fleet — {captain.name}</span>
-                <div className="garrison-row__actions">
-                  {(Object.keys(STANDING_ORDER_LABELS) as StandingOrder[]).map((order) => (
+        {captain && (
+          <section>
+            <h3>Standing orders — {captain.name}</h3>
+            <p className="building-option__hint">
+              Conditional defence plan used when this fleet is attacked while you're offline.
+            </p>
+            <ul className="building-list">
+              {STANDING_ORDER_PLANS.map((plan) => (
+                <li key={plan.id} className="garrison-row">
+                  <span className="garrison-row__name">{plan.label}</span>
+                  <div className="garrison-row__actions">
                     <button
-                      key={order}
-                      disabled={captain.standingOrder === order}
-                      onClick={() => onSetStandingOrder('captain', captain.id, order)}
+                      disabled={ordersMatch(captain.standingOrders, plan.orders)}
+                      onClick={() => onSetStandingOrders(plan.orders)}
                     >
-                      {STANDING_ORDER_LABELS[order]}
+                      {ordersMatch(captain.standingOrders, plan.orders) ? 'Active' : 'Set'}
                     </button>
-                  ))}
-                </div>
-              </li>
-            )}
-          </ul>
-        </section>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {captain && shipClass && shipStats && (
           <section>
@@ -255,9 +250,6 @@ export function CityScreen({
             {(() => {
               const picks = availableSkillPicks(captain, CAPTAIN_XP_THRESHOLDS)
               const level = levelForXp(captain.xp, CAPTAIN_XP_THRESHOLDS)
-              const pickable = skillsForFaction(faction).filter(
-                (skill) => skill.tier <= level && !captain.skills.includes(skill.id),
-              )
               return (
                 <>
                   <p className="building-option__hint">
@@ -268,7 +260,7 @@ export function CityScreen({
                   <ul className="building-list">
                     {skillsForFaction(faction).map((skill) => {
                       const owned = captain.skills.includes(skill.id)
-                      const canPick = picks > 0 && pickable.includes(skill)
+                      const canPick = picks > 0 && !owned && skill.tier <= level
                       return (
                         <li key={skill.id} className="garrison-row">
                           <span className="garrison-row__name">{skill.name}</span>

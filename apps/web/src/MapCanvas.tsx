@@ -1,43 +1,31 @@
-import { nextFloat, seedRng } from '@aop/engine'
+import { tileIndex, type Captain, type CityState, type GameMap } from '@aop/engine'
 import { Container, Graphics } from 'pixi.js'
 import { useEffect, useRef } from 'react'
 import { usePixiApp } from './usePixiApp'
 
 /**
- * Placeholder world map: a seeded scatter of island tiles on open sea,
- * rendered with Pixi (#7). Supports mouse-wheel + pinch zoom, mouse-drag +
- * touch pan, tap/click tile selection, and viewport culling so panning
- * around a large map stays cheap. Real map generation (#6) replaces
- * `tileKindAt` with actual mapgen data; captain map positions (#8) add
- * entities on top of this same interaction layer.
+ * Renders the seeded world map (#6) and captains (#8) with a pan/zoom/pinch +
+ * viewport-culling interaction layer (#7), plus per-player fog of war (#14).
+ * Purely a view over engine state — game logic lives in GameScreen, which
+ * interprets tile taps (select / move / attack).
  */
 
-const TILE = 48
+const TILE = 32
 const MIN_SCALE = 0.4
 const MAX_SCALE = 3
 
-type TileKind = 'sea' | 'shallows' | 'island' | 'gold'
-
-/** Deterministic per-tile roll — independent of draw order, so any (x, y) can be queried without walking the grid (required for culling). */
-function tileRoll(seed: number, x: number, y: number): number {
-  const combined = (seed * 374761393 + x * 668265263 + y * 2147483647) >>> 0
-  const [, roll] = nextFloat(seedRng(combined))
-  return roll
-}
-
-function tileKindAt(seed: number, x: number, y: number): TileKind {
-  const roll = tileRoll(seed, x, y)
-  if (roll > 0.95) return 'gold'
-  if (roll > 0.85) return 'island'
-  if (roll > 0.8) return 'shallows'
-  return 'sea'
-}
-
-const TILE_FILL: Partial<Record<TileKind, string>> = {
+const TILE_COLOR = {
+  deep: '#1b4a6b',
   shallows: '#2a6a8f',
-  island: '#4a7c3f',
-  gold: '#c9a227',
-}
+  land: '#4a7c3f',
+  port: '#c9a227',
+} as const
+
+const FOG_COLOR = '#0b1a26'
+const OWN_SHIP = '#3be2a1'
+const ENEMY_SHIP = '#e23b3b'
+const OWN_CITY = '#c9a227'
+const ENEMY_CITY = '#9aa0a6'
 
 interface Point {
   x: number
@@ -53,16 +41,24 @@ function midpoint(a: Point, b: Point): Point {
 }
 
 export interface MapCanvasProps {
-  seed: number
-  cols?: number
-  rows?: number
-  onTileSelect?: (x: number, y: number) => void
+  map: GameMap
+  captains: Captain[]
+  cities: CityState[]
+  viewerId: string
+  visibleKeys: Set<string>
+  exploredKeys: Set<string>
+  selectedCaptainId: string | null
+  onTileClick: (x: number, y: number) => void
 }
 
-export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCanvasProps) {
-  const { containerRef, app } = usePixiApp({ background: '#1b4a6b' })
-  const onTileSelectRef = useRef(onTileSelect)
-  onTileSelectRef.current = onTileSelect
+export function MapCanvas(props: MapCanvasProps) {
+  const { containerRef, app } = usePixiApp({ background: TILE_COLOR.deep })
+
+  // Latest props + view are read by the render loop via refs, so per-action
+  // re-renders never tear down the Pixi scene or reset the camera.
+  const propsRef = useRef(props)
+  propsRef.current = props
+  const viewRef = useRef({ x: 40, y: 40, scale: 1 })
 
   useEffect(() => {
     if (!app) return
@@ -70,23 +66,19 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
 
     const world = new Container()
     const tiles = new Graphics()
+    const entities = new Graphics()
     const highlight = new Graphics()
-    world.addChild(tiles)
-    world.addChild(highlight)
+    world.addChild(tiles, entities, highlight)
     pixiApp.stage.addChild(world)
 
-    const view = { x: 0, y: 0, scale: 1 }
-    let selectedTile: { x: number; y: number } | undefined
+    const view = viewRef.current
     const pointers = new Map<number, Point>()
     let dragStart: { x: number; y: number; viewX: number; viewY: number } | undefined
     let pinchPrevDist: number | undefined
     let moved = false
 
-    function clampScale(scale: number): number {
-      return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale))
-    }
+    const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
 
-    /** Zooms while keeping the world point under (screenX, screenY) stationary. */
     function zoomAt(screenX: number, screenY: number, targetScale: number) {
       const clamped = clampScale(targetScale)
       const worldX = (screenX - view.x) / view.scale
@@ -96,64 +88,78 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
       view.y = screenY - worldY * clamped
     }
 
-    function applyTransform() {
+    function draw() {
+      const { map, captains, cities, viewerId, visibleKeys, exploredKeys, selectedCaptainId } =
+        propsRef.current
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
-    }
 
-    /** Redraws only the tiles inside the current viewport — the whole point of culling. */
-    function redrawTiles() {
       const w = pixiApp.renderer.width
       const h = pixiApp.renderer.height
-      const worldLeft = -view.x / view.scale
-      const worldTop = -view.y / view.scale
-      const worldRight = (w - view.x) / view.scale
-      const worldBottom = (h - view.y) / view.scale
-      const minX = Math.max(0, Math.floor(worldLeft / TILE) - 1)
-      const minY = Math.max(0, Math.floor(worldTop / TILE) - 1)
-      const maxX = Math.min(cols - 1, Math.ceil(worldRight / TILE) + 1)
-      const maxY = Math.min(rows - 1, Math.ceil(worldBottom / TILE) + 1)
+      const minX = Math.max(0, Math.floor(-view.x / view.scale / TILE) - 1)
+      const minY = Math.max(0, Math.floor(-view.y / view.scale / TILE) - 1)
+      const maxX = Math.min(map.width - 1, Math.ceil((w - view.x) / view.scale / TILE) + 1)
+      const maxY = Math.min(map.height - 1, Math.ceil((h - view.y) / view.scale / TILE) + 1)
 
       tiles.clear()
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
-          const kind = tileKindAt(seed, x, y)
-          const fill = TILE_FILL[kind]
-          if (!fill) continue
-          if (kind === 'shallows') {
+          const key = `${x},${y}`
+          const explored = exploredKeys.has(key)
+          const visibleNow = visibleKeys.has(key)
+          if (!explored) {
             tiles.rect(x * TILE, y * TILE, TILE, TILE)
-          } else {
-            tiles.rect(x * TILE + 4, y * TILE + 4, TILE - 8, TILE - 8)
+            tiles.fill(FOG_COLOR)
+            continue
           }
-          tiles.fill(fill)
+          const tile = map.tiles[tileIndex(map, x, y)]!
+          tiles.rect(x * TILE, y * TILE, TILE, TILE)
+          tiles.fill({ color: TILE_COLOR[tile.type], alpha: visibleNow ? 1 : 0.5 })
         }
       }
-    }
 
-    function redrawHighlight() {
+      entities.clear()
+      for (const city of cities) {
+        const key = `${city.position.x},${city.position.y}`
+        const own = city.ownerId === viewerId
+        if (!own && !exploredKeys.has(key)) continue
+        entities.rect(city.position.x * TILE + 6, city.position.y * TILE + 6, TILE - 12, TILE - 12)
+        entities.fill(own ? OWN_CITY : ENEMY_CITY)
+      }
+      for (const cap of captains) {
+        const key = `${cap.position.x},${cap.position.y}`
+        const own = cap.ownerId === viewerId
+        if (!own && !visibleKeys.has(key)) continue
+        const cx = cap.position.x * TILE + TILE / 2
+        const cy = cap.position.y * TILE + TILE / 2
+        entities.circle(cx, cy, TILE / 2.6)
+        entities.fill(own ? OWN_SHIP : ENEMY_SHIP)
+      }
+
       highlight.clear()
-      if (!selectedTile) return
-      highlight.rect(selectedTile.x * TILE, selectedTile.y * TILE, TILE, TILE)
-      highlight.stroke({ width: 3, color: '#ffffff' })
-    }
-
-    function selectTileAt(screenX: number, screenY: number) {
-      const worldX = (screenX - view.x) / view.scale
-      const worldY = (screenY - view.y) / view.scale
-      const tileX = Math.floor(worldX / TILE)
-      const tileY = Math.floor(worldY / TILE)
-      if (tileX < 0 || tileX >= cols || tileY < 0 || tileY >= rows) return
-      selectedTile = { x: tileX, y: tileY }
-      redrawHighlight()
-      onTileSelectRef.current?.(tileX, tileY)
+      const selected = selectedCaptainId
+        ? captains.find((c) => c.id === selectedCaptainId)
+        : undefined
+      if (selected) {
+        highlight.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
+        highlight.stroke({ width: 3, color: '#ffffff' })
+      }
     }
 
     const canvas = pixiApp.canvas
     canvas.style.touchAction = 'none'
 
-    function toCanvasPoint(e: PointerEvent): Point {
+    const toCanvasPoint = (e: PointerEvent): Point => {
       const rect = canvas.getBoundingClientRect()
       return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    }
+
+    function selectTileAt(screenX: number, screenY: number) {
+      const map = propsRef.current.map
+      const tileX = Math.floor((screenX - view.x) / view.scale / TILE)
+      const tileY = Math.floor((screenY - view.y) / view.scale / TILE)
+      if (tileX < 0 || tileX >= map.width || tileY < 0 || tileY >= map.height) return
+      propsRef.current.onTileClick(tileX, tileY)
     }
 
     function onPointerDown(e: PointerEvent) {
@@ -163,7 +169,7 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
       if (pointers.size === 1) {
         const p = pointers.values().next().value!
         dragStart = { x: p.x, y: p.y, viewX: view.x, viewY: view.y }
-      } else if (pointers.size === 2) {
+      } else {
         dragStart = undefined
         pinchPrevDist = undefined
       }
@@ -172,20 +178,15 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
     function onPointerMove(e: PointerEvent) {
       if (!pointers.has(e.pointerId)) return
       pointers.set(e.pointerId, toCanvasPoint(e))
-
       if (pointers.size >= 2) {
         const [a, b] = [...pointers.values()]
         const dist = distance(a!, b!)
         const mid = midpoint(a!, b!)
-        if (pinchPrevDist !== undefined) {
-          zoomAt(mid.x, mid.y, view.scale * (dist / pinchPrevDist))
-          applyTransform()
-        }
+        if (pinchPrevDist !== undefined) zoomAt(mid.x, mid.y, view.scale * (dist / pinchPrevDist))
         pinchPrevDist = dist
         moved = true
         return
       }
-
       if (dragStart) {
         const p = pointers.values().next().value!
         const dx = p.x - dragStart.x
@@ -193,7 +194,6 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true
         view.x = dragStart.viewX + dx
         view.y = dragStart.viewY + dy
-        applyTransform()
       }
     }
 
@@ -210,9 +210,7 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
     function onWheel(e: WheelEvent) {
       e.preventDefault()
       const rect = canvas.getBoundingClientRect()
-      const factor = Math.exp(-e.deltaY * 0.001)
-      zoomAt(e.clientX - rect.left, e.clientY - rect.top, view.scale * factor)
-      applyTransform()
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, view.scale * Math.exp(-e.deltaY * 0.001))
     }
 
     canvas.addEventListener('pointerdown', onPointerDown)
@@ -221,14 +219,12 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
     canvas.addEventListener('pointercancel', onPointerUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
 
-    // Tiles are re-culled every tick rather than only on gesture events —
-    // cheap for a placeholder scatter, and keeps redraws correct across
-    // canvas resizes without a separate ResizeObserver.
-    pixiApp.ticker.add(redrawTiles)
-    applyTransform()
+    // Redraw every tick (cheap with culling) so camera moves and state changes
+    // both show without a separate invalidation path.
+    pixiApp.ticker.add(draw)
 
     return () => {
-      pixiApp.ticker.remove(redrawTiles)
+      pixiApp.ticker.remove(draw)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
@@ -237,7 +233,7 @@ export function MapCanvas({ seed, cols = 200, rows = 200, onTileSelect }: MapCan
       pixiApp.stage.removeChild(world)
       world.destroy({ children: true })
     }
-  }, [app, seed, cols, rows])
+  }, [app])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

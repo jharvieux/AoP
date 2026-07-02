@@ -1,320 +1,81 @@
-import {
-  applyAction,
-  captainCombatBonus,
-  createGame,
-  currentPlayer,
-  effectiveShipStats,
-  replay,
-  type Action,
-  type ContentCatalog,
-  type GameConfig,
-  type GameState,
-  type StandingOrder,
-} from '@aop/engine'
-import {
-  BUILDINGS,
-  CAPTAIN_XP_THRESHOLDS,
-  DRILL_WIN_XP,
-  FACTIONS,
-  SHIP_CLASSES,
-  SKILLS,
-} from '@aop/content'
+import { applyAction, createGame, replay, type Action, type GameState } from '@aop/engine'
 import { useState } from 'react'
-import { CityScreen } from './CityScreen'
-import { CombatScreen } from './CombatScreen'
-import { MapCanvas } from './MapCanvas'
-import { ResourceHud } from './ResourceHud'
-import { SaveScreen } from './SaveScreen'
+import { MainMenu } from './screens/MainMenu'
+import { NewGameSetup } from './screens/NewGameSetup'
+import { GameScreen } from './screens/GameScreen'
+import { GameOverScreen } from './screens/GameOverScreen'
 import { loadGame, saveGame } from './storage'
+import type { GameSetupConfig } from './types'
 
-/** Assembled once from @aop/content — the engine never imports content directly. */
-const CATALOG: ContentCatalog = {
-  buildings: BUILDINGS,
-  units: Object.fromEntries(
-    Object.values(FACTIONS).flatMap((faction) =>
-      faction.units.map((unit) => [
-        unit.id,
-        {
-          factionId: faction.id,
-          tier: unit.tier,
-          goldCost: unit.goldCost,
-          weeklyGrowth: unit.weeklyGrowth,
-          attack: unit.attack,
-          defense: unit.defense,
-          health: unit.health,
-        },
-      ]),
-    ),
-  ),
-  ships: Object.fromEntries(
-    SHIP_CLASSES.map((ship) => [
-      ship.id,
-      {
-        hull: ship.hull,
-        cannons: ship.cannons,
-        speed: ship.speed,
-        crewCapacity: ship.crewCapacity,
-        upgrades: ship.upgrades,
-      },
-    ]),
-  ),
-  skills: Object.fromEntries(
-    Object.values(SKILLS).map((skill) => [
-      skill.id,
-      {
-        factionId: skill.factionId,
-        tier: skill.tier,
-        attackBonusPct: skill.attackBonusPct,
-        defenseBonusPct: skill.defenseBonusPct,
-      },
-    ]),
-  ),
-  captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
-}
-
-const STARTING_SHIP_CLASS_ID = 'sloop'
-
-function newDemoConfig(): GameConfig {
-  return {
-    seed: 1,
-    mapSize: 'small',
-    startingBuildings: ['townhall', 'barracks'],
-    startingShipClassId: STARTING_SHIP_CLASS_ID,
-    players: [
-      { id: 'you', name: 'You', faction: 'pirates', isAI: false },
-      { id: 'ai-1', name: 'Cpt. Blackwood', faction: 'british', isAI: true },
-      { id: 'ai-2', name: 'Cpt. Delgado', faction: 'spanish', isAI: true },
-    ],
-  }
-}
+type Screen = 'menu' | 'setup' | 'game' | 'game-over'
 
 export function App() {
-  const [config, setConfig] = useState(newDemoConfig)
-  const [game, setGame] = useState(() => createGame(config))
+  const [screen, setScreen] = useState<Screen>('menu')
+  const [game, setGame] = useState<GameState | null>(null)
+  const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
-  const [cityScreenOpen, setCityScreenOpen] = useState(false)
-  const [saveScreenOpen, setSaveScreenOpen] = useState(false)
-  const [combatScreenOpen, setCombatScreenOpen] = useState(false)
-  const player = currentPlayer(game)
-  const homeCity = game.cities.find((c) => c.ownerId === player.id)
-  const homeCaptain = game.captains.find((c) => c.ownerId === player.id)
-  const homeShipClass = homeCaptain
-    ? SHIP_CLASSES.find((s) => s.id === homeCaptain.shipClassId)
-    : undefined
-  const homeShipStats = homeCaptain
-    ? CATALOG.ships[homeCaptain.shipClassId] &&
-      effectiveShipStats(CATALOG.ships[homeCaptain.shipClassId]!, homeCaptain.shipUpgrades)
-    : undefined
-  const shipCrewCapacity = homeShipStats?.crewCapacity ?? 0
-  const opponentFaction =
-    game.players.find((p) => p.faction !== player.faction)?.faction ?? 'british'
 
-  /** Applies one action, appends it to the replayable log, and returns the new state. */
-  function dispatch(base: GameState, actions: Action[], action: Action): GameState {
-    const next = applyAction(base, action, CATALOG)
-    actions.push(action)
-    return next
+  function handleStartNewGame(setupConfig: GameSetupConfig) {
+    // config already carries setup + startingTroops + frozen combatStats + content
+    // from @aop/content (see NewGameSetup); the engine itself holds no balance data.
+    setConfig(setupConfig)
+    setActionLog([])
+    setGame(createGame(setupConfig))
+    setScreen('game')
   }
 
-  function endTurn() {
-    const actions: Action[] = []
-    let next = dispatch(game, actions, { type: 'endTurn', playerId: player.id })
-    // Placeholder AI: end turn immediately. Real AI arrives in Phase 1.
-    while (next.status === 'active' && currentPlayer(next).isAI) {
-      next = dispatch(next, actions, { type: 'endTurn', playerId: currentPlayer(next).id })
-    }
+  // Every mutation flows through here so the action log stays authoritative —
+  // saves persist the log (not raw state) and load replays it, the same
+  // event-sourced path multiplayer will use server-side (#4).
+  function handleAction(action: Action) {
+    if (!game || !config) return
+    const next = applyAction(game, action)
+    const nextLog = [...actionLog, action]
     setGame(next)
-    const nextLog = [...actionLog, ...actions]
     setActionLog(nextLog)
     void saveGame('autosave', config, nextLog, next.round)
+    if (next.status === 'finished') setScreen('game-over')
   }
 
-  function build(buildingId: string) {
-    if (!homeCity) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'construct',
-      playerId: player.id,
-      cityId: homeCity.id,
-      buildingId,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function recruit(unitId: string) {
-    if (!homeCity) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'recruit',
-      playerId: player.id,
-      cityId: homeCity.id,
-      unitId,
-      count: 1,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function transfer(direction: 'toShip' | 'toGarrison', unitId: string) {
-    if (!homeCity || !homeCaptain) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'transferTroops',
-      playerId: player.id,
-      cityId: homeCity.id,
-      captainId: homeCaptain.id,
-      direction,
-      unitId,
-      count: 1,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function setStandingOrder(
-    targetType: 'city' | 'captain',
-    targetId: string,
-    order: StandingOrder,
-  ) {
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'setStandingOrder',
-      playerId: player.id,
-      targetType,
-      targetId,
-      order,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function earnCaptainXp() {
-    if (!homeCaptain) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'gainCaptainXp',
-      playerId: player.id,
-      captainId: homeCaptain.id,
-      amount: DRILL_WIN_XP,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function chooseCaptainSkill(skillId: string) {
-    if (!homeCaptain) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'chooseCaptainSkill',
-      playerId: player.id,
-      captainId: homeCaptain.id,
-      skillId,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  function upgradeShip(track: string) {
-    if (!homeCity || !homeCaptain) return
-    const actions: Action[] = []
-    const next = dispatch(game, actions, {
-      type: 'upgradeShip',
-      playerId: player.id,
-      cityId: homeCity.id,
-      captainId: homeCaptain.id,
-      track,
-    })
-    setGame(next)
-    setActionLog([...actionLog, ...actions])
-  }
-
-  async function saveToSlot(slotId: string) {
+  async function handleSaveSlot(slotId: string) {
+    if (!config || !game) return
     await saveGame(slotId, config, actionLog, game.round)
   }
 
-  async function loadFromSlot(slotId: string) {
+  async function handleLoadSlot(slotId: string) {
     const record = await loadGame(slotId)
     if (!record) return
-    const loaded = replay(createGame(record.config), record.actions, CATALOG)
     setConfig(record.config)
-    setGame(loaded)
     setActionLog(record.actions)
-    setSaveScreenOpen(false)
+    setGame(replay(createGame(record.config), record.actions))
+    setScreen('game')
+  }
+
+  function handleRematch() {
+    if (config) handleStartNewGame(config)
+  }
+
+  function handleReturnToMenu() {
+    setScreen('menu')
+    setGame(null)
   }
 
   return (
     <div className="app">
-      <header className="hud">
-        <h1>Age of Plunder</h1>
-        <span className="turn-info">
-          Round {game.round} — {player.name} ({FACTIONS[player.faction].name})
-        </span>
-        <ResourceHud resources={player.resources} />
-        <button
-          className="primary secondary"
-          onClick={() => setCityScreenOpen(true)}
-          disabled={!homeCity || player.isAI}
-        >
-          City
-        </button>
-        <button className="primary secondary" onClick={() => setSaveScreenOpen(true)}>
-          Saves
-        </button>
-        <button
-          className="primary secondary"
-          onClick={() => setCombatScreenOpen(true)}
-          disabled={!homeCity}
-        >
-          Drill
-        </button>
-        <button className="primary" onClick={endTurn} disabled={player.isAI}>
-          End Turn
-        </button>
-      </header>
-      <div className="map-container">
-        <MapCanvas seed={game.config.seed} />
-      </div>
-      {cityScreenOpen && homeCity && (
-        <CityScreen
-          city={homeCity}
-          captain={homeCaptain}
-          shipCrewCapacity={shipCrewCapacity}
-          shipClass={homeShipClass}
-          shipStats={homeShipStats}
-          faction={player.faction}
-          resources={player.resources}
-          onClose={() => setCityScreenOpen(false)}
-          onBuild={build}
-          onRecruit={recruit}
-          onTransfer={transfer}
-          onSetStandingOrder={setStandingOrder}
-          onChooseCaptainSkill={chooseCaptainSkill}
-          onUpgradeShip={upgradeShip}
+      {screen === 'menu' && <MainMenu onStart={() => setScreen('setup')} />}
+      {screen === 'setup' && (
+        <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
+      )}
+      {screen === 'game' && game && (
+        <GameScreen
+          game={game}
+          onAction={handleAction}
+          onSaveSlot={handleSaveSlot}
+          onLoadSlot={handleLoadSlot}
         />
       )}
-      {saveScreenOpen && (
-        <SaveScreen
-          onClose={() => setSaveScreenOpen(false)}
-          onSave={saveToSlot}
-          onLoad={loadFromSlot}
-        />
-      )}
-      {combatScreenOpen && homeCity && (
-        <CombatScreen
-          attackerGarrison={homeCity.garrison}
-          attackerRoster={FACTIONS[player.faction].units}
-          attackerFactionId={player.faction}
-          attackerBonus={
-            homeCaptain
-              ? captainCombatBonus(homeCaptain, CATALOG)
-              : { attackBonusPct: 0, defenseBonusPct: 0 }
-          }
-          opponentRoster={FACTIONS[opponentFaction].units}
-          catalog={CATALOG}
-          onClose={() => setCombatScreenOpen(false)}
-          onVictory={earnCaptainXp}
-        />
+      {screen === 'game-over' && game && (
+        <GameOverScreen game={game} onRematch={handleRematch} onMenuClick={handleReturnToMenu} />
       )}
     </div>
   )

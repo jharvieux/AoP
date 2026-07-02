@@ -1,197 +1,401 @@
-import type { ContentCatalog } from './content'
-import { nextInt, seedRng, type RngState } from './rng'
+import { nextFloat, type RngState } from './rng'
+import type { TroopStack } from './types'
 
 /**
- * A minimal, real combat resolver. Full tactical combat (positioning, terrain,
- * formations) is #12/#18's scope — this is the just-enough groundwork #19's
- * odds preview and auto-resolve UI need to have something real to call.
+ * Combat resolution engine (v1: strength-based auto-resolve).
+ *
+ * Design goal (#12): a deterministic, multi-round resolver that produces a
+ * structured {@link BattleReport}, built so the Phase-2 hybrid tactics layer
+ * (#18) plugs in without touching this file. Extensibility is achieved by the
+ * {@link TacticChooser} hook: the round engine ({@link resolveRounds}) calls it
+ * once per round to obtain each side's damage modifier. v1 supplies a no-op
+ * chooser (modifier 1.0); the tactical layer supplies one driven by a
+ * tactic-vs-tactic matrix.
+ *
+ * The engine imports no content — callers inject the numeric stats via
+ * {@link createCombatStats}, keeping @aop/engine free of any balance data.
  */
 
-/** Troop counts keyed by unit id, e.g. `{ deckhand: 4, cutthroat: 1 }`. */
-export type ArmyComposition = Record<string, number>
+export interface UnitCombatStats {
+  id: string
+  attack: number
+  defense: number
+  health: number
+}
 
-export interface CombatRoundLog {
+export interface ShipCombatStats {
+  id: string
+  hull: number
+  cannons: number
+  /** Sailing speed — decides whether a pinning tactic can hold an evader (#18). */
+  speed: number
+}
+
+/**
+ * Tuned weights for the round resolver. Balance data, so it lives in @aop/content
+ * (never hardcoded here) and is injected via {@link CombatStatsData}.
+ */
+export interface CombatTuning {
+  maxRounds: number
+  damageRollMin: number
+  damageRollSpread: number
+  hullStrengthWeight: number
+  cannonStrengthWeight: number
+  troopDefenseWeight: number
+  damageScale: number
+}
+
+/** Tuned knobs for the hybrid-tactics layer. Balance data, injected like {@link CombatTuning}. */
+export interface TacticsTuning {
+  advantage: number
+  disadvantage: number
+  ramHullMin: number
+  outgunnedRatio: number
+}
+
+/** Plain, JSON-serializable snapshot of the combat-relevant content numbers. */
+export interface CombatStatsData {
+  units: UnitCombatStats[]
+  ships: ShipCombatStats[]
+  combat: CombatTuning
+  tactics: TacticsTuning
+}
+
+export interface CombatStats {
+  unit(id: string): UnitCombatStats
+  ship(id: string): ShipCombatStats
+  combat: CombatTuning
+  tactics: TacticsTuning
+}
+
+export function createCombatStats(data: CombatStatsData): CombatStats {
+  const units = new Map(data.units.map((u) => [u.id, u]))
+  const ships = new Map(data.ships.map((s) => [s.id, s]))
+  return {
+    unit(id) {
+      const u = units.get(id)
+      if (!u) throw new Error(`Unknown unit stats: ${id}`)
+      return u
+    },
+    ship(id) {
+      const s = ships.get(id)
+      if (!s) throw new Error(`Unknown ship stats: ${id}`)
+      return s
+    },
+    combat: data.combat,
+    tactics: data.tactics,
+  }
+}
+
+/** Effective ship stats for a combatant: purchased upgrades (#22) override the class stats. */
+export interface EffectiveShip {
+  hull: number
+  cannons: number
+  speed: number
+}
+
+export interface Combatant {
+  captainId: string
+  ownerId: string
+  shipClassId: string
+  troops: TroopStack[]
+  /**
+   * Ship stats after this captain's purchased upgrades (#22). Omitted means the
+   * flagship is stock and its class stats from {@link CombatStats} are used.
+   */
+  shipStats?: EffectiveShip
+  /** Captain skill (#21) attack bonus as a percentage, applied to this side's troop offense. */
+  attackBonusPct?: number
+  /** Captain skill (#21) defense bonus as a percentage, applied to this side's troop defense. */
+  defenseBonusPct?: number
+}
+
+/** Ship stats a combatant actually fights with — upgrades if present, else class stats. */
+export function effectiveShip(combatant: Combatant, stats: CombatStats): EffectiveShip {
+  if (combatant.shipStats) return combatant.shipStats
+  const ship = stats.ship(combatant.shipClassId)
+  return { hull: ship.hull, cannons: ship.cannons, speed: ship.speed }
+}
+
+export interface CombatInput {
+  attacker: Combatant
+  defender: Combatant
+}
+
+export interface CombatantSummary {
+  ownerId: string
+  captainId: string
+  shipClassId: string
+  strength: number
+  troops: TroopStack[]
+}
+
+export interface RoundReport {
   round: number
-  attackerDamageDealt: number
-  defenderDamageDealt: number
-  attackerRemaining: number
-  defenderRemaining: number
+  /** Tactic labels, when a tactical driver is in use; `null` for plain auto-resolve. */
+  attackerTactic: string | null
+  defenderTactic: string | null
+  attackerDamage: number
+  defenderDamage: number
+  /** Remaining hit points (ship hull + troop health) after the round. */
+  attackerHp: number
+  defenderHp: number
+}
+
+export interface BattleReport {
+  attacker: CombatantSummary
+  defender: CombatantSummary
+  rounds: RoundReport[]
+  winnerId: string
+  loserId: string
+  attackerSurvived: boolean
+  defenderSurvived: boolean
+  /** ownerId of a side that broke off and fled the battle (flee/escape rules, #18). */
+  escapedId: string | null
+  survivingTroops: {
+    attacker: TroopStack[]
+    defender: TroopStack[]
+  }
 }
 
 export interface CombatResult {
-  winner: 'attacker' | 'defender' | 'draw'
-  rounds: number
-  attackerLosses: ArmyComposition
-  defenderLosses: ArmyComposition
-  attackerSurvivors: ArmyComposition
-  defenderSurvivors: ArmyComposition
-  /** Round-by-round breakdown, in order — what an animated battle report plays back. */
-  log: CombatRoundLog[]
+  report: BattleReport
+  /** RNG state after resolution — thread this back into GameState. */
+  rng: RngState
+  /** Surviving troops, ready to write back onto the captains. */
+  attackerTroops: TroopStack[]
+  defenderTroops: TroopStack[]
 }
 
-const MAX_ROUNDS = 50
-
-function armyCount(army: ArmyComposition): number {
-  return Object.values(army).reduce((sum, n) => sum + n, 0)
+/** Per-round modifiers the round engine multiplies into each side's damage. */
+export interface RoundTactics {
+  attackerTactic: string | null
+  defenderTactic: string | null
+  attackerModifier: number
+  defenderModifier: number
 }
 
-/** Sum of attack stat × count across an army — the "how outgunned are we" number. */
-export function totalAttackPower(army: ArmyComposition, catalog: ContentCatalog): number {
-  return Object.entries(army).reduce((sum, [unitId, count]) => {
-    const def = catalog.units[unitId]
-    return sum + (def ? def.attack * count : 0)
+export interface RoundView {
+  round: number
+  attackerStrength: number
+  defenderStrength: number
+  attackerHp: number
+  defenderHp: number
+}
+
+export type TacticChooser = (view: RoundView) => RoundTactics
+
+/** Post-round view handed to {@link RoundEndHook}, including the tactics just used. */
+export interface RoundEndView {
+  round: number
+  tactics: RoundTactics
+  attackerHp: number
+  defenderHp: number
+}
+
+/**
+ * Optional hook the round engine calls after each round's damage is applied. It
+ * lets a resolver end the battle early — e.g. the tactical layer's flee/escape
+ * rules (#18). Returning a non-null ownerId marks that side as having escaped and
+ * stops the fight; returning null continues.
+ */
+export type RoundEndHook = (view: RoundEndView) => string | null
+
+/** v1 chooser: no tactics, no modifiers. */
+export const noTactics: TacticChooser = () => ({
+  attackerTactic: null,
+  defenderTactic: null,
+  attackerModifier: 1,
+  defenderModifier: 1,
+})
+
+interface Side {
+  combatant: Combatant
+  troops: TroopStack[]
+  hull: number
+}
+
+function troopHealth(troops: TroopStack[], stats: CombatStats): number {
+  return troops.reduce((sum, t) => sum + t.count * stats.unit(t.unitId).health, 0)
+}
+
+function sideHp(side: Side, stats: CombatStats): number {
+  return Math.max(0, side.hull) + troopHealth(side.troops, stats)
+}
+
+/**
+ * Effective fighting strength: ship guns + crew offense. Ship stats come from the
+ * combatant's purchased upgrades (#22) if present, and captain skill bonuses (#21)
+ * scale the crew's attack and defense contributions.
+ */
+export function combatantStrength(combatant: Combatant, stats: CombatStats): number {
+  const ship = effectiveShip(combatant, stats)
+  const shipStrength =
+    ship.hull * stats.combat.hullStrengthWeight + ship.cannons * stats.combat.cannonStrengthWeight
+  const attackScale = 1 + (combatant.attackBonusPct ?? 0) / 100
+  const defenseScale = 1 + (combatant.defenseBonusPct ?? 0) / 100
+  const troopStrength = combatant.troops.reduce((sum, t) => {
+    const u = stats.unit(t.unitId)
+    return (
+      sum +
+      t.count *
+        (u.attack * attackScale + u.defense * defenseScale * stats.combat.troopDefenseWeight)
+    )
   }, 0)
+  return shipStrength + troopStrength
+}
+
+/** Apply `damage` to a side: crew casualties first, then hull. Deterministic. */
+function applyDamage(side: Side, damage: number, stats: CombatStats): void {
+  const health = troopHealth(side.troops, stats)
+  if (damage <= 0) return
+  if (damage < health) {
+    const scale = (health - damage) / health
+    side.troops = side.troops
+      .map((t) => ({ unitId: t.unitId, count: Math.round(t.count * scale) }))
+      .filter((t) => t.count > 0)
+  } else {
+    side.troops = []
+    side.hull -= damage - health
+  }
 }
 
 /**
- * Applies `damage` health worth of casualties to the weakest (lowest-tier)
- * units first, mitigated by each unit's defense stat. Returns the surviving
- * army and the losses taken, keyed by unit id.
+ * The shared round engine. Both the v1 auto-resolver and the tactical resolver
+ * call this; only the {@link TacticChooser} differs.
  */
-function applyDamage(
-  army: ArmyComposition,
-  damage: number,
-  catalog: ContentCatalog,
-): { survivors: ArmyComposition; losses: ArmyComposition } {
-  const order = Object.keys(army)
-    .filter((id) => army[id]! > 0)
-    .sort((a, b) => (catalog.units[a]?.tier ?? 1) - (catalog.units[b]?.tier ?? 1))
-
-  const survivors: ArmyComposition = { ...army }
-  const losses: ArmyComposition = {}
-  let remaining = damage
-
-  for (const unitId of order) {
-    if (remaining <= 0) break
-    const def = catalog.units[unitId]
-    if (!def) continue
-    const effectiveHealth = Math.max(1, def.health - def.defense)
-    const count = survivors[unitId] ?? 0
-    const killed = Math.min(count, Math.floor(remaining / effectiveHealth))
-    if (killed > 0) {
-      survivors[unitId] = count - killed
-      losses[unitId] = killed
-      remaining -= killed * effectiveHealth
-    }
+export function resolveRounds(
+  input: CombatInput,
+  stats: CombatStats,
+  rng: RngState,
+  chooseTactics: TacticChooser,
+  onRoundEnd?: RoundEndHook,
+): CombatResult {
+  const attacker: Side = {
+    combatant: input.attacker,
+    troops: input.attacker.troops.map((t) => ({ ...t })),
+    hull: effectiveShip(input.attacker, stats).hull,
+  }
+  const defender: Side = {
+    combatant: input.defender,
+    troops: input.defender.troops.map((t) => ({ ...t })),
+    hull: effectiveShip(input.defender, stats).hull,
   }
 
-  return { survivors, losses }
-}
+  const startAttacker = summarize(input.attacker, stats)
+  const startDefender = summarize(input.defender, stats)
 
-function mergeLosses(a: ArmyComposition, b: ArmyComposition): ArmyComposition {
-  const merged: ArmyComposition = { ...a }
-  for (const [unitId, count] of Object.entries(b)) {
-    merged[unitId] = (merged[unitId] ?? 0) + count
-  }
-  return merged
-}
+  const rounds: RoundReport[] = []
+  let state = rng
+  let round = 0
+  let escapedId: string | null = null
+  while (
+    round < stats.combat.maxRounds &&
+    sideHp(attacker, stats) > 0 &&
+    sideHp(defender, stats) > 0
+  ) {
+    round++
+    const atkStrength = combatantStrength({ ...attacker.combatant, troops: attacker.troops }, stats)
+    const defStrength = combatantStrength({ ...defender.combatant, troops: defender.troops }, stats)
 
-/**
- * Resolves one battle round-by-round until one side is wiped out or
- * MAX_ROUNDS is hit (declared a draw). Pure and deterministic: returns the
- * advanced RngState alongside the result so callers decide whether to keep
- * it (real combat, using GameState.rngState) or discard it (Monte Carlo
- * odds preview, using a scratch RngState that never touches game state).
- */
-export function resolveCombat(
-  attacker: ArmyComposition,
-  defender: ArmyComposition,
-  catalog: ContentCatalog,
-  rngState: RngState,
-): [RngState, CombatResult] {
-  let atk: ArmyComposition = { ...attacker }
-  let def: ArmyComposition = { ...defender }
-  let attackerLosses: ArmyComposition = {}
-  let defenderLosses: ArmyComposition = {}
-  let state = rngState
-  let rounds = 0
-  const log: CombatRoundLog[] = []
-
-  while (armyCount(atk) > 0 && armyCount(def) > 0 && rounds < MAX_ROUNDS) {
-    rounds += 1
-    const atkPower = totalAttackPower(atk, catalog)
-    const defPower = totalAttackPower(def, catalog)
+    const tactics = chooseTactics({
+      round,
+      attackerStrength: atkStrength,
+      defenderStrength: defStrength,
+      attackerHp: sideHp(attacker, stats),
+      defenderHp: sideHp(defender, stats),
+    })
 
     let atkRoll: number
     let defRoll: number
-    ;[state, atkRoll] = nextInt(state, 85, 115)
-    ;[state, defRoll] = nextInt(state, 85, 115)
+    ;[state, atkRoll] = nextFloat(state)
+    ;[state, defRoll] = nextFloat(state)
 
-    const dmgToDefender = Math.round((atkPower * atkRoll) / 100)
-    const dmgToAttacker = Math.round((defPower * defRoll) / 100)
+    const attackerDamage =
+      atkStrength *
+      (stats.combat.damageRollMin + atkRoll * stats.combat.damageRollSpread) *
+      tactics.attackerModifier *
+      stats.combat.damageScale
+    const defenderDamage =
+      defStrength *
+      (stats.combat.damageRollMin + defRoll * stats.combat.damageRollSpread) *
+      tactics.defenderModifier *
+      stats.combat.damageScale
 
-    const defResult = applyDamage(def, dmgToDefender, catalog)
-    const atkResult = applyDamage(atk, dmgToAttacker, catalog)
+    applyDamage(defender, attackerDamage, stats)
+    applyDamage(attacker, defenderDamage, stats)
 
-    def = defResult.survivors
-    atk = atkResult.survivors
-    defenderLosses = mergeLosses(defenderLosses, defResult.losses)
-    attackerLosses = mergeLosses(attackerLosses, atkResult.losses)
-
-    log.push({
-      round: rounds,
-      attackerDamageDealt: dmgToDefender,
-      defenderDamageDealt: dmgToAttacker,
-      attackerRemaining: armyCount(atk),
-      defenderRemaining: armyCount(def),
+    const attackerHpNow = sideHp(attacker, stats)
+    const defenderHpNow = sideHp(defender, stats)
+    rounds.push({
+      round,
+      attackerTactic: tactics.attackerTactic,
+      defenderTactic: tactics.defenderTactic,
+      attackerDamage: round4(attackerDamage),
+      defenderDamage: round4(defenderDamage),
+      attackerHp: round4(attackerHpNow),
+      defenderHp: round4(defenderHpNow),
     })
+
+    if (onRoundEnd && attackerHpNow > 0 && defenderHpNow > 0) {
+      escapedId = onRoundEnd({
+        round,
+        tactics,
+        attackerHp: attackerHpNow,
+        defenderHp: defenderHpNow,
+      })
+      if (escapedId) break
+    }
   }
 
-  const attackerAlive = armyCount(atk) > 0
-  const defenderAlive = armyCount(def) > 0
-  const winner = attackerAlive === defenderAlive ? 'draw' : attackerAlive ? 'attacker' : 'defender'
+  const attackerHp = sideHp(attacker, stats)
+  const defenderHp = sideHp(defender, stats)
+  const attackerSurvived = attackerHp > 0
+  // On escape both sides survive and the side that held the field is the winner.
+  // Otherwise the defender wins ties (attacker failed to break them).
+  const attackerWins = escapedId
+    ? escapedId === input.defender.ownerId
+    : attackerSurvived && (defenderHp <= 0 || attackerHp > defenderHp)
 
-  return [
-    state,
-    {
-      winner,
-      rounds,
-      attackerLosses,
-      defenderLosses,
-      attackerSurvivors: atk,
-      defenderSurvivors: def,
-      log,
+  const report: BattleReport = {
+    attacker: startAttacker,
+    defender: startDefender,
+    rounds,
+    winnerId: attackerWins ? input.attacker.ownerId : input.defender.ownerId,
+    loserId: attackerWins ? input.defender.ownerId : input.attacker.ownerId,
+    attackerSurvived,
+    defenderSurvived: defenderHp > 0,
+    escapedId,
+    survivingTroops: {
+      attacker: attacker.troops,
+      defender: defender.troops,
     },
-  ]
-}
-
-export interface CombatOdds {
-  attackerWinProbability: number
-  defenderWinProbability: number
-  drawProbability: number
-  trials: number
-}
-
-/**
- * Monte Carlo odds estimate: runs `trials` independent battles through the
- * real resolveCombat() using a scratch RNG seeded by `scratchSeed`. Never
- * touches GameState.rngState — callers pass their own seed (e.g. Date.now()
- * on the client) so this stays a pure function of its arguments.
- */
-export function estimateOdds(
-  attacker: ArmyComposition,
-  defender: ArmyComposition,
-  catalog: ContentCatalog,
-  scratchSeed: number,
-  trials = 200,
-): CombatOdds {
-  let state = seedRng(scratchSeed)
-  let attackerWins = 0
-  let defenderWins = 0
-  let draws = 0
-
-  for (let i = 0; i < trials; i++) {
-    let result: CombatResult
-    ;[state, result] = resolveCombat(attacker, defender, catalog, state)
-    if (result.winner === 'attacker') attackerWins += 1
-    else if (result.winner === 'defender') defenderWins += 1
-    else draws += 1
   }
 
   return {
-    attackerWinProbability: attackerWins / trials,
-    defenderWinProbability: defenderWins / trials,
-    drawProbability: draws / trials,
-    trials,
+    report,
+    rng: state,
+    attackerTroops: attacker.troops,
+    defenderTroops: defender.troops,
   }
+}
+
+/** v1 strength-based auto-resolve: no tactics, pure ship + crew strength. */
+export function resolveCombat(input: CombatInput, stats: CombatStats, rng: RngState): CombatResult {
+  return resolveRounds(input, stats, rng, noTactics)
+}
+
+function summarize(combatant: Combatant, stats: CombatStats): CombatantSummary {
+  return {
+    ownerId: combatant.ownerId,
+    captainId: combatant.captainId,
+    shipClassId: combatant.shipClassId,
+    strength: round4(combatantStrength(combatant, stats)),
+    troops: combatant.troops.map((t) => ({ ...t })),
+  }
+}
+
+/** Round to 4 decimals so reports stay stable and JSON-clean across machines. */
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000
 }

@@ -1,12 +1,11 @@
 import type { ContentCatalog } from './content'
-import type { CaptainState } from './types'
+import type { Captain } from './types'
 
 /**
- * Captain skill trees (#21): pure XP/level math plus the mechanism that
- * applies a captain's chosen skill bonuses to combat — without combat.ts
- * needing to know anything about captains or skills. `boostedCatalog()`
- * scales only the acting captain's own faction roster, so it composes with
- * the existing (faction-scoped) unit-id catalog untouched.
+ * Captain skill trees (#21): pure XP/level math plus the combat bonus a
+ * captain's chosen skills confer. The bonus is handed to combat.ts as a
+ * per-combatant attack/defense percentage (see the reducer's toCombatant), so
+ * combat.ts never needs to know anything about captains or skills.
  */
 
 /** Level reached at `xp`, given the catalog's cumulative-XP thresholds. */
@@ -19,7 +18,7 @@ export function levelForXp(xp: number, thresholds: readonly number[]): number {
 }
 
 /** How many more skills this captain may choose right now (one pick per level above 1). */
-export function availableSkillPicks(captain: CaptainState, thresholds: readonly number[]): number {
+export function availableSkillPicks(captain: Captain, thresholds: readonly number[]): number {
   return Math.max(0, levelForXp(captain.xp, thresholds) - 1 - captain.skills.length)
 }
 
@@ -29,7 +28,7 @@ export interface CombatBonus {
 }
 
 /** Sums the attack/defense percentage bonuses of a captain's chosen skills. */
-export function captainCombatBonus(captain: CaptainState, catalog: ContentCatalog): CombatBonus {
+export function captainCombatBonus(captain: Captain, catalog: ContentCatalog): CombatBonus {
   return captain.skills.reduce<CombatBonus>(
     (total, skillId) => {
       const def = catalog.skills[skillId]
@@ -41,33 +40,4 @@ export function captainCombatBonus(captain: CaptainState, catalog: ContentCatalo
     },
     { attackBonusPct: 0, defenseBonusPct: 0 },
   )
-}
-
-/**
- * A copy of `catalog` with `factionId`'s units scaled by `bonus` — the
- * mechanism combat.ts's totalAttackPower stays unmodified while a captain's
- * skill bonuses still apply, and only to their own faction's roster (unit
- * ids don't overlap across factions, so other factions pass through as-is).
- */
-export function boostedCatalog(
-  catalog: ContentCatalog,
-  bonus: CombatBonus,
-  factionId: string,
-): ContentCatalog {
-  if (bonus.attackBonusPct === 0 && bonus.defenseBonusPct === 0) return catalog
-  return {
-    ...catalog,
-    units: Object.fromEntries(
-      Object.entries(catalog.units).map(([id, def]) => [
-        id,
-        def.factionId === factionId
-          ? {
-              ...def,
-              attack: Math.max(0, Math.round(def.attack * (1 + bonus.attackBonusPct / 100))),
-              defense: Math.max(0, Math.round(def.defense * (1 + bonus.defenseBonusPct / 100))),
-            }
-          : def,
-      ]),
-    ),
-  }
 }

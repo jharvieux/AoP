@@ -10,6 +10,8 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-013 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
+- D-012 — 2026-07-01 — Port pre-pr-reviewer audit agent from ATC (partial reversal of D-011)
 - D-011 — 2026-07-01 — Adopt ATC harness conventions (CLAUDE.md, MEMORY/SESSION, hooks, bare model labels)
 - D-010 — 2026-07-01 — Repo public; branch protection with required `ci` check on main
 - D-009 — 2026-07-01 — Multiplayer spec authored before any Phase 3 code

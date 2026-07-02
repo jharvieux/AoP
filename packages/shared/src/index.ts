@@ -9,6 +9,26 @@ export const FACTION_IDS: readonly FactionId[] = ['pirates', 'british', 'spanish
 
 export type MapSize = 'small' | 'medium' | 'large'
 
+/** A grid coordinate. Origin is top-left; +x is east, +y is south. */
+export interface Coord {
+  x: number
+  y: number
+}
+
+export function coordsEqual(a: Coord, b: Coord): boolean {
+  return a.x === b.x && a.y === b.y
+}
+
+/** Chebyshev (king-move) distance — the step count under 8-directional movement. */
+export function chebyshevDistance(a: Coord, b: Coord): number {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
+}
+
+/** Manhattan distance — used for coarse proximity/fairness measures. */
+export function manhattanDistance(a: Coord, b: Coord): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
 export interface ResourcePool {
   gold: number
   timber: number

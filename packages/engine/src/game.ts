@@ -1,11 +1,20 @@
-import { EMPTY_RESOURCES } from '@aop/shared'
-import { placeCities } from './placement'
+import { EMPTY_RESOURCES, type Coord } from '@aop/shared'
+import { replenishAvailability } from './economy'
+import { generateMap, tileIndex, type GameMap } from './map'
 import { seedRng } from './rng'
-import { DEFAULT_STANDING_ORDER } from './standingOrders'
-import type { CaptainState, CityState, GameConfig, GameState } from './types'
+import type { Captain, CityState, GameConfig, GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
 
-const STARTING_GOLD = 1000
+/** The port tile of a home island — where that seat's capital city sits. */
+function portForIsland(map: GameMap, island: number): Coord {
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      const tile = map.tiles[tileIndex(map, x, y)]!
+      if (tile.type === 'port' && tile.island === island) return { x, y }
+    }
+  }
+  throw new Error(`No port found for home island ${island}`)
+}
 
 export function createGame(config: GameConfig): GameState {
   if (config.players.length < 2) {
@@ -19,15 +28,48 @@ export function createGame(config: GameConfig): GameState {
     throw new Error('Player ids must be unique')
   }
 
-  const startingBuildings = config.startingBuildings ?? []
-  const [rngState, positions] = placeCities(
-    seedRng(config.seed),
-    config.players.length,
+  const { setup, content } = config
+  const map = generateMap(
+    config.seed,
     config.mapSize,
+    config.players.length,
+    setup.homeIslandRadius,
   )
+
+  const captains: Captain[] = config.players.map((p, i) => ({
+    id: `cap-${p.id}`,
+    ownerId: p.id,
+    name: `${p.name}'s Flagship`,
+    position: { ...map.startPositions[i]! },
+    shipClassId: setup.startingShipClass,
+    movementPoints: setup.startingCaptainMovement,
+    maxMovementPoints: setup.startingCaptainMovement,
+    troops: (p.startingTroops ?? []).map((t) => ({ ...t })),
+    xp: 0,
+    skills: [],
+    shipUpgrades: {},
+  }))
+
+  const cities: CityState[] = config.players.map((p, i): CityState => {
+    const base: CityState = {
+      id: `${p.id}-capital`,
+      ownerId: p.id,
+      name: `${p.name}'s Capital`,
+      position: portForIsland(map, i),
+      buildings: [...setup.startingBuildings],
+      builtThisRound: false,
+      garrison: {},
+      unitAvailability: {},
+    }
+    // Seed the opening recruit pool for whatever tiers the starting buildings unlock.
+    return content
+      ? { ...base, unitAvailability: replenishAvailability(base, p.faction, content) }
+      : base
+  })
 
   const withoutVision: GameState = {
     config,
+    map,
     round: 1,
     currentPlayerIndex: 0,
     players: config.players.map((p) => ({
@@ -35,35 +77,13 @@ export function createGame(config: GameConfig): GameState {
       name: p.name,
       faction: p.faction,
       isAI: p.isAI,
-      resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
+      resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
     })),
-    cities: config.players.map((p, i): CityState => ({
-      id: `${p.id}-capital`,
-      ownerId: p.id,
-      name: `${p.name}'s Capital`,
-      position: positions[i]!,
-      buildings: [...startingBuildings],
-      builtThisRound: false,
-      garrison: {},
-      unitAvailability: {},
-      standingOrder: DEFAULT_STANDING_ORDER,
-    })),
-    captains: config.startingShipClassId
-      ? config.players.map((p): CaptainState => ({
-          id: `${p.id}-flagship`,
-          ownerId: p.id,
-          name: `${p.name}'s Flagship`,
-          shipClassId: config.startingShipClassId!,
-          troopsAboard: {},
-          standingOrder: DEFAULT_STANDING_ORDER,
-          xp: 0,
-          skills: [],
-          shipUpgrades: {},
-        }))
-      : [],
+    cities,
+    captains,
     exploredTiles: {},
-    rngState,
+    rngState: seedRng(config.seed),
     actionCount: 0,
     status: 'active',
     winnerId: null,
@@ -75,6 +95,10 @@ export function createGame(config: GameConfig): GameState {
       config.players.map((p) => [p.id, accumulateExploredTiles(withoutVision, p.id)]),
     ),
   }
+}
+
+export function captainsOf(state: GameState, playerId: string): Captain[] {
+  return state.captains.filter((c) => c.ownerId === playerId)
 }
 
 export function currentPlayer(state: GameState) {
