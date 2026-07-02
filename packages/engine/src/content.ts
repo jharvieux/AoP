@@ -30,8 +30,18 @@ export interface ShipLike {
   crewCapacity: number
 }
 
+export interface SkillLike {
+  factionId: string
+  tier: 1 | 2 | 3 | 4
+  attackBonusPct: number
+  defenseBonusPct: number
+}
+
 export interface ContentCatalog {
   buildings: Record<string, BuildingLike>
   units: Record<string, UnitLike>
   ships: Record<string, ShipLike>
+  skills: Record<string, SkillLike>
+  /** Cumulative XP required to *be* at level N (1-based; captains start at level 1). */
+  captainXpThresholds: number[]
 }

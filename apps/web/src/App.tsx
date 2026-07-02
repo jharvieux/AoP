@@ -1,5 +1,6 @@
 import {
   applyAction,
+  captainCombatBonus,
   createGame,
   currentPlayer,
   replay,
@@ -9,7 +10,14 @@ import {
   type GameState,
   type StandingOrder,
 } from '@aop/engine'
-import { BUILDINGS, FACTIONS, SHIP_CLASSES } from '@aop/content'
+import {
+  BUILDINGS,
+  CAPTAIN_XP_THRESHOLDS,
+  DRILL_WIN_XP,
+  FACTIONS,
+  SHIP_CLASSES,
+  SKILLS,
+} from '@aop/content'
 import { useState } from 'react'
 import { CityScreen } from './CityScreen'
 import { CombatScreen } from './CombatScreen'
@@ -40,6 +48,18 @@ const CATALOG: ContentCatalog = {
   ships: Object.fromEntries(
     SHIP_CLASSES.map((ship) => [ship.id, { crewCapacity: ship.crewCapacity }]),
   ),
+  skills: Object.fromEntries(
+    Object.values(SKILLS).map((skill) => [
+      skill.id,
+      {
+        factionId: skill.factionId,
+        tier: skill.tier,
+        attackBonusPct: skill.attackBonusPct,
+        defenseBonusPct: skill.defenseBonusPct,
+      },
+    ]),
+  ),
+  captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
 }
 
 const STARTING_SHIP_CLASS_ID = 'sloop'
@@ -154,6 +174,32 @@ export function App() {
     setActionLog([...actionLog, ...actions])
   }
 
+  function earnCaptainXp() {
+    if (!homeCaptain) return
+    const actions: Action[] = []
+    const next = dispatch(game, actions, {
+      type: 'gainCaptainXp',
+      playerId: player.id,
+      captainId: homeCaptain.id,
+      amount: DRILL_WIN_XP,
+    })
+    setGame(next)
+    setActionLog([...actionLog, ...actions])
+  }
+
+  function chooseCaptainSkill(skillId: string) {
+    if (!homeCaptain) return
+    const actions: Action[] = []
+    const next = dispatch(game, actions, {
+      type: 'chooseCaptainSkill',
+      playerId: player.id,
+      captainId: homeCaptain.id,
+      skillId,
+    })
+    setGame(next)
+    setActionLog([...actionLog, ...actions])
+  }
+
   async function saveToSlot(slotId: string) {
     await saveGame(slotId, config, actionLog, game.round)
   }
@@ -212,6 +258,7 @@ export function App() {
           onRecruit={recruit}
           onTransfer={transfer}
           onSetStandingOrder={setStandingOrder}
+          onChooseCaptainSkill={chooseCaptainSkill}
         />
       )}
       {saveScreenOpen && (
@@ -225,9 +272,16 @@ export function App() {
         <CombatScreen
           attackerGarrison={homeCity.garrison}
           attackerRoster={FACTIONS[player.faction].units}
+          attackerFactionId={player.faction}
+          attackerBonus={
+            homeCaptain
+              ? captainCombatBonus(homeCaptain, CATALOG)
+              : { attackBonusPct: 0, defenseBonusPct: 0 }
+          }
           opponentRoster={FACTIONS[opponentFaction].units}
           catalog={CATALOG}
           onClose={() => setCombatScreenOpen(false)}
+          onVictory={earnCaptainXp}
         />
       )}
     </div>

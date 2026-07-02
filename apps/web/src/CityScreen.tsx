@@ -1,5 +1,18 @@
-import { BUILDINGS, buildingDisplayName, FACTIONS, type BuildingDef } from '@aop/content'
-import type { CaptainState, CityState, StandingOrder } from '@aop/engine'
+import {
+  BUILDINGS,
+  buildingDisplayName,
+  CAPTAIN_XP_THRESHOLDS,
+  FACTIONS,
+  skillsForFaction,
+  type BuildingDef,
+} from '@aop/content'
+import {
+  availableSkillPicks,
+  levelForXp,
+  type CaptainState,
+  type CityState,
+  type StandingOrder,
+} from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 
@@ -18,6 +31,7 @@ interface CityScreenProps {
     targetId: string,
     order: StandingOrder,
   ) => void
+  onChooseCaptainSkill: (skillId: string) => void
 }
 
 const STANDING_ORDER_LABELS: Record<StandingOrder, string> = {
@@ -48,6 +62,7 @@ export function CityScreen({
   onRecruit,
   onTransfer,
   onSetStandingOrder,
+  onChooseCaptainSkill,
 }: CityScreenProps) {
   const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
   const roster = FACTIONS[faction].units
@@ -182,6 +197,53 @@ export function CityScreen({
             )}
           </ul>
         </section>
+
+        {captain && (
+          <section>
+            <h3>
+              Captain — Level {levelForXp(captain.xp, CAPTAIN_XP_THRESHOLDS)} ({captain.xp} XP)
+            </h3>
+            {(() => {
+              const picks = availableSkillPicks(captain, CAPTAIN_XP_THRESHOLDS)
+              const level = levelForXp(captain.xp, CAPTAIN_XP_THRESHOLDS)
+              const pickable = skillsForFaction(faction).filter(
+                (skill) => skill.tier <= level && !captain.skills.includes(skill.id),
+              )
+              return (
+                <>
+                  <p className="building-option__hint">
+                    {picks > 0
+                      ? `${picks} skill pick${picks === 1 ? '' : 's'} available.`
+                      : 'No skill picks available yet — earn more XP to level up.'}
+                  </p>
+                  <ul className="building-list">
+                    {skillsForFaction(faction).map((skill) => {
+                      const owned = captain.skills.includes(skill.id)
+                      const canPick = picks > 0 && pickable.includes(skill)
+                      return (
+                        <li key={skill.id} className="garrison-row">
+                          <span className="garrison-row__name">{skill.name}</span>
+                          <span className="garrison-row__counts">
+                            {owned ? 'Learned — ' : `Tier ${skill.tier} — `}
+                            {skill.description}
+                          </span>
+                          <div className="garrison-row__actions">
+                            <button
+                              disabled={owned || !canPick}
+                              onClick={() => onChooseCaptainSkill(skill.id)}
+                            >
+                              {owned ? 'Learned' : 'Learn'}
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )
+            })()}
+          </section>
+        )}
       </div>
     </div>
   )

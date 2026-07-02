@@ -2,7 +2,9 @@ import { addResources, canAfford, subtractResources } from '@aop/shared'
 import {
   InvalidActionError,
   type Action,
+  type ChooseCaptainSkillAction,
   type ConstructBuildingAction,
+  type GainCaptainXpAction,
   type RecruitUnitAction,
   type SetStandingOrderAction,
   type TransferTroopsAction,
@@ -10,6 +12,7 @@ import {
 import type { ContentCatalog } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { currentPlayer } from './game'
+import { availableSkillPicks, levelForXp } from './skills'
 import type { GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
 
@@ -48,6 +51,12 @@ export function applyAction(state: GameState, action: Action, catalog: ContentCa
       break
     case 'setStandingOrder':
       next = setStandingOrder(state, action)
+      break
+    case 'gainCaptainXp':
+      next = gainCaptainXp(state, action)
+      break
+    case 'chooseCaptainSkill':
+      next = chooseCaptainSkill(state, action, catalog)
       break
   }
 
@@ -241,6 +250,61 @@ function setStandingOrder(state: GameState, action: SetStandingOrderAction): Gam
     ...state,
     captains: state.captains.map((c) =>
       c.id === captain.id ? { ...c, standingOrder: action.order } : c,
+    ),
+  }
+}
+
+/** Grants a captain XP (#21) — the drill screen calls this on a decisive win. */
+function gainCaptainXp(state: GameState, action: GainCaptainXpAction): GameState {
+  if (action.amount <= 0) {
+    throw new InvalidActionError('XP amount must be positive', action)
+  }
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain || captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(
+      `No captain ${action.captainId} owned by ${action.playerId}`,
+      action,
+    )
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, xp: c.xp + action.amount } : c,
+    ),
+  }
+}
+
+/** Spends one of a captain's earned level-up skill picks (#21). */
+function chooseCaptainSkill(
+  state: GameState,
+  action: ChooseCaptainSkillAction,
+  catalog: ContentCatalog,
+): GameState {
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain || captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(
+      `No captain ${action.captainId} owned by ${action.playerId}`,
+      action,
+    )
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const skill = catalog.skills[action.skillId]
+  if (!skill || skill.factionId !== player.faction) {
+    throw new InvalidActionError(`${action.skillId} is not available to ${player.faction}`, action)
+  }
+  if (captain.skills.includes(action.skillId)) {
+    throw new InvalidActionError(`${captain.id} already has ${action.skillId}`, action)
+  }
+  if (availableSkillPicks(captain, catalog.captainXpThresholds) < 1) {
+    throw new InvalidActionError(`${captain.id} has no skill picks available`, action)
+  }
+  if (skill.tier > levelForXp(captain.xp, catalog.captainXpThresholds)) {
+    throw new InvalidActionError(`${action.skillId} requires a higher level`, action)
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, skills: [...c.skills, action.skillId] } : c,
     ),
   }
 }

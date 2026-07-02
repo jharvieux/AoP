@@ -1,20 +1,28 @@
 import {
+  boostedCatalog,
   estimateOdds,
   resolveCombat,
   seedRng,
   type ArmyComposition,
+  type CombatBonus,
   type CombatResult,
   type ContentCatalog,
 } from '@aop/engine'
 import type { UnitDef } from '@aop/content'
+import type { FactionId } from '@aop/shared'
 import { useMemo, useState } from 'react'
 
 interface CombatScreenProps {
   attackerGarrison: ArmyComposition
   attackerRoster: UnitDef[]
+  attackerFactionId: FactionId
+  /** Captain skill bonuses (#21) applied to the attacker's roster before drilling. */
+  attackerBonus: CombatBonus
   opponentRoster: UnitDef[]
   catalog: ContentCatalog
   onClose: () => void
+  /** Called once per decisive drill win — the client turns this into a gainCaptainXp action. */
+  onVictory?: () => void
 }
 
 const ODDS_TRIALS = 200
@@ -36,9 +44,12 @@ function armyLabel(army: ArmyComposition, roster: Record<string, { name: string 
 export function CombatScreen({
   attackerGarrison,
   attackerRoster,
+  attackerFactionId,
+  attackerBonus,
   opponentRoster,
   catalog,
   onClose,
+  onVictory,
 }: CombatScreenProps) {
   const attackerRosterById = useMemo(
     () => Object.fromEntries(attackerRoster.map((u) => [u.id, u])),
@@ -54,10 +65,16 @@ export function CombatScreen({
   const [result, setResult] = useState<CombatResult | null>(null)
   const [revealedRounds, setRevealedRounds] = useState(0)
 
+  // A captain's skill bonuses (#21) apply only to their own faction's roster.
+  const effectiveCatalog = useMemo(
+    () => boostedCatalog(catalog, attackerBonus, attackerFactionId),
+    [catalog, attackerBonus, attackerFactionId],
+  )
+
   // Recomputed whenever the hypothetical opponent composition changes.
   const odds = useMemo(
-    () => estimateOdds(attackerGarrison, opponent, catalog, Date.now(), ODDS_TRIALS),
-    [attackerGarrison, opponent, catalog],
+    () => estimateOdds(attackerGarrison, opponent, effectiveCatalog, Date.now(), ODDS_TRIALS),
+    [attackerGarrison, opponent, effectiveCatalog],
   )
 
   function adjustOpponent(unitId: string, delta: number) {
@@ -69,12 +86,20 @@ export function CombatScreen({
   function autoResolve() {
     // A practice bout: seeded from the clock since it never advances the
     // authoritative GameState.rngState (the same rule Monte Carlo follows).
-    const [, outcome] = resolveCombat(attackerGarrison, opponent, catalog, seedRng(Date.now()))
+    // A decisive win still earns the visiting captain real XP (#21), via
+    // onVictory -> a genuine gainCaptainXp action dispatched by the caller.
+    const [, outcome] = resolveCombat(
+      attackerGarrison,
+      opponent,
+      effectiveCatalog,
+      seedRng(Date.now()),
+    )
     setResult(outcome)
     setRevealedRounds(0)
     outcome.log.forEach((_, i) => {
       setTimeout(() => setRevealedRounds((n) => Math.max(n, i + 1)), (i + 1) * 350)
     })
+    if (outcome.winner === 'attacker') onVictory?.()
   }
 
   return (

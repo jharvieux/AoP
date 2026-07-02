@@ -2,12 +2,16 @@ import { MAP_DIMENSIONS } from '@aop/shared'
 import { describe, expect, it } from 'vitest'
 import {
   applyAction,
+  availableSkillPicks,
+  boostedCatalog,
+  captainCombatBonus,
   createGame,
   currentlyVisibleTiles,
   currentPlayer,
   decideEngagement,
   estimateOdds,
   InvalidActionError,
+  levelForXp,
   nextFloat,
   nextInt,
   replay,
@@ -59,6 +63,27 @@ const testCatalog: ContentCatalog = {
   ships: {
     sloop: { crewCapacity: 4 },
   },
+  skills: {
+    'pirates-gunnery-1': {
+      factionId: 'pirates',
+      tier: 1,
+      attackBonusPct: 10,
+      defenseBonusPct: 0,
+    },
+    'pirates-navigation-1': {
+      factionId: 'pirates',
+      tier: 2,
+      attackBonusPct: 0,
+      defenseBonusPct: 10,
+    },
+    'british-gunnery-1': {
+      factionId: 'british',
+      tier: 1,
+      attackBonusPct: 12,
+      defenseBonusPct: 0,
+    },
+  },
+  captainXpThresholds: [0, 150, 400, 800, 1400],
 }
 
 function testConfig(playerCount = 3): GameConfig {
@@ -656,5 +681,154 @@ describe('standing orders', () => {
     const b = replay(base, fullLog, testCatalog)
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.cities.find((c) => c.id === city.id)!.standingOrder).toBe('evadeIfOutgunned')
+  })
+})
+
+describe('captain skills', () => {
+  const thresholds = testCatalog.captainXpThresholds
+
+  it('new captains start at level 1 with no skills', () => {
+    const state = createGame({ ...testConfig(2), startingShipClassId: 'sloop' })
+    expect(state.captains.every((c) => c.xp === 0 && c.skills.length === 0)).toBe(true)
+    expect(state.captains.every((c) => levelForXp(c.xp, thresholds) === 1)).toBe(true)
+  })
+
+  it('levelForXp climbs one level per threshold crossed', () => {
+    expect(levelForXp(0, thresholds)).toBe(1)
+    expect(levelForXp(149, thresholds)).toBe(1)
+    expect(levelForXp(150, thresholds)).toBe(2)
+    expect(levelForXp(400, thresholds)).toBe(3)
+    expect(levelForXp(100_000, thresholds)).toBe(thresholds.length)
+  })
+
+  it('availableSkillPicks accounts for skills already spent', () => {
+    let state = createGame({ ...testConfig(2), startingShipClassId: 'sloop' })
+    let captain = state.captains.find((c) => c.ownerId === 'p1')!
+    expect(availableSkillPicks(captain, thresholds)).toBe(0)
+
+    state = applyAction(
+      state,
+      { type: 'gainCaptainXp', playerId: 'p1', captainId: captain.id, amount: 150 },
+      testCatalog,
+    )
+    captain = state.captains.find((c) => c.id === captain.id)!
+    expect(levelForXp(captain.xp, thresholds)).toBe(2)
+    expect(availableSkillPicks(captain, thresholds)).toBe(1)
+
+    state = applyAction(
+      state,
+      {
+        type: 'chooseCaptainSkill',
+        playerId: 'p1',
+        captainId: captain.id,
+        skillId: 'pirates-gunnery-1',
+      },
+      testCatalog,
+    )
+    captain = state.captains.find((c) => c.id === captain.id)!
+    expect(captain.skills).toEqual(['pirates-gunnery-1'])
+    expect(availableSkillPicks(captain, thresholds)).toBe(0)
+  })
+
+  it('chooseCaptainSkill rejects skills the captain has not leveled into, other factions, and repeats', () => {
+    let state = applyAction(
+      createGame({ ...testConfig(2), startingShipClassId: 'sloop' }),
+      {
+        type: 'gainCaptainXp',
+        playerId: 'p1',
+        captainId: 'p1-flagship',
+        amount: 150,
+      },
+      testCatalog,
+    )
+
+    // Wrong faction's skill tree.
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'chooseCaptainSkill',
+          playerId: 'p1',
+          captainId: 'p1-flagship',
+          skillId: 'british-gunnery-1',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+
+    state = applyAction(
+      state,
+      {
+        type: 'chooseCaptainSkill',
+        playerId: 'p1',
+        captainId: 'p1-flagship',
+        skillId: 'pirates-gunnery-1',
+      },
+      testCatalog,
+    )
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'chooseCaptainSkill',
+          playerId: 'p1',
+          captainId: 'p1-flagship',
+          skillId: 'pirates-gunnery-1',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('captainCombatBonus sums only the chosen skills, and boostedCatalog scopes the bonus to that faction', () => {
+    let state = applyAction(
+      createGame({ ...testConfig(2), startingShipClassId: 'sloop' }),
+      { type: 'gainCaptainXp', playerId: 'p1', captainId: 'p1-flagship', amount: 150 },
+      testCatalog,
+    )
+    state = applyAction(
+      state,
+      {
+        type: 'chooseCaptainSkill',
+        playerId: 'p1',
+        captainId: 'p1-flagship',
+        skillId: 'pirates-gunnery-1',
+      },
+      testCatalog,
+    )
+    const captain = state.captains.find((c) => c.id === 'p1-flagship')!
+    const bonus = captainCombatBonus(captain, testCatalog)
+    expect(bonus).toEqual({ attackBonusPct: 10, defenseBonusPct: 0 })
+
+    const boosted = boostedCatalog(testCatalog, bonus, 'pirates')
+    expect(boosted.units.deckhand!.attack).toBe(
+      Math.round(testCatalog.units.deckhand!.attack * 1.1),
+    )
+    // Other factions' units pass through untouched.
+    expect(boosted.units.sailor!.attack).toBe(testCatalog.units.sailor!.attack)
+    // No bonus -> same catalog reference, no wasted allocation.
+    expect(boostedCatalog(testCatalog, { attackBonusPct: 0, defenseBonusPct: 0 }, 'pirates')).toBe(
+      testCatalog,
+    )
+  })
+
+  it('replaying a log with gainCaptainXp and chooseCaptainSkill actions is deterministic', () => {
+    const base = createGame({ ...testConfig(2), startingShipClassId: 'sloop' })
+    const log: Action[] = [
+      { type: 'gainCaptainXp', playerId: 'p1', captainId: 'p1-flagship', amount: 150 },
+      {
+        type: 'chooseCaptainSkill',
+        playerId: 'p1',
+        captainId: 'p1-flagship',
+        skillId: 'pirates-gunnery-1',
+      },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(base, log, testCatalog)
+    const b = replay(base, log, testCatalog)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    const captain = a.captains.find((c) => c.id === 'p1-flagship')!
+    expect(captain.xp).toBe(150)
+    expect(captain.skills).toEqual(['pirates-gunnery-1'])
   })
 })

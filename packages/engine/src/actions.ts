@@ -53,6 +53,22 @@ export interface SetStandingOrderAction {
   order: StandingOrder
 }
 
+/** Grant XP to a captain (#21) — from combat (drilling) or, later, exploration. */
+export interface GainCaptainXpAction {
+  type: 'gainCaptainXp'
+  playerId: string
+  captainId: string
+  amount: number
+}
+
+/** Spend a level-up skill pick on a captain (#21). */
+export interface ChooseCaptainSkillAction {
+  type: 'chooseCaptainSkill'
+  playerId: string
+  captainId: string
+  skillId: string
+}
+
 export type Action =
   | EndTurnAction
   | ResignAction
@@ -60,6 +76,8 @@ export type Action =
   | RecruitUnitAction
   | TransferTroopsAction
   | SetStandingOrderAction
+  | GainCaptainXpAction
+  | ChooseCaptainSkillAction
 
 export class InvalidActionError extends Error {
   constructor(

@@ -57,6 +57,8 @@ export function createGame(config: GameConfig): GameState {
           shipClassId: config.startingShipClassId!,
           troopsAboard: {},
           standingOrder: DEFAULT_STANDING_ORDER,
+          xp: 0,
+          skills: [],
         }))
       : [],
     exploredTiles: {},

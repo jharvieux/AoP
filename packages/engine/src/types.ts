@@ -62,6 +62,10 @@ export interface CaptainState {
   troopsAboard: Record<string, number>
   /** Defensive policy consulted by the combat driver before this fleet is attacked. */
   standingOrder: StandingOrder
+  /** Cumulative combat/exploration XP (#21). Level is derived from this via skills.ts. */
+  xp: number
+  /** Skill ids chosen at level-up, in pick order. At most one per level above 1. */
+  skills: string[]
 }
 
 /**
