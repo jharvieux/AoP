@@ -1,6 +1,7 @@
 export * from './actions'
 export * from './game'
 export * from './map'
+export * from './pathfinding'
 export * from './reducer'
 export * from './rng'
 export * from './types'

@@ -1,9 +1,18 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
 import { generateMap } from './map'
 import { seedRng } from './rng'
-import type { GameConfig, GameState } from './types'
+import type { Captain, GameConfig, GameState } from './types'
 
 const STARTING_GOLD = 1000
+
+/**
+ * Movement points a starting captain regains each turn. A game-rule default;
+ * once shipyards land, this will be driven by the flagship's content speed stat.
+ */
+export const STARTING_CAPTAIN_MOVEMENT = 5
+
+/** The flagship class every player starts with until shipyards are built. */
+export const STARTING_SHIP_CLASS = 'sloop'
 
 export function createGame(config: GameConfig): GameState {
   if (config.players.length < 2) {
@@ -19,6 +28,16 @@ export function createGame(config: GameConfig): GameState {
 
   const map = generateMap(config.seed, config.mapSize, config.players.length)
 
+  const captains: Captain[] = config.players.map((p, i) => ({
+    id: `cap-${p.id}`,
+    ownerId: p.id,
+    position: { ...map.startPositions[i]! },
+    shipClassId: STARTING_SHIP_CLASS,
+    movementPoints: STARTING_CAPTAIN_MOVEMENT,
+    maxMovementPoints: STARTING_CAPTAIN_MOVEMENT,
+    troops: (p.startingTroops ?? []).map((t) => ({ ...t })),
+  }))
+
   return {
     config,
     map,
@@ -32,11 +51,16 @@ export function createGame(config: GameConfig): GameState {
       resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
       eliminated: false,
     })),
+    captains,
     rngState: seedRng(config.seed),
     actionCount: 0,
     status: 'active',
     winnerId: null,
   }
+}
+
+export function captainsOf(state: GameState, playerId: string): Captain[] {
+  return state.captains.filter((c) => c.ownerId === playerId)
 }
 
 export function currentPlayer(state: GameState) {

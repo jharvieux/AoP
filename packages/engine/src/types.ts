@@ -1,12 +1,40 @@
-import type { FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { GameMap } from './map'
 import type { RngState } from './rng'
+
+/** A homogeneous group of troops aboard a captain's ship. `unitId` indexes @aop/content. */
+export interface TroopStack {
+  unitId: string
+  count: number
+}
 
 export interface PlayerConfig {
   id: string
   name: string
   faction: FactionId
   isAI: boolean
+  /**
+   * Optional starting troops for this player's captain. Populated by the caller
+   * from @aop/content so the engine stays free of any content dependency.
+   */
+  startingTroops?: TroopStack[]
+}
+
+/**
+ * A captain — the hero analog. Sails a flagship over water, carries troops, and
+ * fights ship-to-ship. Lives in GameState as plain data.
+ */
+export interface Captain {
+  id: string
+  ownerId: string
+  position: Coord
+  /** Flagship class id (indexes @aop/content SHIP_CLASSES). */
+  shipClassId: string
+  /** Movement points remaining this turn (one point = one water step). */
+  movementPoints: number
+  /** Movement points granted at the start of each of the owner's turns. */
+  maxMovementPoints: number
+  troops: TroopStack[]
 }
 
 export interface GameConfig {
@@ -40,6 +68,8 @@ export interface GameState {
   /** Index into players[] of whoever acts now. */
   currentPlayerIndex: number
   players: PlayerState[]
+  /** All captains in play, across all owners. */
+  captains: Captain[]
   rngState: RngState
   /** Total actions applied; doubles as the action-log sequence cursor. */
   actionCount: number

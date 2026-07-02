@@ -1,5 +1,7 @@
-import { InvalidActionError, type Action } from './actions'
+import { InvalidActionError, type Action, type MoveCaptainAction } from './actions'
 import { currentPlayer } from './game'
+import { tileAt } from './map'
+import { findPath } from './pathfinding'
 import type { GameState } from './types'
 
 /**
@@ -23,9 +25,43 @@ export function applyAction(state: GameState, action: Action): GameState {
     case 'resign':
       next = advanceTurn(eliminatePlayer(state, action.playerId))
       break
+    case 'moveCaptain':
+      next = moveCaptain(state, action)
+      break
   }
 
   return { ...next, actionCount: state.actionCount + 1 }
+}
+
+function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
+  if (captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
+  }
+  if (!tileAt(state.map, action.to)) {
+    throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
+  }
+
+  const path = findPath(state.map, captain.position, action.to)
+  if (!path) throw new InvalidActionError('Destination is not reachable by sea', action)
+
+  const cost = path.length - 1
+  if (cost > captain.movementPoints) {
+    throw new InvalidActionError(
+      `Move costs ${cost} but captain has ${captain.movementPoints} movement`,
+      action,
+    )
+  }
+
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id
+        ? { ...c, position: { ...action.to }, movementPoints: c.movementPoints - cost }
+        : c,
+    ),
+  }
 }
 
 function eliminatePlayer(state: GameState, playerId: string): GameState {
@@ -55,7 +91,17 @@ function advanceTurn(state: GameState): GameState {
     }
   } while (state.players[index]!.eliminated)
 
-  return { ...state, currentPlayerIndex: index, round }
+  return refreshMovement({ ...state, currentPlayerIndex: index, round }, state.players[index]!.id)
+}
+
+/** Restore a player's captains to full movement at the start of their turn. */
+function refreshMovement(state: GameState, playerId: string): GameState {
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.ownerId === playerId ? { ...c, movementPoints: c.maxMovementPoints } : c,
+    ),
+  }
 }
 
 /** Replay an action log against a fresh state — used for loads, replays, and audits. */

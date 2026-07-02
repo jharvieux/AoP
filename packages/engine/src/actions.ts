@@ -4,6 +4,8 @@
  * New gameplay features are added by extending this union.
  */
 
+import type { Coord } from '@aop/shared'
+
 export interface EndTurnAction {
   type: 'endTurn'
   playerId: string
@@ -14,7 +16,19 @@ export interface ResignAction {
   playerId: string
 }
 
-export type Action = EndTurnAction | ResignAction
+/**
+ * Sail a captain to a destination water tile. The engine computes the shortest
+ * water path deterministically and validates it fits the captain's remaining
+ * movement points, so the log only needs the destination.
+ */
+export interface MoveCaptainAction {
+  type: 'moveCaptain'
+  playerId: string
+  captainId: string
+  to: Coord
+}
+
+export type Action = EndTurnAction | ResignAction | MoveCaptainAction
 
 export class InvalidActionError extends Error {
   constructor(
