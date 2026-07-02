@@ -63,8 +63,71 @@ export interface SetStandingOrdersAction {
   orders: StandingOrder[]
 }
 
+/** Construct a building in one of the player's cities. HoMM-style: one build per city per turn. */
+export interface ConstructBuildingAction {
+  type: 'construct'
+  playerId: string
+  cityId: string
+  buildingId: string
+}
+
+/** Recruit `count` of a unit into a city's garrison, spending gold and available recruits. */
+export interface RecruitUnitAction {
+  type: 'recruit'
+  playerId: string
+  cityId: string
+  unitId: string
+  count: number
+}
+
+/** Move troops between a city's garrison and a visiting captain's ship hold. */
+export interface TransferTroopsAction {
+  type: 'transferTroops'
+  playerId: string
+  cityId: string
+  captainId: string
+  direction: 'toShip' | 'toGarrison'
+  unitId: string
+  count: number
+}
+
+/** Grant XP to a captain (#21) — from combat or, later, exploration. */
+export interface GainCaptainXpAction {
+  type: 'gainCaptainXp'
+  playerId: string
+  captainId: string
+  amount: number
+}
+
+/** Spend a level-up skill pick on a captain (#21). */
+export interface ChooseCaptainSkillAction {
+  type: 'chooseCaptainSkill'
+  playerId: string
+  captainId: string
+  skillId: string
+}
+
+/** Buy the next level on one of a captain's ship's upgrade tracks (#22) at a city shipyard. */
+export interface UpgradeShipAction {
+  type: 'upgradeShip'
+  playerId: string
+  cityId: string
+  captainId: string
+  track: string
+}
+
 export type Action =
-  EndTurnAction | ResignAction | MoveCaptainAction | AttackCaptainAction | SetStandingOrdersAction
+  | EndTurnAction
+  | ResignAction
+  | MoveCaptainAction
+  | AttackCaptainAction
+  | SetStandingOrdersAction
+  | ConstructBuildingAction
+  | RecruitUnitAction
+  | TransferTroopsAction
+  | GainCaptainXpAction
+  | ChooseCaptainSkillAction
+  | UpgradeShipAction
 
 export class InvalidActionError extends Error {
   constructor(

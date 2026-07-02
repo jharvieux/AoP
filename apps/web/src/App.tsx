@@ -1,9 +1,10 @@
-import { createGame, type GameState } from '@aop/engine'
+import { applyAction, createGame, replay, type Action, type GameState } from '@aop/engine'
 import { useState } from 'react'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { loadGame, saveGame } from './storage'
 import type { GameSetupConfig } from './types'
 
 type Screen = 'menu' | 'setup' | 'game' | 'game-over'
@@ -11,27 +12,47 @@ type Screen = 'menu' | 'setup' | 'game' | 'game-over'
 export function App() {
   const [screen, setScreen] = useState<Screen>('menu')
   const [game, setGame] = useState<GameState | null>(null)
-  const [lastSetupConfig, setLastSetupConfig] = useState<GameSetupConfig | null>(null)
+  const [config, setConfig] = useState<GameSetupConfig | null>(null)
+  const [actionLog, setActionLog] = useState<Action[]>([])
 
-  function handleStartNewGame(config: GameSetupConfig) {
-    // config already carries setup + startingTroops + frozen combatStats from
-    // @aop/content (see NewGameSetup); the engine itself holds no balance data.
-    setLastSetupConfig(config)
-    setGame(createGame(config))
+  function handleStartNewGame(setupConfig: GameSetupConfig) {
+    // config already carries setup + startingTroops + frozen combatStats + content
+    // from @aop/content (see NewGameSetup); the engine itself holds no balance data.
+    setConfig(setupConfig)
+    setActionLog([])
+    setGame(createGame(setupConfig))
     setScreen('game')
   }
 
-  function handleGameStateChange(newGame: GameState) {
-    setGame(newGame)
-    if (newGame.status === 'finished') {
-      setScreen('game-over')
-    }
+  // Every mutation flows through here so the action log stays authoritative —
+  // saves persist the log (not raw state) and load replays it, the same
+  // event-sourced path multiplayer will use server-side (#4).
+  function handleAction(action: Action) {
+    if (!game || !config) return
+    const next = applyAction(game, action)
+    const nextLog = [...actionLog, action]
+    setGame(next)
+    setActionLog(nextLog)
+    void saveGame('autosave', config, nextLog, next.round)
+    if (next.status === 'finished') setScreen('game-over')
+  }
+
+  async function handleSaveSlot(slotId: string) {
+    if (!config || !game) return
+    await saveGame(slotId, config, actionLog, game.round)
+  }
+
+  async function handleLoadSlot(slotId: string) {
+    const record = await loadGame(slotId)
+    if (!record) return
+    setConfig(record.config)
+    setActionLog(record.actions)
+    setGame(replay(createGame(record.config), record.actions))
+    setScreen('game')
   }
 
   function handleRematch() {
-    if (lastSetupConfig) {
-      handleStartNewGame(lastSetupConfig)
-    }
+    if (config) handleStartNewGame(config)
   }
 
   function handleReturnToMenu() {
@@ -46,7 +67,12 @@ export function App() {
         <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
       )}
       {screen === 'game' && game && (
-        <GameScreen game={game} onStateChange={handleGameStateChange} />
+        <GameScreen
+          game={game}
+          onAction={handleAction}
+          onSaveSlot={handleSaveSlot}
+          onLoadSlot={handleLoadSlot}
+        />
       )}
       {screen === 'game-over' && game && (
         <GameOverScreen game={game} onRematch={handleRematch} onMenuClick={handleReturnToMenu} />

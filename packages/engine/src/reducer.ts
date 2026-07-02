@@ -1,15 +1,31 @@
-import { chebyshevDistance } from '@aop/shared'
+import { addResources, canAfford, chebyshevDistance, subtractResources } from '@aop/shared'
 import {
   InvalidActionError,
   type Action,
   type AttackCaptainAction,
+  type ChooseCaptainSkillAction,
+  type ConstructBuildingAction,
+  type GainCaptainXpAction,
   type MoveCaptainAction,
+  type RecruitUnitAction,
   type SetStandingOrdersAction,
+  type TransferTroopsAction,
+  type UpgradeShipAction,
 } from './actions'
-import { createCombatStats, type BattleReport, type Combatant, type CombatResult } from './combat'
+import {
+  createCombatStats,
+  effectiveShip,
+  type BattleReport,
+  type Combatant,
+  type CombatResult,
+} from './combat'
+import type { ContentCatalog } from './content'
+import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { currentPlayer } from './game'
 import { tileAt } from './map'
 import { findPath } from './pathfinding'
+import { effectiveShipStats, nextUpgradeCost } from './ships'
+import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
 import {
   aiTacticDriver,
   ORDER_CONDITIONS,
@@ -18,7 +34,8 @@ import {
   tacticPlanDriver,
   TACTICS,
 } from './tactics'
-import type { Captain, GameState } from './types'
+import type { Captain, CityState, GameState, TroopStack } from './types'
+import { accumulateExploredTiles } from './visibility'
 
 /**
  * Optional structured result of the last action, surfaced to the client without
@@ -72,11 +89,61 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
     case 'setStandingOrders':
       next = setStandingOrders(state, action)
       break
+    case 'construct':
+      next = construct(state, action)
+      break
+    case 'recruit':
+      next = recruit(state, action)
+      break
+    case 'transferTroops':
+      next = transferTroops(state, action)
+      break
+    case 'gainCaptainXp':
+      next = gainCaptainXp(state, action)
+      break
+    case 'chooseCaptainSkill':
+      next = chooseCaptainSkill(state, action)
+      break
+    case 'upgradeShip':
+      next = upgradeShip(state, action)
+      break
+  }
+
+  // Fold newly-visible tiles (cities + captain positions) into the acting
+  // player's exploration history — the persistent half of the fog of war (#14).
+  next = {
+    ...next,
+    exploredTiles: {
+      ...next.exploredTiles,
+      [action.playerId]: accumulateExploredTiles(next, action.playerId),
+    },
   }
 
   const outcome: ActionOutcome = { state: { ...next, actionCount: state.actionCount + 1 } }
   if (battleReport) outcome.battleReport = battleReport
   return outcome
+}
+
+/** Content catalog frozen into the match config; required by the economy/city/skill actions. */
+function requireContent(state: GameState, action: Action): ContentCatalog {
+  const content = state.config.content
+  if (!content) {
+    throw new InvalidActionError('No content catalog configured for this match', action)
+  }
+  return content
+}
+
+function troopCount(troops: TroopStack[], unitId: string): number {
+  return troops.find((t) => t.unitId === unitId)?.count ?? 0
+}
+
+/** Add `delta` (may be negative) of `unitId` to a troop list, dropping empty stacks. */
+function adjustTroops(troops: TroopStack[], unitId: string, delta: number): TroopStack[] {
+  const next = troops.map((t) => ({ ...t }))
+  const existing = next.find((t) => t.unitId === unitId)
+  if (existing) existing.count += delta
+  else next.push({ unitId, count: delta })
+  return next.filter((t) => t.count > 0)
 }
 
 function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
@@ -117,6 +184,30 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   }
 }
 
+/** Build a combatant, layering in this captain's ship upgrades (#22) and skill bonuses (#21). */
+export function captainToCombatant(
+  captain: Captain,
+  faction: string,
+  content: ContentCatalog | undefined,
+): Combatant {
+  const combatant: Combatant = {
+    captainId: captain.id,
+    ownerId: captain.ownerId,
+    shipClassId: captain.shipClassId,
+    troops: captain.troops,
+  }
+  if (!content) return combatant
+  const shipDef = content.ships[captain.shipClassId]
+  if (shipDef) {
+    const eff = effectiveShipStats(shipDef, captain.shipUpgrades)
+    combatant.shipStats = { hull: eff.hull, cannons: eff.cannons, speed: eff.speed }
+  }
+  const bonus = captainCombatBonus(captain, content)
+  combatant.attackBonusPct = bonus.attackBonusPct
+  combatant.defenseBonusPct = bonus.defenseBonusPct
+  return combatant
+}
+
 function attackCaptain(
   state: GameState,
   action: AttackCaptainAction,
@@ -147,18 +238,18 @@ function attackCaptain(
   }
 
   const stats = createCombatStats(state.config.combatStats)
-  const toCombatant = (c: Captain): Combatant => ({
-    captainId: c.id,
-    ownerId: c.ownerId,
-    shipClassId: c.shipClassId,
-    troops: c.troops,
-  })
+  const content = state.config.content
+  const attackerFaction = state.players.find((p) => p.id === attacker.ownerId)!.faction
+  const defenderFaction = state.players.find((p) => p.id === target.ownerId)!.faction
 
   // The attacker plays its submitted plan; the defender fights by the standing
   // orders its own owner saved in state (never anything the attacker supplies).
   // Either side without orders is driven by the combat AI — auto-resolve.
   const result: CombatResult = resolveTacticalCombat(
-    { attacker: toCombatant(attacker), defender: toCombatant(target) },
+    {
+      attacker: captainToCombatant(attacker, attackerFaction, content),
+      defender: captainToCombatant(target, defenderFaction, content),
+    },
     stats,
     state.rngState,
     {
@@ -171,9 +262,11 @@ function attackCaptain(
     },
   )
   const { report } = result
+  const winnerCaptainId = report.winnerId === attacker.ownerId ? attacker.id : target.id
+  const combatWinXp = state.config.setup.combatWinXp
 
-  // Write back survivors: sink defeated captains, update troops on survivors,
-  // and spend the attacker's movement for the turn.
+  // Write back survivors: sink defeated captains, update troops, award the winner
+  // combat XP (#21), and spend the attacker's movement for the turn.
   const captains = state.captains
     .filter((c) => {
       if (c.id === attacker.id) return report.attackerSurvived
@@ -181,10 +274,11 @@ function attackCaptain(
       return true
     })
     .map((c) => {
+      const wonXp = c.id === winnerCaptainId ? combatWinXp : 0
       if (c.id === attacker.id) {
-        return { ...c, troops: result.attackerTroops, movementPoints: 0 }
+        return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + wonXp }
       }
-      if (c.id === target.id) return { ...c, troops: result.defenderTroops }
+      if (c.id === target.id) return { ...c, troops: result.defenderTroops, xp: c.xp + wonXp }
       return c
     })
 
@@ -212,6 +306,235 @@ function setStandingOrders(state: GameState, action: SetStandingOrdersAction): G
     ...state,
     captains: state.captains.map((c) =>
       c.id === captain.id ? { ...c, standingOrders: action.orders.map((o) => ({ ...o })) } : c,
+    ),
+  }
+}
+
+function ownedCity(state: GameState, cityId: string, action: Action): CityState {
+  const city = state.cities.find((c) => c.id === cityId)
+  if (!city || city.ownerId !== action.playerId) {
+    throw new InvalidActionError(`No city ${cityId} owned by ${action.playerId}`, action)
+  }
+  return city
+}
+
+function ownedCaptain(state: GameState, captainId: string, action: Action): Captain {
+  const captain = state.captains.find((c) => c.id === captainId)
+  if (!captain || captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(`No captain ${captainId} owned by ${action.playerId}`, action)
+  }
+  return captain
+}
+
+function construct(state: GameState, action: ConstructBuildingAction): GameState {
+  const content = requireContent(state, action)
+  const city = ownedCity(state, action.cityId, action)
+  if (city.builtThisRound) {
+    throw new InvalidActionError(`${city.id} has already built this turn`, action)
+  }
+  if (city.buildings.includes(action.buildingId)) {
+    throw new InvalidActionError(`${city.id} already has ${action.buildingId}`, action)
+  }
+  const def = content.buildings[action.buildingId]
+  if (!def) throw new InvalidActionError(`Unknown building ${action.buildingId}`, action)
+  if (def.requires && !city.buildings.includes(def.requires)) {
+    throw new InvalidActionError(`${action.buildingId} requires ${def.requires} first`, action)
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  if (!canAfford(player.resources, def.cost)) {
+    throw new InvalidActionError(`${action.playerId} cannot afford ${action.buildingId}`, action)
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId ? { ...p, resources: subtractResources(p.resources, def.cost) } : p,
+    ),
+    cities: state.cities.map((c) =>
+      c.id === city.id
+        ? { ...c, buildings: [...c.buildings, action.buildingId], builtThisRound: true }
+        : c,
+    ),
+  }
+}
+
+function recruit(state: GameState, action: RecruitUnitAction): GameState {
+  const content = requireContent(state, action)
+  if (action.count <= 0) throw new InvalidActionError('Recruit count must be positive', action)
+  const city = ownedCity(state, action.cityId, action)
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const def = content.units[action.unitId]
+  if (!def || def.factionId !== player.faction) {
+    throw new InvalidActionError(`${action.unitId} is not recruitable by ${player.faction}`, action)
+  }
+  if (def.tier > unlockedRecruitTier(city, content)) {
+    throw new InvalidActionError(`${city.id} has not unlocked tier ${def.tier} recruits`, action)
+  }
+  const available = city.unitAvailability[action.unitId] ?? 0
+  if (action.count > available) {
+    throw new InvalidActionError(`Only ${available} ${action.unitId} available to recruit`, action)
+  }
+  const cost = { gold: def.goldCost * action.count }
+  if (!canAfford(player.resources, cost)) {
+    throw new InvalidActionError(
+      `${action.playerId} cannot afford ${action.count} ${action.unitId}`,
+      action,
+    )
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId ? { ...p, resources: subtractResources(p.resources, cost) } : p,
+    ),
+    cities: state.cities.map((c) =>
+      c.id === city.id
+        ? {
+            ...c,
+            unitAvailability: { ...c.unitAvailability, [action.unitId]: available - action.count },
+            garrison: {
+              ...c.garrison,
+              [action.unitId]: (c.garrison[action.unitId] ?? 0) + action.count,
+            },
+          }
+        : c,
+    ),
+  }
+}
+
+/**
+ * Moves troops between a city's garrison and a captain docked at that city.
+ * The captain must be adjacent to (or on) the city's port tile.
+ */
+function transferTroops(state: GameState, action: TransferTroopsAction): GameState {
+  const content = requireContent(state, action)
+  if (action.count <= 0) throw new InvalidActionError('Transfer count must be positive', action)
+  const city = ownedCity(state, action.cityId, action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (chebyshevDistance(captain.position, city.position) > 1) {
+    throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
+  }
+
+  const garrisonCount = city.garrison[action.unitId] ?? 0
+  const aboardCount = troopCount(captain.troops, action.unitId)
+
+  if (action.direction === 'toShip') {
+    if (action.count > garrisonCount) {
+      throw new InvalidActionError(`${city.id} garrison has only ${garrisonCount} to send`, action)
+    }
+    const shipDef = content.ships[captain.shipClassId]
+    const capacity = shipDef
+      ? effectiveShipStats(shipDef, captain.shipUpgrades).crewCapacity
+      : Infinity
+    const currentAboard = captain.troops.reduce((sum, t) => sum + t.count, 0)
+    if (currentAboard + action.count > capacity) {
+      throw new InvalidActionError(
+        `${captain.id}'s ship has no room for ${action.count} more`,
+        action,
+      )
+    }
+  } else if (action.count > aboardCount) {
+    throw new InvalidActionError(`${captain.id} has only ${aboardCount} aboard to unload`, action)
+  }
+
+  const toShip = action.direction === 'toShip'
+  return {
+    ...state,
+    cities: state.cities.map((c) =>
+      c.id === city.id
+        ? {
+            ...c,
+            garrison: {
+              ...c.garrison,
+              [action.unitId]: garrisonCount + (toShip ? -action.count : action.count),
+            },
+          }
+        : c,
+    ),
+    captains: state.captains.map((cap) =>
+      cap.id === captain.id
+        ? {
+            ...cap,
+            troops: adjustTroops(cap.troops, action.unitId, toShip ? action.count : -action.count),
+          }
+        : cap,
+    ),
+  }
+}
+
+/** Grants a captain XP (#21) — from combat or, later, exploration. */
+function gainCaptainXp(state: GameState, action: GainCaptainXpAction): GameState {
+  if (action.amount <= 0) throw new InvalidActionError('XP amount must be positive', action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, xp: c.xp + action.amount } : c,
+    ),
+  }
+}
+
+/** Spends one of a captain's earned level-up skill picks (#21). */
+function chooseCaptainSkill(state: GameState, action: ChooseCaptainSkillAction): GameState {
+  const content = requireContent(state, action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const skill = content.skills[action.skillId]
+  if (!skill || skill.factionId !== player.faction) {
+    throw new InvalidActionError(`${action.skillId} is not available to ${player.faction}`, action)
+  }
+  if (captain.skills.includes(action.skillId)) {
+    throw new InvalidActionError(`${captain.id} already has ${action.skillId}`, action)
+  }
+  if (availableSkillPicks(captain, content.captainXpThresholds) < 1) {
+    throw new InvalidActionError(`${captain.id} has no skill picks available`, action)
+  }
+  if (skill.tier > levelForXp(captain.xp, content.captainXpThresholds)) {
+    throw new InvalidActionError(`${action.skillId} requires a higher level`, action)
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, skills: [...c.skills, action.skillId] } : c,
+    ),
+  }
+}
+
+/** Buys the next level on one of a captain's ship's upgrade tracks (#22) at a city shipyard. */
+function upgradeShip(state: GameState, action: UpgradeShipAction): GameState {
+  const content = requireContent(state, action)
+  const city = ownedCity(state, action.cityId, action)
+  if (!city.buildings.includes('shipyard')) {
+    throw new InvalidActionError(`${city.id} has no shipyard`, action)
+  }
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (chebyshevDistance(captain.position, city.position) > 1) {
+    throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
+  }
+  const ship = content.ships[captain.shipClassId]
+  if (!ship) throw new InvalidActionError(`Unknown ship class ${captain.shipClassId}`, action)
+  const currentLevel = captain.shipUpgrades[action.track] ?? 0
+  const cost = nextUpgradeCost(ship, action.track, currentLevel)
+  if (cost === undefined) {
+    throw new InvalidActionError(
+      `${action.track} has no more levels for ${captain.shipClassId}`,
+      action,
+    )
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  if (!canAfford(player.resources, { gold: cost })) {
+    throw new InvalidActionError(`${action.playerId} cannot afford this upgrade`, action)
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === player.id ? { ...p, resources: subtractResources(p.resources, { gold: cost }) } : p,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id
+        ? { ...c, shipUpgrades: { ...c.shipUpgrades, [action.track]: currentLevel + 1 } }
+        : c,
     ),
   }
 }
@@ -244,11 +567,7 @@ function settleEliminations(state: GameState): GameState {
 function advanceTurn(state: GameState): GameState {
   const alive = state.players.filter((p) => !p.eliminated)
   if (alive.length <= 1) {
-    return {
-      ...state,
-      status: 'finished',
-      winnerId: alive[0]?.id ?? null,
-    }
+    return { ...state, status: 'finished', winnerId: alive[0]?.id ?? null }
   }
 
   let index = state.currentPlayerIndex
@@ -261,7 +580,38 @@ function advanceTurn(state: GameState): GameState {
     }
   } while (state.players[index]!.eliminated)
 
-  return refreshMovement({ ...state, currentPlayerIndex: index, round }, state.players[index]!.id)
+  const roundAdvanced = round !== state.round
+  const content = state.config.content
+
+  // On a new round each surviving player collects income and every city refreshes
+  // its build allowance and recruit pool (economy, #9/#10/#11).
+  const players =
+    roundAdvanced && content
+      ? state.players.map((p) =>
+          p.eliminated
+            ? p
+            : { ...p, resources: addResources(p.resources, playerIncome(state, p.id, content)) },
+        )
+      : state.players
+
+  const cities = roundAdvanced
+    ? state.cities.map((c) => {
+        const owner = state.players.find((p) => p.id === c.ownerId)
+        return {
+          ...c,
+          builtThisRound: false,
+          unitAvailability:
+            content && owner
+              ? replenishAvailability(c, owner.faction, content)
+              : c.unitAvailability,
+        }
+      })
+    : state.cities
+
+  return refreshMovement(
+    { ...state, currentPlayerIndex: index, round, players, cities },
+    state.players[index]!.id,
+  )
 }
 
 /** Restore a player's captains to full movement at the start of their turn. */

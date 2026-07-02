@@ -28,4 +28,8 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
+  startingBuildings: ['townhall'],
+  cityVisionRadius: 3,
+  captainVisionRadius: 2,
+  combatWinXp: 40,
 }

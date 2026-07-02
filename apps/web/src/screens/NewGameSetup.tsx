@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
 import type { PlayerConfig, TroopStack } from '@aop/engine'
+import { buildCatalog } from '../catalog'
 import type { GameSetupConfig } from '../types'
 
 interface NewGameSetupProps {
@@ -77,10 +78,11 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
       seed: Math.floor(Math.random() * 2 ** 31),
       mapSize,
       players: players.map((p) => ({ ...p, startingTroops: starterTroops(p.faction) })),
-      // Freeze opening-state + combat balance snapshots from @aop/content into
-      // the match so the pure engine holds no balance data itself.
+      // Freeze opening-state + combat + economy/content balance snapshots from
+      // @aop/content into the match so the pure engine holds no balance data.
       setup: GAME_SETUP,
       combatStats: combatStatsData(),
+      content: buildCatalog(),
     })
   }
 

@@ -1,4 +1,5 @@
 import {
+  effectiveShip,
   resolveRounds,
   type CombatInput,
   type CombatResult,
@@ -9,7 +10,7 @@ import {
   type RoundView,
   type TacticsTuning,
 } from './combat'
-import type { RngState } from './rng'
+import { seedRng, type RngState } from './rng'
 
 /**
  * Hybrid tactical combat (#18) — the signature combat system.
@@ -81,7 +82,7 @@ export function availableTactics(combatant: Combatant, stats: CombatStats): Tact
   const out: TacticId[] = ['broadside', 'evade']
   const hasCrew = combatant.troops.some((t) => t.count > 0)
   if (hasCrew) out.push('board')
-  if (stats.ship(combatant.shipClassId).hull >= stats.tactics.ramHullMin) out.push('ram')
+  if (effectiveShip(combatant, stats).hull >= stats.tactics.ramHullMin) out.push('ram')
   return out
 }
 
@@ -240,8 +241,8 @@ export function resolveTacticalCombat(
 ): CombatResult {
   const atkAvailable = availableTactics(input.attacker, stats)
   const defAvailable = availableTactics(input.defender, stats)
-  const atkSpeed = stats.ship(input.attacker.shipClassId).speed
-  const defSpeed = stats.ship(input.defender.shipClassId).speed
+  const atkSpeed = effectiveShip(input.attacker, stats).speed
+  const defSpeed = effectiveShip(input.defender, stats).speed
 
   let lastAttackerTactic: TacticId | null = null
   let lastDefenderTactic: TacticId | null = null
@@ -311,4 +312,49 @@ export function resolveAutoTactical(
     attacker: aiTacticDriver,
     defender: aiTacticDriver,
   })
+}
+
+/** Win-probability estimate for a would-be engagement — powers the pre-attack odds preview (#19). */
+export interface CombatOdds {
+  attackerWinProbability: number
+  defenderWinProbability: number
+  /** Fraction of trials that ended with a side breaking off (flee/escape, #18). */
+  escapeProbability: number
+  trials: number
+}
+
+/**
+ * Monte-Carlo odds estimate: runs `trials` auto-resolved tactical battles through
+ * the real resolver ({@link resolveAutoTactical}) with a scratch RNG seeded from
+ * `scratchSeed`, so it never touches GameState.rngState. Pure and deterministic
+ * in its arguments — the client passes its own seed (e.g. actionCount) so the same
+ * preview is reproducible. The attacker uses the given tactic plan when one is
+ * supplied; otherwise both sides are AI-driven, matching an unplanned attack.
+ */
+export function estimateOdds(
+  input: CombatInput,
+  stats: CombatStats,
+  scratchSeed: number,
+  trials = 200,
+  attackerPlan?: readonly TacticId[],
+): CombatOdds {
+  const drivers: TacticalDrivers = {
+    attacker: attackerPlan?.length ? tacticPlanDriver(attackerPlan) : aiTacticDriver,
+    defender: aiTacticDriver,
+  }
+  let attackerWins = 0
+  let defenderWins = 0
+  let escapes = 0
+  for (let i = 0; i < trials; i++) {
+    const { report } = resolveTacticalCombat(input, stats, seedRng(scratchSeed + i), drivers)
+    if (report.escapedId) escapes += 1
+    if (report.winnerId === input.attacker.ownerId) attackerWins += 1
+    else defenderWins += 1
+  }
+  return {
+    attackerWinProbability: attackerWins / trials,
+    defenderWinProbability: defenderWins / trials,
+    escapeProbability: escapes / trials,
+    trials,
+  }
 }

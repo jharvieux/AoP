@@ -1,5 +1,6 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { CombatStatsData } from './combat'
+import type { ContentCatalog } from './content'
 import type { GameMap } from './map'
 import type { RngState } from './rng'
 import type { StandingOrder } from './tactics'
@@ -29,6 +30,7 @@ export interface PlayerConfig {
 export interface Captain {
   id: string
   ownerId: string
+  name: string
   position: Coord
   /** Flagship class id (indexes @aop/content SHIP_CLASSES). */
   shipClassId: string
@@ -43,6 +45,31 @@ export interface Captain {
    * must strip this from enemy-facing views, like rngState (D-009).
    */
   standingOrders?: StandingOrder[]
+  /** Cumulative combat/exploration XP (#21). Level is derived from this via skills.ts. */
+  xp: number
+  /** Skill ids chosen at level-up, in pick order. At most one per level above 1. */
+  skills: string[]
+  /** Purchased level (0 = stock) per upgrade track at a city shipyard (#22). Missing key = 0. */
+  shipUpgrades: Record<string, number>
+}
+
+/**
+ * A settlement owned by a player. Buildings are ids into @aop/content's
+ * BUILDINGS table — the engine never hardcodes what a building does.
+ */
+export interface CityState {
+  id: string
+  ownerId: string
+  name: string
+  /** The land (port) tile the city sits on, taken from its home island on the generated map. */
+  position: Coord
+  buildings: string[]
+  /** True once this city has constructed a building this round (HoMM one-build-per-turn rule). */
+  builtThisRound: boolean
+  /** Recruited troops garrisoned in the city, keyed by unit id. */
+  garrison: Record<string, number>
+  /** Recruits currently available to buy, keyed by unit id (weekly-growth style). */
+  unitAvailability: Record<string, number>
 }
 
 /**
@@ -55,6 +82,14 @@ export interface GameSetup {
   startingCaptainMovement: number
   startingShipClass: string
   homeIslandRadius: number
+  /** Building ids every player's capital begins with. */
+  startingBuildings: string[]
+  /** Tiles within this Chebyshev radius of an owned city are visible (fog of war, #14). */
+  cityVisionRadius: number
+  /** Tiles within this Chebyshev radius of an owned captain are visible (fog of war, #14). */
+  captainVisionRadius: number
+  /** XP the winning captain earns from a decisive naval victory (#21). */
+  combatWinXp: number
 }
 
 export interface GameConfig {
@@ -70,6 +105,12 @@ export interface GameConfig {
    * determinism. Required before any combat action can resolve.
    */
   combatStats?: CombatStatsData
+  /**
+   * Balance tables for economy, recruitment, skills, and ship upgrades, injected
+   * from @aop/content the same way as {@link combatStats}. Required before the
+   * construct/recruit/skill/upgrade actions can resolve.
+   */
+  content?: ContentCatalog
 }
 
 export interface PlayerState {
@@ -96,8 +137,16 @@ export interface GameState {
   /** Index into players[] of whoever acts now. */
   currentPlayerIndex: number
   players: PlayerState[]
+  cities: CityState[]
   /** All captains in play, across all owners. */
   captains: Captain[]
+  /**
+   * Every tile each player has ever seen, keyed by playerId, values are
+   * "x,y" tile keys. Currently-visible tiles are recomputed on demand by
+   * visibility.ts's visibleState() selector — only the persistent history
+   * needs to live in state.
+   */
+  exploredTiles: Record<string, string[]>
   rngState: RngState
   /** Total actions applied; doubles as the action-log sequence cursor. */
   actionCount: number

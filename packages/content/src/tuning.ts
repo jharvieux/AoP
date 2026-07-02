@@ -1,3 +1,5 @@
+import { STARTING_BUILDINGS } from './buildings'
+
 /**
  * Tuned balance constants — the numbers a designer turns to shape combat, the
  * economy, and the opening loadout. They live here (never in @aop/engine, which
@@ -50,6 +52,14 @@ export interface GameSetup {
   startingShipClass: string
   /** Radius (in tiles) of each identical home-island disc. */
   homeIslandRadius: number
+  /** Building ids every player's capital begins with. */
+  startingBuildings: string[]
+  /** Tiles within this Chebyshev radius of an owned city are visible (fog of war, #14). */
+  cityVisionRadius: number
+  /** Tiles within this Chebyshev radius of an owned captain are visible (fog of war, #14). */
+  captainVisionRadius: number
+  /** XP the winning captain earns from a decisive naval victory (#21). */
+  combatWinXp: number
 }
 
 export const COMBAT_TUNING: CombatTuning = {
@@ -74,4 +84,8 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
+  startingBuildings: [...STARTING_BUILDINGS],
+  cityVisionRadius: 3,
+  captainVisionRadius: 2,
+  combatWinXp: 40,
 }

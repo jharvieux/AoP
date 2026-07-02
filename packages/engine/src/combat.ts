@@ -87,11 +87,34 @@ export function createCombatStats(data: CombatStatsData): CombatStats {
   }
 }
 
+/** Effective ship stats for a combatant: purchased upgrades (#22) override the class stats. */
+export interface EffectiveShip {
+  hull: number
+  cannons: number
+  speed: number
+}
+
 export interface Combatant {
   captainId: string
   ownerId: string
   shipClassId: string
   troops: TroopStack[]
+  /**
+   * Ship stats after this captain's purchased upgrades (#22). Omitted means the
+   * flagship is stock and its class stats from {@link CombatStats} are used.
+   */
+  shipStats?: EffectiveShip
+  /** Captain skill (#21) attack bonus as a percentage, applied to this side's troop offense. */
+  attackBonusPct?: number
+  /** Captain skill (#21) defense bonus as a percentage, applied to this side's troop defense. */
+  defenseBonusPct?: number
+}
+
+/** Ship stats a combatant actually fights with — upgrades if present, else class stats. */
+export function effectiveShip(combatant: Combatant, stats: CombatStats): EffectiveShip {
+  if (combatant.shipStats) return combatant.shipStats
+  const ship = stats.ship(combatant.shipClassId)
+  return { hull: ship.hull, cannons: ship.cannons, speed: ship.speed }
 }
 
 export interface CombatInput {
@@ -200,17 +223,26 @@ function sideHp(side: Side, stats: CombatStats): number {
   return Math.max(0, side.hull) + troopHealth(side.troops, stats)
 }
 
-/** Effective fighting strength: ship guns + crew offense. Captain modifier is a v1 stub (×1). */
+/**
+ * Effective fighting strength: ship guns + crew offense. Ship stats come from the
+ * combatant's purchased upgrades (#22) if present, and captain skill bonuses (#21)
+ * scale the crew's attack and defense contributions.
+ */
 export function combatantStrength(combatant: Combatant, stats: CombatStats): number {
-  const ship = stats.ship(combatant.shipClassId)
+  const ship = effectiveShip(combatant, stats)
   const shipStrength =
     ship.hull * stats.combat.hullStrengthWeight + ship.cannons * stats.combat.cannonStrengthWeight
+  const attackScale = 1 + (combatant.attackBonusPct ?? 0) / 100
+  const defenseScale = 1 + (combatant.defenseBonusPct ?? 0) / 100
   const troopStrength = combatant.troops.reduce((sum, t) => {
     const u = stats.unit(t.unitId)
-    return sum + t.count * (u.attack + u.defense * stats.combat.troopDefenseWeight)
+    return (
+      sum +
+      t.count *
+        (u.attack * attackScale + u.defense * defenseScale * stats.combat.troopDefenseWeight)
+    )
   }, 0)
-  const captainModifier = 1
-  return (shipStrength + troopStrength) * captainModifier
+  return shipStrength + troopStrength
 }
 
 /** Apply `damage` to a side: crew casualties first, then hull. Deterministic. */
@@ -242,12 +274,12 @@ export function resolveRounds(
   const attacker: Side = {
     combatant: input.attacker,
     troops: input.attacker.troops.map((t) => ({ ...t })),
-    hull: stats.ship(input.attacker.shipClassId).hull,
+    hull: effectiveShip(input.attacker, stats).hull,
   }
   const defender: Side = {
     combatant: input.defender,
     troops: input.defender.troops.map((t) => ({ ...t })),
-    hull: stats.ship(input.defender.shipClassId).hull,
+    hull: effectiveShip(input.defender, stats).hull,
   }
 
   const startAttacker = summarize(input.attacker, stats)
