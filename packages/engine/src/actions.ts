@@ -5,6 +5,7 @@
  */
 
 import type { Coord } from '@aop/shared'
+import type { TacticId } from './tactics'
 
 export interface EndTurnAction {
   type: 'endTurn'
@@ -29,14 +30,18 @@ export interface MoveCaptainAction {
 }
 
 /**
- * Attack an enemy captain within one tile. Resolves the combat pipeline, writes
- * back casualties, and eliminates any captain (and player) whose ship is sunk.
+ * Attack an enemy captain within one tile. Resolves the hybrid tactical combat
+ * pipeline, writes back casualties, and eliminates any captain (and player) whose
+ * ship is sunk. Optional per-side standing tactic orders drive the battle; when
+ * omitted, that side is auto-resolved by the combat AI.
  */
 export interface AttackCaptainAction {
   type: 'attackCaptain'
   playerId: string
   captainId: string
   targetCaptainId: string
+  attackerOrders?: TacticId[]
+  defenderOrders?: TacticId[]
 }
 
 export type Action = EndTurnAction | ResignAction | MoveCaptainAction | AttackCaptainAction

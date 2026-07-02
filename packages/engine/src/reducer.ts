@@ -5,16 +5,17 @@ import {
   type AttackCaptainAction,
   type MoveCaptainAction,
 } from './actions'
-import {
-  createCombatStats,
-  resolveCombat,
-  type BattleReport,
-  type Combatant,
-  type CombatResult,
-} from './combat'
+import { createCombatStats, type BattleReport, type Combatant, type CombatResult } from './combat'
 import { currentPlayer } from './game'
 import { tileAt } from './map'
 import { findPath } from './pathfinding'
+import {
+  aiTacticDriver,
+  resolveTacticalCombat,
+  standingOrdersDriver,
+  type TacticDriver,
+  type TacticId,
+} from './tactics'
 import type { Captain, GameState } from './types'
 
 /**
@@ -111,18 +112,6 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   }
 }
 
-/**
- * The combat resolver used by {@link attackCaptain}. Held in a module variable so
- * the Phase-2 tactical layer (#18) can install a richer resolver over the exact
- * same action path without editing this file. Defaults to v1 auto-resolve.
- */
-let combatResolver = resolveCombat
-
-/** Install the combat resolver used for `attackCaptain`. See #18. */
-export function setCombatResolver(resolver: typeof resolveCombat): void {
-  combatResolver = resolver
-}
-
 function attackCaptain(
   state: GameState,
   action: AttackCaptainAction,
@@ -155,10 +144,17 @@ function attackCaptain(
     troops: c.troops,
   })
 
-  const result: CombatResult = combatResolver(
+  const driver = (orders: TacticId[] | undefined): TacticDriver =>
+    orders ? standingOrdersDriver(orders) : aiTacticDriver
+
+  const result: CombatResult = resolveTacticalCombat(
     { attacker: toCombatant(attacker), defender: toCombatant(target) },
     stats,
     state.rngState,
+    {
+      attacker: driver(action.attackerOrders),
+      defender: driver(action.defenderOrders),
+    },
   )
   const { report } = result
 

@@ -97,6 +97,8 @@ export interface BattleReport {
   loserId: string
   attackerSurvived: boolean
   defenderSurvived: boolean
+  /** ownerId of a side that broke off and fled the battle (flee/escape rules, #18). */
+  escapedId: string | null
   survivingTroops: {
     attacker: TroopStack[]
     defender: TroopStack[]
@@ -129,6 +131,22 @@ export interface RoundView {
 }
 
 export type TacticChooser = (view: RoundView) => RoundTactics
+
+/** Post-round view handed to {@link RoundEndHook}, including the tactics just used. */
+export interface RoundEndView {
+  round: number
+  tactics: RoundTactics
+  attackerHp: number
+  defenderHp: number
+}
+
+/**
+ * Optional hook the round engine calls after each round's damage is applied. It
+ * lets a resolver end the battle early — e.g. the tactical layer's flee/escape
+ * rules (#18). Returning a non-null ownerId marks that side as having escaped and
+ * stops the fight; returning null continues.
+ */
+export type RoundEndHook = (view: RoundEndView) => string | null
 
 /** v1 chooser: no tactics, no modifiers. */
 export const noTactics: TacticChooser = () => ({
@@ -195,6 +213,7 @@ export function resolveRounds(
   stats: CombatStats,
   rng: RngState,
   chooseTactics: TacticChooser,
+  onRoundEnd?: RoundEndHook,
 ): CombatResult {
   const attacker: Side = {
     combatant: input.attacker,
@@ -213,6 +232,7 @@ export function resolveRounds(
   const rounds: RoundReport[] = []
   let state = rng
   let round = 0
+  let escapedId: string | null = null
   while (round < MAX_ROUNDS && sideHp(attacker, stats) > 0 && sideHp(defender, stats) > 0) {
     round++
     const atkStrength = combatantStrength({ ...attacker.combatant, troops: attacker.troops }, stats)
@@ -239,22 +259,37 @@ export function resolveRounds(
     applyDamage(defender, attackerDamage, stats)
     applyDamage(attacker, defenderDamage, stats)
 
+    const attackerHpNow = sideHp(attacker, stats)
+    const defenderHpNow = sideHp(defender, stats)
     rounds.push({
       round,
       attackerTactic: tactics.attackerTactic,
       defenderTactic: tactics.defenderTactic,
       attackerDamage: round4(attackerDamage),
       defenderDamage: round4(defenderDamage),
-      attackerHp: round4(sideHp(attacker, stats)),
-      defenderHp: round4(sideHp(defender, stats)),
+      attackerHp: round4(attackerHpNow),
+      defenderHp: round4(defenderHpNow),
     })
+
+    if (onRoundEnd && attackerHpNow > 0 && defenderHpNow > 0) {
+      escapedId = onRoundEnd({
+        round,
+        tactics,
+        attackerHp: attackerHpNow,
+        defenderHp: defenderHpNow,
+      })
+      if (escapedId) break
+    }
   }
 
   const attackerHp = sideHp(attacker, stats)
   const defenderHp = sideHp(defender, stats)
   const attackerSurvived = attackerHp > 0
-  // Defender wins ties (attacker failed to break them).
-  const attackerWins = attackerSurvived && (defenderHp <= 0 || attackerHp > defenderHp)
+  // On escape both sides survive and the side that held the field is the winner.
+  // Otherwise the defender wins ties (attacker failed to break them).
+  const attackerWins = escapedId
+    ? escapedId === input.defender.ownerId
+    : attackerSurvived && (defenderHp <= 0 || attackerHp > defenderHp)
 
   const report: BattleReport = {
     attacker: startAttacker,
@@ -264,6 +299,7 @@ export function resolveRounds(
     loserId: attackerWins ? input.defender.ownerId : input.attacker.ownerId,
     attackerSurvived,
     defenderSurvived: defenderHp > 0,
+    escapedId,
     survivingTroops: {
       attacker: attacker.troops,
       defender: defender.troops,
