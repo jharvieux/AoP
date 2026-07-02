@@ -1,4 +1,5 @@
 export * from './actions'
+export * from './combat'
 export * from './content'
 export * from './economy'
 export * from './game'

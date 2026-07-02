@@ -21,6 +21,9 @@ export interface UnitLike {
   tier: 1 | 2 | 3 | 4
   goldCost: number
   weeklyGrowth: number
+  attack: number
+  defense: number
+  health: number
 }
 
 export interface ShipLike {

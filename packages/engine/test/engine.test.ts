@@ -5,10 +5,12 @@ import {
   createGame,
   currentlyVisibleTiles,
   currentPlayer,
+  estimateOdds,
   InvalidActionError,
   nextFloat,
   nextInt,
   replay,
+  resolveCombat,
   seedRng,
   tilesInRadius,
   visibleState,
@@ -24,9 +26,33 @@ const testCatalog: ContentCatalog = {
     barracks: { produces: {}, cost: { gold: 150 }, requires: 'townhall', unlocksTier: 1 },
   },
   units: {
-    deckhand: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8 },
-    buccaneer: { factionId: 'pirates', tier: 3, goldCost: 140, weeklyGrowth: 3 },
-    sailor: { factionId: 'british', tier: 1, goldCost: 30, weeklyGrowth: 8 },
+    deckhand: {
+      factionId: 'pirates',
+      tier: 1,
+      goldCost: 25,
+      weeklyGrowth: 8,
+      attack: 2,
+      defense: 1,
+      health: 6,
+    },
+    buccaneer: {
+      factionId: 'pirates',
+      tier: 3,
+      goldCost: 140,
+      weeklyGrowth: 3,
+      attack: 8,
+      defense: 5,
+      health: 24,
+    },
+    sailor: {
+      factionId: 'british',
+      tier: 1,
+      goldCost: 30,
+      weeklyGrowth: 8,
+      attack: 3,
+      defense: 1,
+      health: 7,
+    },
   },
   ships: {
     sloop: { crewCapacity: 4 },
@@ -452,5 +478,40 @@ describe('visibility', () => {
     const after = visibleState(state, 'p1')
     expect(after.explored).toEqual(expect.arrayContaining(after.visible))
     expect(state.exploredTiles.p1!.length).toBe(after.explored.length)
+  })
+})
+
+describe('combat', () => {
+  it('resolveCombat is a pure, deterministic function of its inputs', () => {
+    const [, a] = resolveCombat({ deckhand: 5 }, { sailor: 5 }, testCatalog, seedRng(99))
+    const [, b] = resolveCombat({ deckhand: 5 }, { sailor: 5 }, testCatalog, seedRng(99))
+    expect(a).toEqual(b)
+  })
+
+  it('declares a winner (or draw) and never lets losses exceed the starting army', () => {
+    const [, result] = resolveCombat({ deckhand: 6 }, { buccaneer: 2 }, testCatalog, seedRng(7))
+    expect(['attacker', 'defender', 'draw']).toContain(result.winner)
+    expect(result.attackerLosses.deckhand ?? 0).toBeLessThanOrEqual(6)
+    expect(result.defenderLosses.buccaneer ?? 0).toBeLessThanOrEqual(2)
+    expect((result.attackerSurvivors.deckhand ?? 0) + (result.attackerLosses.deckhand ?? 0)).toBe(6)
+  })
+
+  it('advances the returned RngState so repeated battles do not repeat the same rolls', () => {
+    const [stateAfterFirst] = resolveCombat({ deckhand: 3 }, { sailor: 3 }, testCatalog, seedRng(1))
+    expect(stateAfterFirst).not.toBe(seedRng(1))
+  })
+
+  it('estimateOdds is deterministic for the same scratch seed and takes no GameState RngState', () => {
+    // estimateOdds only ever accepts a plain scratchSeed number, never the
+    // GameState's RngState — Monte Carlo trials can never advance game RNG.
+    const a = estimateOdds({ deckhand: 4 }, { sailor: 4 }, testCatalog, 12345, 50)
+    const b = estimateOdds({ deckhand: 4 }, { sailor: 4 }, testCatalog, 12345, 50)
+    expect(a).toEqual(b)
+  })
+
+  it('estimateOdds gives the overwhelmingly stronger side a near-certain win', () => {
+    const odds = estimateOdds({ buccaneer: 10 }, { sailor: 1 }, testCatalog, 2024, 50)
+    expect(odds.attackerWinProbability).toBeGreaterThan(0.9)
+    expect(odds.attackerWinProbability + odds.defenderWinProbability + odds.drawProbability).toBe(1)
   })
 })

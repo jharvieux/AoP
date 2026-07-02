@@ -11,6 +11,7 @@ import {
 import { BUILDINGS, FACTIONS, SHIP_CLASSES } from '@aop/content'
 import { useState } from 'react'
 import { CityScreen } from './CityScreen'
+import { CombatScreen } from './CombatScreen'
 import { MapCanvas } from './MapCanvas'
 import { ResourceHud } from './ResourceHud'
 import { SaveScreen } from './SaveScreen'
@@ -28,6 +29,9 @@ const CATALOG: ContentCatalog = {
           tier: unit.tier,
           goldCost: unit.goldCost,
           weeklyGrowth: unit.weeklyGrowth,
+          attack: unit.attack,
+          defense: unit.defense,
+          health: unit.health,
         },
       ]),
     ),
@@ -59,12 +63,15 @@ export function App() {
   const [actionLog, setActionLog] = useState<Action[]>([])
   const [cityScreenOpen, setCityScreenOpen] = useState(false)
   const [saveScreenOpen, setSaveScreenOpen] = useState(false)
+  const [combatScreenOpen, setCombatScreenOpen] = useState(false)
   const player = currentPlayer(game)
   const homeCity = game.cities.find((c) => c.ownerId === player.id)
   const homeCaptain = game.captains.find((c) => c.ownerId === player.id)
   const shipCrewCapacity = homeCaptain
     ? (CATALOG.ships[homeCaptain.shipClassId]?.crewCapacity ?? 0)
     : 0
+  const opponentFaction =
+    game.players.find((p) => p.faction !== player.faction)?.faction ?? 'british'
 
   /** Applies one action, appends it to the replayable log, and returns the new state. */
   function dispatch(base: GameState, actions: Action[], action: Action): GameState {
@@ -161,6 +168,13 @@ export function App() {
         <button className="primary secondary" onClick={() => setSaveScreenOpen(true)}>
           Saves
         </button>
+        <button
+          className="primary secondary"
+          onClick={() => setCombatScreenOpen(true)}
+          disabled={!homeCity}
+        >
+          Drill
+        </button>
         <button className="primary" onClick={endTurn} disabled={player.isAI}>
           End Turn
         </button>
@@ -186,6 +200,15 @@ export function App() {
           onClose={() => setSaveScreenOpen(false)}
           onSave={saveToSlot}
           onLoad={loadFromSlot}
+        />
+      )}
+      {combatScreenOpen && homeCity && (
+        <CombatScreen
+          attackerGarrison={homeCity.garrison}
+          attackerRoster={FACTIONS[player.faction].units}
+          opponentRoster={FACTIONS[opponentFaction].units}
+          catalog={CATALOG}
+          onClose={() => setCombatScreenOpen(false)}
         />
       )}
     </div>
