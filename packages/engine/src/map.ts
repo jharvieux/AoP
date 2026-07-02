@@ -41,9 +41,6 @@ export const MAP_DIMENSIONS: Record<MapSize, number> = {
 
 const SIZE_CODE: Record<MapSize, number> = { small: 1, medium: 2, large: 3 }
 
-/** Radius (in tiles) of each identical home island disc. */
-const HOME_ISLAND_RADIUS = 2
-
 export function tileIndex(map: GameMap, x: number, y: number): number {
   return y * map.width + x
 }
@@ -90,7 +87,12 @@ function seedForMap(seed: number, mapSize: MapSize, playerCount: number): RngSta
   return seedRng(mixed >>> 0)
 }
 
-export function generateMap(seed: number, mapSize: MapSize, playerCount: number): GameMap {
+export function generateMap(
+  seed: number,
+  mapSize: MapSize,
+  playerCount: number,
+  homeIslandRadius: number,
+): GameMap {
   if (playerCount < 2 || playerCount > 8) {
     throw new Error(`playerCount must be 2-8, got ${playerCount}`)
   }
@@ -137,7 +139,7 @@ export function generateMap(seed: number, mapSize: MapSize, playerCount: number)
     const cx = Math.round(center.x + Math.cos(angle) * ringRadius)
     const cy = Math.round(center.y + Math.sin(angle) * ringRadius)
     islandCenters.push({ x: cx, y: cy })
-    carveDisc(cx, cy, HOME_ISLAND_RADIUS, i)
+    carveDisc(cx, cy, homeIslandRadius, i)
   }
 
   // Neutral islands: scatter a size-scaled number away from home islands and each
@@ -148,7 +150,7 @@ export function generateMap(seed: number, mapSize: MapSize, playerCount: number)
   let attempts = 0
   const placed: Array<{ c: Coord; r: number }> = islandCenters.map((c) => ({
     c,
-    r: HOME_ISLAND_RADIUS,
+    r: homeIslandRadius,
   }))
   let neutralPlaced = 0
   while (neutralPlaced < neutralCount && attempts < neutralCount * 20) {
@@ -161,7 +163,7 @@ export function generateMap(seed: number, mapSize: MapSize, playerCount: number)
     ;[rng, fr] = nextFloat(rng)
     const cx = 2 + Math.floor(fx * (width - 4))
     const cy = 2 + Math.floor(fy * (height - 4))
-    const radius = 1 + Math.floor(fr * HOME_ISLAND_RADIUS)
+    const radius = 1 + Math.floor(fr * homeIslandRadius)
     const c = { x: cx, y: cy }
     const clash = placed.some((p) => chebyshevDistance(p.c, c) < p.r + radius + 2)
     if (clash) continue

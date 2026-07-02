@@ -1,5 +1,6 @@
 import { FACTIONS } from './factions'
 import { SHIP_CLASSES } from './ships'
+import { COMBAT_TUNING, TACTICS_TUNING, type CombatTuning, type TacticsTuning } from './tuning'
 
 /**
  * Combat-relevant stats derived from the content rosters, in the plain shape the
@@ -24,6 +25,8 @@ export interface ShipCombatStats {
 export interface CombatStatsData {
   units: UnitCombatStats[]
   ships: ShipCombatStats[]
+  combat: CombatTuning
+  tactics: TacticsTuning
 }
 
 export function combatStatsData(): CombatStatsData {
@@ -41,5 +44,5 @@ export function combatStatsData(): CombatStatsData {
     cannons: s.cannons,
     speed: s.speed,
   }))
-  return { units, ships }
+  return { units, ships, combat: COMBAT_TUNING, tactics: TACTICS_TUNING }
 }

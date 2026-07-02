@@ -7,6 +7,7 @@ import {
   type RoundEndView,
   type RoundTactics,
   type RoundView,
+  type TacticsTuning,
 } from './combat'
 import type { RngState } from './rng'
 
@@ -30,15 +31,15 @@ export type TacticId = 'broadside' | 'board' | 'ram' | 'evade'
 
 export const TACTICS: readonly TacticId[] = ['broadside', 'board', 'ram', 'evade']
 
-const TACTIC_ADVANTAGE = 1.25
-const TACTIC_DISADVANTAGE = 0.8
+/** How a tactic fares against another: it wins, loses, or trades evenly. */
+export type TacticOutcome = 'advantage' | 'neutral' | 'disadvantage'
 
 /**
- * Damage multiplier for the row tactic against the column tactic. A 4-cycle:
- * broadside > ram > board > evade > broadside. Each tactic beats exactly one
- * and loses to exactly one; all other pairings are neutral (×1). Bounds are
- * [0.8, 1.25] so the widest tactical swing (1.25/0.8 ≈ 1.56×) cannot flip a 3×
- * gap.
+ * Which tactic beats which — the balance *identity*, a structural 4-cycle:
+ * broadside > ram > board > evade > broadside. Each tactic beats exactly one and
+ * loses to exactly one; every other pairing is neutral. The magnitudes of the
+ * advantage/disadvantage are tuned balance data in @aop/content ({@link
+ * TacticsTuning}) and applied by {@link tacticModifier}.
  *
  * Strategic identities (with the pin rules in {@link resolveTacticalCombat}):
  * - broadside: the gun line — safe default, shreds a charging rammer.
@@ -49,18 +50,27 @@ const TACTIC_DISADVANTAGE = 0.8
  * - evade: outsail the enemy — rakes a committed gun line and opens the door
  *   to escape, but a grapple or ram from a fast-enough chaser holds you fast.
  */
-export const TACTIC_MATRIX: Record<TacticId, Record<TacticId, number>> = {
-  broadside: { broadside: 1, board: 1, ram: TACTIC_ADVANTAGE, evade: TACTIC_DISADVANTAGE },
-  ram: { broadside: TACTIC_DISADVANTAGE, board: TACTIC_ADVANTAGE, ram: 1, evade: 1 },
-  board: { broadside: 1, board: 1, ram: TACTIC_DISADVANTAGE, evade: TACTIC_ADVANTAGE },
-  evade: { broadside: TACTIC_ADVANTAGE, board: TACTIC_DISADVANTAGE, ram: 1, evade: 1 },
+export const TACTIC_MATCHUPS: Record<TacticId, Record<TacticId, TacticOutcome>> = {
+  broadside: { broadside: 'neutral', board: 'neutral', ram: 'advantage', evade: 'disadvantage' },
+  ram: { broadside: 'disadvantage', board: 'advantage', ram: 'neutral', evade: 'neutral' },
+  board: { broadside: 'neutral', board: 'neutral', ram: 'disadvantage', evade: 'advantage' },
+  evade: { broadside: 'advantage', board: 'disadvantage', ram: 'neutral', evade: 'neutral' },
+}
+
+/** The tuned damage multiplier for a matchup outcome. */
+export function tacticModifier(outcome: TacticOutcome, tactics: TacticsTuning): number {
+  switch (outcome) {
+    case 'advantage':
+      return tactics.advantage
+    case 'disadvantage':
+      return tactics.disadvantage
+    case 'neutral':
+      return 1
+  }
 }
 
 /** Close-quarters tactics that hold an evader in the fight (see the pin rule). */
 const PINNING_TACTICS: readonly TacticId[] = ['board', 'ram']
-
-/** Hull a ship needs to bring a ram to bear. */
-const RAM_HULL_MIN = 50
 
 /**
  * Which tactics a combatant may use. This is the seam where captain skills and
@@ -71,7 +81,7 @@ export function availableTactics(combatant: Combatant, stats: CombatStats): Tact
   const out: TacticId[] = ['broadside', 'evade']
   const hasCrew = combatant.troops.some((t) => t.count > 0)
   if (hasCrew) out.push('board')
-  if (stats.ship(combatant.shipClassId).hull >= RAM_HULL_MIN) out.push('ram')
+  if (stats.ship(combatant.shipClassId).hull >= stats.tactics.ramHullMin) out.push('ram')
   return out
 }
 
@@ -117,15 +127,12 @@ export interface StandingOrder {
   tactic: TacticId
 }
 
-/** How badly outweighed a fleet must be before 'outgunned' fires. */
-const OUTGUNNED_RATIO = 1.5
-
-function conditionHolds(when: OrderCondition, ctx: TacticContext): boolean {
+function conditionHolds(when: OrderCondition, ctx: TacticContext, outgunnedRatio: number): boolean {
   switch (when) {
     case 'always':
       return true
     case 'outgunned':
-      return ctx.enemyStrength >= ctx.ownStrength * OUTGUNNED_RATIO
+      return ctx.enemyStrength >= ctx.ownStrength * outgunnedRatio
     case 'winning':
       return ctx.ownHp > ctx.enemyHp
     case 'losing':
@@ -143,13 +150,20 @@ function conditionHolds(when: OrderCondition, ctx: TacticContext): boolean {
  *   [{ when: 'outgunned', tactic: 'evade' }, { when: 'always', tactic: 'broadside' }]
  *
  * Rules whose tactic isn't currently available are skipped; if nothing matches
- * the fleet falls back to broadside (always available).
+ * the fleet falls back to broadside (always available). `outgunnedRatio` is the
+ * tuned threshold the 'outgunned' condition keys on (balance data, @aop/content).
  */
-export function standingOrdersDriver(orders: readonly StandingOrder[]): TacticDriver {
+export function standingOrdersDriver(
+  orders: readonly StandingOrder[],
+  outgunnedRatio: number,
+): TacticDriver {
   return {
     choose(ctx) {
       for (const order of orders) {
-        if (ctx.available.includes(order.tactic) && conditionHolds(order.when, ctx)) {
+        if (
+          ctx.available.includes(order.tactic) &&
+          conditionHolds(order.when, ctx, outgunnedRatio)
+        ) {
           return order.tactic
         }
       }
@@ -260,8 +274,14 @@ export function resolveTacticalCombat(
     return {
       attackerTactic,
       defenderTactic,
-      attackerModifier: TACTIC_MATRIX[attackerTactic][defenderTactic],
-      defenderModifier: TACTIC_MATRIX[defenderTactic][attackerTactic],
+      attackerModifier: tacticModifier(
+        TACTIC_MATCHUPS[attackerTactic][defenderTactic],
+        stats.tactics,
+      ),
+      defenderModifier: tacticModifier(
+        TACTIC_MATCHUPS[defenderTactic][attackerTactic],
+        stats.tactics,
+      ),
     }
   }
 

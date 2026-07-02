@@ -10,18 +10,21 @@ import {
   isWaterTile,
   pathCost,
   replay,
-  STARTING_CAPTAIN_MOVEMENT,
   tileAt,
   type Action,
   type GameConfig,
   type GameState,
 } from '../src'
+import { GAME_SETUP } from './fixtures'
+
+const STARTING_CAPTAIN_MOVEMENT = GAME_SETUP.startingCaptainMovement
 
 function testConfig(playerCount = 3): GameConfig {
   const factions = ['pirates', 'british', 'spanish', 'dutch'] as const
   return {
     seed: 42,
     mapSize: 'medium',
+    setup: GAME_SETUP,
     players: Array.from({ length: playerCount }, (_, i) => ({
       id: `p${i + 1}`,
       name: `Player ${i + 1}`,

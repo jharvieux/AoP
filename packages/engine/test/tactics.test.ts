@@ -7,14 +7,16 @@ import {
   resolveTacticalCombat,
   seedRng,
   standingOrdersDriver,
+  tacticModifier,
   tacticPlanDriver,
-  TACTIC_MATRIX,
+  TACTIC_MATCHUPS,
   TACTICS,
   type Combatant,
   type CombatStatsData,
   type TacticContext,
   type TacticId,
 } from '../src'
+import { COMBAT_TUNING, TACTICS_TUNING } from './fixtures'
 
 const STATS: CombatStatsData = {
   units: [
@@ -25,6 +27,8 @@ const STATS: CombatStatsData = {
     { id: 'sloop', hull: 40, cannons: 6, speed: 5 },
     { id: 'galleon', hull: 160, cannons: 36, speed: 2 },
   ],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
 }
 const stats = createCombatStats(STATS)
 
@@ -48,20 +52,20 @@ function ctx(overrides: Partial<TacticContext> = {}): TacticContext {
 }
 
 describe('tactic matrix', () => {
-  it('stays inside the balance-safe band [0.8, 1.25]', () => {
+  it('stays inside the balance-safe band [disadvantage, advantage]', () => {
     for (const own of TACTICS) {
       for (const opp of TACTICS) {
-        const m = TACTIC_MATRIX[own][opp]
-        expect(m).toBeGreaterThanOrEqual(0.8)
-        expect(m).toBeLessThanOrEqual(1.25)
+        const m = tacticModifier(TACTIC_MATCHUPS[own][opp], TACTICS_TUNING)
+        expect(m).toBeGreaterThanOrEqual(TACTICS_TUNING.disadvantage)
+        expect(m).toBeLessThanOrEqual(TACTICS_TUNING.advantage)
       }
     }
   })
 
   it('forms a clean 4-cycle: each tactic beats exactly one and loses to one', () => {
     for (const own of TACTICS) {
-      const beats = TACTICS.filter((opp) => TACTIC_MATRIX[own][opp] > 1)
-      const losesTo = TACTICS.filter((opp) => TACTIC_MATRIX[own][opp] < 1)
+      const beats = TACTICS.filter((opp) => TACTIC_MATCHUPS[own][opp] === 'advantage')
+      const losesTo = TACTICS.filter((opp) => TACTIC_MATCHUPS[own][opp] === 'disadvantage')
       expect(beats).toHaveLength(1)
       expect(losesTo).toHaveLength(1)
     }
@@ -90,27 +94,36 @@ describe('tacticPlanDriver (interactive plan)', () => {
 
 describe('standingOrdersDriver (offline defence)', () => {
   it("expresses the D-002 canonical plan: 'evade if outgunned, else broadside'", () => {
-    const driver = standingOrdersDriver([
-      { when: 'outgunned', tactic: 'evade' },
-      { when: 'always', tactic: 'broadside' },
-    ])
+    const driver = standingOrdersDriver(
+      [
+        { when: 'outgunned', tactic: 'evade' },
+        { when: 'always', tactic: 'broadside' },
+      ],
+      TACTICS_TUNING.outgunnedRatio,
+    )
     expect(driver.choose(ctx({ ownStrength: 10, enemyStrength: 30 }))).toBe('evade')
     expect(driver.choose(ctx({ ownStrength: 10, enemyStrength: 11 }))).toBe('broadside')
   })
 
   it('skips rules whose tactic is unavailable instead of abandoning the plan', () => {
-    const driver = standingOrdersDriver([
-      { when: 'always', tactic: 'ram' },
-      { when: 'always', tactic: 'board' },
-    ])
+    const driver = standingOrdersDriver(
+      [
+        { when: 'always', tactic: 'ram' },
+        { when: 'always', tactic: 'board' },
+      ],
+      TACTICS_TUNING.outgunnedRatio,
+    )
     expect(driver.choose(ctx({ available: ['broadside', 'evade', 'board'] }))).toBe('board')
   })
 
   it("can react to a fleeing enemy via 'enemyEvaded'", () => {
-    const driver = standingOrdersDriver([
-      { when: 'enemyEvaded', tactic: 'board' },
-      { when: 'always', tactic: 'broadside' },
-    ])
+    const driver = standingOrdersDriver(
+      [
+        { when: 'enemyEvaded', tactic: 'board' },
+        { when: 'always', tactic: 'broadside' },
+      ],
+      TACTICS_TUNING.outgunnedRatio,
+    )
     expect(driver.choose(ctx({ enemyLastTactic: 'evade' }))).toBe('board')
     expect(driver.choose(ctx({ enemyLastTactic: null }))).toBe('broadside')
   })

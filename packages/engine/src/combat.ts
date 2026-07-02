@@ -31,15 +31,41 @@ export interface ShipCombatStats {
   speed: number
 }
 
+/**
+ * Tuned weights for the round resolver. Balance data, so it lives in @aop/content
+ * (never hardcoded here) and is injected via {@link CombatStatsData}.
+ */
+export interface CombatTuning {
+  maxRounds: number
+  damageRollMin: number
+  damageRollSpread: number
+  hullStrengthWeight: number
+  cannonStrengthWeight: number
+  troopDefenseWeight: number
+  damageScale: number
+}
+
+/** Tuned knobs for the hybrid-tactics layer. Balance data, injected like {@link CombatTuning}. */
+export interface TacticsTuning {
+  advantage: number
+  disadvantage: number
+  ramHullMin: number
+  outgunnedRatio: number
+}
+
 /** Plain, JSON-serializable snapshot of the combat-relevant content numbers. */
 export interface CombatStatsData {
   units: UnitCombatStats[]
   ships: ShipCombatStats[]
+  combat: CombatTuning
+  tactics: TacticsTuning
 }
 
 export interface CombatStats {
   unit(id: string): UnitCombatStats
   ship(id: string): ShipCombatStats
+  combat: CombatTuning
+  tactics: TacticsTuning
 }
 
 export function createCombatStats(data: CombatStatsData): CombatStats {
@@ -56,6 +82,8 @@ export function createCombatStats(data: CombatStatsData): CombatStats {
       if (!s) throw new Error(`Unknown ship stats: ${id}`)
       return s
     },
+    combat: data.combat,
+    tactics: data.tactics,
   }
 }
 
@@ -158,20 +186,6 @@ export const noTactics: TacticChooser = () => ({
   defenderModifier: 1,
 })
 
-const MAX_ROUNDS = 20
-const DAMAGE_ROLL_MIN = 0.85
-const DAMAGE_ROLL_SPREAD = 0.3
-const HULL_STRENGTH_WEIGHT = 0.25
-const CANNON_STRENGTH_WEIGHT = 1
-const TROOP_DEFENSE_WEIGHT = 0.5
-/**
- * Fraction of raw strength dealt as damage per round. Tuned via the balance
- * harness (#24): higher values make even fights end in mutual destruction the
- * same round; this stretches duels to ~6-8 rounds so the stronger fleet reliably
- * pulls ahead and decisive results dominate over draws.
- */
-const DAMAGE_SCALE = 0.35
-
 interface Side {
   combatant: Combatant
   troops: TroopStack[]
@@ -189,10 +203,11 @@ function sideHp(side: Side, stats: CombatStats): number {
 /** Effective fighting strength: ship guns + crew offense. Captain modifier is a v1 stub (×1). */
 export function combatantStrength(combatant: Combatant, stats: CombatStats): number {
   const ship = stats.ship(combatant.shipClassId)
-  const shipStrength = ship.hull * HULL_STRENGTH_WEIGHT + ship.cannons * CANNON_STRENGTH_WEIGHT
+  const shipStrength =
+    ship.hull * stats.combat.hullStrengthWeight + ship.cannons * stats.combat.cannonStrengthWeight
   const troopStrength = combatant.troops.reduce((sum, t) => {
     const u = stats.unit(t.unitId)
-    return sum + t.count * (u.attack + u.defense * TROOP_DEFENSE_WEIGHT)
+    return sum + t.count * (u.attack + u.defense * stats.combat.troopDefenseWeight)
   }, 0)
   const captainModifier = 1
   return (shipStrength + troopStrength) * captainModifier
@@ -242,7 +257,11 @@ export function resolveRounds(
   let state = rng
   let round = 0
   let escapedId: string | null = null
-  while (round < MAX_ROUNDS && sideHp(attacker, stats) > 0 && sideHp(defender, stats) > 0) {
+  while (
+    round < stats.combat.maxRounds &&
+    sideHp(attacker, stats) > 0 &&
+    sideHp(defender, stats) > 0
+  ) {
     round++
     const atkStrength = combatantStrength({ ...attacker.combatant, troops: attacker.troops }, stats)
     const defStrength = combatantStrength({ ...defender.combatant, troops: defender.troops }, stats)
@@ -262,14 +281,14 @@ export function resolveRounds(
 
     const attackerDamage =
       atkStrength *
-      (DAMAGE_ROLL_MIN + atkRoll * DAMAGE_ROLL_SPREAD) *
+      (stats.combat.damageRollMin + atkRoll * stats.combat.damageRollSpread) *
       tactics.attackerModifier *
-      DAMAGE_SCALE
+      stats.combat.damageScale
     const defenderDamage =
       defStrength *
-      (DAMAGE_ROLL_MIN + defRoll * DAMAGE_ROLL_SPREAD) *
+      (stats.combat.damageRollMin + defRoll * stats.combat.damageRollSpread) *
       tactics.defenderModifier *
-      DAMAGE_SCALE
+      stats.combat.damageScale
 
     applyDamage(defender, attackerDamage, stats)
     applyDamage(attacker, defenderDamage, stats)

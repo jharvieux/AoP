@@ -18,7 +18,7 @@
  * exists; the harness itself is complete.
  */
 
-import { combatStatsData, FACTIONS } from '@aop/content'
+import { combatStatsData, FACTIONS, GAME_SETUP } from '@aop/content'
 import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
 import { runTournament, type GameConfig } from '@aop/engine'
 
@@ -34,6 +34,7 @@ function duel(seed: number, size: MapSize, a: FactionId, b: FactionId): GameConf
   return {
     seed,
     mapSize: size,
+    setup: GAME_SETUP,
     combatStats: combatStatsData(),
     players: [
       { id: 'p1', name: a, faction: a, isAI: true, startingTroops: startingTroops(a) },

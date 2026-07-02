@@ -4,7 +4,7 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
-## D-012 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
+## D-013 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
 
 **Decision**: Land the deterministic engine core for Phase 1 in one sweep (issues
 #6/#8/#12/#13/#18/#24). Key design choices: (1) square grid + 8-dir movement, home islands

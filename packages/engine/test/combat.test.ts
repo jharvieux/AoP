@@ -5,13 +5,16 @@ import {
   combatantStrength,
   createCombatStats,
   createGame,
+  replay,
   resolveCombat,
   seedRng,
+  type Action,
   type Combatant,
   type CombatStatsData,
   type GameConfig,
   type GameState,
 } from '../src'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
 const STATS: CombatStatsData = {
   units: [
@@ -22,6 +25,8 @@ const STATS: CombatStatsData = {
     { id: 'sloop', hull: 40, cannons: 6, speed: 5 },
     { id: 'galleon', hull: 160, cannons: 36, speed: 2 },
   ],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
 }
 
 const stats = createCombatStats(STATS)
@@ -100,6 +105,7 @@ function combatConfig(): GameConfig {
   return {
     seed: 7,
     mapSize: 'small',
+    setup: GAME_SETUP,
     players: [
       {
         id: 'p1',
@@ -195,6 +201,40 @@ describe('attackCaptain action', () => {
     expect(battleReport!.escapedId).toBe('p2')
     expect(next.captains.some((c) => c.id === p2cap.id)).toBe(true)
     expect(next.status).toBe('active')
+  })
+
+  it('replays an attackCaptain log — combat RNG and standing orders — to an identical state', () => {
+    // The replay contract for combat: the same initial state and log (a defender
+    // setting standing orders, then an attack resolved through the seeded combat
+    // RNG) must reproduce byte-identical state. Mirrors the moveCaptain replay
+    // test; extends the log contract to cover attackCaptain (per CLAUDE.md).
+    const base = adjacentBattleState()
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      {
+        type: 'setStandingOrders',
+        playerId: 'p2',
+        captainId: p2cap.id,
+        orders: [
+          { when: 'outgunned', tactic: 'evade' },
+          { when: 'always', tactic: 'broadside' },
+        ],
+      },
+      { type: 'endTurn', playerId: 'p2' },
+      {
+        type: 'attackCaptain',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCaptainId: p2cap.id,
+        attackerOrders: ['broadside', 'board'],
+      },
+    ]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
   })
 })
 

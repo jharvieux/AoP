@@ -9,6 +9,7 @@ import {
   type GameConfig,
   type GameState,
 } from '../src'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
 const STATS: CombatStatsData = {
   units: [
@@ -16,12 +17,15 @@ const STATS: CombatStatsData = {
     { id: 'elite', attack: 12, defense: 8, health: 40 },
   ],
   ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
 }
 
 function config(p1Troops: number, p2Troops: number, unit = 'grunt'): GameConfig {
   return {
     seed: 3,
     mapSize: 'medium',
+    setup: GAME_SETUP,
     players: [
       {
         id: 'p1',

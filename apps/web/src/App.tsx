@@ -1,5 +1,5 @@
 import { applyAction, createGame, currentPlayer, nextAiAction, type GameState } from '@aop/engine'
-import { combatStatsData, FACTIONS } from '@aop/content'
+import { combatStatsData, FACTIONS, GAME_SETUP } from '@aop/content'
 import { useEffect, useState } from 'react'
 import { MapCanvas } from './MapCanvas'
 
@@ -13,6 +13,7 @@ function newDemoGame(): GameState {
   return createGame({
     seed: 1,
     mapSize: 'small',
+    setup: GAME_SETUP,
     combatStats: combatStatsData(),
     players: [
       {

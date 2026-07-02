@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MapSize } from '@aop/shared'
 import { runTournament, simulateMatch, type CombatStatsData, type GameConfig } from '../src'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
 // Two rosters: 'even_a'/'even_b' are identical (balanced); 'strong'/'weak' are not.
 const STATS: CombatStatsData = {
@@ -10,6 +11,8 @@ const STATS: CombatStatsData = {
     { id: 'weak', attack: 3, defense: 1, health: 8 },
   ],
   ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
 }
 
 function duel(
@@ -21,6 +24,7 @@ function duel(
   return {
     seed,
     mapSize: size,
+    setup: GAME_SETUP,
     combatStats: STATS,
     players: [
       {

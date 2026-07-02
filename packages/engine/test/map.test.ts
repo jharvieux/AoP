@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MapSize } from '@aop/shared'
 import { chebyshevDistance } from '@aop/shared'
 import {
-  generateMap,
+  generateMap as generateMapRaw,
   isWaterTile,
   MAP_DIMENSIONS,
   neighbors8,
@@ -10,6 +10,11 @@ import {
   tileIndex,
   type GameMap,
 } from '../src'
+import { GAME_SETUP } from './fixtures'
+
+/** Wrap the generator with the home-island radius the engine now receives from content. */
+const generateMap = (seed: number, mapSize: MapSize, playerCount: number): GameMap =>
+  generateMapRaw(seed, mapSize, playerCount, GAME_SETUP.homeIslandRadius)
 
 function landCount(map: GameMap): number {
   return map.tiles.filter((t) => t.type === 'land' || t.type === 'port').length

@@ -3,17 +3,6 @@ import { generateMap } from './map'
 import { seedRng } from './rng'
 import type { Captain, GameConfig, GameState } from './types'
 
-const STARTING_GOLD = 1000
-
-/**
- * Movement points a starting captain regains each turn. A game-rule default;
- * once shipyards land, this will be driven by the flagship's content speed stat.
- */
-export const STARTING_CAPTAIN_MOVEMENT = 5
-
-/** The flagship class every player starts with until shipyards are built. */
-export const STARTING_SHIP_CLASS = 'sloop'
-
 export function createGame(config: GameConfig): GameState {
   if (config.players.length < 2) {
     throw new Error('A game needs at least 2 players')
@@ -26,15 +15,21 @@ export function createGame(config: GameConfig): GameState {
     throw new Error('Player ids must be unique')
   }
 
-  const map = generateMap(config.seed, config.mapSize, config.players.length)
+  const { setup } = config
+  const map = generateMap(
+    config.seed,
+    config.mapSize,
+    config.players.length,
+    setup.homeIslandRadius,
+  )
 
   const captains: Captain[] = config.players.map((p, i) => ({
     id: `cap-${p.id}`,
     ownerId: p.id,
     position: { ...map.startPositions[i]! },
-    shipClassId: STARTING_SHIP_CLASS,
-    movementPoints: STARTING_CAPTAIN_MOVEMENT,
-    maxMovementPoints: STARTING_CAPTAIN_MOVEMENT,
+    shipClassId: setup.startingShipClass,
+    movementPoints: setup.startingCaptainMovement,
+    maxMovementPoints: setup.startingCaptainMovement,
     troops: (p.startingTroops ?? []).map((t) => ({ ...t })),
   }))
 
@@ -48,7 +43,7 @@ export function createGame(config: GameConfig): GameState {
       name: p.name,
       faction: p.faction,
       isAI: p.isAI,
-      resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
+      resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
     })),
     captains,

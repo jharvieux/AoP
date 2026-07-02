@@ -166,7 +166,7 @@ function attackCaptain(
         ? tacticPlanDriver(action.attackerOrders)
         : aiTacticDriver,
       defender: target.standingOrders?.length
-        ? standingOrdersDriver(target.standingOrders)
+        ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
         : aiTacticDriver,
     },
   )

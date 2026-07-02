@@ -45,11 +45,25 @@ export interface Captain {
   standingOrders?: StandingOrder[]
 }
 
+/**
+ * Opening-state balance data — starting economy, captain loadout, and map
+ * geometry. Injected from @aop/content by the caller so the engine holds no
+ * balance numbers; frozen into the match for replay/authority determinism.
+ */
+export interface GameSetup {
+  startingGold: number
+  startingCaptainMovement: number
+  startingShipClass: string
+  homeIslandRadius: number
+}
+
 export interface GameConfig {
   /** Seed for map generation and all in-game randomness. */
   seed: number
   mapSize: MapSize
   players: PlayerConfig[]
+  /** Opening-state balance data (economy, captain loadout, map geometry). */
+  setup: GameSetup
   /**
    * Combat-relevant stats snapshot, injected from @aop/content by the caller so
    * the engine holds no balance data. Frozen into the match for replay/authority
