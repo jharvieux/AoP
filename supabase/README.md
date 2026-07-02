@@ -42,11 +42,11 @@ actually generates.
 Three tiers, each a **separate Supabase project** (separate URL, keys, and data — never
 share a project across tiers):
 
-| Tier       | Purpose                                   | `engine_version` pinning              |
-| ---------- | ------------------------------------------ | -------------------------------------- |
-| Local      | This directory's stack, via Docker         | Whatever's checked out                 |
-| Staging    | Pre-release integration testing            | Latest merged to `main`                |
-| Production | Real player matches                        | Pinned per match at creation (§10)     |
+| Tier       | Purpose                            | `engine_version` pinning           |
+| ---------- | ---------------------------------- | ---------------------------------- |
+| Local      | This directory's stack, via Docker | Whatever's checked out             |
+| Staging    | Pre-release integration testing    | Latest merged to `main`            |
+| Production | Real player matches                | Pinned per match at creation (§10) |
 
 **Provisioning a new tier is an operator action** (Supabase account/org access and billing
 are outside what an agent session has): create the project in the
