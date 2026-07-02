@@ -18,6 +18,7 @@ import {
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
+import { useTheme } from './theme/ThemeContext'
 
 interface CityScreenProps {
   city: CityState
@@ -86,6 +87,7 @@ export function CityScreen({
   onChooseCaptainSkill,
   onUpgradeShip,
 }: CityScreenProps) {
+  const { unitName, shipName } = useTheme()
   const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
   const roster = FACTIONS[faction].units
   const unlockedTier = city.buildings.reduce(
@@ -162,7 +164,7 @@ export function CityScreen({
               const canUnload = !locked && aboard > 0 && !!captain
               return (
                 <li key={unit.id} className="garrison-row">
-                  <span className="garrison-row__name">{unit.name}</span>
+                  <span className="garrison-row__name">{unitName(unit.id, unit.name)}</span>
                   <span className="garrison-row__counts">
                     {locked
                       ? 'Locked'
@@ -213,8 +215,8 @@ export function CityScreen({
           <section>
             <h3>Shipyard{!city.buildings.includes('shipyard') ? ' (requires a Shipyard)' : ''}</h3>
             <p className="building-option__hint">
-              {shipClass.name} — Hull {shipStats.hull} · Cannons {shipStats.cannons} · Speed{' '}
-              {shipStats.speed} · Crew {shipStats.crewCapacity}
+              {shipName(shipClass.id, shipClass.name)} — Hull {shipStats.hull} · Cannons{' '}
+              {shipStats.cannons} · Speed {shipStats.speed} · Crew {shipStats.crewCapacity}
             </p>
             <ul className="building-list">
               {SHIP_UPGRADE_TRACKS.map((track) => {

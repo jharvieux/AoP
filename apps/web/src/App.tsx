@@ -4,10 +4,11 @@ import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { loadGame, saveGame } from './storage'
 import type { GameSetupConfig } from './types'
 
-type Screen = 'menu' | 'setup' | 'game' | 'game-over'
+type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs'
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -62,7 +63,13 @@ export function App() {
 
   return (
     <div className="app">
-      {screen === 'menu' && <MainMenu onStart={() => setScreen('setup')} />}
+      {screen === 'menu' && (
+        <MainMenu
+          onStart={() => setScreen('setup')}
+          onThemePacks={() => setScreen('theme-packs')}
+        />
+      )}
+      {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
       {screen === 'setup' && (
         <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
       )}

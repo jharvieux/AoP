@@ -18,6 +18,7 @@ import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
+import { useTheme } from '../theme/ThemeContext'
 
 /** How long an AI seat "thinks" between actions. Purely cosmetic pacing. */
 const AI_STEP_MS = 250
@@ -31,6 +32,7 @@ interface GameScreenProps {
 }
 
 export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScreenProps) {
+  const { factionName } = useTheme()
   const player = currentPlayer(game)
   // Fog and interaction are anchored to the human seat, so the view stays stable
   // while AI seats take their turns.
@@ -246,7 +248,8 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
       <header className="hud">
         <h1>Age of Plunder</h1>
         <span className="turn-info">
-          Round {game.round} — {player.name} ({FACTIONS[player.faction].name})
+          Round {game.round} — {player.name} (
+          {factionName(player.faction, FACTIONS[player.faction].name)})
         </span>
         <ResourceHud resources={viewer.resources} />
         <div className="button-group">
