@@ -4,6 +4,7 @@ import {
   type Action,
   type ConstructBuildingAction,
   type RecruitUnitAction,
+  type SetStandingOrderAction,
   type TransferTroopsAction,
 } from './actions'
 import type { ContentCatalog } from './content'
@@ -44,6 +45,9 @@ export function applyAction(state: GameState, action: Action, catalog: ContentCa
       break
     case 'transferTroops':
       next = transferTroops(state, action, catalog)
+      break
+    case 'setStandingOrder':
+      next = setStandingOrder(state, action)
       break
   }
 
@@ -207,6 +211,36 @@ function transferTroops(
       cap.id === captain.id
         ? { ...cap, troopsAboard: { ...cap.troopsAboard, [action.unitId]: aboardCount - delta } }
         : cap,
+    ),
+  }
+}
+
+/** Sets the defensive policy the combat driver consults if this city/fleet is attacked. */
+function setStandingOrder(state: GameState, action: SetStandingOrderAction): GameState {
+  if (action.targetType === 'city') {
+    const city = state.cities.find((c) => c.id === action.targetId)
+    if (!city || city.ownerId !== action.playerId) {
+      throw new InvalidActionError(`No city ${action.targetId} owned by ${action.playerId}`, action)
+    }
+    return {
+      ...state,
+      cities: state.cities.map((c) =>
+        c.id === city.id ? { ...c, standingOrder: action.order } : c,
+      ),
+    }
+  }
+
+  const captain = state.captains.find((c) => c.id === action.targetId)
+  if (!captain || captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(
+      `No captain ${action.targetId} owned by ${action.playerId}`,
+      action,
+    )
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, standingOrder: action.order } : c,
     ),
   }
 }

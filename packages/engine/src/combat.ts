@@ -35,7 +35,8 @@ function armyCount(army: ArmyComposition): number {
   return Object.values(army).reduce((sum, n) => sum + n, 0)
 }
 
-function totalAttackPower(army: ArmyComposition, catalog: ContentCatalog): number {
+/** Sum of attack stat × count across an army — the "how outgunned are we" number. */
+export function totalAttackPower(army: ArmyComposition, catalog: ContentCatalog): number {
   return Object.entries(army).reduce((sum, [unitId, count]) => {
     const def = catalog.units[unitId]
     return sum + (def ? def.attack * count : 0)

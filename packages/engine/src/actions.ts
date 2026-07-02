@@ -1,3 +1,5 @@
+import type { StandingOrder } from './standingOrders'
+
 /**
  * Every mutation of GameState is an Action applied through applyAction().
  * Actions are plain JSON (they get stored in the match_actions log verbatim).
@@ -42,8 +44,22 @@ export interface TransferTroopsAction {
   count: number
 }
 
+/** Set the defensive policy for a city's garrison or a captain's fleet. */
+export interface SetStandingOrderAction {
+  type: 'setStandingOrder'
+  playerId: string
+  targetType: 'city' | 'captain'
+  targetId: string
+  order: StandingOrder
+}
+
 export type Action =
-  EndTurnAction | ResignAction | ConstructBuildingAction | RecruitUnitAction | TransferTroopsAction
+  | EndTurnAction
+  | ResignAction
+  | ConstructBuildingAction
+  | RecruitUnitAction
+  | TransferTroopsAction
+  | SetStandingOrderAction
 
 export class InvalidActionError extends Error {
   constructor(

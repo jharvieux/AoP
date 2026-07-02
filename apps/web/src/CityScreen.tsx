@@ -1,5 +1,5 @@
 import { BUILDINGS, buildingDisplayName, FACTIONS, type BuildingDef } from '@aop/content'
-import type { CaptainState, CityState } from '@aop/engine'
+import type { CaptainState, CityState, StandingOrder } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 
@@ -13,6 +13,16 @@ interface CityScreenProps {
   onBuild: (buildingId: string) => void
   onRecruit: (unitId: string) => void
   onTransfer: (direction: 'toShip' | 'toGarrison', unitId: string) => void
+  onSetStandingOrder: (
+    targetType: 'city' | 'captain',
+    targetId: string,
+    order: StandingOrder,
+  ) => void
+}
+
+const STANDING_ORDER_LABELS: Record<StandingOrder, string> = {
+  fightToTheShip: 'Fight to the ship',
+  evadeIfOutgunned: 'Evade if outgunned',
 }
 
 function costLabel(cost: BuildingDef['cost']): string {
@@ -37,6 +47,7 @@ export function CityScreen({
   onBuild,
   onRecruit,
   onTransfer,
+  onSetStandingOrder,
 }: CityScreenProps) {
   const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
   const roster = FACTIONS[faction].units
@@ -129,6 +140,46 @@ export function CityScreen({
                 </li>
               )
             })}
+          </ul>
+        </section>
+
+        <section>
+          <h3>Standing orders</h3>
+          <p className="building-option__hint">
+            Consulted by the combat driver when this garrison or fleet is attacked while you're
+            offline.
+          </p>
+          <ul className="building-list">
+            <li className="garrison-row">
+              <span className="garrison-row__name">Garrison — {city.name}</span>
+              <div className="garrison-row__actions">
+                {(Object.keys(STANDING_ORDER_LABELS) as StandingOrder[]).map((order) => (
+                  <button
+                    key={order}
+                    disabled={city.standingOrder === order}
+                    onClick={() => onSetStandingOrder('city', city.id, order)}
+                  >
+                    {STANDING_ORDER_LABELS[order]}
+                  </button>
+                ))}
+              </div>
+            </li>
+            {captain && (
+              <li className="garrison-row">
+                <span className="garrison-row__name">Fleet — {captain.name}</span>
+                <div className="garrison-row__actions">
+                  {(Object.keys(STANDING_ORDER_LABELS) as StandingOrder[]).map((order) => (
+                    <button
+                      key={order}
+                      disabled={captain.standingOrder === order}
+                      onClick={() => onSetStandingOrder('captain', captain.id, order)}
+                    >
+                      {STANDING_ORDER_LABELS[order]}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            )}
           </ul>
         </section>
       </div>

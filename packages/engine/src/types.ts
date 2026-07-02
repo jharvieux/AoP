@@ -1,5 +1,6 @@
 import type { FactionId, MapSize, ResourcePool, TileCoord } from '@aop/shared'
 import type { RngState } from './rng'
+import type { StandingOrder } from './standingOrders'
 
 export interface PlayerConfig {
   id: string
@@ -47,6 +48,8 @@ export interface CityState {
   garrison: Record<string, number>
   /** Recruits currently available to buy, keyed by unit id (weekly-growth style). */
   unitAvailability: Record<string, number>
+  /** Defensive policy consulted by the combat driver before the garrison is attacked. */
+  standingOrder: StandingOrder
 }
 
 /** A player's captain: a flagship with troops aboard. Map position arrives with world map gen. */
@@ -57,6 +60,8 @@ export interface CaptainState {
   shipClassId: string
   /** Troops aboard the flagship, keyed by unit id. Bounded by the ship's crew capacity. */
   troopsAboard: Record<string, number>
+  /** Defensive policy consulted by the combat driver before this fleet is attacked. */
+  standingOrder: StandingOrder
 }
 
 /**

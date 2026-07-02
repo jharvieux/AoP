@@ -5,12 +5,14 @@ import {
   createGame,
   currentlyVisibleTiles,
   currentPlayer,
+  decideEngagement,
   estimateOdds,
   InvalidActionError,
   nextFloat,
   nextInt,
   replay,
   resolveCombat,
+  resolveEncounter,
   seedRng,
   tilesInRadius,
   visibleState,
@@ -513,5 +515,146 @@ describe('combat', () => {
     const odds = estimateOdds({ buccaneer: 10 }, { sailor: 1 }, testCatalog, 2024, 50)
     expect(odds.attackerWinProbability).toBeGreaterThan(0.9)
     expect(odds.attackerWinProbability + odds.defenderWinProbability + odds.drawProbability).toBe(1)
+  })
+})
+
+describe('standing orders', () => {
+  it('fightToTheShip always engages, regardless of power difference', () => {
+    const decision = decideEngagement(100, 1, 'fightToTheShip')
+    expect(decision).toEqual({ engage: true, reason: 'standard' })
+  })
+
+  it('evadeIfOutgunned evades only when the attacker has more raw power', () => {
+    expect(decideEngagement(100, 1, 'evadeIfOutgunned')).toEqual({
+      engage: false,
+      reason: 'outgunned',
+    })
+    expect(decideEngagement(1, 100, 'evadeIfOutgunned')).toEqual({
+      engage: true,
+      reason: 'standard',
+    })
+  })
+
+  it('resolveEncounter skips resolveCombat entirely when the defender evades', () => {
+    const [nextRng, outcome] = resolveEncounter(
+      { buccaneer: 10 },
+      { deckhand: 1 },
+      'evadeIfOutgunned',
+      testCatalog,
+      seedRng(1),
+    )
+    expect(outcome.decision.engage).toBe(false)
+    expect(outcome.combat).toBeUndefined()
+    // No combat happened, so the RngState must be untouched.
+    expect(nextRng).toEqual(seedRng(1))
+  })
+
+  it('resolveEncounter runs the real resolver when the defender stands and fights', () => {
+    const [, outcome] = resolveEncounter(
+      { deckhand: 5 },
+      { sailor: 5 },
+      'fightToTheShip',
+      testCatalog,
+      seedRng(1),
+    )
+    expect(outcome.decision.engage).toBe(true)
+    expect(outcome.combat).toBeDefined()
+    expect(['attacker', 'defender', 'draw']).toContain(outcome.combat!.winner)
+  })
+
+  it('setStandingOrder persists the order on the owner city and is rejected for non-owners', () => {
+    let state = createGame(testConfig(2))
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    state = applyAction(
+      state,
+      {
+        type: 'setStandingOrder',
+        playerId: 'p1',
+        targetType: 'city',
+        targetId: city.id,
+        order: 'evadeIfOutgunned',
+      },
+      testCatalog,
+    )
+    expect(state.cities.find((c) => c.id === city.id)!.standingOrder).toBe('evadeIfOutgunned')
+
+    // Hand the turn to p2, then have p2 try to set an order on p1's city.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'setStandingOrder',
+          playerId: 'p2',
+          targetType: 'city',
+          targetId: city.id,
+          order: 'fightToTheShip',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('new cities default to fightToTheShip', () => {
+    const state = createGame(testConfig(2))
+    expect(state.cities.every((c) => c.standingOrder === 'fightToTheShip')).toBe(true)
+  })
+
+  it('setStandingOrder persists the order on the owner captain and is rejected for non-owners', () => {
+    let state = createGame({ ...testConfig(2), startingShipClassId: 'sloop' })
+    const captain = state.captains.find((c) => c.ownerId === 'p1')!
+    expect(captain.standingOrder).toBe('fightToTheShip')
+
+    state = applyAction(
+      state,
+      {
+        type: 'setStandingOrder',
+        playerId: 'p1',
+        targetType: 'captain',
+        targetId: captain.id,
+        order: 'evadeIfOutgunned',
+      },
+      testCatalog,
+    )
+    expect(state.captains.find((c) => c.id === captain.id)!.standingOrder).toBe('evadeIfOutgunned')
+
+    // Hand the turn to p2, then have p2 try to set an order on p1's captain.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'setStandingOrder',
+          playerId: 'p2',
+          targetType: 'captain',
+          targetId: captain.id,
+          order: 'fightToTheShip',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('replaying a log with setStandingOrder actions is deterministic', () => {
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const base = createGame(testConfig(2))
+    const city = base.cities.find((c) => c.ownerId === 'p1')!
+    const fullLog: Action[] = [
+      {
+        type: 'setStandingOrder',
+        playerId: 'p1',
+        targetType: 'city',
+        targetId: city.id,
+        order: 'evadeIfOutgunned',
+      },
+      ...log,
+    ]
+    const a = replay(base, fullLog, testCatalog)
+    const b = replay(base, fullLog, testCatalog)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.cities.find((c) => c.id === city.id)!.standingOrder).toBe('evadeIfOutgunned')
   })
 })

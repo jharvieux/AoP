@@ -7,6 +7,7 @@ import {
   type ContentCatalog,
   type GameConfig,
   type GameState,
+  type StandingOrder,
 } from '@aop/engine'
 import { BUILDINGS, FACTIONS, SHIP_CLASSES } from '@aop/content'
 import { useState } from 'react'
@@ -136,6 +137,23 @@ export function App() {
     setActionLog([...actionLog, ...actions])
   }
 
+  function setStandingOrder(
+    targetType: 'city' | 'captain',
+    targetId: string,
+    order: StandingOrder,
+  ) {
+    const actions: Action[] = []
+    const next = dispatch(game, actions, {
+      type: 'setStandingOrder',
+      playerId: player.id,
+      targetType,
+      targetId,
+      order,
+    })
+    setGame(next)
+    setActionLog([...actionLog, ...actions])
+  }
+
   async function saveToSlot(slotId: string) {
     await saveGame(slotId, config, actionLog, game.round)
   }
@@ -193,6 +211,7 @@ export function App() {
           onBuild={build}
           onRecruit={recruit}
           onTransfer={transfer}
+          onSetStandingOrder={setStandingOrder}
         />
       )}
       {saveScreenOpen && (

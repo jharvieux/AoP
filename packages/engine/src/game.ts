@@ -1,6 +1,7 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
 import { placeCities } from './placement'
 import { seedRng } from './rng'
+import { DEFAULT_STANDING_ORDER } from './standingOrders'
 import type { CaptainState, CityState, GameConfig, GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
 
@@ -46,6 +47,7 @@ export function createGame(config: GameConfig): GameState {
       builtThisRound: false,
       garrison: {},
       unitAvailability: {},
+      standingOrder: DEFAULT_STANDING_ORDER,
     })),
     captains: config.startingShipClassId
       ? config.players.map((p): CaptainState => ({
@@ -54,6 +56,7 @@ export function createGame(config: GameConfig): GameState {
           name: `${p.name}'s Flagship`,
           shipClassId: config.startingShipClassId!,
           troopsAboard: {},
+          standingOrder: DEFAULT_STANDING_ORDER,
         }))
       : [],
     exploredTiles: {},
