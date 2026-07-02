@@ -36,7 +36,7 @@ Attempted to land the two remaining open sweep PRs (#70, #74) onto current `main
     multiplayer schema** (profiles, matches, match_players, match_actions, match_snapshots,
     entitlements, plus a new `cloud_saves` table) **that already exists on `main`** via
     `20260702000000_initial_schema.sql` / `20260702000001_rls_policies.sql`, merged by PR #69
-    (#30) *after* PR #70's branch diverged.
+    (#30) _after_ PR #70's branch diverged.
   - Attempted a trial rebase onto `main` in `.claude/worktrees/agent-ae488f00f3f4f8e10` to
     scope the damage (then aborted, no changes left behind): conflicts start at the branch's
     **first** commit (`5e362f2`, "#23: random encounters") — this branch still carries the
