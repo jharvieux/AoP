@@ -4,6 +4,21 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-012 — 2026-07-01 — Port pre-pr-reviewer audit agent from ATC (partial reversal of D-011)
+
+**Decision**: Port ATC's `pre-pr-reviewer` as this repo's audit agent, adapted to check the
+four engine invariants first (purity/determinism, GameState serializability, replay-test
+contract, balance data in @aop/content) plus the general CLAUDE.md discipline rules. Run on
+every sweep/feature PR before squash-merge; BLOCKERs must be fixed pre-merge. This reverses
+the D-011 rejection of audit agents — operator call during the first issue sweep, on the
+grounds that nobody reads diffs here and PRs auto-merge on green CI, so semantic review of
+engine invariants has no other home. NOT ported: d091-reviewer and the PR-audit-marker CI
+gate (still multi-tenant-SaaS threat models AoP doesn't have). Also hardened the CLAUDE.md
+stop-hook rule: never reply to stop-hook feedback (operator instruction, same session).
+Related: D-011, ATC pre-pr-reviewer.md, first sweep PRs #58+.
+
+---
+
 ## D-011 — 2026-07-01 — Adopt ATC harness conventions (CLAUDE.md, MEMORY/SESSION, hooks, bare model labels)
 
 **Decision**: Port the portable core of jharvieux/ATC's engineering harness: root CLAUDE.md
