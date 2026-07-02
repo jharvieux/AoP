@@ -1,51 +1,35 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-02 (issue-sweep session)._
+_Last updated: 2026-07-02 (issue-sweep: Batch B + Batch A draft)._
 
 ## Just completed
 
-First full issue sweep (top 20 of the plan, operator-approved). All four PRs merged:
+Issue-sweep Phase 1–3 (triage, plan, execute) on 26 open issues (top 20 planned):
 
-- **PR #58** — #16 win/loss + game-over flow, #17 main menu/new-game setup (screens
-  architecture). Audit fixes: reachable resign trigger, draw handling.
-- **PR #59** — ported `pre-pr-reviewer` audit agent from ATC (D-012); the four engine
-  invariants are its primary BLOCKER checks. CLAUDE.md audit-agent + stop-hook rules updated.
-- **PR #60** — batch A engine slice: #6 mapgen, #8 captains/pathfinding, #12 combat
-  resolver, #13 AI, #18 hybrid tactics, #24 balance harness. Includes a Fable design pass
-  on #18 (fixed attacker-controls-defender anti-cheat hole per D-009, conditional standing
-  orders, chase/pinning mechanics) and audit fixes moving ALL tuned constants to
-  `@aop/content/src/tuning.ts` (D-013). #65 closed by this.
-- **PR #66** — batch B reconciled onto the new engine: #9 economy, #10 cities,
-  #11 recruitment/garrisons, #14 fog of war, #15 IndexedDB saves, #19 odds preview,
-  #20 standing orders (main's conditional system won; UI drives it), #21 skill trees,
-  #22 ship upgrades, #7 map pan/zoom/culling. 82 engine tests green.
-- New issues: #62/#63/#64 (map editor trio + theme packs, operator request), #67
-  (economy-aware AI follow-up). `.claude/settings.json` created locally (per-machine).
+- **PR #69 (merged)** — Batch B (Sonnet): #30 Supabase project setup (migrations, local dev, CI validation) + #57 Dependabot auto-merge workflow. Audit-approved, CI green, merged to main.
+- **PR #70 (draft)** — Batch A (Opus): #23 random encounters, #31 auth, #32 match lifecycle, #33 server-authoritative actions. All 4 implemented and committed on feature/sweep-multiplayer-23, but CI failed due to missing Supabase cloud project (credentials not available in this session). Reopened as draft pending Supabase provisioning.
 
 ## In flight
 
-- PR for this SESSION.md update (docs/session-sweep-wrapup) — squash-merge when CI passes.
+- PR #70 awaiting Supabase cloud project setup (operator follow-up). Once provisioned, CI should pass and PR can merge.
 
 ## Next step
 
-Operator's pick:
-
-1. **#67 economy-aware AI** (P2) — biggest single-player gap; humans out-economy the AI.
-2. **#23 random encounters** (P1) — was skipped-blocked, now unblocked by #60's mapgen.
-3. Supervised-items sweep (#30 Supabase init etc.) to start Phase 3 — operator in the loop.
+1. **Provision Supabase cloud project** (requires account/org credentials). Once done:
+   - Update SUPABASE_URL, SUPABASE_ANON_KEY in .env
+   - Re-run CI on PR #70 (should pass, then merge)
+   - Closes #23, #31, #32, #33 in one squash-merge
+2. **Operator decision on remaining 14 open issues below the top 20:**
+   - Phase 4 items: #62/#63/#64 (map editor trio), #67 (economy AI), #41/#40/#39 (UI polish, matchmaking, battle board), etc.
+   - Re-run sweep for next batch
 
 ## Blocked on user
 
-- Supervised issues stay excluded until explicitly included: #4, #30, #33, #35, #37, #40,
-  #42, #43, #51, #57. #50 is `needs-human-fix` (paste settings.json per runbook).
-- Epic #2 open deliberately (most children closed this sweep; #23 remains).
+- **Supabase cloud project**: PR #70 and subsequent Phase 3 multiplayer work depends on this.
+- Excluded items stay excluded: #50 (`needs-human-fix`), others with `blocked` label.
 
 ## Open questions
 
-- Playtest before more feature work? The full loop exists end-to-end (new game → economy →
-  build/recruit → move/attack with odds → fog → save/load → AI → game over) but nobody has
-  played it yet.
-- #24's real ±5% balance tuning was deferred by design — the sim harness can now run full
-  economic matches, so a tuning pass is actually possible next session.
-- Should ship speed drive captain movement points now that shipyards landed? (Carried over.)
+- Timeline for Supabase setup? (Determines when Batch A can land.)
+- After Batch A lands, prioritize which remaining Phase 4 issues? (14 below cutoff waiting.)
