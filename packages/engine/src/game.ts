@@ -1,4 +1,5 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
+import { generateMap } from './map'
 import { seedRng } from './rng'
 import type { GameConfig, GameState } from './types'
 
@@ -16,8 +17,11 @@ export function createGame(config: GameConfig): GameState {
     throw new Error('Player ids must be unique')
   }
 
+  const map = generateMap(config.seed, config.mapSize, config.players.length)
+
   return {
     config,
+    map,
     round: 1,
     currentPlayerIndex: 0,
     players: config.players.map((p) => ({

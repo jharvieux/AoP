@@ -1,4 +1,5 @@
 import type { FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { GameMap } from './map'
 import type { RngState } from './rng'
 
 export interface PlayerConfig {
@@ -32,6 +33,8 @@ export type GameStatus = 'active' | 'finished'
  */
 export interface GameState {
   config: GameConfig
+  /** The generated world map. Derived deterministically from the config seed. */
+  map: GameMap
   /** 1-based round number; increments when the last living player ends their turn. */
   round: number
   /** Index into players[] of whoever acts now. */
