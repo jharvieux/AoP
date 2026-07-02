@@ -9,12 +9,14 @@ import type { FactionId } from '@aop/shared'
 export interface UnitDef {
   id: string
   name: string
-  /** Recruitment tier, 1 (basic) – 4 (elite). */
+  /** Recruitment tier, 1 (basic) – 4 (elite). Gated by the city's recruitment building tier. */
   tier: 1 | 2 | 3 | 4
   attack: number
   defense: number
   health: number
   goldCost: number
+  /** New recruits available per round, replenished up to no cap (HoMM weekly-growth style). */
+  weeklyGrowth: number
 }
 
 export interface FactionDef {
@@ -30,7 +32,16 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'Pirates',
     description: 'Outlaws of every flag. Cheap, fast, and vicious — weak in a long fight.',
     units: [
-      { id: 'deckhand', name: 'Deckhand', tier: 1, attack: 2, defense: 1, health: 6, goldCost: 25 },
+      {
+        id: 'deckhand',
+        name: 'Deckhand',
+        tier: 1,
+        attack: 2,
+        defense: 1,
+        health: 6,
+        goldCost: 25,
+        weeklyGrowth: 8,
+      },
       {
         id: 'cutthroat',
         name: 'Cutthroat',
@@ -39,6 +50,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 2,
         health: 12,
         goldCost: 60,
+        weeklyGrowth: 5,
       },
       {
         id: 'buccaneer',
@@ -48,6 +60,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 5,
         health: 22,
         goldCost: 140,
+        weeklyGrowth: 3,
       },
       {
         id: 'dread-corsair',
@@ -57,6 +70,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 8,
         health: 40,
         goldCost: 320,
+        weeklyGrowth: 1,
       },
     ],
   },
@@ -65,8 +79,26 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'British',
     description: 'The Royal Navy: disciplined line infantry and superior gunnery.',
     units: [
-      { id: 'sailor', name: 'Sailor', tier: 1, attack: 2, defense: 2, health: 7, goldCost: 30 },
-      { id: 'redcoat', name: 'Redcoat', tier: 2, attack: 4, defense: 4, health: 14, goldCost: 70 },
+      {
+        id: 'sailor',
+        name: 'Sailor',
+        tier: 1,
+        attack: 2,
+        defense: 2,
+        health: 7,
+        goldCost: 30,
+        weeklyGrowth: 8,
+      },
+      {
+        id: 'redcoat',
+        name: 'Redcoat',
+        tier: 2,
+        attack: 4,
+        defense: 4,
+        health: 14,
+        goldCost: 70,
+        weeklyGrowth: 5,
+      },
       {
         id: 'royal-marine',
         name: 'Royal Marine',
@@ -75,6 +107,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 7,
         health: 24,
         goldCost: 150,
+        weeklyGrowth: 3,
       },
       {
         id: 'ship-of-the-line-crew',
@@ -84,6 +117,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 11,
         health: 42,
         goldCost: 340,
+        weeklyGrowth: 1,
       },
     ],
   },
@@ -92,7 +126,16 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'Spanish',
     description: 'Treasure-fleet escorts and conquistadors: heavy armor, heavy gold.',
     units: [
-      { id: 'milicia', name: 'Milicia', tier: 1, attack: 2, defense: 2, health: 8, goldCost: 30 },
+      {
+        id: 'milicia',
+        name: 'Milicia',
+        tier: 1,
+        attack: 2,
+        defense: 2,
+        health: 8,
+        goldCost: 30,
+        weeklyGrowth: 8,
+      },
       {
         id: 'rodelero',
         name: 'Rodelero',
@@ -101,6 +144,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 3,
         health: 13,
         goldCost: 65,
+        weeklyGrowth: 5,
       },
       {
         id: 'conquistador',
@@ -110,6 +154,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 6,
         health: 23,
         goldCost: 155,
+        weeklyGrowth: 3,
       },
       {
         id: 'tercio-veteran',
@@ -119,6 +164,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 10,
         health: 44,
         goldCost: 350,
+        weeklyGrowth: 1,
       },
     ],
   },
@@ -135,6 +181,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 2,
         health: 7,
         goldCost: 22,
+        weeklyGrowth: 8,
       },
       {
         id: 'schutter',
@@ -144,6 +191,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 3,
         health: 12,
         goldCost: 55,
+        weeklyGrowth: 5,
       },
       {
         id: 'sea-beggar',
@@ -153,6 +201,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 6,
         health: 21,
         goldCost: 135,
+        weeklyGrowth: 3,
       },
       {
         id: 'voc-guard',
@@ -162,6 +211,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         defense: 12,
         health: 45,
         goldCost: 330,
+        weeklyGrowth: 1,
       },
     ],
   },

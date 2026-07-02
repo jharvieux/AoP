@@ -1,6 +1,6 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
 import { seedRng } from './rng'
-import type { CityState, GameConfig, GameState } from './types'
+import type { CaptainState, CityState, GameConfig, GameState } from './types'
 
 const STARTING_GOLD = 1000
 
@@ -36,7 +36,18 @@ export function createGame(config: GameConfig): GameState {
       name: `${p.name}'s Capital`,
       buildings: [...startingBuildings],
       builtThisRound: false,
+      garrison: {},
+      unitAvailability: {},
     })),
+    captains: config.startingShipClassId
+      ? config.players.map((p): CaptainState => ({
+          id: `${p.id}-flagship`,
+          ownerId: p.id,
+          name: `${p.name}'s Flagship`,
+          shipClassId: config.startingShipClassId!,
+          troopsAboard: {},
+        }))
+      : [],
     rngState: seedRng(config.seed),
     actionCount: 0,
     status: 'active',

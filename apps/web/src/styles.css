@@ -182,3 +182,43 @@ button.primary.secondary {
   opacity: 0.6;
   margin-top: 2px;
 }
+
+.garrison-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid #2a5580;
+  border-radius: 8px;
+  background: #0e2740;
+}
+
+.garrison-row__name {
+  font-weight: 700;
+}
+
+.garrison-row__counts {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.garrison-row__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.garrison-row__actions button {
+  min-height: 40px;
+  flex: 1;
+  border: 1px solid #2a5580;
+  border-radius: 6px;
+  background: #163a5c;
+  color: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.garrison-row__actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -20,3 +20,30 @@ export function playerIncome(
     .filter((c) => c.ownerId === playerId)
     .reduce((total, city) => addResources(total, cityIncome(city, catalog)), EMPTY_RESOURCES)
 }
+
+/** Highest unit recruitment tier unlocked by a city's standing buildings (0 = none). */
+export function unlockedRecruitTier(city: CityState, catalog: ContentCatalog): number {
+  return city.buildings.reduce((max, id) => {
+    const tier = catalog.buildings[id]?.unlocksTier ?? 0
+    return Math.max(max, tier)
+  }, 0)
+}
+
+/**
+ * Weekly-growth style replenishment: every unit of `factionId` whose tier is
+ * unlocked by the city gains its `weeklyGrowth` in available recruits.
+ */
+export function replenishAvailability(
+  city: CityState,
+  factionId: string,
+  catalog: ContentCatalog,
+): Record<string, number> {
+  const tier = unlockedRecruitTier(city, catalog)
+  const next = { ...city.unitAvailability }
+  for (const [unitId, def] of Object.entries(catalog.units)) {
+    if (def.factionId === factionId && def.tier <= tier) {
+      next[unitId] = (next[unitId] ?? 0) + def.weeklyGrowth
+    }
+  }
+  return next
+}

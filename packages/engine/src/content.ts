@@ -13,8 +13,22 @@ export interface BuildingLike {
   produces: Partial<ResourcePool>
   cost: Partial<ResourcePool>
   requires?: string
+  unlocksTier?: 1 | 2 | 3 | 4
+}
+
+export interface UnitLike {
+  factionId: string
+  tier: 1 | 2 | 3 | 4
+  goldCost: number
+  weeklyGrowth: number
+}
+
+export interface ShipLike {
+  crewCapacity: number
 }
 
 export interface ContentCatalog {
   buildings: Record<string, BuildingLike>
+  units: Record<string, UnitLike>
+  ships: Record<string, ShipLike>
 }

@@ -22,7 +22,28 @@ export interface ConstructBuildingAction {
   buildingId: string
 }
 
-export type Action = EndTurnAction | ResignAction | ConstructBuildingAction
+/** Recruit `count` of a unit into a city's garrison, spending gold and available recruits. */
+export interface RecruitUnitAction {
+  type: 'recruit'
+  playerId: string
+  cityId: string
+  unitId: string
+  count: number
+}
+
+/** Move troops between a city's garrison and a visiting captain's ship hold. */
+export interface TransferTroopsAction {
+  type: 'transferTroops'
+  playerId: string
+  cityId: string
+  captainId: string
+  direction: 'toShip' | 'toGarrison'
+  unitId: string
+  count: number
+}
+
+export type Action =
+  EndTurnAction | ResignAction | ConstructBuildingAction | RecruitUnitAction | TransferTroopsAction
 
 export class InvalidActionError extends Error {
   constructor(

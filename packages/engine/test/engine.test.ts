@@ -17,6 +17,15 @@ const testCatalog: ContentCatalog = {
   buildings: {
     townhall: { produces: { gold: 100 }, cost: {} },
     sawmill: { produces: { timber: 4 }, cost: { gold: 200 }, requires: 'townhall' },
+    barracks: { produces: {}, cost: { gold: 150 }, requires: 'townhall', unlocksTier: 1 },
+  },
+  units: {
+    deckhand: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8 },
+    buccaneer: { factionId: 'pirates', tier: 3, goldCost: 140, weeklyGrowth: 3 },
+    sailor: { factionId: 'british', tier: 1, goldCost: 30, weeklyGrowth: 8 },
+  },
+  ships: {
+    sloop: { crewCapacity: 4 },
   },
 }
 
@@ -238,7 +247,8 @@ describe('construct', () => {
   })
 
   it('rejects construction the player cannot afford', () => {
-    const richCatalog = {
+    const richCatalog: ContentCatalog = {
+      ...testCatalog,
       buildings: { ...testCatalog.buildings, expensive: { produces: {}, cost: { gold: 999999 } } },
     }
     const state = createGame(economyConfig())
@@ -264,5 +274,130 @@ describe('construct', () => {
     state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
     const updated = state.cities.find((c) => c.id === city.id)!
     expect(updated.builtThisRound).toBe(false)
+  })
+})
+
+describe('recruit & garrisons', () => {
+  function recruitConfig(): GameConfig {
+    return {
+      ...testConfig(2),
+      startingBuildings: ['townhall', 'barracks'],
+      startingShipClassId: 'sloop',
+    }
+  }
+
+  it('replenishes availability for the owner faction only, gated by unlocked tier', () => {
+    let state = createGame(recruitConfig())
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    const p1City = state.cities.find((c) => c.ownerId === 'p1')!
+    // p1 is pirates: deckhand (tier 1, unlocked) grows, buccaneer (tier 3, locked) does not.
+    expect(p1City.unitAvailability.deckhand).toBe(8)
+    expect(p1City.unitAvailability.buccaneer).toBeUndefined()
+  })
+
+  it('recruits units into the garrison, spending gold and available recruits', () => {
+    let state = createGame(recruitConfig())
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    state = applyAction(
+      state,
+      { type: 'recruit', playerId: 'p1', cityId: city.id, unitId: 'deckhand', count: 3 },
+      testCatalog,
+    )
+    const updated = state.cities.find((c) => c.id === city.id)!
+    expect(updated.garrison.deckhand).toBe(3)
+    expect(updated.unitAvailability.deckhand).toBe(5)
+    // Starting gold 1000, +100 townhall income when the round wraps, -75 for 3 deckhands.
+    expect(state.players[0]!.resources.gold).toBe(1000 + 100 - 3 * 25)
+  })
+
+  it('rejects recruiting more than is available or a unit from another faction', () => {
+    let state = createGame(recruitConfig())
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    expect(() =>
+      applyAction(
+        state,
+        { type: 'recruit', playerId: 'p1', cityId: city.id, unitId: 'deckhand', count: 99 },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+    expect(() =>
+      applyAction(
+        state,
+        { type: 'recruit', playerId: 'p1', cityId: city.id, unitId: 'sailor', count: 1 },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('transfers troops between the garrison and a captain, respecting crew capacity', () => {
+    let state = createGame(recruitConfig())
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' }, testCatalog)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }, testCatalog)
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    const captain = state.captains.find((c) => c.ownerId === 'p1')!
+    state = applyAction(
+      state,
+      { type: 'recruit', playerId: 'p1', cityId: city.id, unitId: 'deckhand', count: 4 },
+      testCatalog,
+    )
+    state = applyAction(
+      state,
+      {
+        type: 'transferTroops',
+        playerId: 'p1',
+        cityId: city.id,
+        captainId: captain.id,
+        direction: 'toShip',
+        unitId: 'deckhand',
+        count: 4,
+      },
+      testCatalog,
+    )
+    expect(state.captains.find((c) => c.id === captain.id)!.troopsAboard.deckhand).toBe(4)
+    expect(state.cities.find((c) => c.id === city.id)!.garrison.deckhand).toBe(0)
+
+    // Sloop crew capacity is 4 — a 5th deckhand won't fit.
+    state = applyAction(
+      state,
+      { type: 'recruit', playerId: 'p1', cityId: city.id, unitId: 'deckhand', count: 1 },
+      testCatalog,
+    )
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'transferTroops',
+          playerId: 'p1',
+          cityId: city.id,
+          captainId: captain.id,
+          direction: 'toShip',
+          unitId: 'deckhand',
+          count: 1,
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+
+    // And it can come back off the ship into the garrison.
+    state = applyAction(
+      state,
+      {
+        type: 'transferTroops',
+        playerId: 'p1',
+        cityId: city.id,
+        captainId: captain.id,
+        direction: 'toGarrison',
+        unitId: 'deckhand',
+        count: 2,
+      },
+      testCatalog,
+    )
+    expect(state.captains.find((c) => c.id === captain.id)!.troopsAboard.deckhand).toBe(2)
+    expect(state.cities.find((c) => c.id === city.id)!.garrison.deckhand).toBe(3)
   })
 })

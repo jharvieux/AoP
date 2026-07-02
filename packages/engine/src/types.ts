@@ -15,6 +15,8 @@ export interface GameConfig {
   players: PlayerConfig[]
   /** Building ids every player's starting city begins with (caller-supplied from content). */
   startingBuildings?: string[]
+  /** Ship class id for each player's starting flagship (caller-supplied from content). */
+  startingShipClassId?: string
 }
 
 export interface PlayerState {
@@ -39,6 +41,20 @@ export interface CityState {
   buildings: string[]
   /** True once this city has constructed a building this round (HoMM one-build-per-turn rule). */
   builtThisRound: boolean
+  /** Recruited troops garrisoned in the city, keyed by unit id. */
+  garrison: Record<string, number>
+  /** Recruits currently available to buy, keyed by unit id (weekly-growth style). */
+  unitAvailability: Record<string, number>
+}
+
+/** A player's captain: a flagship with troops aboard. Map position arrives with world map gen. */
+export interface CaptainState {
+  id: string
+  ownerId: string
+  name: string
+  shipClassId: string
+  /** Troops aboard the flagship, keyed by unit id. Bounded by the ship's crew capacity. */
+  troopsAboard: Record<string, number>
 }
 
 /**
@@ -53,6 +69,7 @@ export interface GameState {
   currentPlayerIndex: number
   players: PlayerState[]
   cities: CityState[]
+  captains: CaptainState[]
   rngState: RngState
   /** Total actions applied; doubles as the action-log sequence cursor. */
   actionCount: number
