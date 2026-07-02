@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { FACTIONS } from '@aop/content'
+import { FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
-import type { PlayerConfig } from '@aop/engine'
+import type { PlayerConfig, TroopStack } from '@aop/engine'
 import type { GameSetupConfig } from '../types'
 
 interface NewGameSetupProps {
@@ -16,6 +16,13 @@ function getDefaultFaction(index: number): FactionId {
   const faction = FACTIONS_ARRAY[index % FACTIONS_ARRAY.length]
   if (!faction) throw new Error('No factions available')
   return faction.id
+}
+
+/** Starting crew for a faction's captain, drawn from its tier-1 unit in @aop/content. */
+function starterTroops(faction: FactionId): TroopStack[] {
+  const unit = FACTIONS[faction].units[0]
+  if (!unit) throw new Error(`Faction ${faction} has no units`)
+  return [{ unitId: unit.id, count: 6 }]
 }
 
 function createDefaultPlayer(index: number): PlayerConfig {
@@ -69,7 +76,11 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
     onPlay({
       seed: Math.floor(Math.random() * 2 ** 31),
       mapSize,
-      players,
+      players: players.map((p) => ({ ...p, startingTroops: starterTroops(p.faction) })),
+      // Freeze opening-state + combat balance snapshots from @aop/content into
+      // the match so the pure engine holds no balance data itself.
+      setup: GAME_SETUP,
+      combatStats: combatStatsData(),
     })
   }
 

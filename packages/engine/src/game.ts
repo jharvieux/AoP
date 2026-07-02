@@ -1,8 +1,7 @@
 import { EMPTY_RESOURCES } from '@aop/shared'
+import { generateMap } from './map'
 import { seedRng } from './rng'
-import type { GameConfig, GameState } from './types'
-
-const STARTING_GOLD = 1000
+import type { Captain, GameConfig, GameState } from './types'
 
 export function createGame(config: GameConfig): GameState {
   if (config.players.length < 2) {
@@ -16,8 +15,27 @@ export function createGame(config: GameConfig): GameState {
     throw new Error('Player ids must be unique')
   }
 
+  const { setup } = config
+  const map = generateMap(
+    config.seed,
+    config.mapSize,
+    config.players.length,
+    setup.homeIslandRadius,
+  )
+
+  const captains: Captain[] = config.players.map((p, i) => ({
+    id: `cap-${p.id}`,
+    ownerId: p.id,
+    position: { ...map.startPositions[i]! },
+    shipClassId: setup.startingShipClass,
+    movementPoints: setup.startingCaptainMovement,
+    maxMovementPoints: setup.startingCaptainMovement,
+    troops: (p.startingTroops ?? []).map((t) => ({ ...t })),
+  }))
+
   return {
     config,
+    map,
     round: 1,
     currentPlayerIndex: 0,
     players: config.players.map((p) => ({
@@ -25,14 +43,19 @@ export function createGame(config: GameConfig): GameState {
       name: p.name,
       faction: p.faction,
       isAI: p.isAI,
-      resources: { ...EMPTY_RESOURCES, gold: STARTING_GOLD },
+      resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
     })),
+    captains,
     rngState: seedRng(config.seed),
     actionCount: 0,
     status: 'active',
     winnerId: null,
   }
+}
+
+export function captainsOf(state: GameState, playerId: string): Captain[] {
+  return state.captains.filter((c) => c.ownerId === playerId)
 }
 
 export function currentPlayer(state: GameState) {

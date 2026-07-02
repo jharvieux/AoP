@@ -1,7 +1,10 @@
-import { applyAction, currentPlayer, type GameState } from '@aop/engine'
+import { applyAction, currentPlayer, nextAiAction, type GameState } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { MapCanvas } from '../MapCanvas'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+/** How long an AI seat "thinks" between actions. Purely cosmetic pacing. */
+const AI_STEP_MS = 250
 
 interface GameScreenProps {
   game: GameState
@@ -12,20 +15,27 @@ export function GameScreen({ game, onStateChange }: GameScreenProps) {
   const player = currentPlayer(game)
   const [confirmingResign, setConfirmingResign] = useState(false)
 
-  function endTurn() {
-    let next = applyAction(game, { type: 'endTurn', playerId: player.id })
-    while (next.status === 'active' && currentPlayer(next).isAI) {
-      next = applyAction(next, { type: 'endTurn', playerId: currentPlayer(next).id })
+  // AI seats play themselves, one action per tick, so the main thread never
+  // blocks. The same nextAiAction() runs unchanged in a worker or edge function.
+  useEffect(() => {
+    if (game.status !== 'active' || !player.isAI) return
+    let cancelled = false
+    const id = setTimeout(() => {
+      if (cancelled) return
+      onStateChange(applyAction(game, nextAiAction(game, player.id)))
+    }, AI_STEP_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(id)
     }
-    onStateChange(next)
+  }, [game, player, onStateChange])
+
+  function endTurn() {
+    onStateChange(applyAction(game, { type: 'endTurn', playerId: player.id }))
   }
 
   function resign() {
-    let next = applyAction(game, { type: 'resign', playerId: player.id })
-    while (next.status === 'active' && currentPlayer(next).isAI) {
-      next = applyAction(next, { type: 'endTurn', playerId: currentPlayer(next).id })
-    }
-    onStateChange(next)
+    onStateChange(applyAction(game, { type: 'resign', playerId: player.id }))
     setConfirmingResign(false)
   }
 
@@ -39,7 +49,7 @@ export function GameScreen({ game, onStateChange }: GameScreenProps) {
         </span>
         <div className="button-group">
           <button className="primary" onClick={endTurn} disabled={player.isAI}>
-            End Turn
+            {player.isAI ? 'AI thinking…' : 'End Turn'}
           </button>
           {!confirmingResign ? (
             <button
@@ -62,7 +72,7 @@ export function GameScreen({ game, onStateChange }: GameScreenProps) {
         </div>
       </header>
       <div className="map-container">
-        <MapCanvas seed={game.config.seed} />
+        <MapCanvas map={game.map} captains={game.captains} />
       </div>
     </div>
   )

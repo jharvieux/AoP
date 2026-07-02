@@ -11,12 +11,14 @@ import {
   type Action,
   type GameConfig,
 } from '../src'
+import { GAME_SETUP } from './fixtures'
 
 function testConfig(playerCount = 3): GameConfig {
   const factions = ['pirates', 'british', 'spanish', 'dutch'] as const
   return {
     seed: 42,
     mapSize: 'small',
+    setup: GAME_SETUP,
     players: Array.from({ length: playerCount }, (_, i) => ({
       id: `p${i + 1}`,
       name: `Player ${i + 1}`,

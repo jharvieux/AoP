@@ -1,18 +1,34 @@
-import { nextFloat, seedRng } from '@aop/engine'
+import { tileIndex, type Captain, type GameMap } from '@aop/engine'
 import { Application, Graphics } from 'pixi.js'
 import { useEffect, useRef } from 'react'
 
 /**
- * Placeholder world map: a seeded scatter of island tiles on open sea, drawn
- * with Pixi. Proves the WebGL canvas + engine RNG wiring; real map generation
- * lands in Phase 1.
+ * Renders the seeded world map (#6) and captains (#8): deep sea, shallows,
+ * islands, and ports, with a coloured dot per captain. Purely a view over engine
+ * state — it holds no game logic.
  */
 
-const TILE = 48
-const COLS = 24
-const ROWS = 24
+const TILE = 20
 
-export function MapCanvas({ seed }: { seed: number }) {
+const TILE_COLOR = {
+  deep: '#1b4a6b',
+  shallows: '#2a6a8f',
+  land: '#4a7c3f',
+  port: '#c9a227',
+} as const
+
+const CAPTAIN_COLORS = [
+  '#e23b3b',
+  '#3b6be2',
+  '#e2c23b',
+  '#8f3be2',
+  '#3be2a1',
+  '#e28f3b',
+  '#ffffff',
+  '#000000',
+]
+
+export function MapCanvas({ map, captains }: { map: GameMap; captains: Captain[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -25,7 +41,7 @@ export function MapCanvas({ seed }: { seed: number }) {
     app
       .init({
         resizeTo: container,
-        background: '#1b4a6b',
+        background: TILE_COLOR.deep,
         antialias: true,
         resolution: Math.min(window.devicePixelRatio, 2),
         autoDensity: true,
@@ -37,31 +53,32 @@ export function MapCanvas({ seed }: { seed: number }) {
         }
         container.appendChild(app.canvas)
 
-        const g = new Graphics()
-        let rng = seedRng(seed)
-        for (let y = 0; y < ROWS; y++) {
-          for (let x = 0; x < COLS; x++) {
-            const [next, roll] = nextFloat(rng)
-            rng = next
-            if (roll > 0.85) {
-              // island
-              g.rect(x * TILE + 4, y * TILE + 4, TILE - 8, TILE - 8)
-              g.fill(roll > 0.95 ? '#c9a227' : '#4a7c3f')
-            } else if (roll > 0.8) {
-              // shallows
-              g.rect(x * TILE, y * TILE, TILE, TILE)
-              g.fill('#2a6a8f')
-            }
+        const tiles = new Graphics()
+        for (let y = 0; y < map.height; y++) {
+          for (let x = 0; x < map.width; x++) {
+            const tile = map.tiles[tileIndex(map, x, y)]!
+            if (tile.type === 'deep') continue
+            tiles.rect(x * TILE, y * TILE, TILE, TILE)
+            tiles.fill(TILE_COLOR[tile.type])
           }
         }
-        app.stage.addChild(g)
+        app.stage.addChild(tiles)
+
+        const ships = new Graphics()
+        captains.forEach((cap, i) => {
+          const cx = cap.position.x * TILE + TILE / 2
+          const cy = cap.position.y * TILE + TILE / 2
+          ships.circle(cx, cy, TILE / 2.5)
+          ships.fill(CAPTAIN_COLORS[i % CAPTAIN_COLORS.length])
+        })
+        app.stage.addChild(ships)
       })
 
     return () => {
       destroyed = true
       if (app.renderer) app.destroy(true)
     }
-  }, [seed])
+  }, [map, captains])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

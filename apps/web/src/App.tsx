@@ -1,4 +1,4 @@
-import { applyAction, createGame, type GameState } from '@aop/engine'
+import { createGame, type GameState } from '@aop/engine'
 import { useState } from 'react'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
@@ -14,22 +14,17 @@ export function App() {
   const [lastSetupConfig, setLastSetupConfig] = useState<GameSetupConfig | null>(null)
 
   function handleStartNewGame(config: GameSetupConfig) {
-    const newGame = createGame({
-      seed: config.seed,
-      mapSize: config.mapSize,
-      players: config.players,
-    })
+    // config already carries setup + startingTroops + frozen combatStats from
+    // @aop/content (see NewGameSetup); the engine itself holds no balance data.
     setLastSetupConfig(config)
-    setGame(newGame)
+    setGame(createGame(config))
     setScreen('game')
   }
 
   function handleGameStateChange(newGame: GameState) {
+    setGame(newGame)
     if (newGame.status === 'finished') {
-      setGame(newGame)
       setScreen('game-over')
-    } else {
-      setGame(newGame)
     }
   }
 
