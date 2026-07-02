@@ -6,13 +6,13 @@ what's installed on the operator's machine) with the parts that are repo-specifi
 generated files live, what "done" looks like, and which files in this codebase they hook
 into.
 
-**Status as of this writing**: the 10 pre-defined NPC dialogue clips (issue #75) are
-generated and committed under `apps/web/public/audio/generated/`, but nothing in
-`apps/web/src` plays them yet. Art generation (Stable Diffusion WebUI) is installed but
-unused — the map still renders as flat-color PixiJS shapes (see `MapCanvas.tsx`), matching
-decision D-008 ("stylized 2D sprites") as a not-yet-built target. The two worked examples
-below show the integration as it would be built today, using the code patterns already in
-the repo.
+**Status as of this writing**: the tooling to generate NPC dialogue clips (issue #75,
+script at `~/aop-ai-tools/`) exists and works, but the 10 predefined `.wav` files have not
+yet been committed to `main` (they live on a still-open PR, #78). Art generation (Stable
+Diffusion WebUI) is installed but unused — the map still renders as flat-color PixiJS
+shapes (see `MapCanvas.tsx`), matching decision D-008 ("stylized 2D sprites") as a
+not-yet-built target. The two worked examples below show the integration as it would be
+built today, using the code patterns already in the repo.
 
 ## Pipeline: generate → curate → integrate
 
@@ -89,7 +89,7 @@ selected by the client from IDs the engine already emits (faction id, encounter 
 | Encounter dialogue _display_  | `apps/web/src/screens/GameScreen.tsx` (`encounter` modal, ~line 324) | Currently a static per-kind title string; this is where an audio cue would be triggered.                                                                                                                     |
 | Faction names/rosters         | `packages/content/src/factions.ts`                                   | No art field on `FactionDef` yet; would need one to reference generated art by faction id (see Example 2).                                                                                                   |
 | Map/entity rendering          | `apps/web/src/MapCanvas.tsx`                                         | Currently `pixi.js` `Graphics` with flat-color fills (`TILE_COLOR`, `OWN_SHIP`, `ENEMY_SHIP`, `ENCOUNTER_COLOR`, …). This is where `Sprite`/`Texture` would replace `Graphics.fill()` calls once art exists. |
-| Generated audio files         | `apps/web/public/audio/generated/*.wav`                              | Written directly by `~/aop-ai-tools/generate-game-audio-piper.py`. The 10 predefined clips are committed (#75); new/regenerated clips still need an explicit `git add`.                                      |
+| Generated audio files         | `apps/web/public/audio/generated/*.wav`                              | Written directly by `~/aop-ai-tools/generate-game-audio-piper.py`. Scripts and tooling exist (issue #75); new/regenerated clips need an explicit `git add` (not the whole directory) before commit.          |
 | Generated art files (future)  | `apps/web/public/art/...` (convention, doesn't exist yet)            | Suggested split: `art/factions/<factionId>/`, `art/units/<unitId>.png`.                                                                                                                                      |
 
 ## Example: add a new NPC dialogue line

@@ -61,9 +61,10 @@ flat read faster than rephrasing.
 
 ## Known gaps
 
-- The 10 predefined clips (#75) are committed under `apps/web/public/audio/generated/`.
-  Commit any new or regenerated clip explicitly (`git add apps/web/public/audio/...`)
-  rather than the whole directory, so generation experiments don't ship.
+- The 10 predefined clips (issue #75) were generated but have not yet been committed to
+  `main` (they live on a still-open PR, #78). When committing clips yourself, use
+  `git add apps/web/public/audio/...` explicitly (not the whole directory) so generation
+  experiments don't ship accidentally.
 - No component in `apps/web/src` plays a generated clip yet. See "Example: add a new NPC
   dialogue line" in `docs/CONTENT-GENERATION.md` for the first wiring.
 - `generate-game-audio.py` (Bark) is present but slower and has had PyTorch compatibility
