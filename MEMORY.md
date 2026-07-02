@@ -4,6 +4,29 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-012 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
+
+**Decision**: Land the deterministic engine core for Phase 1 in one sweep (issues
+#6/#8/#12/#13/#18/#24). Key design choices: (1) square grid + 8-dir movement, home islands
+placed on a circle so starts are fair by construction; (2) uniform-cost A* with fixed
+tie-breaking (f, then h, then tile index) for replayable naval pathfinding; (3) combat is a
+shared round engine (`resolveRounds`) parameterised by a `TacticChooser` + `onRoundEnd`
+hook, so v1 auto-resolve and the hybrid tactical layer share one code path; (4) tactic
+matrix is a bounded 4-cycle (×0.8–×1.25) so tactics never invert a 3× strength gap;
+(5) the AI is a pure utility-scoring `nextAiAction` (engage/expand/defend) runnable chunked
+in-browser or in an edge function; (6) the engine holds **no** balance data — combat stats
+are injected from @aop/content via `GameConfig.combatStats` and frozen into the match.
+**Why**: preserves the pure/deterministic + replay invariants while making a match playable
+end-to-end vs AI. **Rejected/deferred**: adding `@aop/content` as an engine dependency
+(would break the "engine holds no balance numbers" invariant + touch supervised manifests) —
+used dependency injection instead; a real ±5% faction balance pass — deferred until the
+economy exists (#9–#11), because faction stat asymmetry is intentional flavour meant to be
+balanced by cost, which the sim can't yet model (measured tier-1-only spread ≈ 8%). Combat
+`DAMAGE_SCALE=0.35` was tuned via the new harness to stretch duels to ~6–8 rounds and cut
+mutual-destruction draws. Related: #6, #8, #12, #13, #18, #24; `scripts/balance-sim.ts`.
+
+---
+
 ## D-011 — 2026-07-01 — Adopt ATC harness conventions (CLAUDE.md, MEMORY/SESSION, hooks, bare model labels)
 
 **Decision**: Port the portable core of jharvieux/ATC's engineering harness: root CLAUDE.md
