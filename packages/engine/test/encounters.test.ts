@@ -50,12 +50,21 @@ const TEST_ENCOUNTERS: EncounterCatalogLike = {
     },
   },
   spawnDensity: 0.02,
+  minStartDistance: 4,
 }
 
 const CATALOG: ContentCatalog = {
   buildings: { townhall: { produces: { gold: 100 }, cost: {} } },
   units: {
-    deckhand: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8, attack: 2, defense: 1, health: 6 },
+    deckhand: {
+      factionId: 'pirates',
+      tier: 1,
+      goldCost: 25,
+      weeklyGrowth: 8,
+      attack: 2,
+      defense: 1,
+      health: 6,
+    },
   },
   ships: { sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 4, upgrades: {} } },
   skills: {},
@@ -176,7 +185,9 @@ describe('resolveEncounter action', () => {
     expect(cap.troops).toEqual([{ unitId: 'deckhand', count: 4 }]) // sloop capacity 4
     expect(cap.movementPoints).toBe(0)
     expect(cap.xp).toBe(5)
-    expect(next.players.find((p) => p.id === 'p1')!.resources.gold).toBe(GAME_SETUP.startingGold - 150)
+    expect(next.players.find((p) => p.id === 'p1')!.resources.gold).toBe(
+      GAME_SETUP.startingGold - 150,
+    )
     const enc = next.encounters.find((e) => e.id === 'test-enc')!
     expect(enc.active).toBe(false)
     expect(enc.respawnRound).toBe(next.round + 3)
@@ -278,7 +289,13 @@ describe('encounter replay determinism', () => {
       troops: [{ unitId: 'deckhand', count: 2 }],
     })
     const actions: Action[] = [
-      { type: 'resolveEncounter', playerId: 'p1', captainId, encounterId: 'test-enc', choice: 'quest' },
+      {
+        type: 'resolveEncounter',
+        playerId: 'p1',
+        captainId,
+        encounterId: 'test-enc',
+        choice: 'quest',
+      },
       { type: 'endTurn', playerId: 'p1' },
     ]
     const sequential = actions.reduce(applyAction, state)

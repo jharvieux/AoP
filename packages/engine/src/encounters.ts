@@ -14,9 +14,6 @@ import type { EncounterState, TroopStack } from './types'
 
 const KINDS: readonly EncounterKind[] = ['merchant', 'natives', 'settlers']
 
-/** Keep encounters off each player's doorstep so starts don't hand out free loot. */
-const MIN_START_DISTANCE = 4
-
 /**
  * Deterministically scatter encounter entities across navigable water. Consumes
  * and returns the RNG so createGame can fold the advanced state back into the
@@ -36,7 +33,7 @@ export function spawnEncounters(
       if (!isWaterTile(tileAt(map, coord))) continue
       water.push(coord)
       const clearOfStarts = startPositions.every(
-        (s) => chebyshevDistance(s, coord) >= MIN_START_DISTANCE,
+        (s) => chebyshevDistance(s, coord) >= catalog.minStartDistance,
       )
       if (clearOfStarts) candidates.push(coord)
     }

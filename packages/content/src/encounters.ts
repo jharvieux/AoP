@@ -40,6 +40,8 @@ export interface EncounterCatalog {
   settlers: EncounterKindDef
   /** Encounters spawned ≈ floor(navigableWaterTiles * spawnDensity). */
   spawnDensity: number
+  /** Keep encounters off each player's doorstep so starts don't hand out free loot. */
+  minStartDistance: number
 }
 
 /** The tier-1 unit a settler band yields when recruited, per faction. */
@@ -55,7 +57,12 @@ export const ENCOUNTERS: EncounterCatalog = {
     respawnDelay: 3,
     choices: {
       // Fair trade: spend gold for scarce materials. Always succeeds.
-      trade: { successChance: 1, cost: { gold: 120 }, reward: { timber: 10, iron: 6, rum: 6 }, xp: 5 },
+      trade: {
+        successChance: 1,
+        cost: { gold: 120 },
+        reward: { timber: 10, iron: 6, rum: 6 },
+        xp: 5,
+      },
       // Piracy: a gamble on the merchant's guard — big gold or bloodied crew.
       rob: { successChance: 0.6, reward: { gold: 250 }, failTroopLossPct: 0.25, xp: 15 },
     },
@@ -64,7 +71,12 @@ export const ENCOUNTERS: EncounterCatalog = {
     respawnDelay: 4,
     choices: {
       trade: { successChance: 1, cost: { gold: 80 }, reward: { rum: 12 }, xp: 5 },
-      fight: { successChance: 0.55, reward: { gold: 180, iron: 10 }, failTroopLossPct: 0.35, xp: 25 },
+      fight: {
+        successChance: 0.55,
+        reward: { gold: 180, iron: 10 },
+        failTroopLossPct: 0.35,
+        xp: 25,
+      },
       quest: { successChance: 0.7, reward: { gold: 300 }, xp: 20 },
     },
   },
@@ -83,4 +95,5 @@ export const ENCOUNTERS: EncounterCatalog = {
     },
   },
   spawnDensity: 0.012,
+  minStartDistance: 4,
 }

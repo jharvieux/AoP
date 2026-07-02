@@ -93,6 +93,8 @@ export interface EncounterCatalogLike {
   settlers: EncounterKindLike
   /** Encounters spawned ≈ floor(navigableWaterTiles * spawnDensity). */
   spawnDensity: number
+  /** Keep encounters off each player's doorstep so starts don't hand out free loot. */
+  minStartDistance: number
 }
 
 export interface ContentCatalog {
