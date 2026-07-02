@@ -1,4 +1,5 @@
 export * from './actions'
+export * from './ai'
 export * from './combat'
 export * from './game'
 export * from './map'
