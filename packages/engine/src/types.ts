@@ -1,4 +1,5 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { GameMap } from './map'
@@ -111,6 +112,14 @@ export interface GameConfig {
    * construct/recruit/skill/upgrade actions can resolve.
    */
   content?: ContentCatalog
+  /**
+   * Weights and thresholds the single-player AI (#13/#67) uses to score its
+   * candidate actions, injected from @aop/content the same way as
+   * {@link combatStats}. Without it the AI still plays combat (using built-in
+   * fallback scores) but skips every economy decision — building, recruiting,
+   * fleet loading, upgrades, and skill picks all require it.
+   */
+  aiTuning?: AiTuning
 }
 
 export interface PlayerState {

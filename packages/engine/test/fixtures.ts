@@ -1,4 +1,4 @@
-import type { CombatTuning, GameSetup, TacticsTuning } from '../src'
+import type { AiTuning, CombatTuning, GameSetup, TacticsTuning } from '../src'
 
 /**
  * Balance-tuning fixtures for engine tests. In production these come from
@@ -32,4 +32,26 @@ export const GAME_SETUP: GameSetup = {
   cityVisionRadius: 3,
   captainVisionRadius: 2,
   combatWinXp: 40,
+}
+
+export const AI_TUNING: AiTuning = {
+  engageMinRatio: 0.9,
+  attackScoreBase: 100,
+  advanceScoreBase: 10,
+  advanceDistanceBonus: 10,
+  minGoldReserve: 150,
+  buildGoldWeight: 1,
+  buildTimberWeight: 4,
+  buildIronWeight: 6,
+  buildRumWeight: 6,
+  buildRecruitTierWeight: 20,
+  buildDefenseBonusWeight: 1,
+  buildShipyardBonus: 25,
+  buildScoreScale: 0.5,
+  recruitScoreBase: 25,
+  recruitSpendFraction: 0.5,
+  garrisonToShipScoreBase: 30,
+  garrisonReserveFraction: 0.3,
+  upgradeScoreBase: 20,
+  skillPickScoreBase: 90,
 }

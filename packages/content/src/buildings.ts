@@ -26,6 +26,8 @@ export interface BuildingDef {
   unlocksTier?: 1 | 2 | 3 | 4
   /** Flat defense bonus applied to the garrison during a city assault (fortification only). */
   defenseBonus?: number
+  /** True for the building that unlocks the ship-upgrade action at this city (shipyard only). */
+  unlocksShipyard?: boolean
 }
 
 export const BUILDINGS: Record<string, BuildingDef> = {
@@ -138,6 +140,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 300, timber: 20 },
     produces: {},
     requires: 'townhall',
+    unlocksShipyard: true,
   },
 }
 

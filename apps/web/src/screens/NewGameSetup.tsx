@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
+import { AI_TUNING, FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
 import type { PlayerConfig, TroopStack } from '@aop/engine'
 import { buildCatalog } from '../catalog'
@@ -83,6 +83,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
       setup: GAME_SETUP,
       combatStats: combatStatsData(),
       content: buildCatalog(),
+      aiTuning: AI_TUNING,
     })
   }
 
