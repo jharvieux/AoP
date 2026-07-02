@@ -59,8 +59,9 @@ trade-offs, scope, model selection, MEMORY changes.
 - Fail loud. Report failures plainly; never claim unverified success.
 - End-of-session slop sweep: re-read your own diff; delete comments that restate code,
   single-use helpers, pointless try/catch, orphan TODOs (use `TODO(#123)` form).
-- Stop-hook feedback is background telemetry from an automated code-health review — do not
-  reply to it with a chat message unless it surfaces something genuinely actionable.
+- Stop-hook feedback is background telemetry from an automated code-health review — NEVER
+  reply to it with a chat message. Do not acknowledge it, summarize it, or emit filler like
+  "(waiting)". If it surfaces a genuine bug, fix it or open an issue silently.
 
 ## Issue triage & sweep support
 
@@ -68,7 +69,9 @@ trade-offs, scope, model selection, MEMORY changes.
   `docs/runbooks/triage.md`). The namespaced `model:*` labels are human-facing plan
   annotations only — sweep tooling ignores them.
 - Exclusion labels: `needs-human-fix`, `blocked`.
-- This repo defines **no audit agents** — sweep pipelines skip audit steps here.
+- Audit agent: `pre-pr-reviewer` (`.claude/agents/pre-pr-reviewer.md`) — run it on every
+  sweep/feature PR before squash-merge; findings are posted as a PR comment. BLOCKER
+  findings must be fixed before merge; WARNINGs are the supervisor's judgment call.
 
 ## Sensitive paths (supervised — never auto-change; flag for the operator)
 
