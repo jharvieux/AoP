@@ -27,6 +27,8 @@ export interface ShipCombatStats {
   id: string
   hull: number
   cannons: number
+  /** Sailing speed — decides whether a pinning tactic can hold an evader (#18). */
+  speed: number
 }
 
 /** Plain, JSON-serializable snapshot of the combat-relevant content numbers. */

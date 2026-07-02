@@ -19,8 +19,8 @@ const STATS: CombatStatsData = {
     { id: 'elite', attack: 12, defense: 8, health: 40 },
   ],
   ships: [
-    { id: 'sloop', hull: 40, cannons: 6 },
-    { id: 'galleon', hull: 160, cannons: 36 },
+    { id: 'sloop', hull: 40, cannons: 6, speed: 5 },
+    { id: 'galleon', hull: 160, cannons: 36, speed: 2 },
   ],
 }
 
@@ -163,5 +163,65 @@ describe('attackCaptain action', () => {
         targetCaptainId: p2cap.id,
       }),
     ).toThrow()
+  })
+
+  it("fights the defence with the target's own standing orders — never the attacker's say-so", () => {
+    // p2 saves "always evade" on its own turn; when p1 later attacks, the
+    // attackCaptain action carries only p1's plan, and the outnumbered p2
+    // slips away exactly as its saved orders dictate (D-002 / D-009).
+    let state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+
+    state = applyActionWithOutcome(state, { type: 'endTurn', playerId: 'p1' }).state
+    state = applyActionWithOutcome(state, {
+      type: 'setStandingOrders',
+      playerId: 'p2',
+      captainId: p2cap.id,
+      orders: [{ when: 'always', tactic: 'evade' }],
+    }).state
+    expect(state.captains.find((c) => c.id === p2cap.id)!.standingOrders).toEqual([
+      { when: 'always', tactic: 'evade' },
+    ])
+    state = applyActionWithOutcome(state, { type: 'endTurn', playerId: 'p2' }).state
+
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+      attackerOrders: ['broadside'],
+    })
+    expect(battleReport!.escapedId).toBe('p2')
+    expect(next.captains.some((c) => c.id === p2cap.id)).toBe(true)
+    expect(next.status).toBe('active')
+  })
+})
+
+describe('setStandingOrders action', () => {
+  it('rejects orders for a captain you do not own', () => {
+    const state = createGame(combatConfig())
+    const p2cap = captainsOf(state, 'p2')[0]!
+    expect(() =>
+      applyActionWithOutcome(state, {
+        type: 'setStandingOrders',
+        playerId: 'p1',
+        captainId: p2cap.id,
+        orders: [{ when: 'always', tactic: 'evade' }],
+      }),
+    ).toThrow(/not yours/)
+  })
+
+  it('rejects malformed orders instead of guessing', () => {
+    const state = createGame(combatConfig())
+    const p1cap = captainsOf(state, 'p1')[0]!
+    expect(() =>
+      applyActionWithOutcome(state, {
+        type: 'setStandingOrders',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        orders: [{ when: 'always', tactic: 'kraken' as never }],
+      }),
+    ).toThrow(/Invalid standing order/)
   })
 })

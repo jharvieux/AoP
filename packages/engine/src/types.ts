@@ -2,6 +2,7 @@ import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { CombatStatsData } from './combat'
 import type { GameMap } from './map'
 import type { RngState } from './rng'
+import type { StandingOrder } from './tactics'
 
 /** A homogeneous group of troops aboard a captain's ship. `unitId` indexes @aop/content. */
 export interface TroopStack {
@@ -36,6 +37,12 @@ export interface Captain {
   /** Movement points granted at the start of each of the owner's turns. */
   maxMovementPoints: number
   troops: TroopStack[]
+  /**
+   * Conditional defence plan used when this captain is attacked (Phase 3:
+   * while its owner is offline). Hidden information — Phase 3 view filtering
+   * must strip this from enemy-facing views, like rngState (D-009).
+   */
+  standingOrders?: StandingOrder[]
 }
 
 export interface GameConfig {

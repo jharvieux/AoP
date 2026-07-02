@@ -18,6 +18,7 @@ export interface ShipCombatStats {
   id: string
   hull: number
   cannons: number
+  speed: number
 }
 
 export interface CombatStatsData {
@@ -38,6 +39,7 @@ export function combatStatsData(): CombatStatsData {
     id: s.id,
     hull: s.hull,
     cannons: s.cannons,
+    speed: s.speed,
   }))
   return { units, ships }
 }

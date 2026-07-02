@@ -9,7 +9,7 @@ const STATS: CombatStatsData = {
     { id: 'strong', attack: 10, defense: 6, health: 30 },
     { id: 'weak', attack: 3, defense: 1, health: 8 },
   ],
-  ships: [{ id: 'sloop', hull: 40, cannons: 6 }],
+  ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
 }
 
 function duel(

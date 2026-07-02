@@ -4,6 +4,7 @@ import {
   type Action,
   type AttackCaptainAction,
   type MoveCaptainAction,
+  type SetStandingOrdersAction,
 } from './actions'
 import { createCombatStats, type BattleReport, type Combatant, type CombatResult } from './combat'
 import { currentPlayer } from './game'
@@ -11,10 +12,11 @@ import { tileAt } from './map'
 import { findPath } from './pathfinding'
 import {
   aiTacticDriver,
+  ORDER_CONDITIONS,
   resolveTacticalCombat,
   standingOrdersDriver,
-  type TacticDriver,
-  type TacticId,
+  tacticPlanDriver,
+  TACTICS,
 } from './tactics'
 import type { Captain, GameState } from './types'
 
@@ -67,6 +69,9 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       battleReport = result.battleReport
       break
     }
+    case 'setStandingOrders':
+      next = setStandingOrders(state, action)
+      break
   }
 
   const outcome: ActionOutcome = { state: { ...next, actionCount: state.actionCount + 1 } }
@@ -135,6 +140,11 @@ function attackCaptain(
   if (!state.config.combatStats) {
     throw new InvalidActionError('No combat stats configured for this match', action)
   }
+  for (const tactic of action.attackerOrders ?? []) {
+    if (!TACTICS.includes(tactic)) {
+      throw new InvalidActionError(`Unknown tactic '${tactic}' in attacker orders`, action)
+    }
+  }
 
   const stats = createCombatStats(state.config.combatStats)
   const toCombatant = (c: Captain): Combatant => ({
@@ -144,16 +154,20 @@ function attackCaptain(
     troops: c.troops,
   })
 
-  const driver = (orders: TacticId[] | undefined): TacticDriver =>
-    orders ? standingOrdersDriver(orders) : aiTacticDriver
-
+  // The attacker plays its submitted plan; the defender fights by the standing
+  // orders its own owner saved in state (never anything the attacker supplies).
+  // Either side without orders is driven by the combat AI — auto-resolve.
   const result: CombatResult = resolveTacticalCombat(
     { attacker: toCombatant(attacker), defender: toCombatant(target) },
     stats,
     state.rngState,
     {
-      attacker: driver(action.attackerOrders),
-      defender: driver(action.defenderOrders),
+      attacker: action.attackerOrders?.length
+        ? tacticPlanDriver(action.attackerOrders)
+        : aiTacticDriver,
+      defender: target.standingOrders?.length
+        ? standingOrdersDriver(target.standingOrders)
+        : aiTacticDriver,
     },
   )
   const { report } = result
@@ -176,6 +190,30 @@ function attackCaptain(
 
   const settled = settleEliminations({ ...state, captains, rngState: result.rng })
   return { state: settled, battleReport: report }
+}
+
+const MAX_STANDING_ORDERS = 8
+
+function setStandingOrders(state: GameState, action: SetStandingOrdersAction): GameState {
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
+  if (captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
+  }
+  if (action.orders.length > MAX_STANDING_ORDERS) {
+    throw new InvalidActionError(`At most ${MAX_STANDING_ORDERS} standing orders`, action)
+  }
+  for (const order of action.orders) {
+    if (!TACTICS.includes(order.tactic) || !ORDER_CONDITIONS.includes(order.when)) {
+      throw new InvalidActionError(`Invalid standing order '${order.when}/${order.tactic}'`, action)
+    }
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, standingOrders: action.orders.map((o) => ({ ...o })) } : c,
+    ),
+  }
 }
 
 /**

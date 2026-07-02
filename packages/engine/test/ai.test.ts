@@ -15,7 +15,7 @@ const STATS: CombatStatsData = {
     { id: 'grunt', attack: 5, defense: 2, health: 12 },
     { id: 'elite', attack: 12, defense: 8, health: 40 },
   ],
-  ships: [{ id: 'sloop', hull: 40, cannons: 6 }],
+  ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
 }
 
 function config(p1Troops: number, p2Troops: number, unit = 'grunt'): GameConfig {
