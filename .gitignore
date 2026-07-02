@@ -1,0 +1,13 @@
+# Vitals provenance data
+.vitals/
+
+node_modules/
+dist/
+coverage/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+.vercel/
+.supabase/
