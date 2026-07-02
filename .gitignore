@@ -11,3 +11,5 @@ coverage/
 .DS_Store
 .vercel/
 .supabase/
+.claude/settings.json
+.claude/settings.local.json
