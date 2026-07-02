@@ -6,10 +6,11 @@ import type { FactionId, ResourcePool } from '@aop/shared'
  * `requires` names a prerequisite building id in the same city — the
  * construction action enforces it. One tree per category, HoMM-style:
  * economy (resource income), recruitment (unlocks unit tiers, see
- * @aop/content's UnitDef.tier), fortification (city defense bonus).
+ * @aop/content's UnitDef.tier), fortification (city defense bonus), shipyard
+ * (gates the ship upgrade action, #22).
  */
 
-export type BuildingCategory = 'economy' | 'recruitment' | 'fortification'
+export type BuildingCategory = 'economy' | 'recruitment' | 'fortification' | 'shipyard'
 
 export interface BuildingDef {
   id: string
@@ -129,6 +130,14 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'stoneWall',
     defenseBonus: 70,
+  },
+  shipyard: {
+    id: 'shipyard',
+    name: 'Shipyard',
+    category: 'shipyard',
+    cost: { gold: 300, timber: 20 },
+    produces: {},
+    requires: 'townhall',
   },
 }
 

@@ -69,6 +69,15 @@ export interface ChooseCaptainSkillAction {
   skillId: string
 }
 
+/** Buy the next level on one of a captain's ship's upgrade tracks (#22) at a city shipyard. */
+export interface UpgradeShipAction {
+  type: 'upgradeShip'
+  playerId: string
+  cityId: string
+  captainId: string
+  track: string
+}
+
 export type Action =
   | EndTurnAction
   | ResignAction
@@ -78,6 +87,7 @@ export type Action =
   | SetStandingOrderAction
   | GainCaptainXpAction
   | ChooseCaptainSkillAction
+  | UpgradeShipAction
 
 export class InvalidActionError extends Error {
   constructor(

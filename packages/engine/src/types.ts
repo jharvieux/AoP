@@ -66,6 +66,8 @@ export interface CaptainState {
   xp: number
   /** Skill ids chosen at level-up, in pick order. At most one per level above 1. */
   skills: string[]
+  /** Purchased level (0 = stock) per upgrade track at a city shipyard (#22). Missing key = 0. */
+  shipUpgrades: Record<string, number>
 }
 
 /**

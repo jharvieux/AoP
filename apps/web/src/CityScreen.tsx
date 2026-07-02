@@ -1,16 +1,19 @@
 import {
   BUILDINGS,
-  buildingDisplayName,
   CAPTAIN_XP_THRESHOLDS,
   FACTIONS,
+  SHIP_UPGRADE_TRACKS,
+  buildingDisplayName,
   skillsForFaction,
   type BuildingDef,
+  type ShipClassDef,
 } from '@aop/content'
 import {
   availableSkillPicks,
   levelForXp,
   type CaptainState,
   type CityState,
+  type ShipStats,
   type StandingOrder,
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
@@ -20,6 +23,8 @@ interface CityScreenProps {
   city: CityState
   captain: CaptainState | undefined
   shipCrewCapacity: number
+  shipClass: ShipClassDef | undefined
+  shipStats: ShipStats | undefined
   faction: FactionId
   resources: ResourcePool
   onClose: () => void
@@ -32,6 +37,14 @@ interface CityScreenProps {
     order: StandingOrder,
   ) => void
   onChooseCaptainSkill: (skillId: string) => void
+  onUpgradeShip: (track: string) => void
+}
+
+const UPGRADE_TRACK_LABELS: Record<string, string> = {
+  hull: 'Hull',
+  cannons: 'Cannons',
+  speed: 'Sails',
+  crewCapacity: 'Crew capacity',
 }
 
 const STANDING_ORDER_LABELS: Record<StandingOrder, string> = {
@@ -55,6 +68,8 @@ export function CityScreen({
   city,
   captain,
   shipCrewCapacity,
+  shipClass,
+  shipStats,
   faction,
   resources,
   onClose,
@@ -63,6 +78,7 @@ export function CityScreen({
   onTransfer,
   onSetStandingOrder,
   onChooseCaptainSkill,
+  onUpgradeShip,
 }: CityScreenProps) {
   const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
   const roster = FACTIONS[faction].units
@@ -197,6 +213,39 @@ export function CityScreen({
             )}
           </ul>
         </section>
+
+        {captain && shipClass && shipStats && (
+          <section>
+            <h3>Shipyard{!city.buildings.includes('shipyard') ? ' (requires a Shipyard)' : ''}</h3>
+            <p className="building-option__hint">
+              {shipClass.name} — Hull {shipStats.hull} · Cannons {shipStats.cannons} · Speed{' '}
+              {shipStats.speed} · Crew {shipStats.crewCapacity}
+            </p>
+            <ul className="building-list">
+              {SHIP_UPGRADE_TRACKS.map((track) => {
+                const levels = shipClass.upgrades[track]
+                const currentLevel = captain.shipUpgrades[track] ?? 0
+                const next = levels[currentLevel]
+                const affordable = !!next && canAfford(resources, { gold: next.goldCost })
+                const disabled = !next || !affordable || !city.buildings.includes('shipyard')
+                return (
+                  <li key={track} className="garrison-row">
+                    <span className="garrison-row__name">{UPGRADE_TRACK_LABELS[track]}</span>
+                    <span className="garrison-row__counts">
+                      Level {currentLevel}/{levels.length}
+                      {next ? ` · +${next.amount} for ${next.goldCost}g` : ' · Maxed'}
+                    </span>
+                    <div className="garrison-row__actions">
+                      <button disabled={disabled} onClick={() => onUpgradeShip(track)}>
+                        Upgrade
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
         {captain && (
           <section>

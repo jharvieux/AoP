@@ -26,8 +26,18 @@ export interface UnitLike {
   health: number
 }
 
+export interface ShipUpgradeLevelLike {
+  goldCost: number
+  amount: number
+}
+
 export interface ShipLike {
+  hull: number
+  cannons: number
+  speed: number
   crewCapacity: number
+  /** Purchasable levels per upgrade track (#22), ordered — index 0 is the first level's cost/effect. */
+  upgrades: Record<string, ShipUpgradeLevelLike[]>
 }
 
 export interface SkillLike {

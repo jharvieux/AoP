@@ -8,10 +8,12 @@ import {
   type RecruitUnitAction,
   type SetStandingOrderAction,
   type TransferTroopsAction,
+  type UpgradeShipAction,
 } from './actions'
 import type { ContentCatalog } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { currentPlayer } from './game'
+import { nextUpgradeCost } from './ships'
 import { availableSkillPicks, levelForXp } from './skills'
 import type { GameState } from './types'
 import { accumulateExploredTiles } from './visibility'
@@ -57,6 +59,9 @@ export function applyAction(state: GameState, action: Action, catalog: ContentCa
       break
     case 'chooseCaptainSkill':
       next = chooseCaptainSkill(state, action, catalog)
+      break
+    case 'upgradeShip':
+      next = upgradeShip(state, action, catalog)
       break
   }
 
@@ -305,6 +310,61 @@ function chooseCaptainSkill(
     ...state,
     captains: state.captains.map((c) =>
       c.id === captain.id ? { ...c, skills: [...c.skills, action.skillId] } : c,
+    ),
+  }
+}
+
+/**
+ * Buys the next level on one of a captain's ship's upgrade tracks (#22).
+ * Requires a shipyard in the city; does not yet check that the captain is
+ * actually docked there — same deferral as `transferTroops`, until captain
+ * map positions land (#8).
+ */
+function upgradeShip(
+  state: GameState,
+  action: UpgradeShipAction,
+  catalog: ContentCatalog,
+): GameState {
+  const city = state.cities.find((c) => c.id === action.cityId)
+  if (!city || city.ownerId !== action.playerId) {
+    throw new InvalidActionError(`No city ${action.cityId} owned by ${action.playerId}`, action)
+  }
+  if (!city.buildings.includes('shipyard')) {
+    throw new InvalidActionError(`${city.id} has no shipyard`, action)
+  }
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain || captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(
+      `No captain ${action.captainId} owned by ${action.playerId}`,
+      action,
+    )
+  }
+  const ship = catalog.ships[captain.shipClassId]
+  if (!ship) {
+    throw new InvalidActionError(`Unknown ship class ${captain.shipClassId}`, action)
+  }
+  const currentLevel = captain.shipUpgrades[action.track] ?? 0
+  const cost = nextUpgradeCost(ship, action.track, currentLevel)
+  if (cost === undefined) {
+    throw new InvalidActionError(
+      `${action.track} has no more levels for ${captain.shipClassId}`,
+      action,
+    )
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  if (!canAfford(player.resources, { gold: cost })) {
+    throw new InvalidActionError(`${action.playerId} cannot afford this upgrade`, action)
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === player.id ? { ...p, resources: subtractResources(p.resources, { gold: cost }) } : p,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id
+        ? { ...c, shipUpgrades: { ...c.shipUpgrades, [action.track]: currentLevel + 1 } }
+        : c,
     ),
   }
 }

@@ -3,6 +3,7 @@ import {
   captainCombatBonus,
   createGame,
   currentPlayer,
+  effectiveShipStats,
   replay,
   type Action,
   type ContentCatalog,
@@ -46,7 +47,16 @@ const CATALOG: ContentCatalog = {
     ),
   ),
   ships: Object.fromEntries(
-    SHIP_CLASSES.map((ship) => [ship.id, { crewCapacity: ship.crewCapacity }]),
+    SHIP_CLASSES.map((ship) => [
+      ship.id,
+      {
+        hull: ship.hull,
+        cannons: ship.cannons,
+        speed: ship.speed,
+        crewCapacity: ship.crewCapacity,
+        upgrades: ship.upgrades,
+      },
+    ]),
   ),
   skills: Object.fromEntries(
     Object.values(SKILLS).map((skill) => [
@@ -88,9 +98,14 @@ export function App() {
   const player = currentPlayer(game)
   const homeCity = game.cities.find((c) => c.ownerId === player.id)
   const homeCaptain = game.captains.find((c) => c.ownerId === player.id)
-  const shipCrewCapacity = homeCaptain
-    ? (CATALOG.ships[homeCaptain.shipClassId]?.crewCapacity ?? 0)
-    : 0
+  const homeShipClass = homeCaptain
+    ? SHIP_CLASSES.find((s) => s.id === homeCaptain.shipClassId)
+    : undefined
+  const homeShipStats = homeCaptain
+    ? CATALOG.ships[homeCaptain.shipClassId] &&
+      effectiveShipStats(CATALOG.ships[homeCaptain.shipClassId]!, homeCaptain.shipUpgrades)
+    : undefined
+  const shipCrewCapacity = homeShipStats?.crewCapacity ?? 0
   const opponentFaction =
     game.players.find((p) => p.faction !== player.faction)?.faction ?? 'british'
 
@@ -200,6 +215,20 @@ export function App() {
     setActionLog([...actionLog, ...actions])
   }
 
+  function upgradeShip(track: string) {
+    if (!homeCity || !homeCaptain) return
+    const actions: Action[] = []
+    const next = dispatch(game, actions, {
+      type: 'upgradeShip',
+      playerId: player.id,
+      cityId: homeCity.id,
+      captainId: homeCaptain.id,
+      track,
+    })
+    setGame(next)
+    setActionLog([...actionLog, ...actions])
+  }
+
   async function saveToSlot(slotId: string) {
     await saveGame(slotId, config, actionLog, game.round)
   }
@@ -251,6 +280,8 @@ export function App() {
           city={homeCity}
           captain={homeCaptain}
           shipCrewCapacity={shipCrewCapacity}
+          shipClass={homeShipClass}
+          shipStats={homeShipStats}
           faction={player.faction}
           resources={player.resources}
           onClose={() => setCityScreenOpen(false)}
@@ -259,6 +290,7 @@ export function App() {
           onTransfer={transfer}
           onSetStandingOrder={setStandingOrder}
           onChooseCaptainSkill={chooseCaptainSkill}
+          onUpgradeShip={upgradeShip}
         />
       )}
       {saveScreenOpen && (

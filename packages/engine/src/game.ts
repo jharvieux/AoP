@@ -59,6 +59,7 @@ export function createGame(config: GameConfig): GameState {
           standingOrder: DEFAULT_STANDING_ORDER,
           xp: 0,
           skills: [],
+          shipUpgrades: {},
         }))
       : [],
     exploredTiles: {},

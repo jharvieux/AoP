@@ -9,11 +9,13 @@ import {
   currentlyVisibleTiles,
   currentPlayer,
   decideEngagement,
+  effectiveShipStats,
   estimateOdds,
   InvalidActionError,
   levelForXp,
   nextFloat,
   nextInt,
+  nextUpgradeCost,
   replay,
   resolveCombat,
   resolveEncounter,
@@ -30,6 +32,7 @@ const testCatalog: ContentCatalog = {
     townhall: { produces: { gold: 100 }, cost: {} },
     sawmill: { produces: { timber: 4 }, cost: { gold: 200 }, requires: 'townhall' },
     barracks: { produces: {}, cost: { gold: 150 }, requires: 'townhall', unlocksTier: 1 },
+    shipyard: { produces: {}, cost: { gold: 300, timber: 20 }, requires: 'townhall' },
   },
   units: {
     deckhand: {
@@ -61,7 +64,16 @@ const testCatalog: ContentCatalog = {
     },
   },
   ships: {
-    sloop: { crewCapacity: 4 },
+    sloop: {
+      hull: 40,
+      cannons: 6,
+      speed: 5,
+      crewCapacity: 4,
+      upgrades: {
+        hull: [{ goldCost: 150, amount: 15 }],
+        crewCapacity: [{ goldCost: 220, amount: 1 }],
+      },
+    },
   },
   skills: {
     'pirates-gunnery-1': {
@@ -830,5 +842,137 @@ describe('captain skills', () => {
     const captain = a.captains.find((c) => c.id === 'p1-flagship')!
     expect(captain.xp).toBe(150)
     expect(captain.skills).toEqual(['pirates-gunnery-1'])
+  })
+})
+
+describe('ship upgrades', () => {
+  function shipyardConfig(playerCount = 2): GameConfig {
+    return {
+      ...testConfig(playerCount),
+      startingBuildings: ['townhall', 'shipyard'],
+      startingShipClassId: 'sloop',
+    }
+  }
+
+  it('effectiveShipStats applies purchased levels and leaves the base ship class untouched', () => {
+    const ship = testCatalog.ships.sloop!
+    expect(effectiveShipStats(ship, {})).toEqual({
+      hull: 40,
+      cannons: 6,
+      speed: 5,
+      crewCapacity: 4,
+    })
+    expect(effectiveShipStats(ship, { hull: 1, crewCapacity: 1 })).toEqual({
+      hull: 55,
+      cannons: 6,
+      speed: 5,
+      crewCapacity: 5,
+    })
+  })
+
+  it('nextUpgradeCost returns undefined once a track is maxed or unknown', () => {
+    const ship = testCatalog.ships.sloop!
+    expect(nextUpgradeCost(ship, 'hull', 0)).toBe(150)
+    expect(nextUpgradeCost(ship, 'hull', 1)).toBeUndefined()
+    expect(nextUpgradeCost(ship, 'speed', 0)).toBeUndefined()
+  })
+
+  it('upgradeShip charges gold and increments the track level', () => {
+    let state = createGame(shipyardConfig())
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    const goldBefore = state.players[0]!.resources.gold
+    state = applyAction(
+      state,
+      {
+        type: 'upgradeShip',
+        playerId: 'p1',
+        cityId: city.id,
+        captainId: 'p1-flagship',
+        track: 'hull',
+      },
+      testCatalog,
+    )
+    const captain = state.captains.find((c) => c.id === 'p1-flagship')!
+    expect(captain.shipUpgrades.hull).toBe(1)
+    expect(state.players[0]!.resources.gold).toBe(goldBefore - 150)
+  })
+
+  it('rejects upgrades without a shipyard, on a maxed track, or without owning the captain', () => {
+    const withoutShipyard = createGame({ ...shipyardConfig(), startingBuildings: ['townhall'] })
+    const cityA = withoutShipyard.cities.find((c) => c.ownerId === 'p1')!
+    expect(() =>
+      applyAction(
+        withoutShipyard,
+        {
+          type: 'upgradeShip',
+          playerId: 'p1',
+          cityId: cityA.id,
+          captainId: 'p1-flagship',
+          track: 'hull',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+
+    let state = createGame(shipyardConfig())
+    const city = state.cities.find((c) => c.ownerId === 'p1')!
+    state = applyAction(
+      state,
+      {
+        type: 'upgradeShip',
+        playerId: 'p1',
+        cityId: city.id,
+        captainId: 'p1-flagship',
+        track: 'hull',
+      },
+      testCatalog,
+    )
+    // Only one level defined for 'hull' in testCatalog — the second purchase is rejected as maxed.
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'upgradeShip',
+          playerId: 'p1',
+          cityId: city.id,
+          captainId: 'p1-flagship',
+          track: 'hull',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+
+    expect(() =>
+      applyAction(
+        state,
+        {
+          type: 'upgradeShip',
+          playerId: 'p1',
+          cityId: city.id,
+          captainId: 'p2-flagship',
+          track: 'crewCapacity',
+        },
+        testCatalog,
+      ),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('replaying a log with upgradeShip is deterministic', () => {
+    const base = createGame(shipyardConfig())
+    const city = base.cities.find((c) => c.ownerId === 'p1')!
+    const log: Action[] = [
+      {
+        type: 'upgradeShip',
+        playerId: 'p1',
+        cityId: city.id,
+        captainId: 'p1-flagship',
+        track: 'crewCapacity',
+      },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(base, log, testCatalog)
+    const b = replay(base, log, testCatalog)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.captains.find((c) => c.id === 'p1-flagship')!.shipUpgrades.crewCapacity).toBe(1)
   })
 })
