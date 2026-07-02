@@ -162,6 +162,13 @@ const DAMAGE_ROLL_SPREAD = 0.3
 const HULL_STRENGTH_WEIGHT = 0.25
 const CANNON_STRENGTH_WEIGHT = 1
 const TROOP_DEFENSE_WEIGHT = 0.5
+/**
+ * Fraction of raw strength dealt as damage per round. Tuned via the balance
+ * harness (#24): higher values make even fights end in mutual destruction the
+ * same round; this stretches duels to ~6-8 rounds so the stronger fleet reliably
+ * pulls ahead and decisive results dominate over draws.
+ */
+const DAMAGE_SCALE = 0.35
 
 interface Side {
   combatant: Combatant
@@ -252,9 +259,15 @@ export function resolveRounds(
     ;[state, defRoll] = nextFloat(state)
 
     const attackerDamage =
-      atkStrength * (DAMAGE_ROLL_MIN + atkRoll * DAMAGE_ROLL_SPREAD) * tactics.attackerModifier
+      atkStrength *
+      (DAMAGE_ROLL_MIN + atkRoll * DAMAGE_ROLL_SPREAD) *
+      tactics.attackerModifier *
+      DAMAGE_SCALE
     const defenderDamage =
-      defStrength * (DAMAGE_ROLL_MIN + defRoll * DAMAGE_ROLL_SPREAD) * tactics.defenderModifier
+      defStrength *
+      (DAMAGE_ROLL_MIN + defRoll * DAMAGE_ROLL_SPREAD) *
+      tactics.defenderModifier *
+      DAMAGE_SCALE
 
     applyDamage(defender, attackerDamage, stats)
     applyDamage(attacker, defenderDamage, stats)
