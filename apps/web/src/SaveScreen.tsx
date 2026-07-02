@@ -1,0 +1,68 @@
+import { useEffect, useState } from 'react'
+import { listSaves, type SaveRecord } from './storage'
+
+const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
+
+interface SaveScreenProps {
+  onClose: () => void
+  onSave: (slotId: string) => Promise<void>
+  onLoad: (slotId: string) => void
+}
+
+function formatSlot(record: SaveRecord | undefined): string {
+  if (!record) return 'Empty'
+  return `Round ${record.round} — ${new Date(record.savedAt).toLocaleString()}`
+}
+
+/** Bottom-sheet save/load menu: one autosave slot plus three manual slots. */
+export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
+  const [records, setRecords] = useState<Record<string, SaveRecord>>({})
+
+  function refresh() {
+    listSaves().then((saves) => {
+      setRecords(Object.fromEntries(saves.map((s) => [s.slotId, s])))
+    })
+  }
+
+  useEffect(refresh, [])
+
+  async function handleSave(slotId: string) {
+    await onSave(slotId)
+    refresh()
+  }
+
+  function slotRow(slotId: string, title: string, saveable: boolean) {
+    const record = records[slotId]
+    return (
+      <li key={slotId} className="garrison-row">
+        <span className="garrison-row__name">{title}</span>
+        <span className="garrison-row__counts">{formatSlot(record)}</span>
+        <div className="garrison-row__actions">
+          {saveable && <button onClick={() => handleSave(slotId)}>Save</button>}
+          <button disabled={!record} onClick={() => onLoad(slotId)}>
+            Load
+          </button>
+        </div>
+      </li>
+    )
+  }
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet__header">
+          <h2>Save &amp; Load</h2>
+          <button className="sheet__close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+        <section>
+          <ul className="building-list">
+            {slotRow('autosave', 'Autosave (end of every turn)', false)}
+            {MANUAL_SLOTS.map((id, i) => slotRow(id, `Slot ${i + 1}`, true))}
+          </ul>
+        </section>
+      </div>
+    </div>
+  )
+}
