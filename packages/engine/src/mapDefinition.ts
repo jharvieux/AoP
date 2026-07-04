@@ -15,6 +15,12 @@ export interface EncounterPlacement {
   position: Coord
 }
 
+const VALID_ENCOUNTER_KINDS: ReadonlySet<string> = new Set<EncounterKind>([
+  'merchant',
+  'natives',
+  'settlers',
+])
+
 /**
  * Authored maps (#62): a hand-built map is wire-compatible with a generated
  * one — same `width`/`height`/`tiles`/`startPositions` shape as {@link GameMap}
@@ -192,9 +198,19 @@ export function validateMapDefinition(
     })
   }
 
-  // Author-placed encounters (#41): must land in bounds, on navigable water —
-  // the same constraint spawnEncounters enforces for procedural placements.
+  // Author-placed encounters (#41): must be a known kind, in bounds, and on
+  // navigable water — the same constraint spawnEncounters enforces for
+  // procedural placements. This is an untrusted-input boundary (map codes can
+  // be hand-edited or corrupted before import), so an unrecognized `kind`
+  // must fail loud here rather than reach the reducer's content lookup.
   def.encounters?.forEach((enc, i) => {
+    if (!VALID_ENCOUNTER_KINDS.has(enc.kind)) {
+      errors.push({
+        code: 'encounter-invalid-kind',
+        message: `encounter ${i} has unrecognized kind "${String(enc.kind)}"`,
+      })
+      return
+    }
     if (!inBounds(def, enc.position.x, enc.position.y)) {
       errors.push({
         code: 'encounter-out-of-bounds',

@@ -9,7 +9,7 @@ import type { Coord } from '@aop/shared'
  * (economy income comes from city buildings, not map entities) — markers are
  * informational placeholders that round-trip through save/export so sculpting
  * isn't lost, but `draftToMapDefinition` drops them before test-play/createGame.
- * Full resource-node economy integration is tracked as a follow-up issue.
+ * Full resource-node economy integration is tracked in #101.
  */
 
 export type ResourceMarkerKind = 'gold' | 'timber' | 'iron' | 'rum'

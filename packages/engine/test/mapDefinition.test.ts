@@ -8,6 +8,7 @@ import {
   replay,
   validateMapDefinition,
   type Action,
+  type EncounterKind,
   type GameConfig,
   type MapDefinition,
   type Tile,
@@ -243,5 +244,17 @@ describe('validateMapDefinition with authored encounters', () => {
     const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
     expect(result.errors.map((e) => e.code)).not.toContain('encounter-not-water')
     expect(result.errors.map((e) => e.code)).not.toContain('encounter-out-of-bounds')
+  })
+
+  it('flags an unrecognized encounter kind instead of letting it through to the reducer', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    // Simulates a hand-edited or corrupted map code (#63 tier-1 import) — an
+    // untrusted-input boundary that must fail loud here, not crash later.
+    map.encounters = [{ kind: 'bogus' as unknown as EncounterKind, position: { x: 10, y: 10 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('encounter-invalid-kind')
+    // Bails out of the bounds/water checks for that entry once the kind is bad.
+    expect(result.errors.map((e) => e.code)).not.toContain('encounter-not-water')
   })
 })
