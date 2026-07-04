@@ -7,7 +7,10 @@ import { GameOverScreen } from './screens/GameOverScreen'
 import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { AccountScreen } from './screens/AccountScreen'
 import { loadGame, saveGame } from './storage'
+import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
+import { audioManager } from './audio/audioManager'
+import { DIALOGUE } from './audio/dialogueClips'
 
 type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs' | 'account'
 
@@ -24,6 +27,7 @@ export function App() {
     setActionLog([])
     setGame(createGame(setupConfig))
     setScreen('game')
+    audioManager.play(DIALOGUE.narratorIntro, { key: 'narrator-intro' })
   }
 
   // Every mutation flows through here so the action log stays authoritative —
@@ -64,6 +68,7 @@ export function App() {
 
   return (
     <div className="app">
+      <UpdateBanner />
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}

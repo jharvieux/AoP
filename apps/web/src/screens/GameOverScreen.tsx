@@ -1,6 +1,9 @@
 import { FACTIONS } from '@aop/content'
 import type { GameState } from '@aop/engine'
+import { useEffect } from 'react'
 import { useTheme } from '../theme/ThemeContext'
+import { audioManager } from '../audio/audioManager'
+import { DIALOGUE } from '../audio/dialogueClips'
 
 interface GameOverScreenProps {
   game: GameState
@@ -13,6 +16,11 @@ export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenP
   const winner = game.players.find((p) => p.id === game.winnerId)
   const isPlayerWinner = game.winnerId === 'player-0'
   const isDraw = game.winnerId === null
+
+  // Victory narration bark (#75); only for a win, not a draw or defeat.
+  useEffect(() => {
+    if (isPlayerWinner) audioManager.play(DIALOGUE.levelComplete, { key: 'level-complete' })
+  }, [isPlayerWinner])
 
   return (
     <div className="screen game-over-screen">

@@ -1,3 +1,5 @@
+import { useAudioSettings } from '../audio/useAudioSettings'
+
 interface MainMenuProps {
   onStart: () => void
   onThemePacks: () => void
@@ -5,6 +7,8 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
+  const { muted, volume, setMuted, setVolume } = useAudioSettings()
+
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
@@ -19,6 +23,26 @@ export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
         <button className="secondary large" onClick={onAccount}>
           Account
         </button>
+
+        <div className="menu-audio-settings">
+          <label className="menu-audio-settings__row">
+            <input type="checkbox" checked={muted} onChange={(e) => setMuted(e.target.checked)} />
+            Mute audio
+          </label>
+          <label className="menu-audio-settings__row">
+            Volume
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              disabled={muted}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              aria-label="Audio volume"
+            />
+          </label>
+        </div>
       </div>
     </div>
   )
