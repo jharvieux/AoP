@@ -3,13 +3,13 @@ import {
   AI_DIFFICULTIES,
   AI_PERSONALITIES,
   AI_TUNING,
-  FACTIONS,
   GAME_SETUP,
   combatStatsData,
 } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
-import type { AiDifficulty, AiPersonality, AiProfile, PlayerConfig, TroopStack } from '@aop/engine'
+import type { AiDifficulty, AiPersonality, AiProfile, PlayerConfig } from '@aop/engine'
 import { buildCatalog } from '../catalog'
+import { createDefaultPlayer, DEFAULT_AI_PROFILE, FACTIONS_ARRAY, starterTroops } from '../players'
 import { useTheme } from '../theme/ThemeContext'
 import type { GameSetupConfig } from '../types'
 
@@ -19,37 +19,11 @@ interface NewGameSetupProps {
 }
 
 const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
-const FACTIONS_ARRAY = Object.values(FACTIONS)
 const PERSONALITIES: AiPersonality[] = ['aggressive', 'economic', 'opportunist']
 const DIFFICULTIES: AiDifficulty[] = ['easy', 'normal', 'hard']
-const DEFAULT_AI_PROFILE: AiProfile = { personality: 'opportunist', difficulty: 'normal' }
 
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-function getDefaultFaction(index: number): FactionId {
-  const faction = FACTIONS_ARRAY[index % FACTIONS_ARRAY.length]
-  if (!faction) throw new Error('No factions available')
-  return faction.id
-}
-
-/** Starting crew for a faction's captain, drawn from its tier-1 unit in @aop/content. */
-function starterTroops(faction: FactionId): TroopStack[] {
-  const unit = FACTIONS[faction].units[0]
-  if (!unit) throw new Error(`Faction ${faction} has no units`)
-  return [{ unitId: unit.id, count: 6 }]
-}
-
-function createDefaultPlayer(index: number): PlayerConfig {
-  const isAI = index !== 0
-  return {
-    id: index === 0 ? 'player-0' : `ai-${index}`,
-    name: index === 0 ? 'You' : `Captain ${index}`,
-    faction: getDefaultFaction(index),
-    isAI,
-    ...(isAI ? { aiProfile: { ...DEFAULT_AI_PROFILE } } : {}),
-  }
 }
 
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
