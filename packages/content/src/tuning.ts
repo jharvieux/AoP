@@ -43,6 +43,44 @@ export interface TacticsTuning {
 }
 
 /**
+ * Knobs for the tactical battle board (#39) — board geometry, terrain
+ * densities, and the melee damage model. Mirrors the engine's `BattleTuning`
+ * shape (content stays dependency-free). Its presence in a match's frozen
+ * combat-stats snapshot is what enables boarding melees at all; pre-#39
+ * snapshots lack it and replay unchanged.
+ */
+export interface BattleTuning {
+  boardWidth: number
+  boardHeight: number
+  maxStacksPerSide: number
+  maxRounds: number
+  /** Board speed used for units whose stats predate the speed field. */
+  defaultUnitSpeed: number
+  damageRollMin: number
+  damageRollSpread: number
+  /** Damage multiplier slope per point of (attack − defense). */
+  attackDefenseFactor: number
+  minDamageModifier: number
+  maxDamageModifier: number
+  /** Damage multiplier when a second friendly stack is adjacent to the target. */
+  flankingBonus: number
+  /** Fraction of damage absorbed by a target standing on cover terrain. */
+  coverDamageReduction: number
+  /** Fraction of damage absorbed by a target that held (defensive posture). */
+  holdDamageReduction: number
+  /** Movement cost of a rough hex (open and cover hexes cost 1). */
+  roughMoveCost: number
+  boardingBlockedDensity: number
+  boardingRoughDensity: number
+  boardingCoverDensity: number
+  landBlockedDensity: number
+  landRoughDensity: number
+  landCoverDensity: number
+  /** HP ratio at which the 'outnumbered' board standing order fires. */
+  outnumberedRatio: number
+}
+
+/**
  * Weights and thresholds for the single-player AI (#13/#67). Every knob the AI
  * uses to score a candidate action lives here so difficulty/behavior tuning
  * never touches @aop/engine, which holds no balance data of its own.
@@ -123,6 +161,34 @@ export const TACTICS_TUNING: TacticsTuning = {
   disadvantage: 0.8,
   ramHullMin: 50,
   outgunnedRatio: 1.5,
+}
+
+export const BATTLE_TUNING: BattleTuning = {
+  // 11×8 fills a phone in landscape without scrolling and gives a 5-6 turn
+  // closing march at speed 4-6 — room for maneuver, fast to resolve.
+  boardWidth: 11,
+  boardHeight: 8,
+  maxStacksPerSide: 7,
+  maxRounds: 30,
+  defaultUnitSpeed: 4,
+  damageRollMin: 0.9,
+  damageRollSpread: 0.2,
+  attackDefenseFactor: 0.05,
+  minDamageModifier: 0.4,
+  maxDamageModifier: 2,
+  flankingBonus: 1.2,
+  coverDamageReduction: 0.25,
+  holdDamageReduction: 0.15,
+  roughMoveCost: 2,
+  // A ship's deck: cluttered with masts and hatches, no soft going.
+  boardingBlockedDensity: 0.12,
+  boardingRoughDensity: 0,
+  boardingCoverDensity: 0.06,
+  // Open ground: fewer hard walls, more scrub and undergrowth.
+  landBlockedDensity: 0.08,
+  landRoughDensity: 0.12,
+  landCoverDensity: 0.1,
+  outnumberedRatio: 1.5,
 }
 
 export const GAME_SETUP: GameSetup = {

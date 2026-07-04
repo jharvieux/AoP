@@ -12,6 +12,7 @@ import {
   availableSkillPicks,
   effectiveShipStats,
   levelForXp,
+  type BoardOrder,
   type Captain,
   type CityState,
   type StandingOrder,
@@ -30,6 +31,7 @@ interface CityScreenProps {
   onRecruit: (unitId: string) => void
   onTransfer: (direction: 'toShip' | 'toGarrison', unitId: string) => void
   onSetStandingOrders: (orders: StandingOrder[]) => void
+  onSetBoardOrders: (orders: BoardOrder[]) => void
   onChooseCaptainSkill: (skillId: string) => void
   onUpgradeShip: (track: string) => void
 }
@@ -59,7 +61,34 @@ const STANDING_ORDER_PLANS: { id: string; label: string; orders: StandingOrder[]
   { id: 'boarder', label: 'Boarder (always board)', orders: [{ when: 'always', tactic: 'board' }] },
 ]
 
-function ordersMatch(a: StandingOrder[] | undefined, b: StandingOrder[]): boolean {
+/** Preset melee doctrines for the battle board (#39) — the boarding defence analog. */
+const BOARD_ORDER_PLANS: { id: string; label: string; orders: BoardOrder[] }[] = [
+  {
+    id: 'hold',
+    label: 'Hold the line (stand and repel)',
+    orders: [{ when: 'always', doctrine: 'holdLine' }],
+  },
+  {
+    id: 'charge',
+    label: 'Charge (advance and engage)',
+    orders: [{ when: 'always', doctrine: 'advance' }],
+  },
+  {
+    id: 'defensive',
+    label: 'Defensive (hold if outnumbered, else advance)',
+    orders: [
+      { when: 'outnumbered', doctrine: 'holdLine' },
+      { when: 'always', doctrine: 'advance' },
+    ],
+  },
+  {
+    id: 'skirmish',
+    label: 'Skirmish (hit and run)',
+    orders: [{ when: 'always', doctrine: 'skirmish' }],
+  },
+]
+
+function ordersMatch<T>(a: T[] | undefined, b: T[]): boolean {
   return JSON.stringify(a ?? []) === JSON.stringify(b)
 }
 
@@ -84,6 +113,7 @@ export function CityScreen({
   onRecruit,
   onTransfer,
   onSetStandingOrders,
+  onSetBoardOrders,
   onChooseCaptainSkill,
   onUpgradeShip,
 }: CityScreenProps) {
@@ -203,6 +233,31 @@ export function CityScreen({
                       onClick={() => onSetStandingOrders(plan.orders)}
                     >
                       {ordersMatch(captain.standingOrders, plan.orders) ? 'Active' : 'Set'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {captain && (
+          <section>
+            <h3>Boarding defence — {captain.name}</h3>
+            <p className="building-option__hint">
+              Melee doctrine your crew fights by on the battle board when boarded while you're
+              offline.
+            </p>
+            <ul className="building-list">
+              {BOARD_ORDER_PLANS.map((plan) => (
+                <li key={plan.id} className="garrison-row">
+                  <span className="garrison-row__name">{plan.label}</span>
+                  <div className="garrison-row__actions">
+                    <button
+                      disabled={ordersMatch(captain.boardOrders, plan.orders)}
+                      onClick={() => onSetBoardOrders(plan.orders)}
+                    >
+                      {ordersMatch(captain.boardOrders, plan.orders) ? 'Active' : 'Set'}
                     </button>
                   </div>
                 </li>

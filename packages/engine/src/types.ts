@@ -4,6 +4,7 @@ import type { CombatStatsData } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
 import type { GameMap } from './map'
 import type { MapDefinition } from './mapDefinition'
+import type { BoardOrder } from './battleBoard'
 import type { RngState } from './rng'
 import type { StandingOrder } from './tactics'
 
@@ -47,6 +48,12 @@ export interface Captain {
    * must strip this from enemy-facing views, like rngState (D-009).
    */
   standingOrders?: StandingOrder[]
+  /**
+   * Conditional melee doctrine for the tactical battle board (#39), used when
+   * this captain's crew is boarded while its owner is offline. Hidden
+   * information, stripped from enemy-facing views exactly like standingOrders.
+   */
+  boardOrders?: BoardOrder[]
   /** Cumulative combat/exploration XP (#21). Level is derived from this via skills.ts. */
   xp: number
   /** Skill ids chosen at level-up, in pick order. At most one per level above 1. */

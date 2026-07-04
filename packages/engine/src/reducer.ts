@@ -20,6 +20,13 @@ import {
   type UpgradeShipAction,
 } from './actions'
 import {
+  BOARD_DOCTRINES,
+  BOARD_ORDER_CONDITIONS,
+  boardOrdersDriver,
+  boardPlanDriver,
+  type BoardCommand,
+} from './battleBoard'
+import {
   createCombatStats,
   effectiveShip,
   type BattleReport,
@@ -269,6 +276,11 @@ function attackCaptain(
       throw new InvalidActionError(`Unknown tactic '${tactic}' in attacker orders`, action)
     }
   }
+  for (const command of action.boardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
 
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
@@ -292,6 +304,15 @@ function attackCaptain(
       defender: target.standingOrders?.length
         ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
         : aiTacticDriver,
+      // Board melee (#39): the attacker plays its recorded commands; the
+      // defender fights by the board orders its own owner saved in state.
+      // Either side without a plan is driven by the board AI.
+      ...(action.boardCommands?.length
+        ? { attackerBoard: boardPlanDriver(action.boardCommands) }
+        : {}),
+      ...(target.boardOrders?.length
+        ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
+        : {}),
     },
   )
   const { report } = result
@@ -321,6 +342,19 @@ function attackCaptain(
 
 const MAX_STANDING_ORDERS = 8
 
+/** Structural check on an action-log board command: plain integers only. */
+function isValidBoardCommand(command: BoardCommand): boolean {
+  if (!Number.isInteger(command.stackId) || command.stackId < 0) return false
+  if (command.to !== undefined) {
+    if (!Number.isInteger(command.to.col) || !Number.isInteger(command.to.row)) return false
+    if (command.to.col < 0 || command.to.row < 0) return false
+  }
+  if (command.targetId !== undefined) {
+    if (!Number.isInteger(command.targetId) || command.targetId < 0) return false
+  }
+  return true
+}
+
 function setStandingOrders(state: GameState, action: SetStandingOrdersAction): GameState {
   const captain = state.captains.find((c) => c.id === action.captainId)
   if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
@@ -335,10 +369,35 @@ function setStandingOrders(state: GameState, action: SetStandingOrdersAction): G
       throw new InvalidActionError(`Invalid standing order '${order.when}/${order.tactic}'`, action)
     }
   }
+  if (action.boardOrders) {
+    if (action.boardOrders.length > MAX_STANDING_ORDERS) {
+      throw new InvalidActionError(`At most ${MAX_STANDING_ORDERS} board orders`, action)
+    }
+    for (const order of action.boardOrders) {
+      if (
+        !BOARD_DOCTRINES.includes(order.doctrine) ||
+        !BOARD_ORDER_CONDITIONS.includes(order.when)
+      ) {
+        throw new InvalidActionError(
+          `Invalid board order '${order.when}/${order.doctrine}'`,
+          action,
+        )
+      }
+    }
+  }
   return {
     ...state,
     captains: state.captains.map((c) =>
-      c.id === captain.id ? { ...c, standingOrders: action.orders.map((o) => ({ ...o })) } : c,
+      c.id === captain.id
+        ? {
+            ...c,
+            standingOrders: action.orders.map((o) => ({ ...o })),
+            // Absent = untouched; [] = cleared. Naval orders always replace.
+            ...(action.boardOrders
+              ? { boardOrders: action.boardOrders.map((o) => ({ ...o })) }
+              : {}),
+          }
+        : c,
     ),
   }
 }
