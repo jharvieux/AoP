@@ -1,5 +1,5 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
-import type { AiTuning } from './ai'
+import type { AiDifficultyModifier, AiPersonalityWeights, AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
 import type { GameMap } from './map'
@@ -13,6 +13,22 @@ export interface TroopStack {
   count: number
 }
 
+/** The three AI archetypes (#25); each biases the utility-scoring weights differently. */
+export type AiPersonality = 'aggressive' | 'economic' | 'opportunist'
+
+/** AI skill tiers (#25). `easy` blunders, `normal` plays competently, `hard` plays optimally. */
+export type AiDifficulty = 'easy' | 'normal' | 'hard'
+
+/**
+ * An AI seat's behavior selection (#25). `personality` picks which weight overlay
+ * shapes its decisions; `difficulty` scales its skill (see {@link AiDifficultyModifier}).
+ * Set per-player at match creation and mirrored into {@link PlayerState}.
+ */
+export interface AiProfile {
+  personality: AiPersonality
+  difficulty: AiDifficulty
+}
+
 export interface PlayerConfig {
   id: string
   name: string
@@ -23,6 +39,13 @@ export interface PlayerConfig {
    * from @aop/content so the engine stays free of any content dependency.
    */
   startingTroops?: TroopStack[]
+  /** AI behavior selection (#25). Ignored for human seats; drives {@link nextAiAction} for AI ones. */
+  aiProfile?: AiProfile
+  /**
+   * Alliance id (Phase 3 prep, #25). Players sharing a non-null team are allies:
+   * the AI never targets an ally. Absent = every other player is an enemy.
+   */
+  team?: string
 }
 
 /**
@@ -129,6 +152,18 @@ export interface GameConfig {
    * fleet loading, upgrades, and skill picks all require it.
    */
   aiTuning?: AiTuning
+  /**
+   * Per-personality weight overlays (#25) applied atop {@link aiTuning}, injected
+   * from @aop/content. Required for a player's {@link PlayerConfig.aiProfile} to
+   * take effect; without it every AI plays the neutral base tuning.
+   */
+  aiPersonalities?: Record<AiPersonality, AiPersonalityWeights>
+  /**
+   * Per-difficulty skill modifiers (#25), injected from @aop/content. Governs both
+   * the AI's blunder rate and the `hard`-only resource bonus (no cheating on
+   * ≤`normal`). Without it every AI plays at full skill with no resource bonus.
+   */
+  aiDifficulties?: Record<AiDifficulty, AiDifficultyModifier>
 }
 
 export interface PlayerState {
@@ -138,6 +173,10 @@ export interface PlayerState {
   isAI: boolean
   resources: ResourcePool
   eliminated: boolean
+  /** AI behavior selection (#25), mirrored from {@link PlayerConfig.aiProfile}. Absent for humans. */
+  aiProfile?: AiProfile
+  /** Alliance id (#25), mirrored from {@link PlayerConfig.team}. */
+  team?: string
 }
 
 /**

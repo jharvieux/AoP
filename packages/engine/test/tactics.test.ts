@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  aggressiveTacticDriver,
   availableTactics,
   aiTacticDriver,
+  cautiousTacticDriver,
   combatantStrength,
+  plainTacticDriver,
   createCombatStats,
   resolveTacticalCombat,
   seedRng,
@@ -168,6 +171,31 @@ describe('aiTacticDriver', () => {
       }),
     )
     expect(pick).toBe('ram')
+  })
+})
+
+describe('personality combat drivers (#25)', () => {
+  it('aggressive presses close-quarters instead of holding the gun line', () => {
+    // Even fight the default driver would broadside — the aggressor forces a board.
+    expect(aggressiveTacticDriver.choose(ctx())).toBe('board')
+    // Only a near-sinking ship breaks off.
+    expect(aggressiveTacticDriver.choose(ctx({ ownHp: 2, enemyHp: 40 }))).toBe('evade')
+  })
+
+  it('cautious breaks off as soon as the fight turns against it', () => {
+    // The default driver only flees when *clearly* losing; the cautious one leaves earlier.
+    const slightlyBehind = ctx({ ownHp: 9, enemyHp: 10 })
+    expect(aiTacticDriver.choose(slightlyBehind)).not.toBe('evade')
+    expect(cautiousTacticDriver.choose(slightlyBehind)).toBe('evade')
+    // From a commanding lead it commits to a board.
+    expect(cautiousTacticDriver.choose(ctx({ ownStrength: 20, enemyStrength: 10 }))).toBe('board')
+  })
+
+  it('the unskilled driver always holds the gun line', () => {
+    expect(plainTacticDriver.choose(ctx({ enemyLastTactic: 'evade', ownSpeed: 9 }))).toBe(
+      'broadside',
+    )
+    expect(plainTacticDriver.choose(ctx({ ownHp: 1, enemyHp: 40 }))).toBe('broadside')
   })
 })
 
