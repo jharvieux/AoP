@@ -77,9 +77,20 @@ export function createGame(config: GameConfig): GameState {
 
   // Scatter random encounters from the seeded RNG (#23), then keep the advanced
   // RNG state so the encounter roll stream is baked into the match deterministically.
+  // An authored map (#41 map editor) may instead carry a fixed encounter list —
+  // used verbatim, with no RNG draw, so it doesn't disturb the seed's other rolls.
   let rngState: RngState = seedRng(config.seed)
   let encounters: EncounterState[] = []
-  if (content?.encounters) {
+  const authoredEncounters = config.mapDefinition?.encounters
+  if (authoredEncounters && authoredEncounters.length > 0) {
+    encounters = authoredEncounters.map((e, i) => ({
+      id: `enc-${i}`,
+      kind: e.kind,
+      position: { ...e.position },
+      active: true,
+      respawnRound: null,
+    }))
+  } else if (content?.encounters) {
     const spawned = spawnEncounters(map, content.encounters, rngState, map.startPositions)
     encounters = spawned.encounters
     rngState = spawned.rng

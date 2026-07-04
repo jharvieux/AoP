@@ -184,4 +184,64 @@ describe('createGame with an authored map', () => {
     const mismatched = { ...config, players: config.players.slice(0, 2) }
     expect(() => createGame(mismatched)).toThrow(/start positions/)
   })
+
+  it('seeds GameState.encounters from authored placements instead of scattering', () => {
+    const config = authoredConfig(2)
+    const water = config.mapDefinition!.startPositions[0]!
+    const withEncounters: GameConfig = {
+      ...config,
+      mapDefinition: {
+        ...config.mapDefinition!,
+        encounters: [{ kind: 'merchant', position: water }],
+      },
+    }
+    const state = createGame(withEncounters)
+    expect(state.encounters).toEqual([
+      { id: 'enc-0', kind: 'merchant', position: water, active: true, respawnRound: null },
+    ])
+  })
+
+  it('authored encounters do not consume any RNG draws (rngState untouched)', () => {
+    const config = authoredConfig(2)
+    const water = config.mapDefinition!.startPositions[0]!
+    const withEncounters: GameConfig = {
+      ...config,
+      mapDefinition: {
+        ...config.mapDefinition!,
+        encounters: [{ kind: 'merchant', position: water }],
+      },
+    }
+    const withoutEncounters: GameConfig = { ...config, mapDefinition: config.mapDefinition! }
+    const a = createGame(withEncounters)
+    const b = createGame(withoutEncounters)
+    expect(a.rngState).toEqual(b.rngState)
+  })
+})
+
+describe('validateMapDefinition with authored encounters', () => {
+  it('flags an encounter placed outside the map', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.encounters = [{ kind: 'merchant', position: { x: 99, y: 99 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('encounter-out-of-bounds')
+  })
+
+  it('flags an encounter placed on land', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 2, y: 2 }, 'land', 0)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.encounters = [{ kind: 'natives', position: { x: 2, y: 2 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('encounter-not-water')
+  })
+
+  it('accepts an encounter placed on navigable water', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.encounters = [{ kind: 'settlers', position: { x: 10, y: 10 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).not.toContain('encounter-not-water')
+    expect(result.errors.map((e) => e.code)).not.toContain('encounter-out-of-bounds')
+  })
 })
