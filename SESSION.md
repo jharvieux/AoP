@@ -8,12 +8,14 @@ _Last updated: 2026-07-04 (Issue-sweep Phase 3 complete: 4 batches merged; PR #7
 Completed full issue-sweep (Phase 0–3) on 10 issues across 4 batches (#28, #31, #32, #33, #34, #42, #43, #44, #75) + resolved PR #70 per operator feedback.
 
 **Issue-sweep batches 1–4 all merged:**
+
 - **PR #82 (Batch 3: Audio #28, #75)** — Audio manager (native Audio element, mute/volume persistence), NPC dialogue playback wiring. `pnpm verify` green, audit clean. Merged.
 - **PR #83 (Batch 4: Platform #42, #43, #44)** — PWA manifestability, offline support, service worker (partial; #42 Capacitor, #43 monetization skipped as supervised). `pnpm verify` green, audit 2 WARNINGs (non-blocking). Merged.
 - **PR #84 (Batch 2: Auth #31)** — Guest/account state machine (localStorage persistence, Supabase GoTrue integration, guest→account save migration). 22 files, added `vitest` devDep. `pnpm verify` green, audit clean (4 WARNINGs, non-blocking). Merged.
 - **PR #85 (Batch 1: Multiplayer #32, #33, #34)** — Match lifecycle, server authority (submit-action concurrency handling), anti-cheat fog filtering (`playerView` selector). ~40 files, +2500 lines, 126 engine tests (12 new). `pnpm verify` green, audit clean (2 WARNINGs: untested helper functions, duplicate starting-troop constant). Merged.
 
 **PR #70 reworked per operator feedback:**
+
 - **Decision 1 — drop #23 commit: DONE** (redundant with PR #71; dropped via reset to main)
 - **Decision 2 — incremental migration: DONE** (created new `20260704000000_multiplayer_incremental.sql` with only new pieces: `is_guest` column, `handle_new_user()` trigger, `cloud_saves` table, indexes). **All migration operations are idempotent** per operator reminder.
 - **Supabase cloud project: PROVISIONED** (credentials in `.env.local`, GitHub Actions secrets configured)
