@@ -1,39 +1,46 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-04 (Issue-sweep Phase 3 complete: 4 batches merged; PR #70 reworked)._
+_Last updated: 2026-07-04 (Issue #42 (Capacitor) scaffolded, PR #97 open, not merged)._
 
 ## Just completed
 
-Completed full issue-sweep (Phase 0–3) on 10 issues across 4 batches (#28, #31, #32, #33, #34, #42, #43, #44, #75) + resolved PR #70 per operator feedback.
+Executed issue #42 (Capacitor native builds + push notifications), previously skipped in
+the Phase-3 sweep (PR #83) as a supervised-path conflict. Landed dependency-free scaffolding
+on `feature/sweep-capacitor-42` (PR #97, **not merged — awaiting operator review/approval**):
 
-**Issue-sweep batches 1–4 all merged:**
-
-- **PR #82 (Batch 3: Audio #28, #75)** — Audio manager (native Audio element, mute/volume persistence), NPC dialogue playback wiring. `pnpm verify` green, audit clean. Merged.
-- **PR #83 (Batch 4: Platform #42, #43, #44)** — PWA manifestability, offline support, service worker (partial; #42 Capacitor, #43 monetization skipped as supervised). `pnpm verify` green, audit 2 WARNINGs (non-blocking). Merged.
-- **PR #84 (Batch 2: Auth #31)** — Guest/account state machine (localStorage persistence, Supabase GoTrue integration, guest→account save migration). 22 files, added `vitest` devDep. `pnpm verify` green, audit clean (4 WARNINGs, non-blocking). Merged.
-- **PR #85 (Batch 1: Multiplayer #32, #33, #34)** — Match lifecycle, server authority (submit-action concurrency handling), anti-cheat fog filtering (`playerView` selector). ~40 files, +2500 lines, 126 engine tests (12 new). `pnpm verify` green, audit clean (2 WARNINGs: untested helper functions, duplicate starting-troop constant). Merged.
-
-**PR #70 reworked per operator feedback:**
-
-- **Decision 1 — drop #23 commit: DONE** (redundant with PR #71; dropped via reset to main)
-- **Decision 2 — incremental migration: DONE** (created new `20260704000000_multiplayer_incremental.sql` with only new pieces: `is_guest` column, `handle_new_user()` trigger, `cloud_saves` table, indexes). **All migration operations are idempotent** per operator reminder.
-- **Supabase cloud project: PROVISIONED** (credentials in `.env.local`, GitHub Actions secrets configured)
-- Branch force-pushed with clean migration; `pnpm verify` green.
+- `apps/web/capacitor.config.ts` (typed locally, not against `@capacitor/cli`)
+- `apps/web/src/plugins/{nativeBridge,pushNotifications,androidBackButton}.ts` — all
+  feature-detect via Capacitor's runtime-injected `window.Capacitor` global, no
+  `@capacitor/*` import required, so they compile and no-op safely on web today
+- Safe-area/gesture audit: existing `env(safe-area-inset-*)`/`viewport-fit=cover`/
+  Pointer-Events map pan-zoom confirmed correct; added `overscroll-behavior: contain`
+- `scripts/capacitor/{setup,build-ios,build-android}.sh` for an operator to run later
+- `docs/runbooks/capacitor-native.md` + `MEMORY.md` D-014 document why this stops short of
+  installing `@capacitor/*` (new runtime deps — gated behind explicit operator approval per
+  CLAUDE.md) and generating the native projects (needs full Xcode + an Android SDK, neither
+  present in this sandbox)
+- Opened follow-up issue #98 tracking the remaining steps (dependency install, native
+  project generation, wiring a real match/turn screen once one exists, server-side
+  FCM/APNs send + email-via-Resend fallback)
+- `pnpm verify` green; no new dependencies added; PR #97 labeled `auto-triaged`
 
 ## Next steps
 
-1. **PR #70 CI check** — once merged, verify `Supabase / migrations` job passes against the new incremental migration
-2. **Audit Edge Functions runtime** — PR #85 notes that Edge Functions' runtime/CI coverage is gated on a provisioned Supabase project; now provisioned, so next step can test those
-3. **Below-cutoff items** (#39 tactical battle, #40 matchmaking, #41 map editor, #51 test tooling, #25 smarter AI, etc.) — queue for follow-up sweep
+1. **Operator decision on #97/#98**: approve (or trim) the `@capacitor/*` dependency list,
+   then someone with Xcode + Android Studio runs `scripts/capacitor/setup.sh` to actually
+   generate the native projects. Until then #42 stays open.
+2. **Below-cutoff items** (#39 tactical battle, #40 matchmaking, #41 map editor, #51 test
+   tooling, #25 smarter AI, #43 monetization — also previously skipped as supervised, same
+   root cause as #42) — queue for follow-up sweep.
+3. **PR #70 / migrations**: per prior session, verify the `Supabase / migrations` CI job
+   passes against the incremental migration once that PR's CI runs are checked.
 
-## Session summary
+## Prior session summary (2026-07-01 sweep, unchanged)
 
-- **Issue-sweep complete**: 10 issues across 4 batches (audio, platform/PWA, auth, multiplayer) merged into `main`
-- **PRs merged**: #82, #83, #84, #85 (all sweep batches)
-- **Tests**: 126 engine tests (115 existing + 12 new playerView tests), all passing; 28 web auth tests added
-- **Engine invariants**: All 4 maintained (pure/deterministic, GameState serializable, replay-test contract extended, balance data in @aop/content)
-- **Supervised paths**: Avoided for #82–84; correctly gated for #85 (no migrations, no CI workflows modified)
-- **Supabase credentials**: Provisioned (`.env.local` + GitHub Actions secrets)
-- **Code health**: Improved (comprehensive multiplayer foundation + auth layer + offline support + audio integration); non-blocking warnings documented for supervisor judgment
-- **Blocked on operator**: None (PR #70 reworked and ready for CI check)
+- **Issue-sweep complete**: 10 issues across 4 batches (audio, platform/PWA, auth,
+  multiplayer) merged into `main` — PRs #82, #83, #84, #85.
+- **Tests**: 126 engine tests, all passing; 28 web auth tests.
+- **Engine invariants**: all 4 maintained.
+- **Supabase credentials**: provisioned (`.env.local` + GitHub Actions secrets).
+- **Blocked on operator**: #97/#98 (Capacitor dependency approval + native toolchain access).
