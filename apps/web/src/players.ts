@@ -1,5 +1,5 @@
 import { FACTIONS } from '@aop/content'
-import type { PlayerConfig, TroopStack } from '@aop/engine'
+import type { AiProfile, PlayerConfig, TroopStack } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
 
 /**
@@ -10,6 +10,8 @@ import type { FactionId } from '@aop/shared'
  */
 
 export const FACTIONS_ARRAY = Object.values(FACTIONS)
+
+export const DEFAULT_AI_PROFILE: AiProfile = { personality: 'opportunist', difficulty: 'normal' }
 
 export function getDefaultFaction(index: number): FactionId {
   const faction = FACTIONS_ARRAY[index % FACTIONS_ARRAY.length]
@@ -25,10 +27,12 @@ export function starterTroops(faction: FactionId): TroopStack[] {
 }
 
 export function createDefaultPlayer(index: number): PlayerConfig {
+  const isAI = index !== 0
   return {
     id: index === 0 ? 'player-0' : `ai-${index}`,
     name: index === 0 ? 'You' : `Captain ${index}`,
     faction: getDefaultFaction(index),
-    isAI: index !== 0,
+    isAI,
+    ...(isAI ? { aiProfile: { ...DEFAULT_AI_PROFILE } } : {}),
   }
 }
