@@ -18,6 +18,7 @@ Stable Diffusion WebUI is a local, web-based interface for generating high-quali
 ### Installation
 
 1. **Clone the repository**:
+
    ```bash
    mkdir -p ~/aop-ai-tools
    cd ~/aop-ai-tools
@@ -26,18 +27,20 @@ Stable Diffusion WebUI is a local, web-based interface for generating high-quali
    ```
 
 2. **Install Python dependencies**:
+
    ```bash
    pip install -r requirements.txt
    ```
+
    On macOS with ARM (Apple Silicon), use `requirements-apple.txt` instead.
 
 3. **Download models**:
    The first run will download ~4GB of model data. Common model choices:
-   
+
    - **Stable Diffusion v1.5** (default): Good baseline, balanced quality/speed
    - **DreamShaper**: Better for fantasy art and character design (recommended)
    - **Realistic Vision**: Best for photorealistic textures
-   
+
    Place custom models in `models/Stable-diffusion/` directory.
 
 ### Running the WebUI
@@ -71,11 +74,12 @@ python launch.py --listen 127.0.0.1 --port 7860
 Good prompts are **specific**, **descriptive**, and **reference-aligned**:
 
 ```
-"pirate faction emblem, fantasy flag design, oil painting style, 
+"pirate faction emblem, fantasy flag design, oil painting style,
  intricate details, warm color palette, artstation, hd, 8k"
 ```
 
 Common quality modifiers:
+
 - `artstation` / `ArtStation HQ` — improves quality and detail
 - `concept art`, `game art` — game-appropriate styles
 - `octane render`, `unreal engine` — technical polish
@@ -108,34 +112,42 @@ Common quality modifiers:
 ### Use Cases
 
 #### Faction Emblems
+
 ```
-"pirate skull emblem, red and gold, ornate border, 
+"pirate skull emblem, red and gold, ornate border,
  fantasy heraldry, symmetrical, detailed, high resolution"
 ```
+
 Output: 512×512, used as faction banners in UI and world.
 
 #### NPC Portraits
+
 ```
-"character portrait of a grizzled pirate captain, 
- oil painting, fantasy character design, trending on artstation, 
+"character portrait of a grizzled pirate captain,
+ oil painting, fantasy character design, trending on artstation,
  detailed face, golden hour lighting"
 ```
+
 Output: 768×768, used for unit cards and character screens.
 
 #### Map Tiles and Terrain
+
 ```
-"isometric fantasy dungeon floor tile, stone texture, 
- game asset, seamless pattern, intricate carvings, 
+"isometric fantasy dungeon floor tile, stone texture,
+ game asset, seamless pattern, intricate carvings,
  D&D style, high quality"
 ```
+
 Output: 256×256 for tile-based maps.
 
 #### UI Backgrounds
+
 ```
-"ornate pirate tavern interior, fantasy art style, 
- warm candlelight, game ui background, ornate borders, 
+"ornate pirate tavern interior, fantasy art style,
+ warm candlelight, game ui background, ornate borders,
  hd, artstation"
 ```
+
 Output: 1920×1080 for menu/HUD backgrounds.
 
 ### Performance Tips
@@ -148,20 +160,24 @@ Output: 1920×1080 for menu/HUD backgrounds.
 ### Troubleshooting
 
 **CUDA out of memory**:
+
 ```bash
 python launch.py --lowram --autolaunch
 ```
 
 **Model not loading**:
+
 - Verify model file exists in `models/Stable-diffusion/`
 - Check file integrity: `ls -lh models/Stable-diffusion/`
 
 **Slow generation**:
+
 - Confirm GPU is being used (check WebUI logs)
 - Reduce `Steps` to 25–30
 - Lower resolution to 512×512 instead of 768×768
 
 **Black/corrupted images**:
+
 - Update PyTorch: `pip install --upgrade torch torchvision`
 - Try a different sampler (e.g., DPM++ 2M Karras)
 
