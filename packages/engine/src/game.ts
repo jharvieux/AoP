@@ -97,6 +97,10 @@ export function createGame(config: GameConfig): GameState {
       isAI: p.isAI,
       resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
+      // AI behavior + alliance (#25) carry into runtime state; omit when unset so
+      // GameState holds no stray optional keys.
+      ...(p.aiProfile ? { aiProfile: p.aiProfile } : {}),
+      ...(p.team !== undefined ? { team: p.team } : {}),
     })),
     cities,
     captains,
@@ -124,4 +128,15 @@ export function currentPlayer(state: GameState) {
   const player = state.players[state.currentPlayerIndex]
   if (!player) throw new Error(`Invalid currentPlayerIndex ${state.currentPlayerIndex}`)
   return player
+}
+
+/**
+ * Whether two seats are allies (#25, Phase 3 prep): distinct players sharing a
+ * non-null {@link PlayerState.team}. A seat is never allied with itself.
+ */
+export function areAllied(state: GameState, a: string, b: string): boolean {
+  if (a === b) return false
+  const teamA = state.players.find((p) => p.id === a)?.team
+  const teamB = state.players.find((p) => p.id === b)?.team
+  return teamA !== undefined && teamA === teamB
 }

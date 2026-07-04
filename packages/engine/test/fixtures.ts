@@ -1,4 +1,14 @@
-import type { AiTuning, CombatTuning, GameSetup, MapValidationLimits, TacticsTuning } from '../src'
+import type {
+  AiDifficulty,
+  AiDifficultyModifier,
+  AiPersonality,
+  AiPersonalityWeights,
+  AiTuning,
+  CombatTuning,
+  GameSetup,
+  MapValidationLimits,
+  TacticsTuning,
+} from '../src'
 
 /**
  * Balance-tuning fixtures for engine tests. In production these come from
@@ -54,6 +64,33 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+}
+
+export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {
+  aggressive: {
+    combatScoreMult: 1.6,
+    engageMinRatioMult: 0.7,
+    economyScoreMult: 0.9,
+    minGoldReserveMult: 0.6,
+  },
+  economic: {
+    combatScoreMult: 0.8,
+    engageMinRatioMult: 1.3,
+    economyScoreMult: 1.6,
+    minGoldReserveMult: 1.6,
+  },
+  opportunist: {
+    combatScoreMult: 1.15,
+    engageMinRatioMult: 1.1,
+    economyScoreMult: 1.1,
+    minGoldReserveMult: 1,
+  },
+}
+
+export const AI_DIFFICULTIES: Record<AiDifficulty, AiDifficultyModifier> = {
+  easy: { blunderChance: 0.35, incomeMult: 1 },
+  normal: { blunderChance: 0, incomeMult: 1 },
+  hard: { blunderChance: 0, incomeMult: 1.25 },
 }
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
