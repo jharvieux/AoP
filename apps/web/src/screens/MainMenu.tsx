@@ -1,9 +1,10 @@
 interface MainMenuProps {
   onStart: () => void
   onThemePacks: () => void
+  onAccount: () => void
 }
 
-export function MainMenu({ onStart, onThemePacks }: MainMenuProps) {
+export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
@@ -14,6 +15,9 @@ export function MainMenu({ onStart, onThemePacks }: MainMenuProps) {
         </button>
         <button className="secondary large" onClick={onThemePacks}>
           Theme Packs
+        </button>
+        <button className="secondary large" onClick={onAccount}>
+          Account
         </button>
       </div>
     </div>
