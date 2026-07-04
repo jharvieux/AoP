@@ -1,0 +1,233 @@
+import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
+import type { AiTuning } from './ai'
+import type { CombatStatsData } from './combat'
+import type { ContentCatalog } from './content'
+import type { TileType } from './map'
+import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
+import { currentlyVisibleTiles, tileKey } from './visibility'
+
+/**
+ * Fog-of-war player view — the anti-cheat boundary (docs/MULTIPLAYER.md §7).
+ *
+ * In multiplayer, clients NEVER receive a `GameState`; the `get-player-view`
+ * Edge Function returns a `PlayerView` produced by {@link playerView}. The type
+ * is deliberately structurally distinct from `GameState` (no `rngState`, no
+ * `config.seed`, `rules` instead of `config`) so engine code that needs the
+ * authoritative truth — `applyAction`, `createGame`, `replay` — cannot be handed
+ * a view by accident: passing a `PlayerView` where a `GameState` is expected is a
+ * compile error.
+ *
+ * Everything stripped here is stripped for a reason spelled out in §7 / §11:
+ *
+ * - `rngState` and `config.seed` — either one lets a client predict every future
+ *   combat roll and encounter outcome, so neither ever leaves the server.
+ * - Enemy captains/cities/encounters outside the viewer's current vision.
+ * - Enemy city interiors (buildings/garrison/recruit pools) and treasuries.
+ * - Enemy captains' standing orders, movement, XP, skills and ship upgrades —
+ *   knowing a defender's standing orders would break interactive attacks (§7).
+ */
+export interface PlayerView {
+  /** The seat identity this view was rendered for (engine player id, e.g. `seat-0`). */
+  viewerId: string
+  round: number
+  currentPlayerIndex: number
+  status: GameStatus
+  winnerId: string | null
+  /**
+   * Balance data the client legitimately needs for local optimistic play and
+   * odds previews (§9). Identical for every seat and already shipped in the
+   * client bundle — but note `config.seed` and `config.mapDefinition` are
+   * deliberately absent: the seed is the origin of `rngState`.
+   */
+  rules: ViewRules
+  /** Map extent, so the client can size its grid without seeing unexplored terrain. */
+  mapWidth: number
+  mapHeight: number
+  /** Only tiles this seat has ever explored; unexplored tiles are omitted entirely. */
+  tiles: ViewTile[]
+  players: ViewPlayer[]
+  cities: ViewCity[]
+  captains: ViewCaptain[]
+  encounters: ViewEncounter[]
+  /**
+   * Always `null`. Present so the shape stays obviously distinct from
+   * `GameState`, and as a guard against a view being fed back in as truth.
+   */
+  rngState: null
+}
+
+export interface ViewRules {
+  setup: GameSetup
+  mapSize: MapSize
+  combatStats?: CombatStatsData
+  content?: ContentCatalog
+  aiTuning?: AiTuning
+}
+
+export interface ViewTile {
+  coord: Coord
+  type: TileType
+  island: number
+  /** True if within current vision this instant; false if only remembered (explored). */
+  visible: boolean
+}
+
+/** An enemy is identity-only (name + faction are public from the lobby); own row carries the treasury. */
+export interface ViewPlayer {
+  id: string
+  name: string
+  faction: FactionId
+  isAI: boolean
+  eliminated: boolean
+  /** Present only on the viewer's own row. */
+  resources?: ResourcePool
+}
+
+export interface ViewCity {
+  id: string
+  ownerId: string
+  name: string
+  position: Coord
+  /** Interiors — present only for the viewer's own cities (§7: enemy interiors never). */
+  buildings?: string[]
+  garrison?: Record<string, number>
+  unitAvailability?: Record<string, number>
+  builtThisRound?: boolean
+}
+
+export interface ViewCaptain {
+  id: string
+  ownerId: string
+  name: string
+  position: Coord
+  shipClassId: string
+  /** Own-captain detail only; an enemy captain in vision reveals nothing below. */
+  troops?: TroopStack[]
+  movementPoints?: number
+  maxMovementPoints?: number
+  xp?: number
+  skills?: string[]
+  shipUpgrades?: Record<string, number>
+}
+
+export interface ViewEncounter {
+  id: string
+  kind: string
+  position: Coord
+  active: boolean
+}
+
+/**
+ * Project `state` down to what the seat `viewerId` is permitted to see. Pure
+ * function of `GameState` — the single filter used by `get-player-view` and, by
+ * the same call, live spectating (§12). Must never read anything outside `state`.
+ */
+export function playerView(state: GameState, viewerId: string): PlayerView {
+  const visibleKeys = new Set(currentlyVisibleTiles(state, viewerId).map(tileKey))
+  const exploredKeys = new Set(state.exploredTiles[viewerId] ?? [])
+  for (const key of visibleKeys) exploredKeys.add(key)
+
+  const tiles: ViewTile[] = []
+  for (const key of exploredKeys) {
+    const [x, y] = key.split(',').map(Number) as [number, number]
+    const tile = state.map.tiles[y * state.map.width + x]
+    if (!tile) continue
+    tiles.push({
+      coord: { x, y },
+      type: tile.type,
+      island: tile.island,
+      visible: visibleKeys.has(key),
+    })
+  }
+
+  const players: ViewPlayer[] = state.players.map((p) =>
+    p.id === viewerId
+      ? {
+          id: p.id,
+          name: p.name,
+          faction: p.faction,
+          isAI: p.isAI,
+          eliminated: p.eliminated,
+          resources: p.resources,
+        }
+      : { id: p.id, name: p.name, faction: p.faction, isAI: p.isAI, eliminated: p.eliminated },
+  )
+
+  const cities: ViewCity[] = []
+  for (const c of state.cities) {
+    if (c.ownerId === viewerId) {
+      cities.push({
+        id: c.id,
+        ownerId: c.ownerId,
+        name: c.name,
+        position: c.position,
+        buildings: c.buildings,
+        garrison: c.garrison,
+        unitAvailability: c.unitAvailability,
+        builtThisRound: c.builtThisRound,
+      })
+    } else if (exploredKeys.has(tileKey(c.position))) {
+      // An enemy city is a static structure: revealed once its tile is explored,
+      // but the interior (buildings/garrison/recruits) is never disclosed.
+      cities.push({ id: c.id, ownerId: c.ownerId, name: c.name, position: c.position })
+    }
+  }
+
+  const captains: ViewCaptain[] = []
+  for (const cap of state.captains) {
+    if (cap.ownerId === viewerId) {
+      captains.push({
+        id: cap.id,
+        ownerId: cap.ownerId,
+        name: cap.name,
+        position: cap.position,
+        shipClassId: cap.shipClassId,
+        troops: cap.troops,
+        movementPoints: cap.movementPoints,
+        maxMovementPoints: cap.maxMovementPoints,
+        xp: cap.xp,
+        skills: cap.skills,
+        shipUpgrades: cap.shipUpgrades,
+      })
+    } else if (visibleKeys.has(tileKey(cap.position))) {
+      // Enemy captain in current vision: you see a hull of a known class at a
+      // location — nothing about its manifest, orders, XP or upgrades.
+      captains.push({
+        id: cap.id,
+        ownerId: cap.ownerId,
+        name: cap.name,
+        position: cap.position,
+        shipClassId: cap.shipClassId,
+      })
+    }
+  }
+
+  const encounters: ViewEncounter[] = state.encounters
+    .filter((e) => e.active && visibleKeys.has(tileKey(e.position)))
+    .map((e) => ({ id: e.id, kind: e.kind, position: e.position, active: e.active }))
+
+  const rules: ViewRules = {
+    setup: state.config.setup,
+    mapSize: state.config.mapSize,
+  }
+  if (state.config.combatStats) rules.combatStats = state.config.combatStats
+  if (state.config.content) rules.content = state.config.content
+  if (state.config.aiTuning) rules.aiTuning = state.config.aiTuning
+
+  return {
+    viewerId,
+    round: state.round,
+    currentPlayerIndex: state.currentPlayerIndex,
+    status: state.status,
+    winnerId: state.winnerId,
+    rules,
+    mapWidth: state.map.width,
+    mapHeight: state.map.height,
+    tiles,
+    players,
+    cities,
+    captains,
+    encounters,
+    rngState: null,
+  }
+}
