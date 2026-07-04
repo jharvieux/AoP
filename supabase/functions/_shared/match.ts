@@ -1,5 +1,5 @@
 import { applyAction, replay, InvalidActionError, type Action, type GameState } from '@aop/engine'
-import type { FactionId, MapSize } from '@aop/shared'
+import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
 
@@ -296,17 +296,15 @@ export function parseSettings(raw: unknown): MatchSettings {
   }
 }
 
-const ALL_FACTIONS: readonly FactionId[] = ['pirates', 'british', 'spanish', 'dutch']
-
 /** First faction not already taken by another seat; used for defaults and AI seats. */
 export function firstFreeFaction(taken: readonly FactionId[]): FactionId {
-  const free = ALL_FACTIONS.find((f) => !taken.includes(f))
+  const free = FACTION_IDS.find((f) => !taken.includes(f))
   if (!free) throw new AppError('MATCH_STATE', 'No factions remain')
   return free
 }
 
 export function assertFaction(faction: unknown): FactionId {
-  if (typeof faction !== 'string' || !ALL_FACTIONS.includes(faction as FactionId)) {
+  if (typeof faction !== 'string' || !FACTION_IDS.includes(faction as FactionId)) {
     throw new AppError('BAD_REQUEST', `Unknown faction ${String(faction)}`)
   }
   return faction as FactionId
