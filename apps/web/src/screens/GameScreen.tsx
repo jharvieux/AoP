@@ -8,6 +8,7 @@ import {
   visibleState,
   type Action,
   type EncounterChoice,
+  type EncounterKind,
   type GameState,
   type StandingOrder,
 } from '@aop/engine'
@@ -19,6 +20,11 @@ import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
 import { useTheme } from '../theme/ThemeContext'
+import { audioManager } from '../audio/audioManager'
+import { DIALOGUE } from '../audio/dialogueClips'
+import { useEncounterAudio } from '../audio/useEncounterAudio'
+
+const BATTLE_TAUNT_KEY = 'battle-taunt'
 
 /** How long an AI seat "thinks" between actions. Purely cosmetic pacing. */
 const AI_STEP_MS = 250
@@ -77,6 +83,16 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   const encounterChoices = encounter
     ? Object.keys(game.config.content?.encounters?.[encounter.kind]?.choices ?? {})
     : []
+
+  const isEncounterAudioPlaying = useEncounterAudio(encounterId, encounter?.kind)
+
+  // Taunt bark when a target is lined up for battle (#28/#75); stops if the
+  // player backs out without attacking.
+  useEffect(() => {
+    if (!attackTargetId) return
+    audioManager.play(DIALOGUE.battleTaunt, { key: BATTLE_TAUNT_KEY })
+    return () => audioManager.stop(BATTLE_TAUNT_KEY)
+  }, [attackTargetId])
 
   const viewerCity = game.cities.find((c) => c.ownerId === viewer.id)
   const viewerCaptainAtCity = viewerCity
@@ -163,6 +179,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
+    audioManager.play(DIALOGUE.battleCharge)
     onAction({
       type: 'attackCaptain',
       playerId: viewer.id,
@@ -173,8 +190,17 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
     setSelectedCaptainId(null)
   }
 
+  /** Resolution bark for the encounter sheet closing (#75); kind/choice-dependent. */
+  function playEncounterResolutionBark(kind: EncounterKind, choice: string) {
+    if (kind === 'merchant') audioManager.play(DIALOGUE.merchantFarewell)
+    else if (kind === 'natives' && choice === 'fight') audioManager.play(DIALOGUE.battleCharge)
+    else if (kind === 'natives' && choice === 'trade') audioManager.play(DIALOGUE.nativeTrade)
+    else if (kind === 'settlers') audioManager.play(DIALOGUE.settlerGratitude)
+  }
+
   function resolveEncounter(choice: string) {
     if (!selectedCaptain || !encounter) return
+    playEncounterResolutionBark(encounter.kind, choice)
     onAction({
       type: 'resolveEncounter',
       playerId: viewer.id,
@@ -334,6 +360,9 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
                   : encounter.kind === 'natives'
                     ? 'A native village on the shore'
                     : 'A band of settlers adrift'}
+                {isEncounterAudioPlaying && (
+                  <span className="encounter-audio-indicator"> · Playing…</span>
+                )}
               </h2>
               <button
                 className="sheet__close"
