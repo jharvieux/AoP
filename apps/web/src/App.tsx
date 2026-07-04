@@ -1,5 +1,5 @@
 import { applyAction, createGame, replay, type Action, type GameState } from '@aop/engine'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
@@ -11,6 +11,7 @@ import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
+import { registerBackButtonHandler } from './plugins/androidBackButton'
 
 type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs' | 'account'
 
@@ -65,6 +66,17 @@ export function App() {
     setScreen('menu')
     setGame(null)
   }
+
+  // Android hardware back / gesture-nav back: return to the menu from any
+  // other screen instead of falling through to Capacitor's default (exiting
+  // the app) — see plugins/androidBackButton.ts. No-op on web/no native shell.
+  useEffect(() => {
+    return registerBackButtonHandler(() => {
+      if (screen === 'menu') return false
+      setScreen('menu')
+      return true
+    })
+  }, [screen])
 
   return (
     <div className="app">
