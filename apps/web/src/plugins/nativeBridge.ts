@@ -51,5 +51,6 @@ export function getPlatform(): 'ios' | 'android' | 'web' {
  * type-checked before any Capacitor dependency lands in package.json.
  */
 export function getNativePlugin(name: string) {
+  if (typeof window === 'undefined') return undefined
   return window.Capacitor?.Plugins?.[name]
 }
