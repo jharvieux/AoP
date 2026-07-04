@@ -6,6 +6,7 @@ import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { loadGame, saveGame } from './storage'
+import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
@@ -66,6 +67,7 @@ export function App() {
 
   return (
     <div className="app">
+      <UpdateBanner />
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}
