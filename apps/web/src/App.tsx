@@ -5,13 +5,14 @@ import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { ThemePacksScreen } from './screens/ThemePacksScreen'
+import { AccountScreen } from './screens/AccountScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
 
-type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs'
+type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs' | 'account'
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -72,9 +73,11 @@ export function App() {
         <MainMenu
           onStart={() => setScreen('setup')}
           onThemePacks={() => setScreen('theme-packs')}
+          onAccount={() => setScreen('account')}
         />
       )}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
+      {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
       {screen === 'setup' && (
         <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
       )}

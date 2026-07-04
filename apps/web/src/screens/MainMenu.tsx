@@ -3,9 +3,10 @@ import { useAudioSettings } from '../audio/useAudioSettings'
 interface MainMenuProps {
   onStart: () => void
   onThemePacks: () => void
+  onAccount: () => void
 }
 
-export function MainMenu({ onStart, onThemePacks }: MainMenuProps) {
+export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
   const { muted, volume, setMuted, setVolume } = useAudioSettings()
 
   return (
@@ -18,6 +19,9 @@ export function MainMenu({ onStart, onThemePacks }: MainMenuProps) {
         </button>
         <button className="secondary large" onClick={onThemePacks}>
           Theme Packs
+        </button>
+        <button className="secondary large" onClick={onAccount}>
+          Account
         </button>
 
         <div className="menu-audio-settings">
