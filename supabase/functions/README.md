@@ -17,6 +17,11 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
 | `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list) | #150  |
 | `get-leaderboard`   | `POST { limit? } -> { entries }` (top-N ranked players)                   | #154  |
+| `publish-map`       | `POST { mapCode, name? } -> { mapId }` (registered accounts only)         | #63   |
+| `browse-maps`       | `POST { search?, limit?, before? } -> { maps, nextBefore }`               | #63   |
+| `download-map`      | `POST { mapId } -> { mapId, name, mapCode, … }` (counts the download)     | #63   |
+| `report-map`        | `POST { mapId, reason? } -> { status, reportCount }`                      | #63   |
+| `remove-map`        | `POST { mapId } -> { removed }` (author-only soft delete)                 | #63   |
 
 Maintenance (not player-facing — gated by a shared secret or the service role, never a user JWT):
 
@@ -73,6 +78,28 @@ always-on leaderboard, not seasonal — `player_ratings` has no season dimension
 season length/reset model is specified anywhere in the docs, so one isn't invented here;
 see `@aop/shared/leaderboard.ts` for the full reasoning. Season support and any UI
 (#155) are separate, deferred work.
+
+The five community-map functions (#63 Tier 2) back the map editor's community library.
+`publish-map` is the hardened write path: it rejects guest/anonymous sessions
+(publishing requires a registered account — operator decision), enforces a 64 KiB size
+cap and a 5-per-hour-per-author rate limit (constants + reasoning in
+`@aop/shared/communityMaps.ts`), and — never trusting the client's own validation —
+decodes the submitted Tier-1 map code (`@aop/shared/mapCodes.ts`, which itself rejects
+decode bombs) and re-runs the engine's `validateMapDefinition` against the same
+@aop/content limits the editor uses before inserting. Publishing is post-moderation
+(live immediately); `report-map` files reports from any authenticated session, and the
+`file_map_report` RPC auto-hides a map once 3 distinct _registered_ accounts have
+reported it (guest reports are recorded but never counted — anonymous sessions are free
+to mass-create, so counting them would let one person hide any map). Restore is a
+manual moderation action; see `supabase/migrations/20260707063000_community_maps.sql`
+for the full design. `browse-maps`/`download-map` follow the #150/#154 access-control
+pattern exactly: both community-map tables have RLS enabled with **no client
+policies at all**, and these service-role functions return hand-picked projections —
+the browse summary never includes the map code, report counts, or moderation status,
+and the code itself leaves only through `download-map`, which counts the download
+server-side. `remove-map` is the author's own soft delete (`status = 'removed'`), kept
+as a row so it still counts against the publish rate limit and the author can always
+re-download their own work.
 
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side

@@ -66,6 +66,92 @@ export type Database = {
           },
         ]
       }
+      community_map_reports: {
+        Row: {
+          created_at: string
+          map_id: string
+          reason: string | null
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          map_id: string
+          reason?: string | null
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          map_id?: string
+          reason?: string | null
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'community_map_reports_map_id_fkey'
+            columns: ['map_id']
+            isOneToOne: false
+            referencedRelation: 'community_maps'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'community_map_reports_reporter_id_fkey'
+            columns: ['reporter_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      community_maps: {
+        Row: {
+          author_id: string
+          created_at: string
+          download_count: number
+          height: number
+          id: string
+          map_code: string
+          name: string
+          player_count: number
+          report_count: number
+          status: string
+          width: number
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          download_count?: number
+          height: number
+          id?: string
+          map_code: string
+          name: string
+          player_count: number
+          report_count?: number
+          status?: string
+          width: number
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          download_count?: number
+          height?: number
+          id?: string
+          map_code?: string
+          name?: string
+          player_count?: number
+          report_count?: number
+          status?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'community_maps_author_id_fkey'
+            columns: ['author_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       entitlements: {
         Row: {
           granted_at: string
@@ -456,9 +542,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      file_map_report: {
+        Args: {
+          p_auto_hide_threshold: number
+          p_map_id: string
+          p_reason: string
+          p_reporter: string
+        }
+        Returns: {
+          report_count: number
+          status: string
+        }[]
+      }
       finalize_match_with_ratings: {
         Args: { p_match_id: string; p_ratings: Json; p_winner_seat: number }
         Returns: boolean
+      }
+      increment_map_downloads: {
+        Args: { p_map_id: string }
+        Returns: undefined
       }
       match_seed: { Args: { p_match_id: string }; Returns: number }
     }
