@@ -3,6 +3,7 @@ import { validateMapDefinition, type EncounterKind, type TileType } from '@aop/e
 import type { Coord, MapSize } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildCatalog } from '../catalog'
+import { CommunityLibraryPanel } from '../mapEditor/CommunityLibraryPanel'
 import { MapEditorCanvas } from '../mapEditor/MapEditorCanvas'
 import {
   addStartPosition,
@@ -452,6 +453,16 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
             {importError && <p className="map-editor-error">{importError}</p>}
             {status && <p className="map-editor-status">{status}</p>}
           </div>
+
+          <CommunityLibraryPanel
+            draft={draft}
+            draftValid={validation.valid}
+            onImport={(imported) => {
+              setDraft(imported)
+              setExportCode(null)
+              setStatus(`Imported "${imported.name}" from the community library`)
+            }}
+          />
 
           <button className="primary large" onClick={handleTestPlay} disabled={!validation.valid}>
             Test Play

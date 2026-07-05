@@ -47,6 +47,45 @@ export {
   buildLeaderboard,
 } from './leaderboard'
 
+// Map-code wire codec (#63 Tier 1, relocated for Tier 2) — shared by the web
+// map editor's export/import and the publish-map Edge Function's server-side
+// re-validation path.
+export {
+  type MapCodeEntity,
+  type MapCodePayload,
+  type MapCodeTile,
+  type MapCodeTileType,
+  MAP_CODE_MAX_DIMENSION,
+  MAP_CODE_PREFIX,
+  decodeMapCodePayload,
+  encodeMapCodePayload,
+} from './mapCodes'
+
+// Community map library policy (#63 Tier 2) — size caps, publish rate limit,
+// report auto-hide threshold, and the browse filter/sort/page policy, shared
+// by the community-map Edge Functions and their vitest suite.
+export {
+  type CommunityMapCursor,
+  type CommunityMapQuery,
+  type CommunityMapSummary,
+  COMMUNITY_MAP_PAGE_MAX,
+  MAP_CODE_MAX_BYTES,
+  MAP_NAME_MAX_LENGTH,
+  PUBLISH_MAX_PER_WINDOW,
+  PUBLISH_WINDOW_MS,
+  REPORT_AUTO_HIDE_THRESHOLD,
+  REPORT_REASON_MAX_LENGTH,
+  clampCommunityMapLimit,
+  decodeCommunityMapCursor,
+  encodeCommunityMapCursor,
+  escapeIlikePattern,
+  mapCodeExceedsSizeLimit,
+  normalizeMapName,
+  normalizeReportReason,
+  publishRateLimited,
+  selectCommunityMaps,
+} from './communityMaps'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [
