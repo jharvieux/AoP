@@ -10,6 +10,8 @@ import { FACTIONS } from '@aop/content'
 import type { FactionId } from '@aop/shared'
 import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
 import { useEffect, useRef } from 'react'
+import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import { useTheme } from './theme/ThemeContext'
 import { usePixiApp } from './usePixiApp'
 
 /**
@@ -162,11 +164,17 @@ export interface MapCanvasProps {
 
 export function MapCanvas(props: MapCanvasProps) {
   const { containerRef, app } = usePixiApp({ background: TILE_COLOR.deep })
+  const { spriteUrl: themeSpriteUrl } = useTheme()
 
   // Latest props + view are read by the render loop via refs, so per-action
   // re-renders never tear down the Pixi scene or reset the camera.
   const propsRef = useRef(props)
   propsRef.current = props
+  // Theme pack overrides (#73) can change mid-session (applying a different
+  // pack), so this is read the same way as propsRef — via a ref the ticker
+  // checks each tick, not captured once when the Pixi scene is built below.
+  const themeSpriteUrlRef = useRef(themeSpriteUrl)
+  themeSpriteUrlRef.current = themeSpriteUrl
   const viewRef = useRef({ x: 40, y: 40, scale: 1 })
   // Flipped on every render (a new action, fog reveal, selection change, …)
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
@@ -257,7 +265,11 @@ export function MapCanvas(props: MapCanvasProps) {
             continue
           }
           const tile = map.tiles[tileIndex(map, x, y)]!
-          const spriteUrl = TILE_SPRITE_URL[tile.type]
+          const spriteUrl = resolveSpriteUrl(
+            themeSpriteUrlRef.current,
+            tileContentId(tile.type),
+            TILE_SPRITE_URL[tile.type],
+          )
           const texture = spriteUrl ? getTexture(spriteUrl) : undefined
           if (texture) {
             const sprite = tilePool.get(key)
@@ -284,7 +296,12 @@ export function MapCanvas(props: MapCanvasProps) {
         if (!visibleKeys.has(key)) continue
         const cx = enc.position.x * TILE + TILE / 2
         const cy = enc.position.y * TILE + TILE / 2
-        const texture = getTexture(ENCOUNTER_SPRITE_URL[enc.kind])
+        const spriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          encounterContentId(enc.kind),
+          ENCOUNTER_SPRITE_URL[enc.kind],
+        )
+        const texture = spriteUrl ? getTexture(spriteUrl) : undefined
         if (texture) {
           const sprite = encounterPool.get(enc.id)
           sprite.texture = texture
@@ -306,7 +323,12 @@ export function MapCanvas(props: MapCanvasProps) {
         if (!own && !exploredKeys.has(key)) continue
         const cx = city.position.x * TILE + TILE / 2
         const cy = city.position.y * TILE + TILE / 2
-        const texture = getTexture(own ? CITY_SPRITE_URL.own : CITY_SPRITE_URL.enemy)
+        const spriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          cityContentId(own),
+          own ? CITY_SPRITE_URL.own : CITY_SPRITE_URL.enemy,
+        )
+        const texture = spriteUrl ? getTexture(spriteUrl) : undefined
         if (texture) {
           const sprite = cityPool.get(city.id)
           sprite.texture = texture
@@ -328,8 +350,16 @@ export function MapCanvas(props: MapCanvasProps) {
         const cx = cap.position.x * TILE + TILE / 2
         const cy = cap.position.y * TILE + TILE / 2
         const faction = FACTIONS[factionOf(cap.ownerId)]
-        const shipSpriteUrl =
+        const defaultShipSpriteUrl =
           faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
+        // Ship overrides are keyed by ship class id, same content id the Theme
+        // Packs editor already uses for ship name/sprite overrides — not
+        // faction-specific, since ThemePack has no per-faction ship art slot.
+        const shipSpriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          cap.shipClassId,
+          defaultShipSpriteUrl,
+        )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
         if (texture) {
           const sprite = shipPool.get(cap.id)
