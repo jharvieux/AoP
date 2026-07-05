@@ -115,6 +115,35 @@ export function canReclaimSeat(status: string | null | undefined): boolean {
   return !TERMINAL_SEAT_STATUSES.includes(status ?? '')
 }
 
+/**
+ * Which seat's fog-of-war view a `get-player-view` caller is entitled to (#148,
+ * docs/MULTIPLAYER.md §12). Live spectating goes through the *identical*
+ * `playerView(state, seat)` filter a real player's request does — this helper
+ * only decides *which* seat id to feed it, never how the view is built, so a
+ * spectator's response is byte-for-byte what that seat's real player would get.
+ *
+ * Precedence is deliberate and anti-cheat-load-bearing:
+ *
+ * - A user who *holds a seat* always sees their own seat, even if they were also
+ *   granted a spectator seat elsewhere in the same match. A player must never be
+ *   able to widen their fog by self-granting spectate on an ally (or enemy) seat.
+ * - Otherwise, an explicitly-granted spectator sees exactly the one seat their
+ *   grant pins (`match_spectators.viewing_seat`) — pinned server-side, never
+ *   taken from a request body (§5), so a spectator can never watch a second seat,
+ *   let alone raw state (§11 map-hack / god-mode).
+ * - Neither → `null`; the caller answers `FORBIDDEN`. Public/anonymous spectating
+ *   is out of scope: a spectator must be an authenticated, granted user.
+ *
+ * Pure so the resolution is unit-testable without a database or Deno.
+ */
+export function resolveViewSeat(
+  playerSeat: number | null,
+  spectatorSeat: number | null,
+): number | null {
+  if (playerSeat !== null) return playerSeat
+  return spectatorSeat
+}
+
 /** The `match_players` columns a seat reclaim writes back (#134, §8). */
 export interface SeatReclaimUpdate {
   status: 'active'
