@@ -33,7 +33,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 10px 14px;
   background: #122f4d;
   border-bottom: 2px solid #2a5580;
@@ -48,6 +49,15 @@ body {
 .hud .turn-info {
   font-size: 0.85rem;
   opacity: 0.9;
+}
+
+/* Narrow phones (iPhone SE/375px and up): the title wastes space that the
+   turn indicator and resources need more, and the primary actions live in
+   the bottom bar anyway (#27), so drop it rather than let the row wrap. */
+@media (max-width: 420px) {
+  .hud h1 {
+    display: none;
+  }
 }
 
 .map-container {
@@ -98,6 +108,22 @@ button.secondary {
 
 button.secondary:active {
   filter: brightness(1.2);
+}
+
+button.danger {
+  min-height: 44px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: #a5352b;
+  color: #f6e9dd;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.danger:active {
+  filter: brightness(0.85);
 }
 
 button.large {
@@ -307,6 +333,26 @@ button.large {
   height: 100%;
 }
 
+/* Primary actions (City/Saves/End Turn/Resign) live down here instead of the
+   top header (#27) — on a one-handed 5-6" phone grip, the top corners are
+   the hardest part of the screen to reach without shifting your hold. Part
+   of the normal flex flow (not fixed), so it claims its own row and never
+   overlaps the map. */
+.bottom-action-bar {
+  padding: 10px 14px;
+  background: #122f4d;
+  border-top: 2px solid #2a5580;
+}
+
+.bottom-action-bar .button-group {
+  justify-content: center;
+}
+
+.bottom-action-bar .button-group > button {
+  flex: 1;
+  min-width: 0;
+}
+
 .game-over-screen {
   justify-content: center;
   align-items: center;
@@ -451,6 +497,7 @@ button.primary.secondary {
 }
 
 .sheet {
+  position: relative;
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
@@ -466,6 +513,22 @@ button.primary.secondary {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+}
+
+.sheet__drag-handle {
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet__grip {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #2a5580;
 }
 
 .sheet__close {

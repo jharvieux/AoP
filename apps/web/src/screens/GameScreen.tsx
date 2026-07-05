@@ -19,10 +19,12 @@ import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
+import { BottomSheet } from '../components/BottomSheet'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
 import { useEncounterAudio } from '../audio/useEncounterAudio'
+import { hapticImpact, hapticTap } from '../haptics'
 
 const BATTLE_TAUNT_KEY = 'battle-taunt'
 
@@ -179,6 +181,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
+    hapticImpact()
     audioManager.play(DIALOGUE.battleCharge)
     onAction({
       type: 'attackCaptain',
@@ -200,6 +203,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
 
   function resolveEncounter(choice: string) {
     if (!selectedCaptain || !encounter) return
+    hapticImpact()
     playEncounterResolutionBark(encounter.kind, choice)
     onAction({
       type: 'resolveEncounter',
@@ -213,11 +217,13 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   }
 
   function endTurn() {
+    hapticTap()
     setSelectedCaptainId(null)
     onAction({ type: 'endTurn', playerId: player.id })
   }
 
   function resign() {
+    hapticImpact()
     onAction({ type: 'resign', playerId: player.id })
     setConfirmingResign(false)
   }
@@ -278,11 +284,43 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
           {factionName(player.faction, FACTIONS[player.faction].name)})
         </span>
         <ResourceHud resources={viewer.resources} />
+      </header>
+
+      <div className="map-container">
+        <MapCanvas
+          map={game.map}
+          captains={game.captains}
+          cities={game.cities}
+          encounters={game.encounters}
+          viewerId={viewer.id}
+          visibleKeys={visibleKeys}
+          exploredKeys={exploredKeys}
+          selectedCaptainId={selectedCaptainId}
+          onTileClick={handleTileClick}
+        />
+      </div>
+
+      {/* Primary actions live in a bottom bar, not the header, so they sit in
+          the thumb-reach zone on one-handed phone use (#27). */}
+      <div className="bottom-action-bar">
         <div className="button-group">
-          <button className="secondary" onClick={() => setCityOpen(true)} disabled={!isViewerTurn}>
+          <button
+            className="secondary"
+            onClick={() => {
+              hapticTap()
+              setCityOpen(true)
+            }}
+            disabled={!isViewerTurn}
+          >
             City
           </button>
-          <button className="secondary" onClick={() => setSavesOpen(true)}>
+          <button
+            className="secondary"
+            onClick={() => {
+              hapticTap()
+              setSavesOpen(true)
+            }}
+          >
             Saves
           </button>
           <button className="primary" onClick={endTurn} disabled={player.isAI}>
@@ -307,80 +345,47 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
             </>
           )}
         </div>
-      </header>
-
-      <div className="map-container">
-        <MapCanvas
-          map={game.map}
-          captains={game.captains}
-          cities={game.cities}
-          encounters={game.encounters}
-          viewerId={viewer.id}
-          visibleKeys={visibleKeys}
-          exploredKeys={exploredKeys}
-          selectedCaptainId={selectedCaptainId}
-          onTileClick={handleTileClick}
-        />
       </div>
 
       {attackTarget && odds && (
-        <div className="sheet-backdrop" onClick={() => setAttackTargetId(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet__header">
-              <h2>Engage {attackTarget.name}?</h2>
-              <button
-                className="sheet__close"
-                onClick={() => setAttackTargetId(null)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <section>
-              <p className="building-option__hint">
-                You win {Math.round(odds.attackerWinProbability * 100)}% · They win{' '}
-                {Math.round(odds.defenderWinProbability * 100)}% · A side breaks off{' '}
-                {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
-              </p>
-              <button className="primary" onClick={confirmAttack}>
-                Attack
-              </button>
-            </section>
-          </div>
-        </div>
+        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+          <section>
+            <p className="building-option__hint">
+              You win {Math.round(odds.attackerWinProbability * 100)}% · They win{' '}
+              {Math.round(odds.defenderWinProbability * 100)}% · A side breaks off{' '}
+              {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
+            </p>
+            <button className="primary" onClick={confirmAttack}>
+              Attack
+            </button>
+          </section>
+        </BottomSheet>
       )}
 
       {encounter && (
-        <div className="sheet-backdrop" onClick={() => setEncounterId(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet__header">
-              <h2>
-                {encounter.kind === 'merchant'
-                  ? 'A merchant ship hails you'
-                  : encounter.kind === 'natives'
-                    ? 'A native village on the shore'
-                    : 'A band of settlers adrift'}
-                {isEncounterAudioPlaying && (
-                  <span className="encounter-audio-indicator"> · Playing…</span>
-                )}
-              </h2>
-              <button
-                className="sheet__close"
-                onClick={() => setEncounterId(null)}
-                aria-label="Close"
-              >
-                ×
+        <BottomSheet
+          title={
+            <>
+              {encounter.kind === 'merchant'
+                ? 'A merchant ship hails you'
+                : encounter.kind === 'natives'
+                  ? 'A native village on the shore'
+                  : 'A band of settlers adrift'}
+              {isEncounterAudioPlaying && (
+                <span className="encounter-audio-indicator"> · Playing…</span>
+              )}
+            </>
+          }
+          onClose={() => setEncounterId(null)}
+        >
+          <section className="button-group">
+            {encounterChoices.map((choice) => (
+              <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
+                {choice[0]!.toUpperCase() + choice.slice(1)}
               </button>
-            </div>
-            <section className="button-group">
-              {encounterChoices.map((choice) => (
-                <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
-                  {choice[0]!.toUpperCase() + choice.slice(1)}
-                </button>
-              ))}
-            </section>
-          </div>
-        </div>
+            ))}
+          </section>
+        </BottomSheet>
       )}
 
       {cityOpen && viewerCity && cityCallbacks && (

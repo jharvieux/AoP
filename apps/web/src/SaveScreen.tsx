@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listSaves, type SaveRecord } from './storage'
+import { BottomSheet } from './components/BottomSheet'
+import { hapticTap } from './haptics'
 
 const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
 
@@ -27,8 +29,14 @@ export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
   useEffect(refresh, [])
 
   async function handleSave(slotId: string) {
+    hapticTap()
     await onSave(slotId)
     refresh()
+  }
+
+  function handleLoad(slotId: string) {
+    hapticTap()
+    onLoad(slotId)
   }
 
   function slotRow(slotId: string, title: string, saveable: boolean) {
@@ -39,7 +47,7 @@ export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
         <span className="garrison-row__counts">{formatSlot(record)}</span>
         <div className="garrison-row__actions">
           {saveable && <button onClick={() => handleSave(slotId)}>Save</button>}
-          <button disabled={!record} onClick={() => onLoad(slotId)}>
+          <button disabled={!record} onClick={() => handleLoad(slotId)}>
             Load
           </button>
         </div>
@@ -48,21 +56,13 @@ export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__header">
-          <h2>Save &amp; Load</h2>
-          <button className="sheet__close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-        <section>
-          <ul className="building-list">
-            {slotRow('autosave', 'Autosave (end of every turn)', false)}
-            {MANUAL_SLOTS.map((id, i) => slotRow(id, `Slot ${i + 1}`, true))}
-          </ul>
-        </section>
-      </div>
-    </div>
+    <BottomSheet title="Save & Load" onClose={onClose}>
+      <section>
+        <ul className="building-list">
+          {slotRow('autosave', 'Autosave (end of every turn)', false)}
+          {MANUAL_SLOTS.map((id, i) => slotRow(id, `Slot ${i + 1}`, true))}
+        </ul>
+      </section>
+    </BottomSheet>
   )
 }
