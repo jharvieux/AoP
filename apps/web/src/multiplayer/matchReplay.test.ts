@@ -19,9 +19,10 @@ function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
-/** Mocks the three-call sequence loadMatchReplay makes in the happy path:
- * matches, then match_players, then match_actions (profiles is skipped when
- * every seat is AI). */
+/** Mocks the call sequence loadMatchReplay makes in the happy path: matches,
+ * then the `match_seed` RPC (#135 — seed is no longer a selectable column), then
+ * match_players, then match_actions (profiles is skipped when every seat is
+ * AI). */
 function mockHappyPath(fetchMock: ReturnType<typeof vi.fn>) {
   fetchMock
     .mockResolvedValueOnce(
@@ -29,12 +30,12 @@ function mockHappyPath(fetchMock: ReturnType<typeof vi.fn>) {
         {
           id: MATCH_ID,
           status: 'finished',
-          seed: 99,
           settings: { mapSize: 'small' },
           engine_version: CLIENT_ENGINE_VERSION,
         },
       ]),
     )
+    .mockResolvedValueOnce(jsonResponse(200, 99))
     .mockResolvedValueOnce(
       jsonResponse(200, [
         { seat: 0, user_id: null, faction: 'pirates' },
@@ -67,10 +68,41 @@ describe('MatchReplayClient.loadMatchReplay', () => {
 
     const [matchesUrl, matchesInit] = fetchMock.mock.calls[0]!
     expect(matchesUrl).toContain('/rest/v1/matches?id=eq.match-1')
+    // seed is never selected as a matches column anymore (#135).
+    expect(matchesUrl).not.toContain('seed')
     expect((matchesInit as RequestInit).headers).toMatchObject({
       apikey: 'anon-key',
       Authorization: 'Bearer access-1',
     })
+
+    // The seed arrives via a POST to the status-gated match_seed RPC.
+    const [seedUrl, seedInit] = fetchMock.mock.calls[1]!
+    expect(seedUrl).toContain('/rest/v1/rpc/match_seed')
+    const init = seedInit as RequestInit
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({ p_match_id: MATCH_ID })
+  })
+
+  it('surfaces a withheld seed (RPC returns null) as not-found rather than NaN', async () => {
+    // Defense in depth: if the match_seed RPC ever returns null (match not
+    // finished, or caller not seated), we refuse instead of building a config
+    // from Number(null) === 0.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          {
+            id: MATCH_ID,
+            status: 'finished',
+            settings: { mapSize: 'small' },
+            engine_version: CLIENT_ENGINE_VERSION,
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, null))
+    const client = new MatchReplayClient(CONFIG, fetchMock)
+
+    await expect(client.loadMatchReplay(SESSION, MATCH_ID)).rejects.toThrow(/No such match/)
   })
 
   it('looks up display names for human seats via profiles', async () => {
@@ -81,12 +113,12 @@ describe('MatchReplayClient.loadMatchReplay', () => {
           {
             id: MATCH_ID,
             status: 'finished',
-            seed: 1,
             settings: { mapSize: 'small' },
             engine_version: CLIENT_ENGINE_VERSION,
           },
         ]),
       )
+      .mockResolvedValueOnce(jsonResponse(200, 1))
       .mockResolvedValueOnce(
         jsonResponse(200, [
           { seat: 0, user_id: 'user-1', faction: 'pirates' },
@@ -101,7 +133,7 @@ describe('MatchReplayClient.loadMatchReplay', () => {
 
     expect(data.config.players[0]).toMatchObject({ id: 'seat-0', name: 'Captain Ahab' })
     expect(data.config.players[1]).toMatchObject({ id: 'seat-1', name: 'AI 1' })
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
   })
 
   it('refuses with a plain-English message on an engine version mismatch', async () => {
@@ -110,7 +142,6 @@ describe('MatchReplayClient.loadMatchReplay', () => {
         {
           id: MATCH_ID,
           status: 'finished',
-          seed: 1,
           settings: { mapSize: 'small' },
           engine_version: '0.0.0-old',
         },
@@ -132,7 +163,6 @@ describe('MatchReplayClient.loadMatchReplay', () => {
         {
           id: MATCH_ID,
           status: 'active',
-          seed: 1,
           settings: { mapSize: 'small' },
           engine_version: CLIENT_ENGINE_VERSION,
         },

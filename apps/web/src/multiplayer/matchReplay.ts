@@ -42,7 +42,6 @@ export interface MatchReplayData {
 interface MatchRow {
   id: string
   status: string
-  seed: number
   settings: { mapSize: MapSize }
   engine_version: string
 }
@@ -70,8 +69,11 @@ interface ProfileRow {
  * (supabase/migrations/20260702000001_rls_policies.sql) enforce the
  * participant-only rules unchanged: `matches` and `match_players` are
  * seated-only, so a non-participant's `matches` read comes back empty before
- * `match_actions` (readable to anyone once finished) is ever reached. No new
- * policy, no edge function — out of scope per #147.
+ * `match_actions` (readable to anyone once finished) is ever reached. The one
+ * exception is `matches.seed`, which #135 removed from the client-selectable
+ * columns (RLS is row- not column-level, so a seated player could otherwise read
+ * it mid-match and predict RNG); it now comes through the `match_seed`
+ * security-definer RPC, gated on `status = 'finished'` plus seat membership.
  */
 export class MatchReplayClient {
   private readonly url: string
@@ -88,7 +90,7 @@ export class MatchReplayClient {
     const match = await this.fetchOne<MatchRow>(
       session,
       `/rest/v1/matches?id=eq.${encodeURIComponent(matchId)}` +
-        '&select=id,status,seed,settings,engine_version',
+        '&select=id,status,settings,engine_version',
     )
     if (!match) {
       throw new Error('No such match, or you do not hold a seat in it.')
@@ -99,6 +101,12 @@ export class MatchReplayClient {
     if (match.engine_version !== CLIENT_ENGINE_VERSION) {
       throw new ReplayVersionMismatchError(match.engine_version, CLIENT_ENGINE_VERSION)
     }
+
+    // `seed` is not a directly selectable column for client roles (#135): it is
+    // exposed only through the `match_seed` security-definer RPC, which returns
+    // it solely for a finished match the caller is seated in. The match row above
+    // already proved both, so this call succeeds for exactly the replays we load.
+    const seed = await this.fetchSeed(session, matchId)
 
     const seats = await this.fetchMany<SeatRow>(
       session,
@@ -127,7 +135,7 @@ export class MatchReplayClient {
       displayName: s.user_id ? (names.get(s.user_id) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
     }))
 
-    const config = buildMatchConfig(Number(match.seed), match.settings.mapSize, seatConfigs)
+    const config = buildMatchConfig(seed, match.settings.mapSize, seatConfigs)
 
     const actionRows = await this.fetchMany<ActionRow>(
       session,
@@ -143,6 +151,22 @@ export class MatchReplayClient {
       apikey: this.anonKey,
       Authorization: `Bearer ${session.accessToken}`,
     }
+  }
+
+  /** Fetch the match seed via the `match_seed` security-definer RPC (#135). */
+  private async fetchSeed(session: AuthSession, matchId: string): Promise<number> {
+    const res = await this.fetchImpl(`${this.url}/rest/v1/rpc/match_seed`, {
+      method: 'POST',
+      headers: { ...this.headers(session), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_match_id: matchId }),
+    })
+    if (!res.ok) throw new Error(`Could not load replay data (${res.status}).`)
+    const value = (await res.json().catch(() => null)) as unknown
+    const seed = Number(value)
+    if (value === null || !Number.isFinite(seed)) {
+      throw new Error('No such match, or you do not hold a seat in it.')
+    }
+    return seed
   }
 
   private async fetchMany<T>(session: AuthSession, path: string): Promise<T[]> {
