@@ -16,6 +16,8 @@ import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { AccountScreen } from './screens/AccountScreen'
 import { MapEditorScreen } from './screens/MapEditorScreen'
 import { WatchReplayScreen } from './screens/WatchReplayScreen'
+import { SpectateScreen } from './screens/SpectateScreen'
+import { DesignateSpectatorScreen } from './screens/DesignateSpectatorScreen'
 import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
@@ -34,6 +36,8 @@ type Screen =
   | 'map-editor'
   | 'replay'
   | 'watch-replay'
+  | 'spectate'
+  | 'designate-spectator'
 
 interface ReplayData {
   config: GameConfig
@@ -169,6 +173,8 @@ export function App() {
           onAccount={() => setScreen('account')}
           onMapEditor={() => setScreen('map-editor')}
           onWatchReplay={() => setScreen('watch-replay')}
+          onSpectate={() => setScreen('spectate')}
+          onDesignateSpectator={() => setScreen('designate-spectator')}
         />
       )}
       {screen === 'watch-replay' && (
@@ -176,6 +182,10 @@ export function App() {
           onBack={() => setScreen('menu')}
           onLoaded={(data) => openReplay(data, 'menu')}
         />
+      )}
+      {screen === 'spectate' && <SpectateScreen onBack={() => setScreen('menu')} />}
+      {screen === 'designate-spectator' && (
+        <DesignateSpectatorScreen onBack={() => setScreen('menu')} />
       )}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
       {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
