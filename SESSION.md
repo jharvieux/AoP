@@ -30,7 +30,7 @@ previously-deferred items plus epic breakdowns.
   scroll-and-quill icon. Verified visually via headless Playwright (no console/404
   errors). Merged via PR #162. **Separately**, generated 3 DreamShaper-checkpoint
   comparison images (ship/tile/captain) to evaluate a possible future painterly style
-  pass — these are *not* committed, sent to the operator for visual review. Ship and
+  pass — these are _not_ committed, sent to the operator for visual review. Ship and
   captain came out more painterly than current sd-v1.5 style; the tile attempt failed
   (DreamShaper rendered an app-icon shape instead of a flat tile, ignoring the negative
   prompt). #89 stays open pending the operator's decision on whether to pursue a full
