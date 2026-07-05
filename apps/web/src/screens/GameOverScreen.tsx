@@ -10,9 +10,16 @@ interface GameOverScreenProps {
   game: GameState
   onRematch: () => void
   onMenuClick: () => void
+  /** Opens the #146 replay viewer over this match's full action log. */
+  onWatchReplay: () => void
 }
 
-export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenProps) {
+export function GameOverScreen({
+  game,
+  onRematch,
+  onMenuClick,
+  onWatchReplay,
+}: GameOverScreenProps) {
   const { factionName } = useTheme()
   const winner = game.players.find((p) => p.id === game.winnerId)
   const isPlayerWinner = game.winnerId === 'player-0'
@@ -61,6 +68,9 @@ export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenP
         <div className="game-over-actions">
           <button className="primary large" onClick={onRematch}>
             Play Again
+          </button>
+          <button className="secondary large" onClick={onWatchReplay}>
+            Watch Replay
           </button>
           <button className="secondary large" onClick={onMenuClick}>
             Main Menu
