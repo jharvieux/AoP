@@ -20,9 +20,17 @@ import { getNativePlugin, isNativePlatform } from './nativeBridge'
 
 export type TurnNotificationHandler = (payload: { matchId?: string }) => void
 
+/** Invoked with the device's push token once native registration succeeds. */
+export type PushTokenHandler = (token: string) => void
+
 const PLUGIN_NAME = 'PushNotifications'
 
 let turnHandler: TurnNotificationHandler | undefined
+let tokenHandler: PushTokenHandler | undefined
+// The `registration` event can fire before the app wires up its handler (e.g.
+// AuthContext mounts after startup calls registerForPushNotifications). Cache
+// the most recent token so a late-arriving handler still receives it.
+let lastToken: string | undefined
 
 /**
  * Requests permission and registers this device for native push. Safe to
@@ -45,6 +53,10 @@ export async function registerForPushNotifications(): Promise<void> {
 
   await plugin.register?.()
 
+  plugin.addListener?.('registration', (registration: unknown) => {
+    const token = (registration as { value?: string } | undefined)?.value
+    if (token) dispatchToken(token)
+  })
   plugin.addListener?.('pushNotificationReceived', (notification: unknown) => {
     dispatchTurnNotification(notification)
   })
@@ -64,7 +76,23 @@ export function onTurnNotification(handler: TurnNotificationHandler): void {
   turnHandler = handler
 }
 
+/**
+ * Registers the handler invoked with the device's push token once native
+ * registration succeeds — wire this to persist the token (see pushTokenStore).
+ * If a token was already captured before the handler was set, it fires
+ * immediately with the cached value.
+ */
+export function onPushTokenRegistered(handler: PushTokenHandler): void {
+  tokenHandler = handler
+  if (lastToken !== undefined) handler(lastToken)
+}
+
 function dispatchTurnNotification(notification: unknown): void {
   const data = (notification as { data?: { matchId?: string } } | undefined)?.data
   turnHandler?.(data?.matchId === undefined ? {} : { matchId: data.matchId })
+}
+
+function dispatchToken(token: string): void {
+  lastToken = token
+  tokenHandler?.(token)
 }
