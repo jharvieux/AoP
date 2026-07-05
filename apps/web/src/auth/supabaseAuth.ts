@@ -72,9 +72,10 @@ export class SupabaseAuthBackend implements AuthBackend {
   }
 
   async ensureProfile(session: AuthSession, displayName: string): Promise<Profile> {
-    // Upsert: the profiles row is not auto-created by a DB trigger, so account
-    // creation must write it (display_name is NOT NULL). merge-duplicates makes
-    // this safe to call again on later sign-ins.
+    // Upsert: a DB trigger (handle_new_user) auto-creates the profiles row with
+    // a placeholder display_name on signup, so this call updates it to the name
+    // the user actually chose. merge-duplicates makes it safe to call again on
+    // later sign-ins.
     const rows = await this.restFetch('/rest/v1/profiles', {
       method: 'POST',
       headers: {

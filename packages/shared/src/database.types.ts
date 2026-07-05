@@ -28,6 +28,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      cloud_saves: {
+        Row: {
+          actions: Json
+          config: Json
+          round: number
+          saved_at: string
+          schema_version: number
+          slot_id: string
+          user_id: string
+        }
+        Insert: {
+          actions: Json
+          config: Json
+          round: number
+          saved_at?: string
+          schema_version: number
+          slot_id: string
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          config?: Json
+          round?: number
+          saved_at?: string
+          schema_version?: number
+          slot_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'cloud_saves_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       entitlements: {
         Row: {
           granted_at: string
@@ -221,16 +259,19 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          is_guest: boolean
         }
         Insert: {
           created_at?: string
           display_name: string
           id: string
+          is_guest?: boolean
         }
         Update: {
           created_at?: string
           display_name?: string
           id?: string
+          is_guest?: boolean
         }
         Relationships: []
       }
