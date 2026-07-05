@@ -12,7 +12,17 @@ import type { EditorDraft, ResourceMarkerKind } from './types'
  * regions compress well) before base64-wrapping the JSON payload.
  */
 
-const CODE_PREFIX = 'AOPMAP1:'
+const FORMAT_VERSION = 1
+const CODE_PREFIX = `AOPMAP${FORMAT_VERSION}:`
+// Any AOPMAP<N>: prefix is recognized as one of ours even when N is a future
+// version — so a code from a newer game build gets a "update to import this"
+// message instead of a generic "unrecognized code" error.
+const CODE_PATTERN = /^AOPMAP(\d+):/
+
+/** Shareable map file (#63): the file is just the map code as plain text, so
+ * one decoder serves both paths and a player can open the file and paste its
+ * contents as a code (or vice versa). */
+export const MAP_FILE_EXTENSION = '.aopmap'
 
 const TYPE_CODE: Record<TileType, string> = { deep: 'd', shallows: 's', land: 'l', port: 'p' }
 const CODE_TYPE: Record<string, TileType> = { d: 'deep', s: 'shallows', l: 'land', p: 'port' }
@@ -94,17 +104,27 @@ export function encodeMapCode(draft: EditorDraft): string {
 }
 
 export function decodeMapCode(code: string): EditorDraft {
-  const trimmed = code.trim()
-  if (!trimmed.startsWith(CODE_PREFIX)) {
-    throw new Error('Unrecognized map code — expected a code starting with "AOPMAP1:"')
+  // Strip ALL whitespace, not just the ends: codes pasted from chat, forums,
+  // or email often arrive hard-wrapped, and neither the prefix nor base64
+  // legitimately contains whitespace.
+  const compact = code.replace(/\s+/g, '')
+  const versionMatch = CODE_PATTERN.exec(compact)
+  if (!versionMatch) {
+    throw new Error(`Unrecognized map code — expected a code starting with "${CODE_PREFIX}"`)
+  }
+  const codeVersion = Number(versionMatch[1])
+  if (codeVersion > FORMAT_VERSION) {
+    throw new Error(
+      `This map code uses format v${codeVersion}, from a newer version of Age of Plunder — update the game to import it.`,
+    )
   }
   let wire: WireFormatV1
   try {
-    wire = JSON.parse(fromBase64(trimmed.slice(CODE_PREFIX.length))) as WireFormatV1
+    wire = JSON.parse(fromBase64(compact.slice(versionMatch[0].length))) as WireFormatV1
   } catch {
     throw new Error('Invalid map code: could not decode payload')
   }
-  if (wire.v !== 1) {
+  if (wire.v !== codeVersion) {
     throw new Error(`Unsupported map code version ${String(wire.v)}`)
   }
   if (

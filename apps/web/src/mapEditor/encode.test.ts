@@ -1,5 +1,13 @@
+import { GAME_SETUP, MAP_VALIDATION_LIMITS } from '@aop/content'
+import { validateMapDefinition } from '@aop/engine'
 import { describe, expect, it } from 'vitest'
-import { draftFromGenerated, placeEncounter, placeResourceMarker, renameDraft } from './draft'
+import {
+  draftFromGenerated,
+  draftToMapDefinition,
+  placeEncounter,
+  placeResourceMarker,
+  renameDraft,
+} from './draft'
 import { decodeMapCode, encodeMapCode } from './encode'
 
 describe('map code encode/decode', () => {
@@ -30,8 +38,36 @@ describe('map code encode/decode', () => {
     expect(decoded.name).toBe('Île au Trésor 海')
   })
 
+  it('a generated map survives export → import → engine validation end to end', () => {
+    const draft = draftFromGenerated(7, 'small', 2, GAME_SETUP.homeIslandRadius, 'Round Trip')
+    const decoded = decodeMapCode(encodeMapCode(draft))
+    const result = validateMapDefinition(draftToMapDefinition(decoded), MAP_VALIDATION_LIMITS)
+    expect(result.errors).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('tolerates whitespace and line wrapping injected by chat/forum pastes', () => {
+    const draft = draftFromGenerated(1, 'small', 2, 2, 'x')
+    const code = encodeMapCode(draft)
+    const wrapped = `  ${code.slice(0, 40)}\n${code.slice(40, 100)} \n ${code.slice(100)}\t`
+    expect(decodeMapCode(wrapped).tiles).toEqual(draft.tiles)
+  })
+
   it('rejects a code with the wrong prefix', () => {
     expect(() => decodeMapCode('not-a-map-code')).toThrow(/Unrecognized map code/)
+  })
+
+  it('explains that a newer-format code needs a game update', () => {
+    expect(() => decodeMapCode('AOPMAP2:eyJ2IjoyfQ==')).toThrow(/newer version of Age of Plunder/)
+  })
+
+  it('rejects a v1-prefixed code whose payload declares a different version', () => {
+    const code = encodeMapCode(draftFromGenerated(1, 'small', 2, 2, 'x'))
+    const payload = JSON.parse(atob(code.replace('AOPMAP1:', ''))) as { v: number }
+    payload.v = 2
+    expect(() => decodeMapCode(`AOPMAP1:${btoa(JSON.stringify(payload))}`)).toThrow(
+      /Unsupported map code version 2/,
+    )
   })
 
   it('rejects a corrupted payload', () => {
