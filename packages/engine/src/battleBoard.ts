@@ -6,7 +6,15 @@ import {
   type CombatStats,
   type RoundReport,
 } from './combat'
-import { hexDistance, hexEquals, hexFromIndex, hexIndex, hexNeighbors, type HexCoord } from './hex'
+import {
+  hexDistance,
+  hexEquals,
+  hexFromIndex,
+  hexIndex,
+  hexLineOfSight,
+  hexNeighbors,
+  type HexCoord,
+} from './hex'
 import { nextFloat, type RngState } from './rng'
 import type { TroopStack } from './types'
 
@@ -100,6 +108,13 @@ export interface BoardTargetOption {
   attackFrom?: HexCoord | null
   /** Best reachable hex that closes distance to this target; absent when boxed in. */
   approachHex?: HexCoord
+  /**
+   * Ranged firing solution for a ranged acting stack (#94): `null` = a clear
+   * shot (2..range hexes, unobstructed line of sight) from the current hex;
+   * a HexCoord = a reachable hex to fire from; undefined = no shot this
+   * activation. Always undefined for a melee acting stack.
+   */
+  rangedFrom?: HexCoord | null
   /** Hex distance from the acting stack's current position to the target. */
   distance: number
   /** Target's total remaining hit points — the shared focus-fire currency. */
@@ -110,6 +125,8 @@ export interface BoardTargetOption {
 export interface BoardActivationView {
   round: number
   stack: BoardStack
+  /** Attack range of the acting stack's unit in hexes (#94): 1 = melee, 2+ = ranged. */
+  stackRange: number
   allies: BoardStack[]
   enemies: BoardStack[]
   width: number
@@ -144,6 +161,8 @@ export type BoardEvent =
       /** Target stack size after the blow. */
       targetCount: number
       flanked: boolean
+      /** A ranged shot (#94): fired across ≥2 hexes, no retaliation. Absent for melee. */
+      ranged?: boolean
     }
   | { round: number; stackId: number; type: 'hold' }
 
@@ -187,6 +206,49 @@ function unitSpeed(battle: BoardBattle, unitId: string): number {
 
 function unitHealth(battle: BoardBattle, unitId: string): number {
   return battle.stats.unit(unitId).health
+}
+
+/** Attack range of a unit in hexes (#94): melee units default to 1. */
+function unitRange(battle: BoardBattle, unitId: string): number {
+  return battle.stats.unit(unitId).range ?? 1
+}
+
+/** True if no blocked terrain occludes the line between two hexes (#94). */
+function hasLineOfSight(battle: BoardBattle, from: HexCoord, to: HexCoord): boolean {
+  return hexLineOfSight(from, to, (h) => battle.terrain[hexIndex(h, battle.width)] === 'blocked')
+}
+
+/**
+ * Cheapest reachable hex a ranged stack can fire on `enemy` from — in range,
+ * with a clear line of sight, and staying at distance (never stepping into
+ * melee). Prefers the safest shot: farthest from the target, then cheapest to
+ * reach, then lowest hex index. Absent when no firing hex is reachable.
+ */
+function bestRangedHex(
+  battle: BoardBattle,
+  enemy: BoardStack,
+  range: number,
+  reachable: BoardReachableHex[],
+): HexCoord | undefined {
+  let best: BoardReachableHex | undefined
+  let bestDist = -1
+  for (const r of reachable) {
+    const d = hexDistance(r.hex, enemy.position)
+    if (d < 2 || d > range) continue
+    if (!hasLineOfSight(battle, r.hex, enemy.position)) continue
+    if (
+      !best ||
+      d > bestDist ||
+      (d === bestDist &&
+        (r.cost < best.cost ||
+          (r.cost === best.cost &&
+            hexIndex(r.hex, battle.width) < hexIndex(best.hex, battle.width))))
+    ) {
+      best = r
+      bestDist = d
+    }
+  }
+  return best?.hex
 }
 
 export function stackTotalHp(stack: BoardStack, unitHealthValue: number): number {
@@ -407,6 +469,7 @@ function buildTargets(
   reachable: BoardReachableHex[],
 ): BoardTargetOption[] {
   const reachByIndex = new Map(reachable.map((r) => [hexIndex(r.hex, battle.width), r]))
+  const range = unitRange(battle, stack.unitId)
   const options: BoardTargetOption[] = []
 
   for (const enemy of livingStacks(battle)) {
@@ -416,6 +479,20 @@ function buildTargets(
       targetId: enemy.id,
       distance,
       targetHp: stackTotalHp(enemy, unitHealth(battle, enemy.unitId)),
+    }
+
+    // Ranged firing solution (#94): a clear shot from here, else a firing hex to move to.
+    if (range >= 2) {
+      if (
+        distance >= 2 &&
+        distance <= range &&
+        hasLineOfSight(battle, stack.position, enemy.position)
+      ) {
+        option.rangedFrom = null
+      } else {
+        const firingHex = bestRangedHex(battle, enemy, range, reachable)
+        if (firingHex) option.rangedFrom = firingHex
+      }
     }
 
     if (distance === 1) {
@@ -469,6 +546,7 @@ function buildView(battle: BoardBattle, stack: BoardStack): BoardActivationView 
   return {
     round: battle.round,
     stack: { ...stack, position: { ...stack.position } },
+    stackRange: unitRange(battle, stack.unitId),
     allies: livingStacks(battle, stack.side)
       .filter((s) => s.id !== stack.id)
       .map((s) => ({ ...s, position: { ...s.position } })),
@@ -498,12 +576,24 @@ function applyStackDamage(battle: BoardBattle, stack: BoardStack, damage: number
   return countBefore - stack.count
 }
 
+/**
+ * How a blow lands (#94). `rangedShot` is a shot fired across ≥2 hexes: it never
+ * flanks, uses the ranged cover reduction, and (in the caller) draws no
+ * retaliation. `penalized` is a ranged unit forced to swing in melee — its
+ * damage is scaled by the archer melee penalty.
+ */
+interface StrikeKind {
+  rangedShot: boolean
+  penalized: boolean
+}
+
 function strike(
   battle: BoardBattle,
   attacker: BoardStack,
   target: BoardStack,
   rng: RngState,
   kind: 'attack' | 'retaliation',
+  how: StrikeKind,
 ): [RngState, BoardEvent] {
   const t = battle.tuning
   const a = battle.stats.unit(attacker.unitId)
@@ -518,9 +608,10 @@ function strike(
     Math.max(t.minDamageModifier, 1 + t.attackDefenseFactor * (a.attack - d.defense)),
   )
   // Flanking rewards coordination: a second friendly stack on the target's flank
-  // opens its guard. Retaliations never flank — they are a reflexive answer.
+  // opens its guard. Retaliations and ranged shots never flank.
   const flanked =
     kind === 'attack' &&
+    !how.rangedShot &&
     livingStacks(battle, attacker.side).some(
       (s) => s.id !== attacker.id && hexDistance(s.position, target.position) === 1,
     )
@@ -532,27 +623,28 @@ function strike(
     diff *
     ((100 + battle.attackBonusPct[attacker.side]) / (100 + battle.defenseBonusPct[target.side]))
   if (flanked) raw *= t.flankingBonus
+  if (how.penalized) raw *= t.rangedMeleePenalty
   if (battle.terrain[hexIndex(target.position, battle.width)] === 'cover') {
-    raw *= 1 - t.coverDamageReduction
+    // Soft cover foils a shot more than a melee blow.
+    raw *= 1 - (how.rangedShot ? t.rangedCoverDamageReduction : t.coverDamageReduction)
   }
   if (target.holding) raw *= 1 - t.holdDamageReduction
 
   const damage = Math.max(1, Math.round(raw))
   const kills = applyStackDamage(battle, target, damage)
 
-  return [
-    state,
-    {
-      round: battle.round,
-      stackId: attacker.id,
-      type: kind,
-      targetId: target.id,
-      damage,
-      kills,
-      targetCount: target.count,
-      flanked,
-    },
-  ]
+  const event: Extract<BoardEvent, { type: 'attack' | 'retaliation' }> = {
+    round: battle.round,
+    stackId: attacker.id,
+    type: kind,
+    targetId: target.id,
+    damage,
+    kills,
+    targetCount: target.count,
+    flanked,
+  }
+  if (how.rangedShot) event.ranged = true
+  return [state, event]
 }
 
 /** Validate + execute one activation command; illegal commands degrade to hold. */
@@ -588,11 +680,18 @@ function executeCommand(
 
   if (command.targetId !== undefined) {
     const target = battle.stacks.find((s) => s.id === command.targetId)
-    const legal =
-      target &&
-      target.count > 0 &&
-      target.side !== stack.side &&
-      hexDistance(position, target.position) === 1
+    const range = unitRange(battle, stack.unitId)
+    const distance = target ? hexDistance(position, target.position) : Infinity
+    // A ranged shot needs 2..range hexes and a clear line of sight; at distance 1
+    // even a ranged unit fights in melee (at a penalty). Melee units need distance 1.
+    const canShoot =
+      range >= 2 &&
+      distance >= 2 &&
+      distance <= range &&
+      !!target &&
+      hasLineOfSight(battle, position, target.position)
+    const canMelee = distance === 1
+    const legal = target && target.count > 0 && target.side !== stack.side && (canShoot || canMelee)
     if (!legal) {
       if (!command.to) {
         events.push({ round: battle.round, stackId: stack.id, type: 'hold' })
@@ -600,13 +699,22 @@ function executeCommand(
       }
       return state
     }
+    const rangedShot = canShoot
     let event: BoardEvent
-    ;[state, event] = strike(battle, stack, target, state, 'attack')
+    ;[state, event] = strike(battle, stack, target, state, 'attack', {
+      rangedShot,
+      penalized: range >= 2 && !rangedShot,
+    })
     events.push(event)
 
-    if (target.count > 0 && target.retaliatedRound < battle.round) {
+    // A shot at range draws no answer; a melee exchange does. A ranged unit
+    // caught in that melee retaliates at its own archer penalty.
+    if (!rangedShot && target.count > 0 && target.retaliatedRound < battle.round) {
       target.retaliatedRound = battle.round
-      ;[state, event] = strike(battle, target, stack, state, 'retaliation')
+      ;[state, event] = strike(battle, target, stack, state, 'retaliation', {
+        rangedShot: false,
+        penalized: unitRange(battle, target.unitId) >= 2,
+      })
       events.push(event)
     }
     return state
@@ -729,10 +837,75 @@ function nearestTarget(targets: readonly BoardTargetOption[]): BoardTargetOption
   return best
 }
 
+/** Targets a ranged stack has a clear shot on right now, without moving (#94). */
+function clearShotTargets(targets: readonly BoardTargetOption[]): BoardTargetOption[] {
+  return targets.filter((t) => t.rangedFrom === null)
+}
+
+/** Targets a ranged stack can shoot after moving to a firing hex this activation (#94). */
+function firingHexTargets(targets: readonly BoardTargetOption[]): BoardTargetOption[] {
+  return targets.filter((t) => t.rangedFrom !== undefined && t.rangedFrom !== null)
+}
+
+/**
+ * The best ranged action this activation, or null if the stack can't get a shot:
+ * shoot the weakest visible target in place, else reposition to fire on the
+ * weakest reachable one. Shared by the ranged AI and the ranged doctrines (#94).
+ */
+function rangedShotCommand(view: BoardActivationView): BoardCommand | null {
+  const now = lowestHpTarget(clearShotTargets(view.targets))
+  if (now) return { stackId: view.stack.id, targetId: now.targetId }
+  const move = lowestHpTarget(firingHexTargets(view.targets))
+  if (move?.rangedFrom)
+    return { stackId: view.stack.id, to: move.rangedFrom, targetId: move.targetId }
+  return null
+}
+
+/** Keep maximum distance from the nearest enemy — the skirmisher's kite (#18/#94). */
+function kiteCommand(view: BoardActivationView): BoardCommand {
+  const { stack } = view
+  let bestHex: HexCoord | null = null
+  let bestDist = view.enemies.reduce(
+    (min, e) => Math.min(min, hexDistance(stack.position, e.position)),
+    Infinity,
+  )
+  for (const r of view.reachable) {
+    const d = view.enemies.reduce(
+      (min, e) => Math.min(min, hexDistance(r.hex, e.position)),
+      Infinity,
+    )
+    if (d > bestDist) {
+      bestDist = d
+      bestHex = r.hex
+    }
+  }
+  return bestHex ? { stackId: stack.id, to: bestHex } : { stackId: stack.id }
+}
+
 function doctrineCommand(view: BoardActivationView, doctrine: BoardDoctrine): BoardCommand {
   const { stack, targets } = view
   const attackable = targets.filter((t) => t.attackFrom !== undefined)
   const adjacent = targets.filter((t) => t.attackFrom === null)
+
+  // Ranged units (#94) fight by the shot: they fire from distance under every
+  // doctrine, differing only in how far they'll move and whether they kite.
+  if (view.stackRange >= 2) {
+    const shot = rangedShotCommand(view)
+    switch (doctrine) {
+      case 'holdLine':
+        // Fire clear shots from the line; never move.
+        return clearShotTargets(targets).length > 0 && shot ? shot : { stackId: stack.id }
+      case 'advance': {
+        if (shot) return shot
+        const march = nearestTarget(targets)
+        if (march?.approachHex) return { stackId: stack.id, to: march.approachHex }
+        return { stackId: stack.id }
+      }
+      case 'skirmish':
+        // Shoot from range, otherwise keep distance rather than close to melee.
+        return shot ?? kiteCommand(view)
+    }
+  }
 
   switch (doctrine) {
     case 'holdLine': {
@@ -751,22 +924,7 @@ function doctrineCommand(view: BoardActivationView, doctrine: BoardDoctrine): Bo
       // Hit whoever is already in reach without moving, otherwise keep distance.
       const target = lowestHpTarget(adjacent)
       if (target) return attackCommand(stack.id, target)
-      let bestHex: HexCoord | null = null
-      let bestDist = view.enemies.reduce(
-        (min, e) => Math.min(min, hexDistance(stack.position, e.position)),
-        Infinity,
-      )
-      for (const r of view.reachable) {
-        const d = view.enemies.reduce(
-          (min, e) => Math.min(min, hexDistance(r.hex, e.position)),
-          Infinity,
-        )
-        if (d > bestDist) {
-          bestDist = d
-          bestHex = r.hex
-        }
-      }
-      return bestHex ? { stackId: stack.id, to: bestHex } : { stackId: stack.id }
+      return kiteCommand(view)
     }
   }
 }
@@ -785,6 +943,7 @@ export function boardAiDriver(profile: BoardAiProfile): BoardDriver {
   return {
     choose(view) {
       const { stack, targets } = view
+      if (view.stackRange >= 2) return rangedAiCommand(view, profile)
       if (profile === 'easy') return doctrineCommand(view, 'holdLine')
       if (profile === 'normal') {
         const attackable = targets.filter((t) => t.attackFrom !== undefined)
@@ -820,6 +979,28 @@ export function boardAiDriver(profile: BoardAiProfile): BoardDriver {
       return { stackId: stack.id }
     },
   }
+}
+
+/**
+ * The board AI for a ranged stack (#94). `easy` fires only clear shots and never
+ * moves; `normal` and `hard` reposition for a shot, and when boxed out of one
+ * will club an adjacent enemy at the melee penalty rather than idle, else march
+ * into range.
+ */
+function rangedAiCommand(view: BoardActivationView, profile: BoardAiProfile): BoardCommand {
+  const { stack, targets } = view
+  const now = lowestHpTarget(clearShotTargets(targets))
+  if (now) return { stackId: stack.id, targetId: now.targetId }
+  if (profile === 'easy') return { stackId: stack.id }
+
+  const move = lowestHpTarget(firingHexTargets(targets))
+  if (move?.rangedFrom) return { stackId: stack.id, to: move.rangedFrom, targetId: move.targetId }
+
+  const adjacent = lowestHpTarget(targets.filter((t) => t.attackFrom === null))
+  if (adjacent) return attackCommand(stack.id, adjacent)
+  const march = nearestTarget(targets)
+  if (march?.approachHex) return { stackId: stack.id, to: march.approachHex }
+  return { stackId: stack.id }
 }
 
 /** A reachable cover hex adjacent to the target, if one costs no more than the planned hop. */

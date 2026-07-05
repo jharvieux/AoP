@@ -110,7 +110,14 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
         return `Round ${e.round}: ${name(e.stackId)} hold the line`
       case 'attack':
       case 'retaliation': {
-        const verb = e.type === 'attack' ? (e.flanked ? 'flank' : 'strike') : 'strike back at'
+        const verb =
+          e.type === 'attack'
+            ? e.ranged
+              ? 'fire on'
+              : e.flanked
+                ? 'flank'
+                : 'strike'
+            : 'strike back at'
         const slain = e.kills > 0 ? `, ${e.kills} slain` : ''
         return `Round ${e.round}: ${name(e.stackId)} ${verb} ${name(e.targetId)} (${e.damage} damage${slain})`
       }

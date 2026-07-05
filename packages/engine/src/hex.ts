@@ -70,3 +70,76 @@ export function hexIndex(hex: HexCoord, width: number): number {
 export function hexFromIndex(index: number, width: number): HexCoord {
   return { col: index % width, row: Math.floor(index / width) }
 }
+
+/** Cube coordinates of an odd-r offset hex (x = axial q, z = row, y = -x-z). */
+interface Cube {
+  x: number
+  y: number
+  z: number
+}
+
+function cubeOf(hex: HexCoord): Cube {
+  const x = axialQ(hex)
+  const z = hex.row
+  return { x, y: -x - z, z }
+}
+
+/** Odd-r offset from cube coordinates — the inverse of {@link cubeOf}. */
+function offsetOfCube(cube: Cube): HexCoord {
+  const row = cube.z
+  return { col: cube.x + (row - (row & 1)) / 2, row }
+}
+
+/** Round fractional cube coordinates to the nearest integer hex (redblobgames). */
+function cubeRound(x: number, y: number, z: number): Cube {
+  let rx = Math.round(x)
+  let ry = Math.round(y)
+  let rz = Math.round(z)
+  const dx = Math.abs(rx - x)
+  const dy = Math.abs(ry - y)
+  const dz = Math.abs(rz - z)
+  if (dx > dy && dx > dz) rx = -ry - rz
+  else if (dy > dz) ry = -rx - rz
+  else rz = -rx - ry
+  return { x: rx, y: ry, z: rz }
+}
+
+/**
+ * The hexes a straight line from `a` to `b` passes through, endpoints included,
+ * ordered from `a` to `b`. Deterministic across machines: the float lerp feeds
+ * only integer rounding, never the seeded RNG, so board state stays bit-exact.
+ */
+export function hexLine(a: HexCoord, b: HexCoord): HexCoord[] {
+  const n = hexDistance(a, b)
+  if (n === 0) return [{ ...a }]
+  const ca = cubeOf(a)
+  const cb = cubeOf(b)
+  const out: HexCoord[] = []
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const rounded = cubeRound(
+      ca.x + (cb.x - ca.x) * t,
+      ca.y + (cb.y - ca.y) * t,
+      ca.z + (cb.z - ca.z) * t,
+    )
+    out.push(offsetOfCube(rounded))
+  }
+  return out
+}
+
+/**
+ * True if nothing occludes the line from `a` to `b` — i.e. no hex strictly
+ * between the endpoints reports blocked. The shooter's and target's own hexes
+ * never block the shot.
+ */
+export function hexLineOfSight(
+  a: HexCoord,
+  b: HexCoord,
+  blocked: (hex: HexCoord) => boolean,
+): boolean {
+  const line = hexLine(a, b)
+  for (let i = 1; i < line.length - 1; i++) {
+    if (blocked(line[i]!)) return false
+  }
+  return true
+}
