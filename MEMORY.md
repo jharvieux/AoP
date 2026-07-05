@@ -4,6 +4,52 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-020 — 2026-07-05 — Art (#108 retry): shipped `deep`/`port` map tiles, closing the gap
+
+**Decision**: `deep` and `port` map tiles had failed generation twice (per #108: repeating
+decorative-pattern drift and a baked-in watermark on sd-v1.5) and were left on the
+flat-color `Graphics` fallback with an explicit "stop trying" recommendation. Re-diagnosed
+rather than repeating the same approach:
+
+- **`port`**: a clean, unwatermarked wood-plank tile already existed on disk from the prior
+  session's second attempt (`~/aop-ai-tools/sd-game-art/tiles/port.png`) but was never
+  shipped — the prior session left it as an unresolved "style call" (plank pattern vs. a
+  flatter redo) and the session ended before a decision was made. Rendered it tiled 3x3 at
+  full res and at actual 32px game scale: no seams, no watermark, planks are on-theme for a
+  dock. Shipped as-is.
+- **`deep`**: root-caused the repeating-motif failure to the checkpoint, not the prompt —
+  all 3 prior attempts used sd-v1.5, which (per this session's and #89/D-016's own
+  DreamShaper-comparison finding) has a specific bad association with "dark navy blue flat
+  pattern" prompts. Switched to the DreamShaper 8 checkpoint, which D-016 already
+  established as unsuitable for tiles in its _default_ framing (it drew an app-icon/badge
+  composition for a `shallows` comparison prompt) — but that specific failure was traced to
+  the "product shot on plain white studio background, isolated single object" phrase in the
+  shared `STYLE_SUFFIX`, which reads as icon-composition instruction to this checkpoint.
+  Dropped that phrase for tiles specifically (replaced with explicit full-bleed/edge-to-edge
+  framing) and regenerated: seed 42 came back clean — flat navy with a subtle wave-line, no
+  motif, no watermark. Two other seeds (7, 99) regressed back to the icon-composition
+  problem (a circle and a bordered oval), confirming the checkpoint's icon bias is real and
+  seed-sensitive, not fully eliminated by the prompt change. Kept seed 42 and retouched one
+  small (~40px) corner color blemish by cloning a matching patch from the opposite corner
+  (feathered blend) — invisible at both full res and actual 32px tile-render scale.
+
+**Also tried and explicitly rejected**: the AUTOMATIC1111 API's `tiling: true` seamless-mode
+flag (untried by any prior attempt) — on this CPU-only local WebUI instance
+(`--use-cpu all`), it was dramatically slower (a single 512x512/28-step image did not
+complete within a 300s timeout) with no clear quality benefit over plain generation, so
+abandoned in favor of plain generation plus the checkpoint/prompt fix above.
+
+**Wiring**: `apps/web/public/art/tiles/{deep,port}.png` added; `TILE_SPRITE_URL` in
+`MapCanvas.tsx` now covers all four tile types (`TILE_COLOR` stays as the generic
+missing-art fallback). Updated the stale comment that said only shallows/land had art.
+
+**Verified**: `pnpm verify` green (format, typecheck, tests, build). Manually rendered both
+new tiles at 3x3 full-res tiling and at real 32px game scale before accepting either.
+
+Closes #108. Related: #26, #76, #89, #115, D-016.
+
+---
+
 ## D-019 — 2026-07-05 — Art: generated the missing tier-1 unit sprites (5 factions)
 
 **Decision**: `unitTierSpriteUrls` in `packages/content/src/factions.ts` covered tiers 2-4
