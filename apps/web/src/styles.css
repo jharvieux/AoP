@@ -840,6 +840,78 @@ button.primary.secondary {
   font-size: 10px;
 }
 
+/* Interactive boarding command sheet (#93) */
+
+.battle-board-svg__reach {
+  fill: rgb(243 233 210 / 16%);
+  stroke: rgb(243 233 210 / 45%);
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.battle-board-svg__active-ring {
+  fill: none;
+  stroke: #f3e9d2;
+  stroke-width: 2;
+  pointer-events: none;
+  animation: board-ring-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes board-ring-pulse {
+  0%,
+  100% {
+    stroke-opacity: 0.9;
+  }
+
+  50% {
+    stroke-opacity: 0.3;
+  }
+}
+
+.battle-board-svg__target-ring {
+  fill: none;
+  stroke: #e8a33c;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.battle-board-svg__target-ring--preview {
+  stroke-width: 3;
+  stroke-dasharray: none;
+}
+
+.battle-board-svg__ghost {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.battle-board-svg__move-line {
+  stroke: #f3e9d2;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.boarding-strength {
+  display: flex;
+  height: 6px;
+  margin: 8px 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #2e5da3;
+}
+
+.boarding-strength__own {
+  background: #a33c2e;
+}
+
+.boarding-auto {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .map-editor-screen {
   padding: 16px;
   overflow: hidden;
