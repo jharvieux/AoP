@@ -24,10 +24,12 @@ export * from './multiplayer'
 export {
   type PlayerRating,
   type MatchResult,
+  type RatedSeat,
   DEFAULT_RATING,
   DEFAULT_K_FACTOR,
   expectedScore,
   applyRatingUpdate,
+  computeMatchRatingUpdates,
 } from './rating'
 
 // Quick-match queue policy (#153): pure seat assignment + the dependency-injected

@@ -87,3 +87,94 @@ export function applyRatingUpdate(
     b: { rating: Math.round(b.rating - deltaA), matchesPlayed: b.matchesPlayed + 1 },
   }
 }
+
+/**
+ * One seat in a finished match, as far as rating cares (#152). `userId` is the
+ * real authenticated player who held the seat, or `null` for an AI seat
+ * (`match_players.user_id is null`, docs/MULTIPLAYER.md §3). `won` marks the one
+ * seat the engine declared the winner.
+ */
+export interface RatedSeat {
+  userId: string | null
+  won: boolean
+}
+
+/**
+ * Translate a finished free-for-all match (2–8 seats) into per-player Elo
+ * updates, applying the pairwise {@link expectedScore} primitive across the
+ * seats. Returns a map `userId -> updated rating` for every *rated* seat.
+ *
+ * Multi-player → pairwise model: the engine records only a single `winnerId`
+ * (the last seat standing) and no elimination order (see reducer.ts
+ * `settleEliminations`), so the one ranking signal a finished match carries is
+ * "winner beat everyone else; the rest are indistinguishable". We model that as
+ * a round-robin in which the winner beats each other seat and all non-winners
+ * are tied with one another — and since tie games between equally-ranked losers
+ * carry no signal to resolve (and there is no order to resolve them by), the
+ * only rated games are winner-vs-each-loser pairs. Concretely:
+ *   - each loser plays exactly one rated game, a loss to the winner;
+ *   - the winner plays one rated game per loser (a win), and its net change is
+ *     the sum of those pairwise deltas measured against its *pre-match* rating,
+ *     so the outcome is independent of the order losers are listed in;
+ *   - `matchesPlayed` increments by exactly 1 for every rated seat — the match
+ *     counts once per player, never once per pairwise comparison.
+ * The winner's delta is summed from {@link expectedScore} directly rather than
+ * by chaining {@link applyRatingUpdate} per loser, which would wrongly increment
+ * `matchesPlayed` N−1 times and compound rounding between pairs. For a 2-seat
+ * match this reduces exactly to a single `applyRatingUpdate(..., 'a_win')`.
+ *
+ * Exclusions and no-ops (rating unchanged, `matchesPlayed` still +1 for every
+ * rated seat, because they did play a match):
+ *   - AI seats (`userId === null`) are dropped entirely — they neither earn nor
+ *     confer rating, so beating or losing to one moves nothing.
+ *   - If no rated seat won (a mutual-elimination draw, or an AI seat took the
+ *     win), there is no winner-vs-loser pair, so no rating moves.
+ *   - A lone rated seat (everyone else was AI) has no rated opponent, so its
+ *     rating holds.
+ *
+ * A seat with no existing row is an unrated first-time player: the caller passes
+ * no entry for them in `currentRatings` and this defaults them to
+ * {@link DEFAULT_RATING} at 0 matches played.
+ */
+export function computeMatchRatingUpdates(
+  seats: readonly RatedSeat[],
+  currentRatings: ReadonlyMap<string, PlayerRating>,
+  kFactor: number = DEFAULT_K_FACTOR,
+): Map<string, PlayerRating> {
+  const rated = seats.filter((s): s is RatedSeat & { userId: string } => s.userId !== null)
+  const ratingOf = (userId: string): PlayerRating =>
+    currentRatings.get(userId) ?? { rating: DEFAULT_RATING, matchesPlayed: 0 }
+
+  const played = (userId: string): PlayerRating => {
+    const cur = ratingOf(userId)
+    return { rating: cur.rating, matchesPlayed: cur.matchesPlayed + 1 }
+  }
+
+  const result = new Map<string, PlayerRating>()
+  const winner = rated.find((s) => s.won)
+  const losers = rated.filter((s) => !s.won)
+
+  // No rated winner, or a winner with no rated opponents: nobody's rating can
+  // move, but every rated seat still played one match.
+  if (!winner || losers.length === 0) {
+    for (const s of rated) result.set(s.userId, played(s.userId))
+    return result
+  }
+
+  const winnerRating = ratingOf(winner.userId)
+  let winnerDelta = 0
+  for (const loser of losers) {
+    const loserRating = ratingOf(loser.userId)
+    winnerDelta += kFactor * (1 - expectedScore(winnerRating.rating, loserRating.rating))
+    const loserDelta = kFactor * (0 - expectedScore(loserRating.rating, winnerRating.rating))
+    result.set(loser.userId, {
+      rating: Math.round(loserRating.rating + loserDelta),
+      matchesPlayed: loserRating.matchesPlayed + 1,
+    })
+  }
+  result.set(winner.userId, {
+    rating: Math.round(winnerRating.rating + winnerDelta),
+    matchesPlayed: winnerRating.matchesPlayed + 1,
+  })
+  return result
+}
