@@ -1,80 +1,82 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-04 (Issue sweep: 9 batches planned, 8 PRs opened, all 8 merged; 0 left open)._
+_Last updated: 2026-07-05 (Follow-up sweep: #104, #120 merged; #89 progressed via PR #162;
+7 epic issues broken into sub-issues; malicious comment removed from #100)._
 
 ## Just completed
+
+Follow-up round after the full `/issue-sweep` (previous entry below). Only #120 was newly
+actionable via the sweep pipeline; the rest of this session was operator-directed work on
+previously-deferred items plus epic breakdowns.
+
+- **#104 — CI fix**: applied the one-line fix identified in the prior sweep — added
+  `--config .prettierrc` to the `npx prettier --write` call in
+  `.github/workflows/supabase.yml`'s migrations-diff step, so it finds this repo's config
+  when formatting a `/tmp` file. Merged via PR #127; confirmed the previously-red
+  `migrations` check went green.
+- **#120 — balance-sim tooling**: moved `scripts/balance-sim.ts` into a new
+  `packages/tools` workspace package (auto-registered by `pnpm-workspace.yaml`'s
+  `packages/*` glob — no workspace-file edit needed) so it can resolve `@aop/content` and
+  `@aop/engine` via `workspace:*deps`. Merged via PR #128.
+- **#89 — art polish (progress, not closed)**: used local Stable Diffusion tooling
+  (`~/aop-ai-tools`) to generate 30 ship/unit tier-variant sprites (5 factions × ship
+  brigantine/frigate/galleon + unit tiers 2-4) and 7 UI action icons, wired into
+  `packages/content/src/factions.ts` and rendered via `MapCanvas`/`CityScreen`/
+  `BattleBoardSheet`/`GameScreen`. During curation the executor found and fixed two real
+  quality bugs: 13 of the first 30 ship images had baked-in scenery (ocean/sky/grass/city
+  skyline) despite negative prompts — regenerated with strengthened prompts; the
+  "recruit" UI icon generated a US flag + rifle + stock-photo watermark — regenerated as a
+  scroll-and-quill icon. Verified visually via headless Playwright (no console/404
+  errors). Merged via PR #162. **Separately**, generated 3 DreamShaper-checkpoint
+  comparison images (ship/tile/captain) to evaluate a possible future painterly style
+  pass — these are _not_ committed, sent to the operator for visual review. Ship and
+  captain came out more painterly than current sd-v1.5 style; the tile attempt failed
+  (DreamShaper rendered an app-icon shape instead of a flat tile, ignoring the negative
+  prompt). #89 stays open pending the operator's decision on whether to pursue a full
+  re-pass.
+- **Epic breakdowns**: #35 (multiplayer core), #36 (alliances), #37 (reconnect/snapshot),
+  #38 (replays/spectating), #40 (matchmaking), and #42/#100 (Capacitor) were each broken
+  into sweep-sized GitHub sub-issues (34 total), all labeled and cross-referenced back to
+  their parent epic. Run under the `fable` model tier per operator direction.
+- **Security finding during #38 breakdown**: filed **#135** (P1) — the
+  `matches_select_seated` RLS policy grants full-row `select` to any seated player with no
+  column restriction, exposing the server-generated RNG `seed` column during active
+  matches. RLS is row-level only in Postgres, not column-level, so this needs a view or
+  column-level fix — supervised path (`supabase/migrations/**`), flagged for operator
+  sign-off before anyone touches it.
+- **Abuse handling on #100**: a comment linking a fake "bugfix" APK was flagged (not
+  downloaded/executed), confirmed with the operator, then deleted per explicit
+  instruction ("Delete comment on 100 and report account"). Checked for and confirmed no
+  second similar comment from another account. GitHub abuse reporting has no CLI/API path
+  — the operator was given the direct web-UI report link.
+
+## Next steps
+
+1. **#89**: awaiting operator decision on the 3 DreamShaper comparison images — pursue a
+   full painterly re-pass of already-shipped ship/captain art, or keep current sd-v1.5
+   style. Either way, the DreamShaper tile-generation approach needs rework before reuse.
+2. **#135**: RLS seed-leak fix needs a migration (view or explicit column list) — supervised
+   path, needs operator sign-off before implementation.
+3. **#93**: still needs a dedicated feature-scoping pass (interactive battle-board session
+   API) before it's attempted again.
+4. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
+5. The 34 new epic sub-issues (under #35/#36/#37/#38/#40/#42/#100) are ready for a future
+   sweep pass — labeled with model tiers, not yet triaged for priority/batching.
+
+## Prior session summary (2026-07-04 full issue-sweep, unchanged)
 
 Full `/issue-sweep`: triaged 27 open issues (Haiku fan-out), planned 9 executable batches
 (16 issues) with operator approval at the gate, executed all 9, then finalized (CI wait →
 `pre-pr-reviewer` audit → merge) one at a time. Every PR that reached the merge stage
-merged clean — nothing was left open.
+merged clean — nothing was left open. See prior git log / PR history for full detail
+(PRs #117–#125). Also surfaced #104 (later found to be misdiagnosed, corrected and fixed
+this session) and #120 (fixed this session).
 
-- **#118 — stripe-security** (#105, #106): origin allowlist on checkout redirect URLs, added
-  webhook signature/entitlement tests. The audit caught a real (if low-severity, non-
-  exploitable-without-the-secret) bug: a non-numeric webhook timestamp made the replay-window
-  check fail open via a `Math.abs(NaN)` comparison — fixed inline before merge, with a
-  regression test.
-- **#117 — art-integration** (#108, #109, #110, #111, #112, #113, #115): landed remaining
-  sprite/portrait assets and the actual `MapCanvas.tsx` sprite-rendering plumbing
-  (`SpritePool`, texture caching, flat-color fallback). #89 (further art polish) stays open,
-  intentionally deferred — needs more local Stable Diffusion generation time.
-- **#123 — captain-portraits** (#114): army/fleet list broken out per-captain (data already
-  existed as `Captain` entities — no engine change needed) plus portraits in the
-  attack-confirmation sheet. Conflicted with #117 on `factions.ts` (both added
-  `captainPortraitUrl`) — rebased and resolved by hand before merge.
-- **#119 — ci-fix** (#86): pinned prettier to the exact installed version, fixing the
-  `format:check` drift. **#104 turned out to be a false alarm** — investigated properly:
-  `database.types.ts` was never stale; the real bug is in
-  `.github/workflows/supabase.yml`'s diff step (formats a `/tmp` file with no
-  `--config`, so it never finds this repo's `.prettierrc` and always shows a spurious
-  diff). Retitled #104 to reflect the real root cause, labeled `needs-human-fix` — it's a
-  one-line workflow fix but touches a supervised path.
-- **#121 — balance** (#90): retuned tier-1 unit stats in `@aop/content` to equalize combat
-  win-rate spread across all 5 factions (was 75.0%, now 0.0% against a documented ~10%
-  target). Filed **#120** for a separate tooling gap found along the way (the
-  `balance-sim.ts` harness can't resolve `@aop/content` — needs a `pnpm-workspace.yaml`
-  touch, supervised, so deferred rather than fixed inline).
-- **#122 — testing** (#51): added `@vitest/coverage-v8` + Stryker mutation testing for
-  `packages/engine`, scoped to `combat.ts`/`reducer.ts`.
-- **#124 — economy** (#101): map-editor resource-node markers now grant a passive per-turn
-  resource bonus to whichever player controls (has a captain standing on) the tile.
-  Replay-determinism tests extended. Known gap, disclosed in the PR: `PlayerView` doesn't
-  yet expose resource nodes for fog-of-war filtering — separate, larger change.
-- **#125 — battle-board** (#93, #94): #94 (ranged units + line-of-sight) shipped in full —
-  new deterministic `hexLine`/`hexLineOfSight`, range-aware combat resolution and board AI,
-  replay tests extended. **#93 (interactive stack-by-stack UI) was deferred, not rushed** —
-  investigation found it isn't actually UI-only as the issue assumed; it needs unexported
-  engine internals exposed plus a new session API, a much larger and riskier lift. Left open
-  with that explanation.
-- **#63 — map-sharing**: no-op. Tier 1 (export/import codes) was already fully implemented
-  by the map editor (#102) exactly as the issue's own plan anticipated. Commented and left
-  open, now tracking **Tier 2 only** (community library, Phase 3+, needs `supabase/migrations/**`).
-
-**Operator decisions during the plan gate**: escalated #63 and #90 to a new `fable` model
+**Operator decisions during that plan gate**: escalated #63 and #90 to a new `fable` model
 tier (created the label); resolved #114's scope ambiguity by confirming per-ship captains
 already exist as first-class engine data (no schema change needed); approved touching
 `package.json`/`pnpm-lock.yaml` for #86's specific fix.
-
-**Still excluded / not batch-executable** (unchanged from the plan): epic-scale multiplayer
-and Capacitor features — #35, #36, #37, #38, #40, #42, #100 — all re-labeled `opus`, need a
-human breakdown before any future sweep can touch them. #98 (`needs-human-fix`), #81/#73
-(`blocked`) untouched.
-
-## Next steps
-
-1. **#104**: apply the one-line `.github/workflows/supabase.yml` fix (add `--config
-.prettierrc` to the `npx prettier --write` call, or write the temp file inside the repo
-   tree) — supervised path, needs explicit sign-off.
-2. **#120**: fix `balance-sim.ts`'s module resolution (likely a `pnpm-workspace.yaml` tweak)
-   so the balance harness is runnable again — supervised path.
-3. **#89**: art polish follow-up (ship/unit size variants, painterly style pass, remaining
-   UI icons) needs more local SD generation time / a different checkpoint.
-4. **#93**: needs a dedicated feature-scoping pass (interactive battle-board session API)
-   before it's attempted again.
-5. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
-6. The 7 epic-scale multiplayer/Capacitor issues above need manual breakdown into
-   sweep-sized pieces before they can go through this pipeline.
 
 ## Prior session summary (2026-07-04 full open-PR review sweep, unchanged)
 
