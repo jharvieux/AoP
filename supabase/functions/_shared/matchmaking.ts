@@ -6,6 +6,7 @@
 // I/O here).
 
 import { createGame } from '@aop/engine'
+import { GAME_SETUP } from '@aop/content'
 import {
   assignQuickMatchSeats,
   drainQueue,
@@ -72,6 +73,9 @@ async function createQuickMatch(
   group: QueueEntry[],
 ): Promise<string> {
   const seats = assignQuickMatchSeats(group, FACTION_IDS)
+  // Quick matches aren't host-configured, so the diplomacy knobs (#177) take the
+  // content defaults — persisted explicitly so a client-side replay rebuilds the
+  // same setup it would for any other match.
   const settings: MatchSettings = {
     mapSize: bucket.mapSize,
     maxPlayers: bucket.matchSize,
@@ -79,6 +83,8 @@ async function createQuickMatch(
     private: false,
     aiSeats: 0,
     missedTurnThreshold: QUICK_MATCH_MISSED_TURN_THRESHOLD,
+    betrayalReputationPenalty: GAME_SETUP.betrayalReputationPenalty,
+    betrayalTruceRounds: GAME_SETUP.betrayalTruceRounds,
   }
   const seed = randomSeed()
 
@@ -125,7 +131,12 @@ async function createQuickMatch(
     isAI: false,
     displayName: names.get(s.userId) ?? `Seat ${s.seat}`,
   }))
-  const state = createGame(buildMatchConfig(seed, bucket.mapSize, seatConfigs))
+  const state = createGame(
+    buildMatchConfig(seed, bucket.mapSize, seatConfigs, {
+      betrayalReputationPenalty: settings.betrayalReputationPenalty,
+      betrayalTruceRounds: settings.betrayalTruceRounds,
+    }),
+  )
 
   const snap = await db
     .from('match_snapshots')

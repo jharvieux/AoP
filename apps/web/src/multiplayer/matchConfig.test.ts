@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '@aop/engine'
+import { GAME_SETUP } from '@aop/content'
 import { buildMatchConfig, type SeatConfig } from './matchConfig'
 
 const SEATS: SeatConfig[] = [
@@ -37,6 +38,33 @@ describe('buildMatchConfig', () => {
     const a = buildMatchConfig(7, 'medium', SEATS)
     const b = buildMatchConfig(7, 'medium', SEATS)
     expect(a).toEqual(b)
+  })
+
+  // #177: the host's diplomacy knobs must survive the config rebuild, or an online
+  // match would silently ignore them and a client replay would diverge from the
+  // server. Overrides given -> those values; omitted -> the content defaults the
+  // pre-#177 match ran with.
+  it('threads host-configured betrayal knobs into config.setup', () => {
+    const config = buildMatchConfig(7, 'small', SEATS, {
+      betrayalReputationPenalty: 75,
+      betrayalTruceRounds: 0,
+    })
+    expect(config.setup.betrayalReputationPenalty).toBe(75)
+    expect(config.setup.betrayalTruceRounds).toBe(0)
+  })
+
+  it('falls back to the content defaults when betrayal knobs are omitted', () => {
+    const config = buildMatchConfig(7, 'small', SEATS)
+    expect(config.setup.betrayalReputationPenalty).toBe(GAME_SETUP.betrayalReputationPenalty)
+    expect(config.setup.betrayalTruceRounds).toBe(GAME_SETUP.betrayalTruceRounds)
+  })
+
+  it('leaves the rest of GAME_SETUP untouched while overriding only the two knobs', () => {
+    const config = buildMatchConfig(7, 'small', SEATS, { betrayalTruceRounds: 5 })
+    expect(config.setup).toEqual({
+      ...GAME_SETUP,
+      betrayalTruceRounds: 5,
+    })
   })
 
   // #169: the client catalog carries a `resourceNodes` field the server's

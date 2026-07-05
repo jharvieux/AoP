@@ -39,6 +39,10 @@ export interface MatchSettings {
   aiSeats: number
   /** Missed turns before a seat flips to ai_takeover (§8). */
   missedTurnThreshold: number
+  /** Host-chosen betrayal reputation cost (#177); overrides `GAME_SETUP.betrayalReputationPenalty`. */
+  betrayalReputationPenalty: number
+  /** Host-chosen betrayal truce window in rounds (#177); overrides `GAME_SETUP.betrayalTruceRounds`. `0` disables the truce. */
+  betrayalTruceRounds: number
 }
 
 /** A server-generated map + RNG seed (§11 chosen-seed advantage: never client-chosen).
@@ -667,6 +671,31 @@ export function parseSettings(raw: unknown): MatchSettings {
   if (!Number.isInteger(threshold) || threshold < 1) {
     throw new AppError('BAD_REQUEST', 'settings.missedTurnThreshold must be a positive integer')
   }
+  // Diplomacy knobs (#177). Defaults mirror @aop/content's GAME_SETUP so a client
+  // that omits them gets the same match the fixed content defaults produced before
+  // these became host-configurable. Bounds match the NewGameSetup sliders
+  // (apps/web/src/screens/NewGameSetup.tsx): 0..100 reputation cost, 0..10 rounds.
+  const betrayalReputationPenalty =
+    s.betrayalReputationPenalty === undefined ? 40 : Number(s.betrayalReputationPenalty)
+  if (
+    !Number.isInteger(betrayalReputationPenalty) ||
+    betrayalReputationPenalty < 0 ||
+    betrayalReputationPenalty > 100
+  ) {
+    throw new AppError(
+      'BAD_REQUEST',
+      'settings.betrayalReputationPenalty must be an integer 0..100',
+    )
+  }
+  const betrayalTruceRounds =
+    s.betrayalTruceRounds === undefined ? 2 : Number(s.betrayalTruceRounds)
+  if (
+    !Number.isInteger(betrayalTruceRounds) ||
+    betrayalTruceRounds < 0 ||
+    betrayalTruceRounds > 10
+  ) {
+    throw new AppError('BAD_REQUEST', 'settings.betrayalTruceRounds must be an integer 0..10')
+  }
   return {
     mapSize,
     maxPlayers,
@@ -674,6 +703,8 @@ export function parseSettings(raw: unknown): MatchSettings {
     turnTimerSeconds: s.turnTimerSeconds === null ? null : turnTimerSeconds,
     private: Boolean(s.private),
     missedTurnThreshold: threshold,
+    betrayalReputationPenalty,
+    betrayalTruceRounds,
   }
 }
 
