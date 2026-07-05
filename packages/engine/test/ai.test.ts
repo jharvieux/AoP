@@ -1,16 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyAction,
   captainsOf,
   createGame,
   currentPlayer,
   nextAiAction,
   runAiTurn,
+  type AiProfile,
   type CombatStatsData,
   type ContentCatalog,
   type GameConfig,
   type GameState,
 } from '../src'
-import { AI_TUNING, COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
+import {
+  AI_DIFFICULTIES,
+  AI_PERSONALITIES,
+  AI_TUNING,
+  COMBAT_TUNING,
+  GAME_SETUP,
+  TACTICS_TUNING,
+} from './fixtures'
 
 const STATS: CombatStatsData = {
   units: [
@@ -280,5 +289,143 @@ describe('economy AI', () => {
   it('plays combat-only (no economy actions) when no content catalog is configured', () => {
     const state = createGame(config(1, 999))
     expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+})
+
+// --- Personalities, difficulty, and alliances (#25) ---
+
+/** Attach an AI profile to p1 (and optionally p2) plus the content tables the profile keys on. */
+function withAi(
+  base: GameConfig,
+  profiles: Partial<Record<'p1' | 'p2', AiProfile>>,
+  teams: Partial<Record<'p1' | 'p2', string>> = {},
+): GameConfig {
+  return {
+    ...base,
+    players: base.players.map((p) => {
+      const id = p.id as 'p1' | 'p2'
+      return {
+        ...p,
+        ...(profiles[id] ? { aiProfile: profiles[id] } : {}),
+        ...(teams[id] !== undefined ? { team: teams[id] } : {}),
+      }
+    }),
+    aiPersonalities: AI_PERSONALITIES,
+    aiDifficulties: AI_DIFFICULTIES,
+  }
+}
+
+describe('AI personalities (#25)', () => {
+  // Equal troops on identical ships => strength ratio exactly 1.0, which sits
+  // between the aggressive engage threshold (below 1) and the economic one (above 1).
+  it('an aggressive AI attacks an even-strength adjacent enemy the economic AI declines', () => {
+    const aggressive = placeAdjacent(
+      createGame(withAi(config(5, 5), { p1: { personality: 'aggressive', difficulty: 'normal' } })),
+    )
+    expect(nextAiAction(aggressive, 'p1').type).toBe('attackCaptain')
+
+    const economic = placeAdjacent(
+      createGame(withAi(config(5, 5), { p1: { personality: 'economic', difficulty: 'normal' } })),
+    )
+    expect(nextAiAction(economic, 'p1').type).not.toBe('attackCaptain')
+  })
+
+  it('an aggressive AI advances on an even-strength distant enemy the economic AI ignores', () => {
+    const aggressive = createGame(
+      withAi(config(5, 5), { p1: { personality: 'aggressive', difficulty: 'normal' } }),
+    )
+    expect(nextAiAction(aggressive, 'p1').type).toBe('moveCaptain')
+
+    const economic = createGame(
+      withAi(config(5, 5), { p1: { personality: 'economic', difficulty: 'normal' } }),
+    )
+    expect(nextAiAction(economic, 'p1').type).toBe('endTurn')
+  })
+
+  it('an economic AI keeps a larger cash reserve than an aggressive one', () => {
+    const decide = (personality: AiProfile['personality']) => {
+      let state = createGame(
+        withAi(econConfig(['townhall', 'barracks']), {
+          p1: { personality, difficulty: 'normal' },
+        }),
+      )
+      const city = homeCity(state, 'p1')
+      state = {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === 'p1' ? { ...p, resources: { ...p.resources, gold: 200 } } : p,
+        ),
+        cities: state.cities.map((c) =>
+          c.id === city.id ? { ...c, builtThisRound: true, unitAvailability: { deckhand: 10 } } : c,
+        ),
+      }
+      return nextAiAction(state, 'p1')
+    }
+    // Gold 200: aggressive reserve is 90 (spends), economic reserve is 240 (holds).
+    expect(decide('aggressive').type).toBe('recruit')
+    expect(decide('economic').type).not.toBe('recruit')
+  })
+})
+
+describe('AI difficulty (#25)', () => {
+  it('a lower-difficulty AI can take a suboptimal move; a competent one takes the best', () => {
+    // Force the blunder so the test is deterministic rather than probabilistic.
+    const alwaysBlunder = { ...AI_DIFFICULTIES, easy: { blunderChance: 1, incomeMult: 1 } }
+    const cfg = (difficulty: AiProfile['difficulty']): GameConfig => ({
+      ...withAi(config(8, 1), { p1: { personality: 'opportunist', difficulty } }),
+      aiDifficulties: alwaysBlunder,
+    })
+    // Best move against a distant, far-weaker enemy is to close in.
+    expect(nextAiAction(createGame(cfg('normal')), 'p1').type).toBe('moveCaptain')
+    // Blundering, the AI takes its runner-up: ending the turn.
+    expect(nextAiAction(createGame(cfg('easy')), 'p1').type).toBe('endTurn')
+  })
+
+  it('is deterministic even when blundering', () => {
+    const state = createGame(
+      withAi(config(5, 3), { p1: { personality: 'opportunist', difficulty: 'easy' } }),
+    )
+    expect(nextAiAction(state, 'p1')).toEqual(nextAiAction(state, 'p1'))
+  })
+
+  it('grants a hard AI a resource bonus but never cheats easy/normal seats', () => {
+    const players = config(1, 1).players.map((p) =>
+      p.id === 'p1'
+        ? { ...p, isAI: false, aiProfile: { personality: 'opportunist', difficulty: 'hard' } }
+        : { ...p, isAI: false, aiProfile: { personality: 'opportunist', difficulty: 'normal' } },
+    )
+    const cfg: GameConfig = {
+      ...config(1, 1),
+      setup: { ...GAME_SETUP, startingBuildings: ['townhall'] },
+      content: ECON_CATALOG,
+      aiTuning: AI_TUNING,
+      aiDifficulties: AI_DIFFICULTIES,
+      players: players as GameConfig['players'],
+    }
+    // Play one full round so the round-start income lands.
+    let state = createGame(cfg)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+    const gold = (id: string) => state.players.find((p) => p.id === id)!.resources.gold
+    // townhall income is 100 gold; start is 1000.
+    expect(gold('p1')).toBe(1000 + Math.floor(100 * 1.25)) // hard bonus
+    expect(gold('p2')).toBe(1000 + 100) // normal, no cheat
+  })
+})
+
+describe('AI alliance awareness (#25)', () => {
+  it('never targets an allied captain', () => {
+    const cfg = {
+      ...config(8, 1),
+      players: config(8, 1).players.map((p) => ({ ...p, team: 'north' })),
+    }
+    const state = placeAdjacent(createGame(cfg))
+    // p2 is an ally, so it is not an enemy and there is nothing to do.
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+
+  it('still targets a non-allied captain', () => {
+    const state = placeAdjacent(createGame(config(8, 1)))
+    expect(nextAiAction(state, 'p1').type).toBe('attackCaptain')
   })
 })

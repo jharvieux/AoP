@@ -77,9 +77,20 @@ export function createGame(config: GameConfig): GameState {
 
   // Scatter random encounters from the seeded RNG (#23), then keep the advanced
   // RNG state so the encounter roll stream is baked into the match deterministically.
+  // An authored map (#41 map editor) may instead carry a fixed encounter list —
+  // used verbatim, with no RNG draw, so it doesn't disturb the seed's other rolls.
   let rngState: RngState = seedRng(config.seed)
   let encounters: EncounterState[] = []
-  if (content?.encounters) {
+  const authoredEncounters = config.mapDefinition?.encounters
+  if (authoredEncounters && authoredEncounters.length > 0) {
+    encounters = authoredEncounters.map((e, i) => ({
+      id: `enc-${i}`,
+      kind: e.kind,
+      position: { ...e.position },
+      active: true,
+      respawnRound: null,
+    }))
+  } else if (content?.encounters) {
     const spawned = spawnEncounters(map, content.encounters, rngState, map.startPositions)
     encounters = spawned.encounters
     rngState = spawned.rng
@@ -97,6 +108,10 @@ export function createGame(config: GameConfig): GameState {
       isAI: p.isAI,
       resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
+      // AI behavior + alliance (#25) carry into runtime state; omit when unset so
+      // GameState holds no stray optional keys.
+      ...(p.aiProfile ? { aiProfile: p.aiProfile } : {}),
+      ...(p.team !== undefined ? { team: p.team } : {}),
     })),
     cities,
     captains,
@@ -124,4 +139,15 @@ export function currentPlayer(state: GameState) {
   const player = state.players[state.currentPlayerIndex]
   if (!player) throw new Error(`Invalid currentPlayerIndex ${state.currentPlayerIndex}`)
   return player
+}
+
+/**
+ * Whether two seats are allies (#25, Phase 3 prep): distinct players sharing a
+ * non-null {@link PlayerState.team}. A seat is never allied with itself.
+ */
+export function areAllied(state: GameState, a: string, b: string): boolean {
+  if (a === b) return false
+  const teamA = state.players.find((p) => p.id === a)?.team
+  const teamB = state.players.find((p) => p.id === b)?.team
+  return teamA !== undefined && teamA === teamB
 }
