@@ -277,8 +277,10 @@ export function captainToCombatant(
  * The combat AI driver a seat fights with when it has no player-supplied orders
  * (#25). Human seats and unprofiled AIs use the default; profiled AIs get a
  * personality-flavored driver, with `easy` deliberately playing the weak line.
+ * Exported so the client boarding probe's parity test (#93) can compare its
+ * mirror against this function directly.
  */
-function aiTacticDriverForOwner(state: GameState, ownerId: string): TacticDriver {
+export function aiTacticDriverForOwner(state: GameState, ownerId: string): TacticDriver {
   const profile = state.players.find((p) => p.id === ownerId)?.aiProfile
   if (!profile) return aiTacticDriver
   if (profile.difficulty === 'easy') return plainTacticDriver

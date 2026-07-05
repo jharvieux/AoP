@@ -8,6 +8,8 @@ import {
   visibleState,
   type Action,
   type BattleReport,
+  type BoardActivationView,
+  type BoardCommand,
   type BoardOrder,
   type EncounterChoice,
   type EncounterKind,
@@ -19,6 +21,13 @@ import { chebyshevDistance } from '@aop/shared'
 import { useEffect, useMemo, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { BattleBoardSheet } from '../BattleBoardSheet'
+import { BoardingCommandSheet } from '../BoardingCommandSheet'
+import {
+  probeBoardingBattle,
+  stackLosses,
+  type BoardingProbeOutcome,
+  type StackLoss,
+} from '../boardingPlanner'
 import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
@@ -37,6 +46,19 @@ const BATTLE_TAUNT_KEY = 'battle-taunt'
 /** How long an AI seat "thinks" between actions. Purely cosmetic pacing. */
 const AI_STEP_MS = 250
 const ODDS_TRIALS = 120
+
+/**
+ * An attack that reached the boarding melee, mid-command (#93). The action has
+ * not been dispatched yet: the fight is simulated locally, one recorded command
+ * per attacker activation, and dispatched with the full plan once it resolves.
+ */
+interface BoardingState {
+  captainId: string
+  targetCaptainId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
 
 interface GameScreenProps {
   game: GameState
@@ -70,6 +92,7 @@ export function GameScreen({
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
   const [encounterId, setEncounterId] = useState<string | null>(null)
+  const [boarding, setBoarding] = useState<BoardingState | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
 
@@ -206,18 +229,78 @@ export function GameScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaptain, attackTarget, game])
 
+  /**
+   * Launch the attack (#93). The battle is first simulated locally from the
+   * current RNG state: if it reaches a boarding melee, the command sheet opens
+   * and the player drives their stacks by hand; the action is dispatched with
+   * the recorded plan once the fight resolves. A battle decided at sea (or a
+   * pre-#39 match without battle tuning) dispatches immediately, unchanged —
+   * the naval tactic rounds themselves stay auto-resolved for now. Committed
+   * either way: the deterministic sim already revealed the naval outcome, so
+   * there is no backing out once the probe has run.
+   */
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
     hapticImpact()
     audioManager.play(DIALOGUE.battleCharge)
+    const captainId = selectedCaptain.id
+    const targetCaptainId = attackTarget.id
+    setAttackTargetId(null)
+    setSelectedCaptainId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probeBoardingBattle(game, { captainId, targetCaptainId }, [])
+    } catch (err) {
+      // Fail-safe: a broken local simulation must never block the attack —
+      // dispatch without a plan and let the board AI fight the melee.
+      console.error('Boarding simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setBoarding({ captainId, targetCaptainId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'attackCaptain', playerId: viewer.id, captainId, targetCaptainId })
+  }
+
+  /** Dispatch the boarding attack with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchBoarding(current: BoardingState, commands: BoardCommand[]) {
+    setBoarding(null)
     onAction({
       type: 'attackCaptain',
       playerId: viewer.id,
-      captainId: selectedCaptain.id,
-      targetCaptainId: attackTarget.id,
+      captainId: current.captainId,
+      targetCaptainId: current.targetCaptainId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
     })
-    setAttackTargetId(null)
-    setSelectedCaptainId(null)
+  }
+
+  /** One confirmed activation order: extend the plan and re-probe for the next activation. */
+  function orderBoardingCommand(command: BoardCommand) {
+    if (!boarding) return
+    const commands = [...boarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probeBoardingBattle(
+        game,
+        { captainId: boarding.captainId, targetCaptainId: boarding.targetCaptainId },
+        commands,
+      )
+    } catch (err) {
+      console.error('Boarding simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setBoarding({
+        ...boarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(boarding.view, probe.view),
+      })
+      return
+    }
+    // Resolved (or the sim failed): submit the recorded plan — the engine
+    // re-derives the identical fight from the action log.
+    dispatchBoarding(boarding, commands)
   }
 
   /** Resolution bark for the encounter sheet closing (#75); kind/choice-dependent. */
@@ -393,6 +476,16 @@ export function GameScreen({
           sheet or building modal is open, and it's never the viewer's turn to act. */}
       {!isViewerTurn && !attackTarget && !encounter && !cityOpen && !savesOpen && (
         <AdSlot placement="between-turns" />
+      )}
+
+      {boarding && (
+        <BoardingCommandSheet
+          key={boarding.commands.length}
+          view={boarding.view}
+          losses={boarding.losses}
+          onCommand={orderBoardingCommand}
+          onAutoResolve={() => dispatchBoarding(boarding, boarding.commands)}
+        />
       )}
 
       {battleReport && (

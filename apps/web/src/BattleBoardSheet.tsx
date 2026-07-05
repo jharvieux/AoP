@@ -1,6 +1,13 @@
-import { FACTIONS } from '@aop/content'
 import type { BattleReport, BoardBattleLog, BoardEvent, HexCoord } from '@aop/engine'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  boardSvgSize,
+  hexCenter,
+  hexPoints,
+  StackToken,
+  TERRAIN_FILL,
+  unitDefinition,
+} from './battleBoardSvg'
 import { useTheme } from './theme/ThemeContext'
 
 /**
@@ -16,34 +23,6 @@ interface BattleBoardSheetProps {
   report: BattleReport
   playerName: (id: string) => string
   onClose: () => void
-}
-
-const HEX_SIZE = 22
-const SQRT3 = Math.sqrt(3)
-
-const TERRAIN_FILL: Record<string, string> = {
-  open: '#1d3345',
-  rough: '#4a3c22',
-  cover: '#1f4a2a',
-  blocked: '#3a3f45',
-}
-
-function hexCenter(hex: HexCoord): { x: number; y: number } {
-  return {
-    x: HEX_SIZE * SQRT3 * (hex.col + 0.5 * (hex.row % 2)) + HEX_SIZE,
-    y: HEX_SIZE * 1.5 * hex.row + HEX_SIZE,
-  }
-}
-
-function hexPoints(cx: number, cy: number): string {
-  const pts: string[] = []
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 30)
-    pts.push(
-      `${(cx + HEX_SIZE * 0.94 * Math.cos(angle)).toFixed(1)},${(cy + HEX_SIZE * 0.94 * Math.sin(angle)).toFixed(1)}`,
-    )
-  }
-  return pts.join(' ')
 }
 
 interface PlaybackStack {
@@ -90,22 +69,8 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
 
   const stacks = useMemo(() => (board ? stacksAtStep(board, step) : []), [board, step])
 
-  const displayUnitName = (unitId: string) => {
-    const def = Object.values(FACTIONS)
-      .flatMap((f) => f.units)
-      .find((u) => u.id === unitId)
-    return unitName(unitId, def?.name ?? unitId)
-  }
-
-  // Per-unit-tier troop icon (#26/#89): undefined for tier 1 or any faction/tier that
-  // hasn't been generated yet, in which case the board keeps its plain 2-letter fallback.
-  const unitTierIconUrl = (unitId: string): string | undefined => {
-    for (const faction of Object.values(FACTIONS)) {
-      const def = faction.units.find((u) => u.id === unitId)
-      if (def) return faction.unitTierSpriteUrls?.[def.tier]
-    }
-    return undefined
-  }
+  const displayUnitName = (unitId: string) =>
+    unitName(unitId, unitDefinition(unitId)?.name ?? unitId)
 
   const eventCaption = (e: BoardEvent | undefined): string => {
     if (!board || !e) return 'Deployment'
@@ -134,8 +99,9 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
     }
   }
 
-  const svgWidth = board ? HEX_SIZE * SQRT3 * (board.width + 0.5) + HEX_SIZE : 0
-  const svgHeight = board ? HEX_SIZE * (1.5 * board.height + 0.5) + HEX_SIZE : 0
+  const { width: svgWidth, height: svgHeight } = board
+    ? boardSvgSize(board.width, board.height)
+    : { width: 0, height: 0 }
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -179,50 +145,16 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                     />
                   )
                 })}
-                {stacks.map((s) => {
-                  const { x, y } = hexCenter(s.position)
-                  const iconUrl = unitTierIconUrl(s.unitId)
-                  return (
-                    <g key={s.id}>
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={HEX_SIZE * 0.62}
-                        fill={s.side === 'attacker' ? '#a33c2e' : '#2e5da3'}
-                        stroke="#0e1c26"
-                        strokeWidth="1.5"
-                      />
-                      {iconUrl ? (
-                        <image
-                          href={iconUrl}
-                          x={x - HEX_SIZE * 0.5}
-                          y={y - HEX_SIZE * 0.58}
-                          width={HEX_SIZE}
-                          height={HEX_SIZE}
-                          clipPath="circle(46%)"
-                          preserveAspectRatio="xMidYMid slice"
-                        />
-                      ) : (
-                        <text
-                          x={x}
-                          y={y - 2}
-                          textAnchor="middle"
-                          className="battle-board-svg__unit"
-                        >
-                          {displayUnitName(s.unitId).slice(0, 2)}
-                        </text>
-                      )}
-                      <text
-                        x={x}
-                        y={y + 10}
-                        textAnchor="middle"
-                        className="battle-board-svg__count"
-                      >
-                        {s.count}
-                      </text>
-                    </g>
-                  )
-                })}
+                {stacks.map((s) => (
+                  <StackToken
+                    key={s.id}
+                    side={s.side}
+                    unitId={s.unitId}
+                    count={s.count}
+                    position={s.position}
+                    label={displayUnitName(s.unitId)}
+                  />
+                ))}
               </svg>
             </div>
 
