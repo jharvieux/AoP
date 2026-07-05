@@ -10,7 +10,7 @@ also prepend its one-liner to `MEMORY-INDEX.md`.
 engine does not block it. Doing so atomically (within one `applyAction()` call) breaks the
 alliance and applies a reputation penalty: every player starts at 100 reputation
 (`startingReputation`), a betrayal costs 40 (`betrayalReputationPenalty`), floored at 0; a
-seat below 30 reputation (`allianceReputationMin`) cannot form *new* alliances, though
+seat below 30 reputation (`allianceReputationMin`) cannot form _new_ alliances, though
 existing ones are untouched by falling below the threshold. All three numbers live in
 `packages/content/src/tuning.ts` (`GAME_SETUP`), not hardcoded in the engine, so they're
 retunable without an engine change. Reputation is disclosed publicly via `playerView` (the
