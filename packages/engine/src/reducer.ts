@@ -46,7 +46,7 @@ import {
 import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
-import { currentPlayer } from './game'
+import { areAllied, currentPlayer } from './game'
 import { tileAt } from './map'
 import { findPath } from './pathfinding'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
@@ -321,6 +321,12 @@ function attackCaptain(
     }
   }
 
+  // Betrayal (#138): attacking an ally is legal — no leave step required — but
+  // the alliance dissolves and the attacker pays the reputation price, in the
+  // same action as the battle itself (never an intermediate state where an ally
+  // was attacked and the alliance stands).
+  const betrayal = areAllied(state, attacker.ownerId, target.ownerId)
+
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
   const attackerFaction = state.players.find((p) => p.id === attacker.ownerId)!.faction
@@ -375,7 +381,32 @@ function attackCaptain(
       return c
     })
 
-  const settled = settleEliminations({ ...state, captains, rngState: result.rng })
+  const players = betrayal
+    ? state.players.map((p) =>
+        p.id === attacker.ownerId
+          ? {
+              ...p,
+              reputation: Math.max(0, p.reputation - state.config.setup.betrayalReputationPenalty),
+            }
+          : p,
+      )
+    : state.players
+  const alliances = betrayal
+    ? {
+        pairs: state.alliances.pairs.filter(
+          (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
+        ),
+        proposals: state.alliances.proposals,
+      }
+    : state.alliances
+
+  const settled = settleEliminations({
+    ...state,
+    players,
+    alliances,
+    captains,
+    rngState: result.rng,
+  })
   return { state: settled, battleReport: report }
 }
 
@@ -745,6 +776,22 @@ function resolveEncounter(
 }
 
 /**
+ * The reputation gate on forming NEW alliances (#138): a seat below
+ * `setup.allianceReputationMin` can neither propose nor be allied with.
+ * Checked at both propose and accept time (reputation can drop between the
+ * two). Existing alliances are never dissolved by low reputation.
+ */
+function requireAllianceReputation(state: GameState, seatIds: string[], action: Action): void {
+  const min = state.config.setup.allianceReputationMin
+  for (const id of seatIds) {
+    const player = state.players.find((p) => p.id === id)
+    if (player && player.reputation < min) {
+      throw new InvalidActionError(`${id}'s reputation is too low to form an alliance`, action)
+    }
+  }
+}
+
+/**
  * Step one of alliance consent (#136): record a pending proposal from the acting
  * seat to `targetId`. Turn-ordered — the caller is the current player by the
  * global guard in {@link applyActionWithOutcome}, so a seat can only propose on
@@ -765,6 +812,7 @@ function proposeAlliance(state: GameState, action: ProposeAllianceAction): GameS
   if (proposalBetween(proposals, action.playerId, action.targetId)) {
     throw new InvalidActionError(`A proposal already stands with ${action.targetId}`, action)
   }
+  requireAllianceReputation(state, [action.playerId, action.targetId], action)
   return {
     ...state,
     alliances: {
@@ -786,6 +834,7 @@ function acceptAlliance(state: GameState, action: AcceptAllianceAction): GameSta
   if (idx === -1) {
     throw new InvalidActionError(`No alliance proposal from ${action.proposerId} to accept`, action)
   }
+  requireAllianceReputation(state, [action.playerId, action.proposerId], action)
   return {
     ...state,
     alliances: {

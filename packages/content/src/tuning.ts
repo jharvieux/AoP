@@ -156,6 +156,21 @@ export interface GameSetup {
   captainVisionRadius: number
   /** XP the winning captain earns from a decisive naval victory (#21). */
   combatWinXp: number
+  /** Reputation every player starts the match with (#138). */
+  startingReputation: number
+  /**
+   * Reputation lost for betrayal (#138) — attacking an ally without leaving the
+   * alliance first. The primary betrayal-cost knob: raise it to make treachery
+   * rarer, lower it to make alliances more fluid.
+   */
+  betrayalReputationPenalty: number
+  /**
+   * Minimum reputation a seat needs to form a NEW alliance (#138) — below it,
+   * proposals involving that seat are rejected. Existing alliances are
+   * unaffected. With the defaults (100 start, −40 per betrayal, floor 30) one
+   * betrayal leaves diplomacy open; a second closes it for the match.
+   */
+  allianceReputationMin: number
 }
 
 export const COMBAT_TUNING: CombatTuning = {
@@ -214,6 +229,9 @@ export const GAME_SETUP: GameSetup = {
   cityVisionRadius: 3,
   captainVisionRadius: 2,
   combatWinXp: 40,
+  startingReputation: 100,
+  betrayalReputationPenalty: 40,
+  allianceReputationMin: 30,
 }
 
 export const AI_TUNING: AiTuning = {

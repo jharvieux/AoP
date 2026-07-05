@@ -102,6 +102,12 @@ export interface ViewPlayer {
   faction: FactionId
   isAI: boolean
   eliminated: boolean
+  /**
+   * Diplomatic standing (#138) — public for every seat, like name and faction:
+   * an oathbreaker's mark is common knowledge, and clients need it to know
+   * whether a proposal to (or from) a seat can succeed at all.
+   */
+  reputation: number
   /** Present only on the viewer's own row. */
   resources?: ResourcePool
 }
@@ -171,9 +177,17 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
           faction: p.faction,
           isAI: p.isAI,
           eliminated: p.eliminated,
+          reputation: p.reputation,
           resources: p.resources,
         }
-      : { id: p.id, name: p.name, faction: p.faction, isAI: p.isAI, eliminated: p.eliminated },
+      : {
+          id: p.id,
+          name: p.name,
+          faction: p.faction,
+          isAI: p.isAI,
+          eliminated: p.eliminated,
+          reputation: p.reputation,
+        },
   )
 
   const cities: ViewCity[] = []
