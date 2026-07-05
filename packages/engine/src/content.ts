@@ -97,6 +97,14 @@ export interface EncounterCatalogLike {
   minStartDistance: number
 }
 
+/** The four map-editor resource-marker kinds (#41, #101). */
+export type ResourceNodeKind = 'gold' | 'timber' | 'iron' | 'rum'
+
+/** Per-round yield of one resource-node kind, injected from @aop/content. */
+export interface ResourceNodeLike {
+  yield: Partial<ResourcePool>
+}
+
 export interface ContentCatalog {
   buildings: Record<string, BuildingLike>
   units: Record<string, UnitLike>
@@ -106,4 +114,10 @@ export interface ContentCatalog {
   captainXpThresholds: number[]
   /** Random-encounter tables (#23). Optional: matches without it spawn no encounters. */
   encounters?: EncounterCatalogLike
+  /**
+   * Per-round yield for authored resource nodes (#101), keyed by kind.
+   * Optional: matches without it grant no resource-node income even if the
+   * map carries nodes.
+   */
+  resourceNodes?: Partial<Record<ResourceNodeKind, ResourceNodeLike>>
 }

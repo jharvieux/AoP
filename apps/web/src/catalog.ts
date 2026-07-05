@@ -3,6 +3,7 @@ import {
   CAPTAIN_XP_THRESHOLDS,
   ENCOUNTERS,
   FACTIONS,
+  RESOURCE_NODES,
   SHIP_CLASSES,
   SKILLS,
 } from '@aop/content'
@@ -58,5 +59,8 @@ export function buildCatalog(): ContentCatalog {
     ),
     captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
     encounters: ENCOUNTERS,
+    resourceNodes: Object.fromEntries(
+      Object.values(RESOURCE_NODES).map((node) => [node.id, { yield: node.yield }]),
+    ),
   }
 }

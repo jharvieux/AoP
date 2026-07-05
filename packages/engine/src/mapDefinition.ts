@@ -1,6 +1,6 @@
 import type { Coord } from '@aop/shared'
 import { chebyshevDistance } from '@aop/shared'
-import type { EncounterKind } from './content'
+import type { EncounterKind, ResourceNodeKind } from './content'
 import { inBounds, isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } from './map'
 
 /**
@@ -15,10 +15,30 @@ export interface EncounterPlacement {
   position: Coord
 }
 
+/**
+ * An author-placed resource node (#41 map editor, #101): a fixed map tile
+ * that grants its kind's resource each round to whichever player currently
+ * controls it (a captain of theirs is standing on it — see economy.ts's
+ * `resourceNodeIncome`). Mirrors {@link EncounterPlacement}: `createGame`
+ * seeds `GameState.resourceNodes` from this list verbatim, with no RNG draw,
+ * so authored placements replay identically.
+ */
+export interface ResourceNodePlacement {
+  kind: ResourceNodeKind
+  position: Coord
+}
+
 const VALID_ENCOUNTER_KINDS: ReadonlySet<string> = new Set<EncounterKind>([
   'merchant',
   'natives',
   'settlers',
+])
+
+const VALID_RESOURCE_NODE_KINDS: ReadonlySet<string> = new Set<ResourceNodeKind>([
+  'gold',
+  'timber',
+  'iron',
+  'rum',
 ])
 
 /**
@@ -31,9 +51,13 @@ const VALID_ENCOUNTER_KINDS: ReadonlySet<string> = new Set<EncounterKind>([
  *
  * `encounters` is optional and editor-only in origin: omit it (or leave it
  * empty) and `createGame` falls back to the normal seeded encounter scatter.
+ * `resourceNodes` is likewise optional and editor-only; there is no
+ * generated-map equivalent to fall back to (resource nodes are author-placed
+ * only), so omitting it simply means no resource nodes exist on the map.
  */
 export interface MapDefinition extends GameMap {
   encounters?: EncounterPlacement[]
+  resourceNodes?: ResourceNodePlacement[]
 }
 
 /**
@@ -222,6 +246,26 @@ export function validateMapDefinition(
       errors.push({
         code: 'encounter-not-water',
         message: `encounter ${i} (${enc.position.x},${enc.position.y}) is not a water tile`,
+      })
+    }
+  })
+
+  // Author-placed resource nodes (#101): must be a known kind and in bounds.
+  // Unlike encounters, the editor lets authors drop these on any tile type
+  // (land mines, coastal distilleries, ...), so there's no tile-type check —
+  // just the same untrusted-input guard against a corrupted/hand-edited kind.
+  def.resourceNodes?.forEach((node, i) => {
+    if (!VALID_RESOURCE_NODE_KINDS.has(node.kind)) {
+      errors.push({
+        code: 'resource-node-invalid-kind',
+        message: `resource node ${i} has unrecognized kind "${String(node.kind)}"`,
+      })
+      return
+    }
+    if (!inBounds(def, node.position.x, node.position.y)) {
+      errors.push({
+        code: 'resource-node-out-of-bounds',
+        message: `resource node ${i} (${node.position.x},${node.position.y}) is outside the map`,
       })
     }
   })

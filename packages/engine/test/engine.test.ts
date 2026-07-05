@@ -95,6 +95,12 @@ const TEST_CATALOG: ContentCatalog = {
     'pirates-gunnery-1': { factionId: 'pirates', tier: 1, attackBonusPct: 10, defenseBonusPct: 0 },
   },
   captainXpThresholds: [0, 150, 400, 800, 1400],
+  resourceNodes: {
+    gold: { yield: { gold: 50 } },
+    timber: { yield: { timber: 3 } },
+    iron: { yield: { iron: 2 } },
+    rum: { yield: { rum: 2 } },
+  },
 }
 
 const COMBAT_STATS: CombatStatsData = {
@@ -248,6 +254,50 @@ describe('economy & cities', () => {
     expect(state.round).toBe(2)
     // townhall (in starting buildings) produces 100 gold each round.
     expect(state.players[0]!.resources.gold).toBe(startGold + 100)
+  })
+
+  it('grants a resource-node bonus (#101) on top of city income to whichever player holds the tile', () => {
+    const base = createGame(econConfig())
+    const captain = captainsOf(base, 'p1')[0]!
+    let state: GameState = {
+      ...base,
+      resourceNodes: [{ id: 'res-0', kind: 'gold', position: { ...captain.position } }],
+    }
+    const startGold = state.players[0]!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    // townhall's 100 gold, plus the gold node's 50 while p1's captain sits on it.
+    expect(state.players[0]!.resources.gold).toBe(startGold + 100 + 50)
+  })
+
+  it('grants no resource-node bonus when no captain is standing on the node', () => {
+    const base = createGame(econConfig())
+    let state: GameState = {
+      ...base,
+      resourceNodes: [{ id: 'res-0', kind: 'gold', position: { x: 0, y: 0 } }],
+    }
+    const captainOnNode = state.captains.some((c) => c.position.x === 0 && c.position.y === 0)
+    expect(captainOnNode).toBe(false)
+    const startGold = state.players[0]!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+    expect(state.players[0]!.resources.gold).toBe(startGold + 100)
+  })
+
+  it('grants the resource-node bonus to whichever owner currently occupies the tile, not a fixed owner', () => {
+    const base = createGame(econConfig())
+    const p2Captain = captainsOf(base, 'p2')[0]!
+    let state: GameState = {
+      ...base,
+      resourceNodes: [{ id: 'res-0', kind: 'timber', position: { ...p2Captain.position } }],
+    }
+    const startGoldP1 = state.players[0]!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    // p1's captain never stood on the node, so p1 only collects its city income.
+    expect(state.players[0]!.resources.gold).toBe(startGoldP1 + 100)
+    const p2 = state.players.find((p) => p.id === 'p2')!
+    expect(p2.resources.timber).toBe(3)
   })
 
   it('constructs a building, spends its cost, and enforces one build per turn', () => {
@@ -453,5 +503,25 @@ describe('replay determinism', () => {
     const b = replay(createGame(econConfig()), log)
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.actionCount).toBe(log.length)
+  })
+
+  it('replays a resource-node-controlled economy (#101) identically across two runs', () => {
+    const base = createGame(econConfig())
+    const captain = captainsOf(base, 'p1')[0]!
+    const withNode: GameState = {
+      ...base,
+      resourceNodes: [{ id: 'res-0', kind: 'gold', position: { ...captain.position } }],
+    }
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const a = replay(withNode, log)
+    const b = replay(withNode, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    // Two round wraps, each granting the gold node's 50 on top of the 100 from townhall.
+    expect(a.players[0]!.resources.gold).toBe(withNode.players[0]!.resources.gold + 2 * (100 + 50))
   })
 })
