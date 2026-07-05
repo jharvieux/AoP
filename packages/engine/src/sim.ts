@@ -14,7 +14,7 @@ import type { Captain, GameConfig, GameState } from './types'
  *
  * It stays content-free: callers build the {@link GameConfig}s (with combat stats
  * and starting rosters drawn from @aop/content) and pass them in. See
- * `scripts/balance-sim.ts` for the content-wired operator entry point.
+ * `packages/tools/src/balance-sim.ts` for the content-wired operator entry point.
  */
 
 export interface MatchStanding {
