@@ -38,7 +38,9 @@ export async function verifyStripeSignature(
   const timestamp = parts.t
   const v1 = parts.v1
   if (!timestamp || !v1) return false
-  if (Math.abs(nowMs / 1000 - Number(timestamp)) > toleranceSeconds) return false
+  const timestampSeconds = Number(timestamp)
+  if (!Number.isFinite(timestampSeconds)) return false
+  if (Math.abs(nowMs / 1000 - timestampSeconds) > toleranceSeconds) return false
 
   const key = await crypto.subtle.importKey(
     'raw',

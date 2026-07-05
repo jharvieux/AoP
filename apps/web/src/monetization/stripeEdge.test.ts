@@ -73,6 +73,26 @@ describe('verifyStripeSignature', () => {
     const tenMinutesLater = NOW_MS + 10 * 60 * 1000
     expect(await verifyStripeSignature(body, header, SECRET, 300, tenMinutesLater)).toBe(false)
   })
+
+  it('rejects a non-numeric timestamp instead of failing open via NaN', async () => {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    )
+    const bytes = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(`not-a-number.${body}`),
+    )
+    const hex = Array.from(new Uint8Array(bytes))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+    const header = `t=not-a-number,v1=${hex}`
+    expect(await verifyStripeSignature(body, header, SECRET, 300, NOW_MS)).toBe(false)
+  })
 })
 
 describe('parseAllowedOrigins', () => {
