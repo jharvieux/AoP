@@ -71,6 +71,7 @@ export const GAME_SETUP: GameSetup = {
   combatWinXp: 40,
   startingReputation: 100,
   betrayalReputationPenalty: 40,
+  betrayalTruceRounds: 2,
   allianceReputationMin: 30,
 }
 

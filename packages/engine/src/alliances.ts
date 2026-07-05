@@ -62,10 +62,67 @@ export function pruneAlliancesForSeats(
 ): AllianceState {
   const pairs = alliance.pairs.filter((p) => !ids.has(p.a) && !ids.has(p.b))
   const proposals = alliance.proposals.filter((p) => !ids.has(p.from) && !ids.has(p.to))
-  if (pairs.length === alliance.pairs.length && proposals.length === alliance.proposals.length) {
+  const broken = alliance.broken?.filter((b) => !ids.has(b.a) && !ids.has(b.b))
+  if (
+    pairs.length === alliance.pairs.length &&
+    proposals.length === alliance.proposals.length &&
+    (broken?.length ?? 0) === (alliance.broken?.length ?? 0)
+  ) {
     return alliance
   }
-  return { pairs, proposals }
+  return { ...alliance, pairs, proposals, ...(broken ? { broken } : {}) }
+}
+
+/**
+ * Record that {x, y} left their alliance in `round`, opening (or resetting) the
+ * betrayal truce window (#177). Replaces any prior entry for the same pair — a
+ * re-form-then-re-leave restarts the clock from the newest break — and drops
+ * every entry that has already expired (its `round` is at least `truceRounds`
+ * behind `round`), so the list stays bounded to alliances broken inside the
+ * live window. Deterministic: the surviving entries keep their action-log order
+ * and the fresh entry is appended last. Callers only invoke this when
+ * `truceRounds > 0`; with no truce there is nothing to remember.
+ */
+export function recordBrokenAlliance(
+  alliance: AllianceState,
+  x: string,
+  y: string,
+  round: number,
+  truceRounds: number,
+): AllianceState {
+  const pair = canonicalPair(x, y)
+  const kept = (alliance.broken ?? []).filter(
+    (b) => !pairEquals(b, x, y) && round - b.round < truceRounds,
+  )
+  return { ...alliance, broken: [...kept, { a: pair.a, b: pair.b, round }] }
+}
+
+/**
+ * True if {x, y} left an alliance fewer than `truceRounds` rounds before
+ * `currentRound` (#177) — the window in which attacking the ex-ally is still
+ * betrayal. `truceRounds` of 0 always returns false (no truce protection).
+ */
+export function wasAllyWithinTruce(
+  alliance: AllianceState,
+  x: string,
+  y: string,
+  currentRound: number,
+  truceRounds: number,
+): boolean {
+  return (alliance.broken ?? []).some(
+    (b) => pairEquals(b, x, y) && currentRound - b.round < truceRounds,
+  )
+}
+
+/**
+ * Drop any truce-window entry for {x, y} (#177) — used once the pair's betrayal
+ * penalty has been charged, so a second strike inside the same window can't be
+ * billed twice. Returns the input unchanged when no entry references the pair.
+ */
+export function clearBrokenAlliance(alliance: AllianceState, x: string, y: string): AllianceState {
+  const broken = alliance.broken
+  if (!broken || !broken.some((b) => pairEquals(b, x, y))) return alliance
+  return { ...alliance, broken: broken.filter((b) => !pairEquals(b, x, y)) }
 }
 
 /**
