@@ -19,6 +19,17 @@ export {
 // the Edge Functions and the web client.
 export * from './multiplayer'
 
+// Ratings foundation (#151) — pure Elo rating-math, shared by the future
+// match-finish Edge Function (#152) and any client-side preview of a rating change.
+export {
+  type PlayerRating,
+  type MatchResult,
+  DEFAULT_RATING,
+  DEFAULT_K_FACTOR,
+  expectedScore,
+  applyRatingUpdate,
+} from './rating'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [
