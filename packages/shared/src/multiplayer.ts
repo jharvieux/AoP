@@ -45,6 +45,34 @@ export function isTurnBroadcast(value: unknown): value is TurnBroadcastPayload {
   )
 }
 
+/**
+ * The shared `{ error: { code, message } }` envelope every Edge Function
+ * returns on failure (docs/MULTIPLAYER.md §5). Kept minimal — only the shape a
+ * client needs to recognize a `SEQ_CONFLICT`, not the full `ErrorCode` union
+ * (that stays server-side in `supabase/functions/_shared/http.ts`, which has
+ * no reason to be imported by the browser bundle).
+ */
+export interface ErrorEnvelope {
+  error: {
+    code: string
+    message: string
+  }
+}
+
+/**
+ * Narrow an untrusted Edge Function response body to a `SEQ_CONFLICT` error
+ * (§9 step 3, §5): the caller's view is stale. The client's only correct
+ * reaction is the same one used for every other resync trigger — discard
+ * optimistic state and refetch `get-player-view` wholesale (§13), never patch
+ * around the conflict in place.
+ */
+export function isSeqConflict(value: unknown): value is ErrorEnvelope {
+  if (typeof value !== 'object' || value === null) return false
+  const error = (value as { error?: unknown }).error
+  if (typeof error !== 'object' || error === null) return false
+  return (error as { code?: unknown }).code === 'SEQ_CONFLICT'
+}
+
 /** Outcome of a server-forced timer skip on a seat (docs/MULTIPLAYER.md §8). */
 export interface MissedTurnOutcome {
   /** The seat's `missed_turns` after this skip. */
