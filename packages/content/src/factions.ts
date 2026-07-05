@@ -29,7 +29,8 @@ export interface FactionDef {
   /** Generated art (#26/#109), served from apps/web/public. MapCanvas.tsx falls back to a
    * flat-color shape when absent (see #115). */
   shipSpriteUrl?: string
-  /** Generated art (#26/#110). No UI screen renders this yet — see #114. */
+  /** Generated art (#26/#110), served from apps/web/public. Rendered per-captain in the
+   * army/garrison list and the attack-confirmation sheet (#114). */
   captainPortraitUrl?: string
 }
 

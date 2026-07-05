@@ -26,6 +26,9 @@ import { hapticTap } from './haptics'
 interface CityScreenProps {
   city: CityState
   captain: Captain | undefined
+  /** Every captain the viewer owns (#114), so the fleet can be broken out one row
+   * per captain instead of a single faction-wide garrison blob. */
+  captains: Captain[]
   faction: FactionId
   resources: ResourcePool
   onClose: () => void
@@ -108,6 +111,7 @@ function costLabel(cost: BuildingDef['cost']): string {
 export function CityScreen({
   city,
   captain,
+  captains,
   faction,
   resources,
   onClose,
@@ -120,6 +124,7 @@ export function CityScreen({
   onUpgradeShip,
 }: CityScreenProps) {
   const { unitName, shipName } = useTheme()
+  const portraitUrl = FACTIONS[faction].captainPortraitUrl
   const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
   const roster = FACTIONS[faction].units
   const unlockedTier = city.buildings.reduce(
@@ -191,6 +196,41 @@ export function CityScreen({
                     <span className="building-option__cost">{costLabel(def.cost)}</span>
                   </button>
                   {!met && <p className="building-option__hint">Requires {def.requires}</p>}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+
+        <section>
+          <h3>Fleet ({captains.length})</h3>
+          {captains.length === 0 && (
+            <p className="building-option__hint">No captains commissioned yet.</p>
+          )}
+          <ul className="building-list">
+            {captains.map((cap) => {
+              const capShipClass = SHIP_CLASSES.find((s) => s.id === cap.shipClassId)
+              const troopsTotal = cap.troops.reduce((sum, t) => sum + t.count, 0)
+              const troopsSummary =
+                cap.troops.length > 0
+                  ? cap.troops.map((t) => `${unitName(t.unitId, t.unitId)} x${t.count}`).join(', ')
+                  : 'No troops aboard'
+              return (
+                <li key={cap.id} className="garrison-row captain-row">
+                  {portraitUrl && (
+                    <img className="captain-row__portrait" src={portraitUrl} alt="" aria-hidden />
+                  )}
+                  <div className="captain-row__body">
+                    <span className="garrison-row__name">
+                      {cap.name}
+                      {capShipClass ? ` — ${shipName(capShipClass.id, capShipClass.name)}` : ''}
+                      {' · '}
+                      Level {levelForXp(cap.xp, CAPTAIN_XP_THRESHOLDS)}
+                    </span>
+                    <span className="garrison-row__counts">
+                      {troopsTotal} troop{troopsTotal === 1 ? '' : 's'} — {troopsSummary}
+                    </span>
+                  </div>
                 </li>
               )
             })}
