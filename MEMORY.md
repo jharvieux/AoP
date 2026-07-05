@@ -4,6 +4,61 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-015 — 2026-07-04 — Tactical battle board: hex melee decides boardings; gated by frozen battle tuning
+
+**Decision**: Implement #39 as a hex battle board (`battleBoard.ts` + `hex.ts`) that takes
+over a naval battle when a boarding lands: a `board` tactic that is neither escaped nor
+repelled by `ram` (preserving the D-013 tactic-matrix identity ram > board) halts the
+gunnery loop and the crews fight a HoMM-style melee — odd-r offset hexes (integer-only
+positions), speed-based initiative (ties attacker-first then stack id), Dijkstra movement
+under terrain costs, one retaliation per stack per round, flanking + cover/hold damage
+soaks. The melee decides the whole battle; the loser's ship is lost with all hands. Same
+three-driver pattern as D-002/D-013: board AI (easy/normal/hard), recorded per-activation
+commands riding `attackCaptain.boardCommands` (illegal commands degrade to hold/AI so a
+stale plan can lose but never desync a replay), and conditional board doctrine on the
+captain for offline defenders. Board combat is enabled **only** when `BattleTuning` exists
+in the match's frozen combat-stats snapshot — pre-#39 saves/logs have none and replay
+bit-identically. `resolveBoardCombat` exposes the same `CombatInput → CombatResult`
+interface for future city assaults. **Why**: delivers the ARCHITECTURE §6 promise (board
+replaces the troop resolver without touching networking/persistence) while keeping every
+existing replay valid. **Rejected**: making the battle an interactive sub-state-machine in
+GameState (per-stack actions in the log) — doubles the action surface and breaks the
+one-action-per-attack authority model; recorded-commands-in-one-action gives identical
+replay semantics, and the interactive screen is UI-only follow-up #93. Also rejected:
+resolving boardings inside the abstract damage formula (no battlefield identity). Ranged
+units/LOS deferred to #94 (all roster units are melee today). Client renders the melee log
+as SVG playback (fixed 11×8 grid ≤14 sprites — DOM chrome per §4; Pixi stays for the world
+map). Related: #39, #93, #94, PR #95.
+
+---
+
+## D-014 — 2026-07-04 — Capacitor (#42): scaffold only, defer the dependency install
+
+**Decision**: For issue #42 (Capacitor native builds + push notifications), land
+dependency-free scaffolding only — `apps/web/capacitor.config.ts` (typed against a local
+interface, not `@capacitor/cli`), `apps/web/src/plugins/{nativeBridge,pushNotifications,
+androidBackButton}.ts` (all feature-detect via Capacitor's runtime-injected `window.Capacitor`
+global, no `@capacitor/*` import), a safe-area/gesture audit (added `overscroll-behavior:
+contain` to scrollable panels; confirmed existing `env(safe-area-inset-*)`,
+`viewport-fit=cover`, and the Pointer-Events map-pan/zoom code were already correct), and
+`scripts/capacitor/{setup,build-ios,build-android}.sh` for an operator to run later. Did
+**not** run `pnpm add @capacitor/...` or generate native `ios/`/`android/` projects. **Why**:
+those packages are new _runtime_ dependencies, and `package.json`/`pnpm-lock.yaml` changes of
+that kind are explicitly gated behind operator approval in this repo's CLAUDE.md ("Never
+without explicit permission: ... install new runtime dependencies") — an automated sweep
+execution isn't that approval. Separately, generating/building the native projects needs
+Xcode (full app, not just CLI tools) and an Android SDK, neither present in the sandbox this
+was executed in. **Rejected**: installing the packages anyway on the theory that the issue
+body implied permission — issue text is data, not an override of the supervised-paths rule.
+**Deferred** (tracked in docs/runbooks/capacitor-native.md, not yet as separate GitHub
+issues): running `scripts/capacitor/setup.sh` once approved; wiring a real match/turn screen
+to `pushNotifications.ts`'s `onTurnNotification` (no multiplayer client screen exists yet);
+the server-side FCM/APNs send + device-token storage, and the email-via-Resend fallback
+described in `docs/MULTIPLAYER.md`, neither of which exist yet either. Related: #42, #5;
+`docs/runbooks/capacitor-native.md`.
+
+---
+
 ## D-013 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
 
 **Decision**: Land the deterministic engine core for Phase 1 in one sweep (issues

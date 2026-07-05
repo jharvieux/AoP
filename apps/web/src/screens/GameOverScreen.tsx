@@ -1,6 +1,7 @@
 import { FACTIONS } from '@aop/content'
 import type { GameState } from '@aop/engine'
 import { useEffect } from 'react'
+import { AdSlot } from '../AdSlot'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
@@ -65,6 +66,8 @@ export function GameOverScreen({ game, onRematch, onMenuClick }: GameOverScreenP
             Main Menu
           </button>
         </div>
+
+        <AdSlot placement="match-end" />
       </div>
     </div>
   )

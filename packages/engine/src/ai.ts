@@ -3,12 +3,13 @@ import type { Action } from './actions'
 import { combatantStrength, createCombatStats, type CombatStats } from './combat'
 import type { ContentCatalog } from './content'
 import { unlockedRecruitTier } from './economy'
-import { captainsOf, currentPlayer } from './game'
+import { areAllied, captainsOf, currentPlayer } from './game'
 import { findPath } from './pathfinding'
 import { applyAction } from './reducer'
+import { nextFloat, seedRng } from './rng'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, levelForXp } from './skills'
-import type { Captain, CityState, GameState, PlayerState } from './types'
+import type { AiPersonality, Captain, CityState, GameState, PlayerState } from './types'
 
 /**
  * Single-player AI opponent (#13/#67): a utility-scoring turn player.
@@ -65,9 +66,106 @@ export interface AiTuning {
   skillPickScoreBase: number
 }
 
+/**
+ * Per-personality weight overlay (#25) folded into {@link AiTuning} before scoring
+ * (see {@link effectiveTuning}), so the shared scorer stays personality-agnostic.
+ * Balance data — the concrete overlays live in @aop/content (`AI_PERSONALITIES`).
+ */
+export interface AiPersonalityWeights {
+  /** Scales attack + advance scores — appetite for combat. */
+  combatScoreMult: number
+  /** Scales the engage threshold — <1 fights at worse odds, >1 demands a clearer edge. */
+  engageMinRatioMult: number
+  /** Scales every economy action's score — construct, recruit, fleet-loading, upgrades, skills. */
+  economyScoreMult: number
+  /** Scales the gold reserve the AI keeps before spending. */
+  minGoldReserveMult: number
+}
+
+/**
+ * Per-difficulty skill modifier (#25). Balance data — concrete values live in
+ * @aop/content (`AI_DIFFICULTIES`).
+ */
+export interface AiDifficultyModifier {
+  /**
+   * Probability [0,1) the AI passes over its best move for the next-best one.
+   * Rolled from a scratch seed derived from GameState (never GameState.rngState),
+   * so it stays deterministic and replay-safe. 0 = always optimal.
+   */
+  blunderChance: number
+  /**
+   * Multiplier on per-round income. MUST be 1 for `easy`/`normal` (no resource
+   * cheating); `hard` may exceed 1 for a modest economic edge.
+   */
+  incomeMult: number
+}
+
 interface ScoredAction {
   action: Action
   score: number
+}
+
+const NEUTRAL_WEIGHTS: AiPersonalityWeights = {
+  combatScoreMult: 1,
+  engageMinRatioMult: 1,
+  economyScoreMult: 1,
+  minGoldReserveMult: 1,
+}
+
+/**
+ * Fold a personality's weight overlay into the base tuning, so the economy
+ * planners below need no personality awareness of their own. Combat scalars are
+ * folded inline in {@link nextAiAction} (they also cover the no-tuning fallback).
+ */
+function effectiveTuning(base: AiTuning, weights: AiPersonalityWeights): AiTuning {
+  return {
+    ...base,
+    engageMinRatio: base.engageMinRatio * weights.engageMinRatioMult,
+    attackScoreBase: base.attackScoreBase * weights.combatScoreMult,
+    advanceScoreBase: base.advanceScoreBase * weights.combatScoreMult,
+    advanceDistanceBonus: base.advanceDistanceBonus * weights.combatScoreMult,
+    minGoldReserve: base.minGoldReserve * weights.minGoldReserveMult,
+    buildScoreScale: base.buildScoreScale * weights.economyScoreMult,
+    recruitScoreBase: base.recruitScoreBase * weights.economyScoreMult,
+    garrisonToShipScoreBase: base.garrisonToShipScoreBase * weights.economyScoreMult,
+    upgradeScoreBase: base.upgradeScoreBase * weights.economyScoreMult,
+    skillPickScoreBase: base.skillPickScoreBase * weights.economyScoreMult,
+  }
+}
+
+/**
+ * A [0,1) roll for the difficulty blunder check, derived purely from GameState
+ * (action cursor, round, player id) via a scratch RNG. It never reads or advances
+ * {@link GameState.rngState}, so replaying an identical log reproduces the identical
+ * roll — the same determinism guarantee {@link estimateOdds} relies on.
+ */
+function blunderRoll(state: GameState, playerId: string): number {
+  let h = seedRng(state.actionCount ^ Math.imul(state.round, 0x9e3779b1))
+  for (let i = 0; i < playerId.length; i++) {
+    h = seedRng(h ^ playerId.charCodeAt(i))
+  }
+  return nextFloat(h)[1]
+}
+
+/**
+ * Pick the acting action from the scored candidates. Optimal play returns the
+ * highest score (ties keep the earliest-considered candidate, matching the
+ * pre-#25 scorer); a blunder returns the runner-up instead — a legal but weaker
+ * move, how lower difficulties play suboptimally without ever cheating.
+ */
+function selectAction(candidates: ScoredAction[], blunder: boolean): Action {
+  let best: ScoredAction | undefined
+  let second: ScoredAction | undefined
+  for (const candidate of candidates) {
+    if (!best || candidate.score > best.score) {
+      second = best
+      best = candidate
+    } else if (!second || candidate.score > second.score) {
+      second = candidate
+    }
+  }
+  if (blunder && second) return second.action
+  return best!.action
 }
 
 /**
@@ -77,19 +175,33 @@ interface ScoredAction {
  */
 export function nextAiAction(state: GameState, playerId: string): Action {
   const stats = state.config.combatStats ? createCombatStats(state.config.combatStats) : null
-  const tuning = state.config.aiTuning
+  const baseTuning = state.config.aiTuning
   const catalog = state.config.content
   const myCaptains = captainsOf(state, playerId)
-  const enemies = state.captains.filter((c) => c.ownerId !== playerId)
+  // Alliance awareness (#25, Phase 3 prep): the AI never targets an ally.
+  const enemies = state.captains.filter(
+    (c) => c.ownerId !== playerId && !areAllied(state, playerId, c.ownerId),
+  )
 
-  const engageMinRatio = tuning?.engageMinRatio ?? FALLBACK_ENGAGE_MIN_RATIO
-  const attackScoreBase = tuning?.attackScoreBase ?? FALLBACK_ATTACK_SCORE_BASE
-  const advanceScoreBase = tuning?.advanceScoreBase ?? FALLBACK_ADVANCE_SCORE_BASE
-  const advanceDistanceBonus = tuning?.advanceDistanceBonus ?? FALLBACK_ADVANCE_DISTANCE_BONUS
+  // Personality overlay (#25): fold the seat's weights into the tuning so the
+  // scorers stay personality-agnostic. Combat scalars are folded here directly
+  // because they also carry the no-tuning combat-only fallback.
+  const profile = state.players.find((p) => p.id === playerId)?.aiProfile
+  const weights = personalityWeights(state, profile?.personality)
+  const tuning = baseTuning ? effectiveTuning(baseTuning, weights) : undefined
 
-  let best: ScoredAction = { action: { type: 'endTurn', playerId }, score: 0 }
+  const engageMinRatio =
+    (baseTuning?.engageMinRatio ?? FALLBACK_ENGAGE_MIN_RATIO) * weights.engageMinRatioMult
+  const attackScoreBase =
+    (baseTuning?.attackScoreBase ?? FALLBACK_ATTACK_SCORE_BASE) * weights.combatScoreMult
+  const advanceScoreBase =
+    (baseTuning?.advanceScoreBase ?? FALLBACK_ADVANCE_SCORE_BASE) * weights.combatScoreMult
+  const advanceDistanceBonus =
+    (baseTuning?.advanceDistanceBonus ?? FALLBACK_ADVANCE_DISTANCE_BONUS) * weights.combatScoreMult
+
+  const candidates: ScoredAction[] = [{ action: { type: 'endTurn', playerId }, score: 0 }]
   const consider = (candidate: ScoredAction | null): void => {
-    if (candidate && candidate.score > best.score) best = candidate
+    if (candidate) candidates.push(candidate)
   }
 
   for (const cap of myCaptains) {
@@ -141,7 +253,23 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     consider(planUpgrade(state, playerId, catalog, tuning))
   }
 
-  return best.action
+  // Difficulty (#25): a lower-skill seat sometimes takes the runner-up move.
+  const difficulty =
+    profile && state.config.aiDifficulties
+      ? state.config.aiDifficulties[profile.difficulty]
+      : undefined
+  const blunder = difficulty ? blunderRoll(state, playerId) < difficulty.blunderChance : false
+  return selectAction(candidates, blunder)
+}
+
+/** The active personality's weights, or the neutral (no-op) overlay when unconfigured. */
+function personalityWeights(
+  state: GameState,
+  personality: AiPersonality | undefined,
+): AiPersonalityWeights {
+  const table = state.config.aiPersonalities
+  if (!personality || !table) return NEUTRAL_WEIGHTS
+  return table[personality]
 }
 
 /**

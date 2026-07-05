@@ -11,7 +11,7 @@ const DB_VERSION = 1
 const STORE_NAME = 'saves'
 
 /** Bump this whenever the SaveRecord shape changes; loadGame() checks it. */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export interface SaveRecord {
   slotId: string
@@ -20,6 +20,22 @@ export interface SaveRecord {
   actions: Action[]
   round: number
   savedAt: number
+  /**
+   * Owning account id, or undefined for a guest-owned save (v1 saves predate
+   * this field and load as guest-owned). Set when a guest upgrades to an
+   * account — see auth/migrate.ts.
+   */
+  ownerId?: string
+}
+
+/**
+ * The subset of local-save operations the guest-to-account migration needs.
+ * Lets the migration run against an in-memory store in tests instead of
+ * IndexedDB. `localSaveStore` below is the real IndexedDB-backed instance.
+ */
+export interface SaveStore {
+  list(): Promise<SaveRecord[]>
+  put(record: SaveRecord): Promise<void>
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -87,4 +103,10 @@ export async function listSaves(): Promise<SaveRecord[]> {
 
 export async function deleteSave(slotId: string): Promise<void> {
   await withStore('readwrite', (store) => store.delete(slotId))
+}
+
+/** IndexedDB-backed {@link SaveStore} used by the guest-to-account migration. */
+export const localSaveStore: SaveStore = {
+  list: listSaves,
+  put: (record) => withStore('readwrite', (store) => store.put(record)).then(() => undefined),
 }

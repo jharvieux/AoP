@@ -3,9 +3,18 @@
  * (later) Supabase Edge Functions. Must stay free of runtime dependencies.
  */
 
-export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch'
+// Generated Supabase schema types — the typed client the Edge Functions build on.
+export type { Database, Json } from './database.types'
 
-export const FACTION_IDS: readonly FactionId[] = ['pirates', 'british', 'spanish', 'dutch']
+export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
+
+export const FACTION_IDS: readonly FactionId[] = [
+  'pirates',
+  'british',
+  'spanish',
+  'dutch',
+  'french',
+]
 
 export type MapSize = 'small' | 'medium' | 'large'
 

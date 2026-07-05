@@ -43,6 +43,44 @@ export interface TacticsTuning {
 }
 
 /**
+ * Knobs for the tactical battle board (#39) — board geometry, terrain
+ * densities, and the melee damage model. Mirrors the engine's `BattleTuning`
+ * shape (content stays dependency-free). Its presence in a match's frozen
+ * combat-stats snapshot is what enables boarding melees at all; pre-#39
+ * snapshots lack it and replay unchanged.
+ */
+export interface BattleTuning {
+  boardWidth: number
+  boardHeight: number
+  maxStacksPerSide: number
+  maxRounds: number
+  /** Board speed used for units whose stats predate the speed field. */
+  defaultUnitSpeed: number
+  damageRollMin: number
+  damageRollSpread: number
+  /** Damage multiplier slope per point of (attack − defense). */
+  attackDefenseFactor: number
+  minDamageModifier: number
+  maxDamageModifier: number
+  /** Damage multiplier when a second friendly stack is adjacent to the target. */
+  flankingBonus: number
+  /** Fraction of damage absorbed by a target standing on cover terrain. */
+  coverDamageReduction: number
+  /** Fraction of damage absorbed by a target that held (defensive posture). */
+  holdDamageReduction: number
+  /** Movement cost of a rough hex (open and cover hexes cost 1). */
+  roughMoveCost: number
+  boardingBlockedDensity: number
+  boardingRoughDensity: number
+  boardingCoverDensity: number
+  landBlockedDensity: number
+  landRoughDensity: number
+  landCoverDensity: number
+  /** HP ratio at which the 'outnumbered' board standing order fires. */
+  outnumberedRatio: number
+}
+
+/**
  * Weights and thresholds for the single-player AI (#13/#67). Every knob the AI
  * uses to score a candidate action lives here so difficulty/behavior tuning
  * never touches @aop/engine, which holds no balance data of its own.
@@ -125,6 +163,34 @@ export const TACTICS_TUNING: TacticsTuning = {
   outgunnedRatio: 1.5,
 }
 
+export const BATTLE_TUNING: BattleTuning = {
+  // 11×8 fills a phone in landscape without scrolling and gives a 5-6 turn
+  // closing march at speed 4-6 — room for maneuver, fast to resolve.
+  boardWidth: 11,
+  boardHeight: 8,
+  maxStacksPerSide: 7,
+  maxRounds: 30,
+  defaultUnitSpeed: 4,
+  damageRollMin: 0.9,
+  damageRollSpread: 0.2,
+  attackDefenseFactor: 0.05,
+  minDamageModifier: 0.4,
+  maxDamageModifier: 2,
+  flankingBonus: 1.2,
+  coverDamageReduction: 0.25,
+  holdDamageReduction: 0.15,
+  roughMoveCost: 2,
+  // A ship's deck: cluttered with masts and hatches, no soft going.
+  boardingBlockedDensity: 0.12,
+  boardingRoughDensity: 0,
+  boardingCoverDensity: 0.06,
+  // Open ground: fewer hard walls, more scrub and undergrowth.
+  landBlockedDensity: 0.08,
+  landRoughDensity: 0.12,
+  landCoverDensity: 0.1,
+  outnumberedRatio: 1.5,
+}
+
 export const GAME_SETUP: GameSetup = {
   startingGold: 1000,
   startingCaptainMovement: 5,
@@ -156,6 +222,70 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+}
+
+/**
+ * AI personalities & difficulty (#25). These overlays and modifiers are balance
+ * data, so — like {@link AiTuning} — they live here and get frozen into a match's
+ * config. The type shapes mirror @aop/engine's `AiPersonalityWeights` /
+ * `AiDifficultyModifier`; @aop/content never imports @aop/engine (the engine
+ * stays the leaf), so they are restated structurally here.
+ */
+export type AiPersonality = 'aggressive' | 'economic' | 'opportunist'
+export type AiDifficulty = 'easy' | 'normal' | 'hard'
+
+export interface AiPersonalityWeights {
+  combatScoreMult: number
+  engageMinRatioMult: number
+  economyScoreMult: number
+  minGoldReserveMult: number
+}
+
+export interface AiDifficultyModifier {
+  blunderChance: number
+  incomeMult: number
+}
+
+/**
+ * Weight overlays multiplied into {@link AI_TUNING} per personality:
+ * - aggressive: fights hard and often (higher combat scores, a far lower engage
+ *   threshold), spends its reserve freely, and under-invests in economy.
+ * - economic: hoards gold and builds up (higher economy scores + reserve) and
+ *   only fights from a clear advantage (raised engage threshold).
+ * - opportunist: a balanced raider — slightly combat-leaning but pickier about
+ *   its fights, closing on targets it can beat while it keeps developing.
+ */
+export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {
+  aggressive: {
+    combatScoreMult: 1.6,
+    engageMinRatioMult: 0.7,
+    economyScoreMult: 0.9,
+    minGoldReserveMult: 0.6,
+  },
+  economic: {
+    combatScoreMult: 0.8,
+    engageMinRatioMult: 1.3,
+    economyScoreMult: 1.6,
+    minGoldReserveMult: 1.6,
+  },
+  opportunist: {
+    combatScoreMult: 1.15,
+    engageMinRatioMult: 1.1,
+    economyScoreMult: 1.1,
+    minGoldReserveMult: 1,
+  },
+}
+
+/**
+ * Difficulty modifiers. `blunderChance` is how often the AI takes its runner-up
+ * move instead of its best; `incomeMult` is a per-round resource bonus. Per #25,
+ * `incomeMult` MUST stay 1 for `easy`/`normal` (no resource cheating) — only
+ * `hard` collects a bonus.
+ */
+export const AI_DIFFICULTIES: Record<AiDifficulty, AiDifficultyModifier> = {
+  easy: { blunderChance: 0.35, incomeMult: 1 },
+  normal: { blunderChance: 0, incomeMult: 1 },
+  hard: { blunderChance: 0, incomeMult: 1.25 },
 }
 
 /**

@@ -1,3 +1,4 @@
+import { boardAiDriver, resolveBoardBattle, type BoardDriver } from './battleBoard'
 import {
   effectiveShip,
   resolveRounds,
@@ -5,6 +6,7 @@ import {
   type CombatResult,
   type CombatStats,
   type Combatant,
+  type RoundEndSignal,
   type RoundEndView,
   type RoundTactics,
   type RoundView,
@@ -217,9 +219,65 @@ export const aiTacticDriver: TacticDriver = {
   },
 }
 
+/**
+ * Aggressive combat AI (#25): press the attack. Pin a fleeing enemy, otherwise
+ * force close-quarters (board, then ram) to end the fight fast; only break off
+ * when nearly sunk. Suits the `aggressive` personality.
+ */
+export const aggressiveTacticDriver: TacticDriver = {
+  choose(ctx) {
+    if (ctx.ownHp < ctx.enemyHp * 0.25 && ctx.available.includes('evade')) return 'evade'
+    if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
+      if (ctx.available.includes('board')) return 'board'
+      if (ctx.available.includes('ram')) return 'ram'
+    }
+    if (ctx.available.includes('board')) return 'board'
+    if (ctx.available.includes('ram')) return 'ram'
+    return 'broadside'
+  },
+}
+
+/**
+ * Cautious combat AI (#25): preserve the fleet. Break off the moment the fight
+ * turns against you (ramming a chaser who has grappled you, since evading a held
+ * ship is doomed), and only commit to boarding from a commanding lead. Suits the
+ * `economic` personality, which would rather keep its ships than trade them.
+ */
+export const cautiousTacticDriver: TacticDriver = {
+  choose(ctx) {
+    if (ctx.ownHp < ctx.enemyHp && ctx.available.includes('evade')) {
+      const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
+      if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
+        return 'ram'
+      }
+      return 'evade'
+    }
+    if (ctx.ownStrength > ctx.enemyStrength * 1.4 && ctx.available.includes('board')) return 'board'
+    return 'broadside'
+  },
+}
+
+/**
+ * Unskilled combat AI (#25): hold the gun line and never adapt. Deliberately
+ * weaker than {@link aiTacticDriver} — the tactical play of an `easy` opponent.
+ */
+export const plainTacticDriver: TacticDriver = {
+  choose(ctx) {
+    return ctx.available.includes('broadside') ? 'broadside' : (ctx.available[0] ?? 'broadside')
+  },
+}
+
 export interface TacticalDrivers {
   attacker: TacticDriver
   defender: TacticDriver
+  /**
+   * Who fights each side's crews when a boarding action sends the battle to
+   * the hex board (#39). Defaults to the normal board AI — auto-resolve. An
+   * interactive attacker passes a recorded-command plan driver; an offline
+   * defender's standing board orders are wired in by the reducer.
+   */
+  attackerBoard?: BoardDriver
+  defenderBoard?: BoardDriver
 }
 
 /**
@@ -232,6 +290,14 @@ export interface TacticalDrivers {
  * catching a sloop takes a sloop, while a fleeing heavy must dodge grapples.
  * The chase is a mind game — committing to a pin means eating a punish if the
  * "runner" turns and fights.
+ *
+ * **Boarding (#39)**: when the match's stats snapshot carries battle-board
+ * tuning, a `board` tactic that lands — the boarder still has crew, the enemy
+ * neither escaped nor repelled the grapple with `ram` (the matrix identity:
+ * ram beats board) — ends the gunnery duel and sends both crews to the hex
+ * battle board. The melee decides the whole battle: the loser's ship is lost
+ * with all hands, the winner keeps its board survivors. Pre-#39 snapshots
+ * have no battle tuning, so old saves and logs replay unchanged.
  */
 export function resolveTacticalCombat(
   input: CombatInput,
@@ -289,17 +355,68 @@ export function resolveTacticalCombat(
   const pinned = (chaserTactic: TacticId | null, chaserSpeed: number, runnerSpeed: number) =>
     chaserTactic !== null && PINNING_TACTICS.includes(chaserTactic) && chaserSpeed >= runnerSpeed
 
-  const onRoundEnd = (view: RoundEndView): string | null => {
+  let boarded = false
+  const onRoundEnd = (view: RoundEndView): RoundEndSignal => {
     const atk = view.tactics.attackerTactic as TacticId | null
     const def = view.tactics.defenderTactic as TacticId | null
     // Attacker checked first: the attacker initiated, so if both sides disengage
     // the attacker is the one who broke off and the defender holds the field.
     if (atk === 'evade' && !pinned(def, defSpeed, atkSpeed)) return input.attacker.ownerId
     if (def === 'evade' && !pinned(atk, atkSpeed, defSpeed)) return input.defender.ownerId
+
+    // Boarding (#39): a landed grapple halts the gunnery and starts the melee.
+    // `ram` repels a grapple (the matrix identity), and a crew wiped out by the
+    // round's broadsides has no one left to swing across.
+    if (stats.battle) {
+      const atkBoards =
+        atk === 'board' && def !== 'ram' && view.attackerTroops.some((t) => t.count > 0)
+      const defBoards =
+        def === 'board' && atk !== 'ram' && view.defenderTroops.some((t) => t.count > 0)
+      if (atkBoards || defBoards) {
+        boarded = true
+        return { halt: true }
+      }
+    }
     return null
   }
 
-  return resolveRounds(input, stats, rng, chooseTactics, onRoundEnd)
+  const result = resolveRounds(input, stats, rng, chooseTactics, onRoundEnd)
+  if (!boarded) return result
+
+  // The melee decides everything. Crews fight with their post-gunnery numbers;
+  // the loser's ship strikes its colors and is lost with all hands.
+  const melee = resolveBoardBattle(
+    {
+      attacker: { ...input.attacker, troops: result.attackerTroops },
+      defender: { ...input.defender, troops: result.defenderTroops },
+    },
+    stats,
+    result.rng,
+    {
+      attacker: drivers.attackerBoard ?? boardAiDriver('normal'),
+      defender: drivers.defenderBoard ?? boardAiDriver('normal'),
+    },
+    'boarding',
+  )
+
+  const attackerWon = melee.winnerSide === 'attacker'
+  const attackerTroops = attackerWon ? melee.attackerTroops : []
+  const defenderTroops = attackerWon ? [] : melee.defenderTroops
+  return {
+    report: {
+      ...result.report,
+      winnerId: attackerWon ? input.attacker.ownerId : input.defender.ownerId,
+      loserId: attackerWon ? input.defender.ownerId : input.attacker.ownerId,
+      attackerSurvived: attackerWon,
+      defenderSurvived: !attackerWon,
+      escapedId: null,
+      survivingTroops: { attacker: attackerTroops, defender: defenderTroops },
+      board: melee.log,
+    },
+    rng: melee.rng,
+    attackerTroops,
+    defenderTroops,
+  }
 }
 
 /** Auto-resolve with tactics: the AI drives both sides. Matches the plain resolver signature. */

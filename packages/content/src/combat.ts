@@ -1,6 +1,13 @@
 import { FACTIONS } from './factions'
 import { SHIP_CLASSES } from './ships'
-import { COMBAT_TUNING, TACTICS_TUNING, type CombatTuning, type TacticsTuning } from './tuning'
+import {
+  BATTLE_TUNING,
+  COMBAT_TUNING,
+  TACTICS_TUNING,
+  type BattleTuning,
+  type CombatTuning,
+  type TacticsTuning,
+} from './tuning'
 
 /**
  * Combat-relevant stats derived from the content rosters, in the plain shape the
@@ -13,6 +20,8 @@ export interface UnitCombatStats {
   attack: number
   defense: number
   health: number
+  /** Battle-board speed (#39): hexes per activation and initiative rank. */
+  speed: number
 }
 
 export interface ShipCombatStats {
@@ -27,6 +36,7 @@ export interface CombatStatsData {
   ships: ShipCombatStats[]
   combat: CombatTuning
   tactics: TacticsTuning
+  battle: BattleTuning
 }
 
 export function combatStatsData(): CombatStatsData {
@@ -36,6 +46,7 @@ export function combatStatsData(): CombatStatsData {
       attack: u.attack,
       defense: u.defense,
       health: u.health,
+      speed: u.speed,
     })),
   )
   const ships: ShipCombatStats[] = SHIP_CLASSES.map((s) => ({
@@ -44,5 +55,11 @@ export function combatStatsData(): CombatStatsData {
     cannons: s.cannons,
     speed: s.speed,
   }))
-  return { units, ships, combat: COMBAT_TUNING, tactics: TACTICS_TUNING }
+  return {
+    units,
+    ships,
+    combat: COMBAT_TUNING,
+    tactics: TACTICS_TUNING,
+    battle: BATTLE_TUNING,
+  }
 }

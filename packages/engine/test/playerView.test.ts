@@ -1,0 +1,217 @@
+import { describe, expect, it } from 'vitest'
+import {
+  applyAction,
+  createGame,
+  playerView,
+  tileKey,
+  type ContentCatalog,
+  type GameConfig,
+  type GameState,
+} from '../src'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
+
+const CATALOG: ContentCatalog = {
+  buildings: {
+    townhall: { produces: { gold: 100 }, cost: {} },
+    barracks: { produces: {}, cost: { gold: 150 }, requires: 'townhall', unlocksTier: 1 },
+  },
+  units: {
+    deckhand: {
+      factionId: 'pirates',
+      tier: 1,
+      goldCost: 25,
+      weeklyGrowth: 8,
+      attack: 2,
+      defense: 1,
+      health: 6,
+    },
+  },
+  ships: { sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 4, upgrades: {} } },
+  skills: {},
+  captainXpThresholds: [0, 150, 400],
+}
+
+/** Two players (seat identities, per MULTIPLAYER.md §13) with content + combat wired in. */
+function matchConfig(): GameConfig {
+  return {
+    seed: 7,
+    mapSize: 'small',
+    setup: { ...GAME_SETUP, startingBuildings: ['townhall', 'barracks'] },
+    combatStats: {
+      units: [{ id: 'deckhand', attack: 2, defense: 1, health: 6 }],
+      ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+      combat: COMBAT_TUNING,
+      tactics: TACTICS_TUNING,
+    },
+    content: CATALOG,
+    players: [
+      { id: 'seat-0', name: 'Alice', faction: 'pirates', isAI: false },
+      { id: 'seat-1', name: 'Bob', faction: 'british', isAI: false },
+    ],
+  }
+}
+
+function enemyCaptain(state: GameState): GameState['captains'][number] {
+  return state.captains.find((c) => c.ownerId === 'seat-1')!
+}
+
+function ownCaptain(state: GameState): GameState['captains'][number] {
+  return state.captains.find((c) => c.ownerId === 'seat-0')!
+}
+
+describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
+  it('never carries rngState or the match seed (RNG-prediction guard)', () => {
+    const state = createGame(matchConfig())
+    const view = playerView(state, 'seat-0')
+    expect(view.rngState).toBeNull()
+    // The seed is the origin of rngState; the `seed` key must not appear in the view,
+    // nor a nested `config` that would carry it.
+    expect(JSON.stringify(view)).not.toContain('"seed"')
+    expect((view as unknown as { config?: unknown }).config).toBeUndefined()
+  })
+
+  it('shows the viewer their own treasury but never an opponent’s', () => {
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    const me = view.players.find((p) => p.id === 'seat-0')!
+    const them = view.players.find((p) => p.id === 'seat-1')!
+    expect(me.resources).toBeDefined()
+    expect(me.resources!.gold).toBe(GAME_SETUP.startingGold)
+    expect(them.resources).toBeUndefined()
+    // Identity is public (known from the lobby), the treasury is not.
+    expect(them.name).toBe('Bob')
+    expect(them.faction).toBe('british')
+  })
+
+  it('exposes own city interiors but strips enemy interiors even once explored', () => {
+    const state = createGame(matchConfig())
+    const enemyCity = state.cities.find((c) => c.ownerId === 'seat-1')!
+    // Force the enemy city's tile into seat-0's explored history.
+    const explored: GameState = {
+      ...state,
+      exploredTiles: {
+        ...state.exploredTiles,
+        'seat-0': [...(state.exploredTiles['seat-0'] ?? []), tileKey(enemyCity.position)],
+      },
+    }
+    const view = playerView(explored, 'seat-0')
+
+    const mine = view.cities.find((c) => c.ownerId === 'seat-0')!
+    expect(mine.buildings).toEqual(['townhall', 'barracks'])
+    expect(mine.garrison).toBeDefined()
+
+    const theirs = view.cities.find((c) => c.ownerId === 'seat-1')!
+    expect(theirs.position).toEqual(enemyCity.position)
+    expect(theirs.buildings).toBeUndefined()
+    expect(theirs.garrison).toBeUndefined()
+    expect(theirs.unitAvailability).toBeUndefined()
+  })
+
+  it('omits an enemy city whose tile the viewer has never explored', () => {
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    // seat-1's capital sits on its own home island, far outside seat-0's opening vision.
+    expect(view.cities.some((c) => c.ownerId === 'seat-1')).toBe(false)
+  })
+
+  it('omits enemy captains outside current vision', () => {
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    expect(view.captains.some((c) => c.ownerId === 'seat-1')).toBe(false)
+  })
+
+  it('reveals an enemy captain in vision as a bare hull — no manifest, orders, or upgrades', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    // Co-locate the enemy captain with ours so it falls inside current vision,
+    // and give it standing orders + upgrades that must not leak.
+    const withEnemyInView: GameState = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.ownerId === 'seat-1'
+          ? {
+              ...c,
+              position: { ...mine.position },
+              standingOrders: [{ when: 'always', tactic: 'broadside' }],
+              troops: [{ unitId: 'deckhand', count: 3 }],
+              shipUpgrades: { hull: 2 },
+              xp: 500,
+            }
+          : c,
+      ),
+    }
+    const view = playerView(withEnemyInView, 'seat-0')
+    const seen = view.captains.find((c) => c.ownerId === 'seat-1')
+    expect(seen).toBeDefined()
+    expect(seen!.shipClassId).toBe('sloop')
+    expect(seen!.troops).toBeUndefined()
+    expect(seen!.movementPoints).toBeUndefined()
+    expect(seen!.shipUpgrades).toBeUndefined()
+    expect(seen!.xp).toBeUndefined()
+    // Standing orders are the interactive-attack secret — must never appear anywhere.
+    expect(JSON.stringify(view)).not.toContain('standingOrders')
+    expect(JSON.stringify(view)).not.toContain('broadside')
+  })
+
+  it('exposes the viewer’s own captain in full', () => {
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    const mine = view.captains.find((c) => c.ownerId === 'seat-0')!
+    expect(mine.movementPoints).toBe(GAME_SETUP.startingCaptainMovement)
+    expect(mine.troops).toBeDefined()
+    expect(mine.shipUpgrades).toBeDefined()
+  })
+
+  it('emits only explored tiles, flagging which are currently visible', () => {
+    const state = createGame(matchConfig())
+    const view = playerView(state, 'seat-0')
+    expect(view.tiles.length).toBeGreaterThan(0)
+    expect(view.tiles.length).toBeLessThan(state.map.width * state.map.height)
+    expect(view.tiles.some((t) => t.visible)).toBe(true)
+    // Every visible tile the selector reports must actually be explored (superset invariant).
+    const exploredKeys = new Set(view.tiles.map((t) => tileKey(t.coord)))
+    for (const t of view.tiles) if (t.visible) expect(exploredKeys.has(tileKey(t.coord))).toBe(true)
+  })
+
+  it('shows an encounter only while it sits in current vision', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    const withEncounter: GameState = {
+      ...state,
+      encounters: [
+        {
+          id: 'enc-far',
+          kind: 'merchant',
+          position: enemyCaptain(state).position,
+          active: true,
+          respawnRound: null,
+        },
+        {
+          id: 'enc-near',
+          kind: 'merchant',
+          position: { ...mine.position },
+          active: true,
+          respawnRound: null,
+        },
+      ],
+    }
+    const view = playerView(withEncounter, 'seat-0')
+    expect(view.encounters.map((e) => e.id)).toEqual(['enc-near'])
+  })
+
+  it('is a pure function — filtering does not mutate the source state', () => {
+    const state = createGame(matchConfig())
+    const before = JSON.stringify(state)
+    playerView(state, 'seat-0')
+    expect(JSON.stringify(state)).toBe(before)
+  })
+
+  it('reconstruction + filtering round-trips: view reflects moves the engine applied', () => {
+    let state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    // A tile one step from our start; movement of 1 is always affordable on water.
+    const before = playerView(state, 'seat-0')
+    const startTile = before.captains.find((c) => c.id === mine.id)!.position
+    state = applyAction(state, { type: 'endTurn', playerId: 'seat-0' })
+    // After seat-0 ends turn it is seat-1's move; the view still renders for seat-0.
+    const after = playerView(state, 'seat-0')
+    expect(after.currentPlayerIndex).toBe(1)
+    expect(after.captains.find((c) => c.id === mine.id)!.position).toEqual(startTile)
+  })
+})

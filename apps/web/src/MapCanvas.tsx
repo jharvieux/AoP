@@ -20,7 +20,9 @@ const TILE = 32
 const MIN_SCALE = 0.4
 const MAX_SCALE = 3
 
-const TILE_COLOR = {
+// Exported so the map editor canvas (#41) renders tiles/encounters with the
+// same palette as gameplay — one visual vocabulary for "what a tile means".
+export const TILE_COLOR = {
   deep: '#1b4a6b',
   shallows: '#2a6a8f',
   land: '#4a7c3f',
@@ -32,7 +34,7 @@ const OWN_SHIP = '#3be2a1'
 const ENEMY_SHIP = '#e23b3b'
 const OWN_CITY = '#c9a227'
 const ENEMY_CITY = '#9aa0a6'
-const ENCOUNTER_COLOR = {
+export const ENCOUNTER_COLOR = {
   merchant: '#e0b64f',
   natives: '#6fbf73',
   settlers: '#c98bdb',
@@ -71,6 +73,10 @@ export function MapCanvas(props: MapCanvasProps) {
   const propsRef = useRef(props)
   propsRef.current = props
   const viewRef = useRef({ x: 40, y: 40, scale: 1 })
+  // Flipped on every render (a new action, fog reveal, selection change, …)
+  // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
+  const dirtyRef = useRef(true)
+  dirtyRef.current = true
 
   useEffect(() => {
     if (!app) return
@@ -98,6 +104,7 @@ export function MapCanvas(props: MapCanvasProps) {
       view.scale = clamped
       view.x = screenX - worldX * clamped
       view.y = screenY - worldY * clamped
+      dirtyRef.current = true
     }
 
     function draw() {
@@ -225,6 +232,7 @@ export function MapCanvas(props: MapCanvasProps) {
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true
         view.x = dragStart.viewX + dx
         view.y = dragStart.viewY + dy
+        dirtyRef.current = true
       }
     }
 
@@ -244,23 +252,40 @@ export function MapCanvas(props: MapCanvasProps) {
       zoomAt(e.clientX - rect.left, e.clientY - rect.top, view.scale * Math.exp(-e.deltaY * 0.001))
     }
 
+    // Orientation change / on-screen keyboard dismissal resizes the canvas
+    // (resizeTo: container in usePixiApp) without moving the camera or
+    // touching props, so the dirty flag needs its own nudge here too.
+    function onResize() {
+      dirtyRef.current = true
+    }
+
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerup', onPointerUp)
     canvas.addEventListener('pointercancel', onPointerUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
+    pixiApp.renderer.on('resize', onResize)
 
-    // Redraw every tick (cheap with culling) so camera moves and state changes
-    // both show without a separate invalidation path.
-    pixiApp.ticker.add(draw)
+    // Only rebuild the tile/entity Graphics when something actually changed
+    // (camera moved or game state updated) instead of every ticker frame
+    // (#27) — on mid-range phones a redraw is real work (fill + culling loop
+    // over every visible tile), and most frames while idle have nothing new
+    // to show.
+    function tick() {
+      if (!dirtyRef.current) return
+      dirtyRef.current = false
+      draw()
+    }
+    pixiApp.ticker.add(tick)
 
     return () => {
-      pixiApp.ticker.remove(draw)
+      pixiApp.ticker.remove(tick)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('pointercancel', onPointerUp)
       canvas.removeEventListener('wheel', onWheel)
+      pixiApp.renderer.off('resize', onResize)
       pixiApp.stage.removeChild(world)
       world.destroy({ children: true })
     }
