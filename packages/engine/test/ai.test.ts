@@ -5,7 +5,9 @@ import {
   createGame,
   currentPlayer,
   nextAiAction,
+  replay,
   runAiTurn,
+  type Action,
   type AiProfile,
   type CombatStatsData,
   type ContentCatalog,
@@ -110,6 +112,49 @@ describe('runAiTurn', () => {
     const a = runAiTurn(createGame(config(5, 5)), 'p1')
     const b = runAiTurn(createGame(config(5, 5)), 'p1')
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+  })
+})
+
+// Server-side AI turns (#133): the Supabase Edge Function drives `nextAiAction`
+// one action at a time and appends each to `match_actions` individually, rather
+// than storing one opaque "jump" from `runAiTurn`. Replaying that per-action log
+// must reproduce the same state the server applied inline — the determinism /
+// replay contract every human action already relies on (CLAUDE.md engine
+// invariants; docs/MULTIPLAYER.md §5.3). This exercises it end-to-end for a
+// genuine multi-action AI turn.
+describe('AI turn action log (server-side, #133)', () => {
+  /** Mirror the Edge Function's `runAiSeatTurn` loop: collect each action as it is applied. */
+  function driveAiTurn(state: GameState, playerId: string): { log: Action[]; final: GameState } {
+    const log: Action[] = []
+    let current = state
+    for (let i = 0; i < 1000; i++) {
+      if (current.status !== 'active' || currentPlayer(current).id !== playerId) break
+      const action = nextAiAction(current, playerId)
+      log.push(action)
+      current = applyAction(current, action)
+      if (action.type === 'endTurn') break
+    }
+    return { log, final: current }
+  }
+
+  it('replays to the same state the server applied inline, action for action', () => {
+    const cfg = withAi(config(6, 3), { p1: { personality: 'aggressive', difficulty: 'normal' } })
+    const { log, final } = driveAiTurn(createGame(cfg), 'p1')
+
+    // A real multi-action turn (advance then more), not just a bare endTurn —
+    // otherwise the per-action replay claim would be vacuous.
+    expect(log.length).toBeGreaterThan(1)
+    expect(log[log.length - 1]!.type).toBe('endTurn')
+
+    const replayed = replay(createGame(cfg), log)
+    expect(JSON.stringify(replayed)).toBe(JSON.stringify(final))
+  })
+
+  it('produces an identical action log on a second identical run (deterministic)', () => {
+    const cfg = withAi(config(6, 3), { p1: { personality: 'aggressive', difficulty: 'normal' } })
+    const a = driveAiTurn(createGame(cfg), 'p1')
+    const b = driveAiTurn(createGame(cfg), 'p1')
+    expect(JSON.stringify(a.log)).toBe(JSON.stringify(b.log))
   })
 })
 
