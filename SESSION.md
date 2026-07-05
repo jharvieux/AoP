@@ -1,66 +1,87 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-04 (Full open-PR review sweep: 8 of 9 PRs merged, 1 left open for review)._
+_Last updated: 2026-07-04 (Issue sweep: 9 batches planned, 8 PRs opened, all 8 merged; 0 left open)._
 
 ## Just completed
 
-Reviewed all 11 open PRs and merged/closed all but one:
+Full `/issue-sweep`: triaged 27 open issues (Haiku fan-out), planned 9 executable batches
+(16 issues) with operator approval at the gate, executed all 9, then finalized (CI wait →
+`pre-pr-reviewer` audit → merge) one at a time. Every PR that reached the merge stage
+merged clean — nothing was left open.
 
-- **Merged clean, no issues**: #99 (docs), #88 (AI personalities), #97 (Capacitor
-  scaffolding), #102 (map editor — fixed a real bug first: unvalidated encounter `kind`
-  could crash at runtime, already fixed by a follow-up commit on the branch).
-- **Merged after rebasing onto current main** (all had gone stale behind main, causing
-  spurious `ci` failures): #91 (French faction — an audit BLOCKER claiming a hardcoded
-  faction list was a false positive, verified the PR's own diff already fixed it), #87
-  (mobile UX), #95 (tactical battle board — real merge conflicts in `reducer.ts` and
-  French faction content requiring a new `speed` field; resolved by hand, kept both the
-  AI-personality-aware defender fallback from #88 and the new board-command drivers).
-- **Supervised-path items, operator-approved individually**: #96 (CI workflow + Vite 6→8
-  bump — merged), #103 (Stripe/IAP monetization — merged; opened #105 and #106 for the two
-  non-blocking gaps the audit found: open redirect on checkout URLs, no tests on payment
-  code), #70 (multiplayer migration — audit found a real BLOCKER, duplicate indexes already
-  in the initial schema; dropped them, fixed a now-stale comment in `supabaseAuth.ts`, and
-  regenerated `database.types.ts` for real — see below).
-- **#92 (dep bump) — redone, left open, not merged**: the original PR claimed a TypeScript
-  bump (already landed separately via #54) and a Supabase CLI bump that never actually
-  happened, plus an unjustified `tsconfig.json` change that silently dropped typecheck
-  coverage on `apps/web` test files. Redid it for real (`supabase` 2.102.0 → 2.109.0,
-  dropped the tsconfig change, verified typecheck still passes without it) and pushed to
-  the same branch. **Awaiting the operator's final look before merging** — was not
-  auto-merged per their explicit "redo it, bring it back" decision.
+- **#118 — stripe-security** (#105, #106): origin allowlist on checkout redirect URLs, added
+  webhook signature/entitlement tests. The audit caught a real (if low-severity, non-
+  exploitable-without-the-secret) bug: a non-numeric webhook timestamp made the replay-window
+  check fail open via a `Math.abs(NaN)` comparison — fixed inline before merge, with a
+  regression test.
+- **#117 — art-integration** (#108, #109, #110, #111, #112, #113, #115): landed remaining
+  sprite/portrait assets and the actual `MapCanvas.tsx` sprite-rendering plumbing
+  (`SpritePool`, texture caching, flat-color fallback). #89 (further art polish) stays open,
+  intentionally deferred — needs more local Stable Diffusion generation time.
+- **#123 — captain-portraits** (#114): army/fleet list broken out per-captain (data already
+  existed as `Captain` entities — no engine change needed) plus portraits in the
+  attack-confirmation sheet. Conflicted with #117 on `factions.ts` (both added
+  `captainPortraitUrl`) — rebased and resolved by hand before merge.
+- **#119 — ci-fix** (#86): pinned prettier to the exact installed version, fixing the
+  `format:check` drift. **#104 turned out to be a false alarm** — investigated properly:
+  `database.types.ts` was never stale; the real bug is in
+  `.github/workflows/supabase.yml`'s diff step (formats a `/tmp` file with no
+  `--config`, so it never finds this repo's `.prettierrc` and always shows a spurious
+  diff). Retitled #104 to reflect the real root cause, labeled `needs-human-fix` — it's a
+  one-line workflow fix but touches a supervised path.
+- **#121 — balance** (#90): retuned tier-1 unit stats in `@aop/content` to equalize combat
+  win-rate spread across all 5 factions (was 75.0%, now 0.0% against a documented ~10%
+  target). Filed **#120** for a separate tooling gap found along the way (the
+  `balance-sim.ts` harness can't resolve `@aop/content` — needs a `pnpm-workspace.yaml`
+  touch, supervised, so deferred rather than fixed inline).
+- **#122 — testing** (#51): added `@vitest/coverage-v8` + Stryker mutation testing for
+  `packages/engine`, scoped to `combat.ts`/`reducer.ts`.
+- **#124 — economy** (#101): map-editor resource-node markers now grant a passive per-turn
+  resource bonus to whichever player controls (has a captain standing on) the tile.
+  Replay-determinism tests extended. Known gap, disclosed in the PR: `PlayerView` doesn't
+  yet expose resource nodes for fog-of-war filtering — separate, larger change.
+- **#125 — battle-board** (#93, #94): #94 (ranged units + line-of-sight) shipped in full —
+  new deterministic `hexLine`/`hexLineOfSight`, range-aware combat resolution and board AI,
+  replay tests extended. **#93 (interactive stack-by-stack UI) was deferred, not rushed** —
+  investigation found it isn't actually UI-only as the issue assumed; it needs unexported
+  engine internals exposed plus a new session API, a much larger and riskier lift. Left open
+  with that explanation.
+- **#63 — map-sharing**: no-op. Tier 1 (export/import codes) was already fully implemented
+  by the map editor (#102) exactly as the issue's own plan anticipated. Commented and left
+  open, now tracking **Tier 2 only** (community library, Phase 3+, needs `supabase/migrations/**`).
 
-**Issue #104** filed and diagnosed: `main`'s `migrations` CI check has been red since PR
-#85 (non-required, doesn't block merges). Root cause found: the workflow formats the
-generated types with unpinned `npx prettier` (no access to this repo's `.prettierrc`),
-producing a cosmetic false-positive diff against the correctly-formatted committed file.
-Confirmed via a local repro (`supabase start` needs a `-x <service>` flag list to work
-around a colima/virtiofs docker-socket bug on this machine — full command in the issue).
-Not fixed here since it touches `.github/workflows/supabase.yml` (supervised path) — left
-open for the operator. **#70's actual schema change was separately verified and its types
-were regenerated correctly using the repo's own prettier config**, so #70 itself is not
-affected by the CI workflow bug.
+**Operator decisions during the plan gate**: escalated #63 and #90 to a new `fable` model
+tier (created the label); resolved #114's scope ambiguity by confirming per-ship captains
+already exist as first-class engine data (no schema change needed); approved touching
+`package.json`/`pnpm-lock.yaml` for #86's specific fix.
 
-**Operator note**: mid-session, a `rm -rf` aimed at build noise accidentally deleted
-`.claude/worktrees/` (18 old agent worktree checkouts). Verified carefully afterward — every
-branch that had a worktree either had zero unique commits (already fully in main) or was
-already squash-merged via its PR. No work was lost; `git worktree prune` cleaned up the
-resulting stale git metadata. Worth tightening `rm -rf` habits going forward.
+**Still excluded / not batch-executable** (unchanged from the plan): epic-scale multiplayer
+and Capacitor features — #35, #36, #37, #38, #40, #42, #100 — all re-labeled `opus`, need a
+human breakdown before any future sweep can touch them. #98 (`needs-human-fix`), #81/#73
+(`blocked`) untouched.
 
 ## Next steps
 
-1. **PR #92**: operator gives it a final look and merges (or requests further changes).
-2. **Issue #104**: fix the CI workflow's type-check step to use the repo's pinned prettier
-   config instead of bare `npx prettier` — one-line fix, but touches
-   `.github/workflows/supabase.yml` (supervised).
-3. **Issues #105/#106** (from the #103 monetization audit): same-origin allowlist on Stripe
-   checkout redirect URLs; tests for the webhook/checkout edge functions.
-4. **#98 (Capacitor deps)** and other previously-deferred supervised items are still open
-   from earlier sessions — unchanged by this sweep.
+1. **#104**: apply the one-line `.github/workflows/supabase.yml` fix (add `--config
+.prettierrc` to the `npx prettier --write` call, or write the temp file inside the repo
+   tree) — supervised path, needs explicit sign-off.
+2. **#120**: fix `balance-sim.ts`'s module resolution (likely a `pnpm-workspace.yaml` tweak)
+   so the balance harness is runnable again — supervised path.
+3. **#89**: art polish follow-up (ship/unit size variants, painterly style pass, remaining
+   UI icons) needs more local SD generation time / a different checkpoint.
+4. **#93**: needs a dedicated feature-scoping pass (interactive battle-board session API)
+   before it's attempted again.
+5. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
+6. The 7 epic-scale multiplayer/Capacitor issues above need manual breakdown into
+   sweep-sized pieces before they can go through this pipeline.
+
+## Prior session summary (2026-07-04 full open-PR review sweep, unchanged)
+
+- Reviewed all 11 open PRs; merged/closed 8 of 9 (see prior entries in git log for detail).
+- Filed #104, #105, #106 during that sweep's audits.
 
 ## Prior session summary (2026-07-01 sweep, unchanged)
 
 - **Issue-sweep complete**: 10 issues across 4 batches (audio, platform/PWA, auth,
   multiplayer) merged into `main` — PRs #82, #83, #84, #85.
-- **Engine invariants**: all 4 maintained throughout this session's merges too (verified
-  176 engine tests passing after every rebase, including 33 new battle-board tests).
