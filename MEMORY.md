@@ -4,6 +4,42 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-017 — 2026-07-05 — Alliance betrayal (#138): allow with reputation cost, not a hard block
+
+**Decision**: An allied captain can be attacked via the normal `attackCaptain` action — the
+engine does not block it. Doing so atomically (within one `applyAction()` call) breaks the
+alliance and applies a reputation penalty: every player starts at 100 reputation
+(`startingReputation`), a betrayal costs 40 (`betrayalReputationPenalty`), floored at 0; a
+seat below 30 reputation (`allianceReputationMin`) cannot form _new_ alliances, though
+existing ones are untouched by falling below the threshold. All three numbers live in
+`packages/content/src/tuning.ts` (`GAME_SETUP`), not hardcoded in the engine, so they're
+retunable without an engine change. Reputation is disclosed publicly via `playerView` (the
+oathbreaker's mark is common knowledge, not hidden state). One betrayal (100→60) still
+permits new alliances; a second (60→20) closes diplomacy for the rest of the match.
+
+**Why**: operator's explicit product call, made mid-session, overriding the original
+issue's open design question between "hard block" and "allow with cost." Run under the
+**fable** model tier at the operator's specific request ("needs additional thought") since
+the reputation-cost shape is a design-judgment problem, not a pure engine-correctness one —
+fable weighed and rejected three alternatives (gold fine, temporary debuff, end-game-only
+scoring) before landing on the persistent public-reputation approach, documented in PR #176.
+
+**What was rejected**: a hard block (`InvalidActionError` on attacking an ally) — the
+original issue's other option, explicitly not chosen. Also rejected: gold/resource fines
+(a broke player betrays free), temporary combat/economy debuffs (adds temporary-state
+complexity to `GameState` for a cheap-to-model problem), end-game-only scoring penalty (no
+scoring system exists to hook into, and it's invisible during play).
+
+**Known gap, tracked separately**: `leaveAlliance` then attacking in the same turn bypasses
+the penalty entirely (no active alliance left for `attackCaptain` to detect and break) —
+filed as #177 with three design options, not yet resolved.
+
+**Related artifacts**: PR #176, `packages/engine/src/reducer.ts` (`attackCaptain`),
+`packages/content/src/tuning.ts` (`GAME_SETUP`), `packages/engine/test/alliances.test.ts`
+(betrayal test suite, including a byte-identical replay test), issue #177.
+
+---
+
 ## D-016 — 2026-07-05 — Art (#89): DreamShaper painterly re-pass, character/vehicle art only
 
 **Decision**: Regenerated the ship/captain/unit/city/encounter art shipped in PR #162 using
