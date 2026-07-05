@@ -104,6 +104,7 @@ function gameConfig(p1Troops: TroopStack[], battle: BattleTuning | null): GameCo
       startingReputation: 100,
       betrayalReputationPenalty: 40,
       allianceReputationMin: 30,
+      betrayalTruceRounds: 2,
     },
     players: [
       { id: 'p1', name: 'P1', faction: 'pirates', isAI: false, startingTroops: p1Troops },
