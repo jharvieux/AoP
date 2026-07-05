@@ -7,18 +7,28 @@ import {
 } from '@aop/shared'
 import {
   InvalidActionError,
+  type AcceptAllianceAction,
   type Action,
   type AttackCaptainAction,
   type ChooseCaptainSkillAction,
   type ConstructBuildingAction,
   type GainCaptainXpAction,
+  type LeaveAllianceAction,
   type MoveCaptainAction,
+  type ProposeAllianceAction,
   type RecruitUnitAction,
   type ResolveEncounterAction,
   type SetStandingOrdersAction,
   type TransferTroopsAction,
   type UpgradeShipAction,
 } from './actions'
+import {
+  canonicalPair,
+  pairEquals,
+  pairsContain,
+  proposalBetween,
+  pruneAlliancesForSeats,
+} from './alliances'
 import {
   BOARD_DOCTRINES,
   BOARD_ORDER_CONDITIONS,
@@ -150,6 +160,15 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       encounterOutcome = result.outcome
       break
     }
+    case 'proposeAlliance':
+      next = proposeAlliance(state, action)
+      break
+    case 'acceptAlliance':
+      next = acceptAlliance(state, action)
+      break
+    case 'leaveAlliance':
+      next = leaveAlliance(state, action)
+      break
   }
 
   // Fold newly-visible tiles (cities + captain positions) into the acting
@@ -225,6 +244,8 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   return {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? { ...p, eliminated: true } : p)),
+    // A dead seat leaves every alliance and drops its pending proposals (#136).
+    alliances: pruneAlliancesForSeats(state.alliances, new Set([playerId])),
   }
 }
 
@@ -724,18 +745,92 @@ function resolveEncounter(
 }
 
 /**
+ * Step one of alliance consent (#136): record a pending proposal from the acting
+ * seat to `targetId`. Turn-ordered — the caller is the current player by the
+ * global guard in {@link applyActionWithOutcome}, so a seat can only propose on
+ * its own turn.
+ */
+function proposeAlliance(state: GameState, action: ProposeAllianceAction): GameState {
+  if (action.targetId === action.playerId) {
+    throw new InvalidActionError('Cannot propose an alliance with yourself', action)
+  }
+  const target = state.players.find((p) => p.id === action.targetId)
+  if (!target || target.eliminated) {
+    throw new InvalidActionError(`No seat ${action.targetId} to ally with`, action)
+  }
+  const { pairs, proposals } = state.alliances
+  if (pairsContain(pairs, action.playerId, action.targetId)) {
+    throw new InvalidActionError(`Already allied with ${action.targetId}`, action)
+  }
+  if (proposalBetween(proposals, action.playerId, action.targetId)) {
+    throw new InvalidActionError(`A proposal already stands with ${action.targetId}`, action)
+  }
+  return {
+    ...state,
+    alliances: {
+      pairs,
+      proposals: [...proposals, { from: action.playerId, to: action.targetId }],
+    },
+  }
+}
+
+/**
+ * Step two of alliance consent (#136): the acting seat accepts an offer that
+ * `proposerId` made to it, forming the mutual alliance and clearing the
+ * proposal. Rejected unless that exact proposal is pending — an accept with no
+ * matching propose is never a valid state.
+ */
+function acceptAlliance(state: GameState, action: AcceptAllianceAction): GameState {
+  const { pairs, proposals } = state.alliances
+  const idx = proposals.findIndex((p) => p.from === action.proposerId && p.to === action.playerId)
+  if (idx === -1) {
+    throw new InvalidActionError(`No alliance proposal from ${action.proposerId} to accept`, action)
+  }
+  return {
+    ...state,
+    alliances: {
+      pairs: [...pairs, canonicalPair(action.playerId, action.proposerId)],
+      proposals: proposals.filter((_, i) => i !== idx),
+    },
+  }
+}
+
+/**
+ * Break an existing alliance (#136). Unilateral: the acting seat dissolves its
+ * pair with `otherId`; shared vision through the ex-ally drops on the next view
+ * (#137). Rejected unless the two are currently allied.
+ */
+function leaveAlliance(state: GameState, action: LeaveAllianceAction): GameState {
+  const { pairs, proposals } = state.alliances
+  if (!pairsContain(pairs, action.playerId, action.otherId)) {
+    throw new InvalidActionError(`Not allied with ${action.otherId}`, action)
+  }
+  return {
+    ...state,
+    alliances: {
+      pairs: pairs.filter((p) => !pairEquals(p, action.playerId, action.otherId)),
+      proposals,
+    },
+  }
+}
+
+/**
  * After a battle: any player with no captains left is eliminated, the game ends
  * if one (or none) remains, and if the acting player was just eliminated the turn
  * advances so play can continue.
  */
 function settleEliminations(state: GameState): GameState {
+  const players = state.players.map((p) =>
+    !p.eliminated && !state.captains.some((c) => c.ownerId === p.id)
+      ? { ...p, eliminated: true }
+      : p,
+  )
+  // Every seat that just died leaves its alliances and drops its proposals (#136).
+  const eliminatedIds = new Set(players.filter((p) => p.eliminated).map((p) => p.id))
   const withElims: GameState = {
     ...state,
-    players: state.players.map((p) =>
-      !p.eliminated && !state.captains.some((c) => c.ownerId === p.id)
-        ? { ...p, eliminated: true }
-        : p,
-    ),
+    players,
+    alliances: pruneAlliancesForSeats(state.alliances, eliminatedIds),
   }
 
   const alive = withElims.players.filter((p) => !p.eliminated)

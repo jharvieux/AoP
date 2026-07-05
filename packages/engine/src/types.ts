@@ -43,8 +43,11 @@ export interface PlayerConfig {
   /** AI behavior selection (#25). Ignored for human seats; drives {@link nextAiAction} for AI ones. */
   aiProfile?: AiProfile
   /**
-   * Alliance id (Phase 3 prep, #25). Players sharing a non-null team are allies:
-   * the AI never targets an ally. Absent = every other player is an enemy.
+   * Starting-alliance seed (#136). Players sharing a non-null team begin the
+   * match mutually allied — `createGame` folds every same-team pair into the
+   * initial {@link AllianceState}, which is the source of truth from then on
+   * (the propose/accept/leave actions mutate it; this field is never re-read
+   * after game start). Absent = this seat begins allied with no one.
    */
   team?: string
 }
@@ -182,8 +185,42 @@ export interface PlayerState {
   eliminated: boolean
   /** AI behavior selection (#25), mirrored from {@link PlayerConfig.aiProfile}. Absent for humans. */
   aiProfile?: AiProfile
-  /** Alliance id (#25), mirrored from {@link PlayerConfig.team}. */
-  team?: string
+}
+
+/**
+ * A concluded, mutual alliance between two seats (#136). Stored with the seat
+ * ids in a canonical order (`a` &lt; `b`, lexicographically) so a pair has one
+ * representation regardless of who proposed — see `canonicalPair` in
+ * alliances.ts. Alliances are pairwise, not transitive: allying A–B and B–C
+ * does not ally A–C.
+ */
+export interface AlliancePair {
+  a: string
+  b: string
+}
+
+/**
+ * A pending, one-way alliance proposal (#136): `from` proposed on their turn and
+ * the offer stands until `to` accepts (on `to`'s own turn — the turn-ordered
+ * two-step consent) or either seat is eliminated. Never confers vision or any
+ * benefit; only an accepted {@link AlliancePair} does.
+ */
+export interface AllianceProposal {
+  from: string
+  to: string
+}
+
+/**
+ * The dynamic alliance graph (#136) — the single source of truth for who is
+ * allied with whom, seeded at game start from {@link PlayerConfig.team} and
+ * mutated only by the propose/accept/leave actions through `applyAction()`.
+ * Plain JSON so it serializes and replays like the rest of GameState.
+ */
+export interface AllianceState {
+  /** Active mutual alliances, each unordered pair listed once. */
+  pairs: AlliancePair[]
+  /** Outstanding proposals awaiting the recipient's accept. */
+  proposals: AllianceProposal[]
 }
 
 /**
@@ -230,6 +267,12 @@ export interface GameState {
   /** Index into players[] of whoever acts now. */
   currentPlayerIndex: number
   players: PlayerState[]
+  /**
+   * The dynamic alliance graph (#136): who is allied and which proposals stand.
+   * Seeded from {@link PlayerConfig.team} at game start, mutated only via the
+   * propose/accept/leave actions. The source of truth for {@link areAllied}.
+   */
+  alliances: AllianceState
   cities: CityState[]
   /** All captains in play, across all owners. */
   captains: Captain[]

@@ -1,4 +1,5 @@
 import { EMPTY_RESOURCES, type Coord } from '@aop/shared'
+import { pairsContain, seedAlliances } from './alliances'
 import { replenishAvailability } from './economy'
 import { spawnEncounters } from './encounters'
 import { generateMap, tileIndex, type GameMap } from './map'
@@ -125,11 +126,13 @@ export function createGame(config: GameConfig): GameState {
       isAI: p.isAI,
       resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
-      // AI behavior + alliance (#25) carry into runtime state; omit when unset so
+      // AI behavior (#25) carries into runtime state; omit when unset so
       // GameState holds no stray optional keys.
       ...(p.aiProfile ? { aiProfile: p.aiProfile } : {}),
-      ...(p.team !== undefined ? { team: p.team } : {}),
     })),
+    // Alliance graph (#136): seed mutual alliances from same-team players, then
+    // it is the source of truth (config.team is never re-read after this).
+    alliances: seedAlliances(config.players),
     cities,
     captains,
     encounters,
@@ -160,12 +163,10 @@ export function currentPlayer(state: GameState) {
 }
 
 /**
- * Whether two seats are allies (#25, Phase 3 prep): distinct players sharing a
- * non-null {@link PlayerState.team}. A seat is never allied with itself.
+ * Whether two seats are allies (#136): distinct players joined by an active pair
+ * in the {@link GameState.alliances} graph. A seat is never allied with itself.
  */
 export function areAllied(state: GameState, a: string, b: string): boolean {
   if (a === b) return false
-  const teamA = state.players.find((p) => p.id === a)?.team
-  const teamB = state.players.find((p) => p.id === b)?.team
-  return teamA !== undefined && teamA === teamB
+  return pairsContain(state.alliances.pairs, a, b)
 }
