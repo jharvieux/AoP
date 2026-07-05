@@ -1,17 +1,18 @@
 import type { Action, GameConfig } from '@aop/engine'
-import type { FactionId, MapSize } from '@aop/shared'
+import { ENGINE_VERSION, type FactionId, type MapSize } from '@aop/shared'
 import type { SupabaseConfig } from '../auth/supabaseAuth'
 import type { AuthSession } from '../auth/types'
 import { buildMatchConfig, type SeatConfig } from './matchConfig'
 
 /**
- * The `@aop/engine` version this client bundle was built against. Mirrors
- * `ENGINE_VERSION` in `supabase/functions/_shared/match.ts`, which is what
- * gets pinned into `matches.engine_version` when a match is created. Bump
- * this alongside that constant whenever the engine ships a breaking change —
- * see the version guard in `loadMatchReplay` below and docs/MULTIPLAYER.md §10.
+ * The `@aop/engine` version this client bundle was built against, re-exported
+ * from `@aop/shared`'s `ENGINE_VERSION` — the single source of truth also
+ * pinned into `matches.engine_version` by `supabase/functions/create-match`,
+ * so the server and client constants can never silently drift apart on a
+ * future engine version bump. See the version guard in `loadMatchReplay`
+ * below and docs/MULTIPLAYER.md §10.
  */
-export const CLIENT_ENGINE_VERSION = '0.0.1'
+export const CLIENT_ENGINE_VERSION = ENGINE_VERSION
 
 /**
  * Thrown when a match was played on a different `@aop/engine` version than
