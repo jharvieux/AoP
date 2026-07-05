@@ -21,7 +21,7 @@ rather than repeating the same approach:
   all 3 prior attempts used sd-v1.5, which (per this session's and #89/D-016's own
   DreamShaper-comparison finding) has a specific bad association with "dark navy blue flat
   pattern" prompts. Switched to the DreamShaper 8 checkpoint, which D-016 already
-  established as unsuitable for tiles in its *default* framing (it drew an app-icon/badge
+  established as unsuitable for tiles in its _default_ framing (it drew an app-icon/badge
   composition for a `shallows` comparison prompt) — but that specific failure was traced to
   the "product shot on plain white studio background, isolated single object" phrase in the
   shared `STYLE_SUFFIX`, which reads as icon-composition instruction to this checkpoint.
