@@ -1,8 +1,12 @@
 import {
+  aiTacticDriverForOwner,
   applyActionWithOutcome,
   captainsOf,
   createGame,
   hexDistance,
+  type AiDifficulty,
+  type AiPersonality,
+  type AiProfile,
   type BattleTuning,
   type BoardActivationView,
   type BoardCommand,
@@ -13,7 +17,13 @@ import {
   type TroopStack,
 } from '@aop/engine'
 import { describe, expect, it } from 'vitest'
-import { planAttack, planMove, probeBoardingBattle, stackLosses } from './boardingPlanner'
+import {
+  navalAiDriverFor,
+  planAttack,
+  planMove,
+  probeBoardingBattle,
+  stackLosses,
+} from './boardingPlanner'
 
 /**
  * The boarding planner (#93) records the player's melee commands by probing
@@ -240,6 +250,67 @@ describe('probeBoardingBattle', () => {
     })
     expect(JSON.stringify(battleReport)).toBe(JSON.stringify(report))
     expect(report.board!.events.some((e) => e.type === 'attack' && e.ranged)).toBe(true)
+  })
+})
+
+/** The same state with the AI seat (p2) given a personality/difficulty profile. */
+function withAiProfile(state: GameState, profile: AiProfile): GameState {
+  return {
+    ...state,
+    players: state.players.map((p) => (p.id === 'p2' ? { ...p, aiProfile: profile } : p)),
+  }
+}
+
+describe('navalAiDriverFor parity with the reducer', () => {
+  // The probe must pick the exact driver the reducer's aiTacticDriverForOwner
+  // will, or the replayed naval rounds diverge and the recorded melee plan
+  // silently degrades to the board AI. Identity comparison over the full
+  // profile matrix, so drift in either function fails here — not just the
+  // unprofiled default the rest of this file happens to exercise.
+  const personalities: AiPersonality[] = ['aggressive', 'economic', 'opportunist']
+  const difficulties: AiDifficulty[] = ['easy', 'normal', 'hard']
+
+  it('selects the identical driver for an unprofiled seat (human or AI)', () => {
+    const state = adjacentBattleState()
+    expect(navalAiDriverFor(state, 'p1')).toBe(aiTacticDriverForOwner(state, 'p1'))
+    expect(navalAiDriverFor(state, 'p2')).toBe(aiTacticDriverForOwner(state, 'p2'))
+  })
+
+  for (const personality of personalities) {
+    for (const difficulty of difficulties) {
+      it(`selects the identical driver for ${personality}/${difficulty}`, () => {
+        const state = withAiProfile(adjacentBattleState(), { personality, difficulty })
+        expect(navalAiDriverFor(state, 'p2')).toBe(aiTacticDriverForOwner(state, 'p2'))
+      })
+    }
+  }
+
+  it('the profile branches select distinct drivers — the matrix is not vacuous', () => {
+    const state = adjacentBattleState()
+    const driverFor = (personality: AiPersonality, difficulty: AiDifficulty) =>
+      navalAiDriverFor(withAiProfile(state, { personality, difficulty }), 'p2')
+    const distinct = new Set([
+      navalAiDriverFor(state, 'p2'),
+      driverFor('opportunist', 'easy'),
+      driverFor('aggressive', 'normal'),
+      driverFor('economic', 'normal'),
+    ])
+    expect(distinct.size).toBe(4)
+  })
+
+  it('a recorded plan replays bit-identically against a profiled AI defender', () => {
+    const state = withAiProfile(adjacentBattleState(), {
+      personality: 'aggressive',
+      difficulty: 'hard',
+    })
+    const { action, commands, report } = playOut(state)
+    const { battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      ...action,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+    expect(JSON.stringify(battleReport)).toBe(JSON.stringify(report))
   })
 })
 

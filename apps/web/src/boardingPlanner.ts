@@ -59,9 +59,10 @@ class AwaitingCommand {
  * Naval-phase AI for one seat. MUST mirror `aiTacticDriverForOwner` in the
  * engine's reducer.ts exactly — the probe has to replay the same naval rounds
  * the reducer will, or the recorded melee plan desyncs (and degrades to the
- * board AI). The parity test in boardingPlanner.test.ts is the tripwire.
+ * board AI). The parity test in boardingPlanner.test.ts is the tripwire;
+ * this is exported only so that test can compare the two directly.
  */
-function navalAiDriverFor(game: GameState, ownerId: string): TacticDriver {
+export function navalAiDriverFor(game: GameState, ownerId: string): TacticDriver {
   const profile = game.players.find((p) => p.id === ownerId)?.aiProfile
   if (!profile) return aiTacticDriver
   if (profile.difficulty === 'easy') return plainTacticDriver
