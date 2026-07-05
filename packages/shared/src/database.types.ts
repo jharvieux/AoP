@@ -127,6 +127,44 @@ export type Database = {
           },
         ]
       }
+      match_chat: {
+        Row: {
+          alliance_id: number | null
+          body: string
+          channel: string
+          created_at: string
+          id: number
+          match_id: string
+          seat: number
+        }
+        Insert: {
+          alliance_id?: number | null
+          body: string
+          channel: string
+          created_at?: string
+          id?: never
+          match_id: string
+          seat: number
+        }
+        Update: {
+          alliance_id?: number | null
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: never
+          match_id?: string
+          seat?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'match_chat_match_id_fkey'
+            columns: ['match_id']
+            isOneToOne: false
+            referencedRelation: 'matches'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       match_players: {
         Row: {
           alliance_id: number | null

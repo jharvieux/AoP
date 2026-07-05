@@ -67,3 +67,46 @@ export function pruneAlliancesForSeats(
   }
   return { pairs, proposals }
 }
+
+/**
+ * Group players into alliance clusters — the connected components of the
+ * pairwise alliance graph — mapping each player who holds at least one alliance
+ * to that cluster's canonical representative (the lexicographically smallest
+ * player id in the component). Players in no alliance are absent from the map.
+ *
+ * Used by the server to mirror the engine's alliance graph onto the single
+ * `match_players.alliance_id` metadata column (#140); the engine's
+ * {@link AllianceState} remains the source of truth for game logic. Note that
+ * alliances are pairwise, not transitive for `areAllied` — but a *shared chat
+ * channel* needs a group, and connected components are the natural grouping, so
+ * A–B plus B–C place A, B, and C in one cluster here even though A and C are not
+ * themselves allied. Deterministic (union always adopts the smaller id as root),
+ * so the same graph always yields the same representatives.
+ */
+export function allianceComponents(alliance: AllianceState): Map<string, string> {
+  const parent = new Map<string, string>()
+  const find = (x: string): string => {
+    let root = x
+    while (parent.get(root) !== root) root = parent.get(root)!
+    let cur = x
+    while (parent.get(cur) !== root) {
+      const next = parent.get(cur)!
+      parent.set(cur, root)
+      cur = next
+    }
+    return root
+  }
+  const ensure = (x: string): void => {
+    if (!parent.has(x)) parent.set(x, x)
+  }
+  for (const pair of alliance.pairs) {
+    ensure(pair.a)
+    ensure(pair.b)
+    const ra = find(pair.a)
+    const rb = find(pair.b)
+    if (ra !== rb) parent.set(ra < rb ? rb : ra, ra < rb ? ra : rb)
+  }
+  const components = new Map<string, string>()
+  for (const player of parent.keys()) components.set(player, find(player))
+  return components
+}
