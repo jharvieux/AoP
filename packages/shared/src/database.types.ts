@@ -457,7 +457,7 @@ export type Database = {
         }[]
       }
       finalize_match_with_ratings: {
-        Args: { p_match_id: string; p_ratings: Json; p_winner_seat: number | null }
+        Args: { p_match_id: string; p_ratings: Json; p_winner_seat: number }
         Returns: boolean
       }
       match_seed: { Args: { p_match_id: string }; Returns: number }

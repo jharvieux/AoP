@@ -260,12 +260,15 @@ async function finalize(db: Db, matchId: string, state: GameState): Promise<void
   // guard lives inside the RPC and matches a row exactly once, so a retry or a
   // concurrent finalize that loses the race applies nothing — rating updates can
   // never be double-applied, the same guarantee as before, now atomic.
-  const { error } = await db.rpc('finalize_match_with_ratings', {
+  const { data: applied, error } = await db.rpc('finalize_match_with_ratings', {
     p_match_id: matchId,
     p_winner_seat: winnerSeat,
     p_ratings: ratings,
   })
   if (error) throw new AppError('INTERNAL', error.message)
+  if (!applied) {
+    console.log(`finalize: match ${matchId} already finished, ratings not re-applied`)
+  }
 }
 
 interface RatingUpsertRow {
