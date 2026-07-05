@@ -37,6 +37,12 @@ export interface MatchSettings {
   missedTurnThreshold: number
 }
 
+/** A server-generated map + RNG seed (§11 chosen-seed advantage: never client-chosen).
+ * Shared by create-match and the quick-match drain. */
+export function randomSeed(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0]! % 2 ** 31
+}
+
 export const seatPlayerId = (seat: number): string => `seat-${seat}`
 
 export function parseSeat(playerId: string): number {

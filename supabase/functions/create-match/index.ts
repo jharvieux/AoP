@@ -4,12 +4,8 @@
 
 import { serviceClient, requireUserId, ensureProfile } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { assertFaction, firstFreeFaction, parseSettings } from '../_shared/match.ts'
+import { assertFaction, firstFreeFaction, parseSettings, randomSeed } from '../_shared/match.ts'
 import { ENGINE_VERSION, type FactionId } from '@aop/shared'
-
-function randomSeed(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0]! % 2 ** 31
-}
 
 function inviteCode(): string {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'

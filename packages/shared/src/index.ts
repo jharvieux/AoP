@@ -30,6 +30,10 @@ export {
   applyRatingUpdate,
 } from './rating'
 
+// Quick-match queue policy (#153): pure seat assignment + the dependency-injected
+// drain orchestration, shared by the drain Edge Function and its vitest suite.
+export * from './matchmaking'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [

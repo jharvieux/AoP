@@ -338,6 +338,38 @@ export type Database = {
           },
         ]
       }
+      matchmaking_queue: {
+        Row: {
+          faction: string | null
+          map_size: string
+          match_size: number
+          queued_at: string
+          user_id: string
+        }
+        Insert: {
+          faction?: string | null
+          map_size: string
+          match_size: number
+          queued_at?: string
+          user_id: string
+        }
+        Update: {
+          faction?: string | null
+          map_size?: string
+          match_size?: number
+          queued_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'matchmaking_queue_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       player_ratings: {
         Row: {
           created_at: string
@@ -417,6 +449,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_matchmaking_group: {
+        Args: { p_map_size: string; p_match_size: number }
+        Returns: {
+          faction: string
+          user_id: string
+        }[]
+      }
       match_seed: { Args: { p_match_id: string }; Returns: number }
     }
     Enums: {
