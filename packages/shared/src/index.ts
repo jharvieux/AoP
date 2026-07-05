@@ -6,6 +6,15 @@
 // Generated Supabase schema types — the typed client the Edge Functions build on.
 export type { Database, Json } from './database.types'
 
+// Snapshot compaction policy (docs/MULTIPLAYER.md §10) — pure, shared by the
+// compact-snapshots Edge Function and the engine's determinism test suite.
+export {
+  type SnapshotMeta,
+  DEFAULT_ROUNDS_PER_SNAPSHOT,
+  snapshotKeepSet,
+  snapshotsToDelete,
+} from './snapshots'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [
