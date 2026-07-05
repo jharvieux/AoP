@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyRatingUpdate,
+  computeMatchRatingUpdates,
   expectedScore,
   DEFAULT_RATING,
   DEFAULT_K_FACTOR,
   type PlayerRating,
+  type RatedSeat,
 } from '@aop/shared'
 
 /**
@@ -133,5 +135,107 @@ describe('applyRatingUpdate (#151)', () => {
     const result = applyRatingUpdate({ a, b }, 'a_win', 16)
     expect(result.a.rating).toBe(1500 + 8)
     expect(result.b.rating).toBe(1500 - 8)
+  })
+})
+
+describe('computeMatchRatingUpdates (#152)', () => {
+  const seat = (userId: string | null, won = false): RatedSeat => ({ userId, won })
+  const ratings = (entries: Record<string, PlayerRating>): Map<string, PlayerRating> =>
+    new Map(Object.entries(entries))
+
+  it('two rated seats reduce exactly to applyRatingUpdate(a_win)', () => {
+    const current = ratings({ w: rating(1550, 2), l: rating(1430, 7) })
+    const result = computeMatchRatingUpdates([seat('w', true), seat('l')], current)
+    const pairwise = applyRatingUpdate({ a: current.get('w')!, b: current.get('l')! }, 'a_win')
+    expect(result.get('w')).toEqual(pairwise.a)
+    expect(result.get('l')).toEqual(pairwise.b)
+  })
+
+  it('winner beats every loser and its gain is the sum of the pairwise deltas', () => {
+    const current = ratings({
+      w: rating(1500),
+      x: rating(1500),
+      y: rating(1500),
+      z: rating(1500),
+    })
+    const result = computeMatchRatingUpdates(
+      [seat('w', true), seat('x'), seat('y'), seat('z')],
+      current,
+    )
+    // Against three equal 1500 opponents, each pairwise win is +K/2, so +48 total.
+    expect(result.get('w')!.rating).toBe(1500 + (3 * DEFAULT_K_FACTOR) / 2)
+    // Each loser lost one game to an equal-rated winner: -K/2.
+    for (const id of ['x', 'y', 'z']) {
+      expect(result.get(id)!.rating).toBe(1500 - DEFAULT_K_FACTOR / 2)
+    }
+  })
+
+  it('increments matchesPlayed by exactly one per rated seat, never per pairwise game', () => {
+    const current = ratings({
+      w: rating(1500, 10),
+      x: rating(1500, 4),
+      y: rating(1500, 0),
+    })
+    const result = computeMatchRatingUpdates([seat('w', true), seat('x'), seat('y')], current)
+    expect(result.get('w')!.matchesPlayed).toBe(11)
+    expect(result.get('x')!.matchesPlayed).toBe(5)
+    expect(result.get('y')!.matchesPlayed).toBe(1)
+  })
+
+  it('is independent of the order losers are listed in', () => {
+    const current = ratings({ w: rating(1600), x: rating(1400), y: rating(1550) })
+    const forward = computeMatchRatingUpdates([seat('w', true), seat('x'), seat('y')], current)
+    const reversed = computeMatchRatingUpdates([seat('y'), seat('x'), seat('w', true)], current)
+    expect(reversed.get('w')).toEqual(forward.get('w'))
+  })
+
+  it('defaults an unrated first-time player to DEFAULT_RATING at zero matches', () => {
+    // Only the winner has a stored rating; the loser is brand new.
+    const current = ratings({ w: rating(1500, 3) })
+    const result = computeMatchRatingUpdates([seat('w', true), seat('newbie')], current)
+    expect(result.get('newbie')!.matchesPlayed).toBe(1)
+    expect(result.get('newbie')!.rating).toBe(DEFAULT_RATING - DEFAULT_K_FACTOR / 2)
+  })
+
+  it('excludes AI seats (userId null) from the calculation entirely', () => {
+    const current = ratings({ human: rating(1500) })
+    // A human beats two AI seats: no rated opponents, so the rating holds.
+    const result = computeMatchRatingUpdates([seat('human', true), seat(null), seat(null)], current)
+    expect(result.size).toBe(1)
+    expect(result.get('human')).toEqual({ rating: 1500, matchesPlayed: 1 })
+  })
+
+  it('when an AI seat wins, no human rating moves but each still counts a match', () => {
+    const current = ratings({ a: rating(1500, 2), b: rating(1480, 6) })
+    // The winning seat is AI (userId null, won); the two humans both lost.
+    const result = computeMatchRatingUpdates([seat(null, true), seat('a'), seat('b')], current)
+    expect(result.get('a')).toEqual({ rating: 1500, matchesPlayed: 3 })
+    expect(result.get('b')).toEqual({ rating: 1480, matchesPlayed: 7 })
+  })
+
+  it('a mutual-elimination draw (no winner) moves no rating but counts the match', () => {
+    const current = ratings({ a: rating(1500), b: rating(1600) })
+    const result = computeMatchRatingUpdates([seat('a'), seat('b')], current)
+    expect(result.get('a')).toEqual({ rating: 1500, matchesPlayed: 1 })
+    expect(result.get('b')).toEqual({ rating: 1600, matchesPlayed: 1 })
+  })
+
+  it('is zero-sum across a multi-player match (up to per-pair rounding)', () => {
+    const current = ratings({ w: rating(1500), x: rating(1500), y: rating(1500) })
+    const result = computeMatchRatingUpdates([seat('w', true), seat('x'), seat('y')], current)
+    const totalDelta =
+      result.get('w')!.rating -
+      1500 +
+      (result.get('x')!.rating - 1500) +
+      (result.get('y')!.rating - 1500)
+    expect(totalDelta).toBe(0)
+  })
+
+  it('does not mutate the supplied ratings map or its entries', () => {
+    const wRating = rating(1500, 1)
+    const current = new Map<string, PlayerRating>([['w', wRating]])
+    computeMatchRatingUpdates([seat('w', true), seat('l')], current)
+    expect(wRating).toEqual({ rating: 1500, matchesPlayed: 1 })
+    expect(current.size).toBe(1)
   })
 })

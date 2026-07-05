@@ -8,12 +8,15 @@ import {
   type GameState,
 } from '@aop/engine'
 import {
+  computeMatchRatingUpdates,
   FACTION_IDS,
   nextMissedTurnStatus,
   resolveViewSeat,
   turnBroadcastPayload,
   type FactionId,
   type MapSize,
+  type PlayerRating,
+  type RatedSeat,
 } from '@aop/shared'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
@@ -244,11 +247,65 @@ async function recordMissedTurn(
 async function finalize(db: Db, matchId: string, state: GameState): Promise<void> {
   if (state.status !== 'finished') return
   const winnerSeat = state.winnerId ? parseSeat(state.winnerId) : null
-  const { error } = await db
+  // The `status = 'active'` guard makes this the single authoritative
+  // active->finished transition: it matches a row exactly once. A retry (or any
+  // second finalize for this match) finds the row already 'finished', updates
+  // zero rows, and returns before touching ratings — so rating updates can never
+  // be double-applied even if the match-finish path runs twice (#152).
+  const { data, error } = await db
     .from('matches')
     .update({ status: 'finished', winner_seat: winnerSeat, turn_deadline: null })
     .eq('id', matchId)
+    .eq('status', 'active')
+    .select('id')
   if (error) throw new AppError('INTERNAL', error.message)
+  if (!data || data.length === 0) return
+  await applyMatchRatings(db, matchId, state)
+}
+
+/**
+ * Apply Elo rating updates for a match that just transitioned to finished
+ * (#152). Runs exactly once per match, gated by the active->finished transition
+ * in {@link finalize}. Only seats held by a real authenticated user are rated;
+ * AI seats (`user_id is null`) are excluded. The multi-player-to-pairwise model,
+ * first-time-player defaulting, and every no-op case live in the pure,
+ * unit-tested {@link computeMatchRatingUpdates}; this wrapper only reads the
+ * current ratings and writes the results back.
+ */
+async function applyMatchRatings(db: Db, matchId: string, state: GameState): Promise<void> {
+  const seatRows = await loadSeats(db, matchId)
+  const userIds = seatRows.map((s) => s.user_id).filter((id): id is string => id !== null)
+  if (userIds.length === 0) return
+
+  const { data: rows, error } = await db
+    .from('player_ratings')
+    .select('user_id, rating, matches_played')
+    .in('user_id', userIds)
+  if (error) throw new AppError('INTERNAL', error.message)
+
+  const current = new Map<string, PlayerRating>(
+    (rows ?? []).map((r) => [r.user_id, { rating: r.rating, matchesPlayed: r.matches_played }]),
+  )
+
+  const seats: RatedSeat[] = seatRows.map((s) => ({
+    userId: s.user_id,
+    won: state.winnerId === seatPlayerId(s.seat),
+  }))
+
+  const updated = computeMatchRatingUpdates(seats, current)
+  if (updated.size === 0) return
+
+  const now = new Date().toISOString()
+  const upsertRows = [...updated].map(([userId, r]) => ({
+    user_id: userId,
+    rating: r.rating,
+    matches_played: r.matchesPlayed,
+    updated_at: now,
+  }))
+  const { error: upErr } = await db
+    .from('player_ratings')
+    .upsert(upsertRows, { onConflict: 'user_id' })
+  if (upErr) throw new AppError('INTERNAL', upErr.message)
 }
 
 const turnAdvanced = (before: GameState, after: GameState): boolean =>
