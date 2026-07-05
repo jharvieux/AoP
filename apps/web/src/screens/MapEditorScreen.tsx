@@ -1,7 +1,7 @@
 import { AI_TUNING, GAME_SETUP, MAP_VALIDATION_LIMITS, combatStatsData } from '@aop/content'
 import { validateMapDefinition, type EncounterKind, type TileType } from '@aop/engine'
 import type { Coord, MapSize } from '@aop/shared'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildCatalog } from '../catalog'
 import { MapEditorCanvas } from '../mapEditor/MapEditorCanvas'
 import {
@@ -17,7 +17,7 @@ import {
   placeResourceMarker,
   renameDraft,
 } from '../mapEditor/draft'
-import { decodeMapCode, encodeMapCode } from '../mapEditor/encode'
+import { decodeMapCode, encodeMapCode, MAP_FILE_EXTENSION } from '../mapEditor/encode'
 import {
   deleteDraft,
   listDrafts,
@@ -86,6 +86,7 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     refreshSavedDrafts()
@@ -161,9 +162,32 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
     setExportCode(encodeMapCode(draft))
   }
 
-  function handleImport() {
+  async function handleCopyCode() {
+    if (!exportCode) return
     try {
-      const imported = decodeMapCode(importText)
+      await navigator.clipboard.writeText(exportCode)
+      setStatus('Map code copied to clipboard')
+    } catch {
+      setStatus('Copy failed — select the code and copy it manually')
+    }
+  }
+
+  function handleExportFile() {
+    const blob = new Blob([encodeMapCode(draft)], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${draft.name.trim().replace(/\s+/g, '-').toLowerCase() || 'map'}${MAP_FILE_EXTENSION}`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  /** Shared import path for pasted codes and uploaded files: decode, then
+   * re-validate through the engine before accepting — a shared code is
+   * untrusted input regardless of how it arrived. */
+  function importCode(code: string) {
+    try {
+      const imported = decodeMapCode(code)
       const result = validateMapDefinition(draftToMapDefinition(imported), MAP_VALIDATION_LIMITS)
       if (!result.valid) {
         setImportError(
@@ -177,6 +201,14 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
       setStatus(`Imported "${imported.name}"`)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Could not import map code')
+    }
+  }
+
+  async function handleImportFile(file: File) {
+    try {
+      importCode(await file.text())
+    } catch {
+      setImportError('Could not read the selected file')
     }
   }
 
@@ -355,6 +387,9 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
               <button className="secondary" onClick={handleExport}>
                 Export Code
               </button>
+              <button className="secondary" onClick={handleExportFile}>
+                Export File
+              </button>
             </div>
             {savedDrafts.length > 0 && (
               <ul className="building-list">
@@ -372,23 +407,48 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
               </ul>
             )}
             {exportCode && (
-              <textarea
-                className="map-editor-code-box"
-                readOnly
-                value={exportCode}
-                onFocus={(e) => e.target.select()}
-              />
+              <>
+                <textarea
+                  className="map-editor-code-box"
+                  readOnly
+                  value={exportCode}
+                  onFocus={(e) => e.target.select()}
+                />
+                <button className="secondary" onClick={() => void handleCopyCode()}>
+                  Copy Code
+                </button>
+              </>
             )}
-            <label className="section-label">Import Code</label>
+            <label className="section-label">Import</label>
             <textarea
               className="map-editor-code-box"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder="Paste an AOPMAP1: code here"
             />
-            <button className="secondary" onClick={handleImport} disabled={!importText.trim()}>
-              Import
-            </button>
+            <div className="button-group">
+              <button
+                className="secondary"
+                onClick={() => importCode(importText)}
+                disabled={!importText.trim()}
+              >
+                Import Code
+              </button>
+              <button className="secondary" onClick={() => importFileRef.current?.click()}>
+                Import File
+              </button>
+            </div>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept={`${MAP_FILE_EXTENSION},text/plain`}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void handleImportFile(file)
+              }}
+            />
             {importError && <p className="map-editor-error">{importError}</p>}
             {status && <p className="map-editor-status">{status}</p>}
           </div>
