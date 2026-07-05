@@ -22,7 +22,7 @@ import {
   type MovePlan,
   type StackLoss,
 } from './boardingPlanner'
-import { hapticImpact, hapticTap } from './haptics'
+import { impactFeedback, tapFeedback } from './audio/feedback'
 import { useTheme } from './theme/ThemeContext'
 
 /**
@@ -74,7 +74,7 @@ export function BoardingCommandSheet({
   )
 
   function confirm(next: Preview) {
-    hapticImpact()
+    impactFeedback()
     setPreview(null)
     onCommand(commandOf(view, next))
   }
@@ -90,7 +90,7 @@ export function BoardingCommandSheet({
       confirm(preview)
       return
     }
-    hapticTap()
+    tapFeedback()
     setPreview({ kind: 'move', plan, to: hex })
   }
 
@@ -108,7 +108,7 @@ export function BoardingCommandSheet({
       confirm(preview)
       return
     }
-    hapticTap()
+    tapFeedback()
     setPreview({ kind: 'attack', plan, targetId })
   }
 
@@ -117,7 +117,7 @@ export function BoardingCommandSheet({
       confirm(preview)
       return
     }
-    hapticTap()
+    tapFeedback()
     setPreview({ kind: 'hold' })
   }
 

@@ -1,5 +1,5 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { hapticTap } from '../haptics'
+import { tapFeedback } from '../audio/feedback'
 
 /** Drag this far down (px) before a swipe counts as a dismiss. */
 const DISMISS_DISTANCE = 120
@@ -46,7 +46,7 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
     const elapsed = Math.max(1, e.timeStamp - state.startTime)
     setDragY(0)
     if (shouldDismissSheet(delta, delta / elapsed)) {
-      hapticTap()
+      tapFeedback()
       onClose()
     }
   }

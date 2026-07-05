@@ -5,6 +5,7 @@ import { AdSlot } from '../AdSlot'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
+import { notifyFeedback } from '../audio/feedback'
 import { GAME_OVER_ICON } from '../uiIcons'
 
 interface GameOverScreenProps {
@@ -29,9 +30,13 @@ export function GameOverScreen({
   const outcomeText = isDraw ? 'Draw' : isPlayerWinner ? 'Victory!' : 'Defeat'
   const outcomeEmoji = isDraw ? '⚔️' : isPlayerWinner ? '🏆' : '💀'
 
-  // Victory narration bark (#75); only for a win, not a draw or defeat.
+  // Victory narration bark (#75) plus a generic success chime; only for a win,
+  // not a draw or defeat.
   useEffect(() => {
-    if (isPlayerWinner) audioManager.play(DIALOGUE.levelComplete, { key: 'level-complete' })
+    if (isPlayerWinner) {
+      audioManager.play(DIALOGUE.levelComplete, { key: 'level-complete' })
+      notifyFeedback()
+    }
   }, [isPlayerWinner])
 
   return (

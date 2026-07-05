@@ -21,7 +21,7 @@ import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 import { useTheme } from './theme/ThemeContext'
 import { BottomSheet } from './components/BottomSheet'
-import { hapticTap } from './haptics'
+import { tapFeedback } from './audio/feedback'
 import { UI_ICON } from './uiIcons'
 
 interface CityScreenProps {
@@ -143,27 +143,27 @@ export function CityScreen({
   // Every committed action gets a light tap so the sheet's dense button rows
   // (recruit/load/unload/build/upgrade) feel responsive on touch (#27).
   function build(buildingId: string) {
-    hapticTap()
+    tapFeedback()
     onBuild(buildingId)
   }
   function recruit(unitId: string) {
-    hapticTap()
+    tapFeedback()
     onRecruit(unitId)
   }
   function transfer(direction: 'toShip' | 'toGarrison', unitId: string) {
-    hapticTap()
+    tapFeedback()
     onTransfer(direction, unitId)
   }
   function setStandingOrders(orders: StandingOrder[]) {
-    hapticTap()
+    tapFeedback()
     onSetStandingOrders(orders)
   }
   function chooseCaptainSkill(skillId: string) {
-    hapticTap()
+    tapFeedback()
     onChooseCaptainSkill(skillId)
   }
   function upgradeShip(track: string) {
-    hapticTap()
+    tapFeedback()
     onUpgradeShip(track)
   }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listSaves, type SaveRecord } from './storage'
 import { BottomSheet } from './components/BottomSheet'
-import { hapticTap } from './haptics'
+import { tapFeedback } from './audio/feedback'
 
 const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
 
@@ -32,18 +32,18 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
   useEffect(refresh, [])
 
   async function handleSave(slotId: string) {
-    hapticTap()
+    tapFeedback()
     await onSave(slotId)
     refresh()
   }
 
   function handleLoad(slotId: string) {
-    hapticTap()
+    tapFeedback()
     onLoad(slotId)
   }
 
   function handleWatch(slotId: string) {
-    hapticTap()
+    tapFeedback()
     onWatch(slotId)
   }
 

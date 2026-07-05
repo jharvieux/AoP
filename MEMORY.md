@@ -1,5 +1,49 @@
 # MEMORY.md — Age of Plunder Decision Log
 
+## D-021 — 2026-07-05 — Audio: local music generation (MusicGen) + procedural SFX, wired into gameplay
+
+**Decision**: Stood up local background-music generation via MusicGen
+(`facebook/musicgen-small`, `transformers`, MPS/CPU on Apple Silicon — no CUDA) and
+generated 3 looping tracks (menu, exploration ambient, battle), each a self-crossfaced
+28s loop (`loop_crossfade()` blends the generated tail into the head so playback with
+`audio.loop = true` has no audible seam regardless of the raw generation's start/end).
+Batching all 3 prompts into a single `model.generate()` call cut wall-clock time roughly
+3x over sequential generation (~8 min total for all 3 vs. an estimated ~21 min
+sequential) — token-by-token decoding parallelizes across the batch dimension. For the 5
+generic gameplay SFX (UI click, combat hit, ship movement, coin pickup, notification
+chime), used procedural synthesis (numpy/scipy sine tones + filtered noise + envelopes)
+instead of a generative model — short, pitch-precise UI blips are cheap to synthesize
+directly and don't benefit from a heavier text-to-audio model. Wired both into the client:
+`apps/web/src/audio/audioManager.ts` gained a third `AudioCategory` axis
+(`dialogue`/`music`/`sfx`) with independent persisted volumes (`useAudioSettings.ts`
+exposes `setMusicVolume`/`setSfxVolume` alongside the original `setVolume`/`setMuted`);
+`selectGameplayMusicContext()` (`musicClips.ts`) is the pure, tested logic picking
+exploration-vs-battle music from whether a battle report or boarding-melee sheet is open;
+`feedback.ts` pairs each existing haptic category (`hapticTap`/`hapticImpact`/
+`hapticNotify`) with its matching SFX clip at every call site that already had a haptic
+(City/Saves/End Turn/Resign/Attack/Encounter-resolve/boarding-order-confirm/sheet-dismiss),
+plus new ship-movement and coin-pickup triggers on captain move and gold-rewarding
+encounter outcomes.
+
+**Why**: the operator's task explicitly asked to try local generation for this content
+category (no music/SFX generation existed at all before this), following the same
+"try it, curate carefully, fall back if quality isn't there" precedent as D-016/D-018.
+Generation quality was verified numerically (RMS/peak checks confirming non-silent,
+non-clipping output; valid 16-bit PCM WAV) rather than by ear — this session cannot
+listen to audio — so an actual listen-through by the operator before/after merge is the
+outstanding step, same spirit as any AI-generated asset in this pipeline.
+
+**Rejected**: AudioLDM/AudioLDM2/Stable Audio Open for the SFX category (heavier
+dependency, worse fit for short pitch-precise blips, no clear advantage over direct
+synthesis); reusing `hapticTap`/`hapticImpact` calls as a dumping ground for a single
+generic "click" without categorizing volumes separately (the operator's brief was
+explicit that music/SFX/dialogue are now distinct enough to need independent sliders).
+Longer (90s) loop targets were also rejected after measuring generation time scaling
+poorly with sequence length on this hardware — 28-35s was the practical ceiling for a
+"a few minutes, not tens of minutes" per-batch budget.
+
+---
+
 Newest entries on top. Append-only: never edit or delete prior entries (PreToolUse hook
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
