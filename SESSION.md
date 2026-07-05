@@ -1,46 +1,66 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-04 (Issue #42 (Capacitor) scaffolded, PR #97 open, not merged)._
+_Last updated: 2026-07-04 (Full open-PR review sweep: 8 of 9 PRs merged, 1 left open for review)._
 
 ## Just completed
 
-Executed issue #42 (Capacitor native builds + push notifications), previously skipped in
-the Phase-3 sweep (PR #83) as a supervised-path conflict. Landed dependency-free scaffolding
-on `feature/sweep-capacitor-42` (PR #97, **not merged — awaiting operator review/approval**):
+Reviewed all 11 open PRs and merged/closed all but one:
 
-- `apps/web/capacitor.config.ts` (typed locally, not against `@capacitor/cli`)
-- `apps/web/src/plugins/{nativeBridge,pushNotifications,androidBackButton}.ts` — all
-  feature-detect via Capacitor's runtime-injected `window.Capacitor` global, no
-  `@capacitor/*` import required, so they compile and no-op safely on web today
-- Safe-area/gesture audit: existing `env(safe-area-inset-*)`/`viewport-fit=cover`/
-  Pointer-Events map pan-zoom confirmed correct; added `overscroll-behavior: contain`
-- `scripts/capacitor/{setup,build-ios,build-android}.sh` for an operator to run later
-- `docs/runbooks/capacitor-native.md` + `MEMORY.md` D-014 document why this stops short of
-  installing `@capacitor/*` (new runtime deps — gated behind explicit operator approval per
-  CLAUDE.md) and generating the native projects (needs full Xcode + an Android SDK, neither
-  present in this sandbox)
-- Opened follow-up issue #98 tracking the remaining steps (dependency install, native
-  project generation, wiring a real match/turn screen once one exists, server-side
-  FCM/APNs send + email-via-Resend fallback)
-- `pnpm verify` green; no new dependencies added; PR #97 labeled `auto-triaged`
+- **Merged clean, no issues**: #99 (docs), #88 (AI personalities), #97 (Capacitor
+  scaffolding), #102 (map editor — fixed a real bug first: unvalidated encounter `kind`
+  could crash at runtime, already fixed by a follow-up commit on the branch).
+- **Merged after rebasing onto current main** (all had gone stale behind main, causing
+  spurious `ci` failures): #91 (French faction — an audit BLOCKER claiming a hardcoded
+  faction list was a false positive, verified the PR's own diff already fixed it), #87
+  (mobile UX), #95 (tactical battle board — real merge conflicts in `reducer.ts` and
+  French faction content requiring a new `speed` field; resolved by hand, kept both the
+  AI-personality-aware defender fallback from #88 and the new board-command drivers).
+- **Supervised-path items, operator-approved individually**: #96 (CI workflow + Vite 6→8
+  bump — merged), #103 (Stripe/IAP monetization — merged; opened #105 and #106 for the two
+  non-blocking gaps the audit found: open redirect on checkout URLs, no tests on payment
+  code), #70 (multiplayer migration — audit found a real BLOCKER, duplicate indexes already
+  in the initial schema; dropped them, fixed a now-stale comment in `supabaseAuth.ts`, and
+  regenerated `database.types.ts` for real — see below).
+- **#92 (dep bump) — redone, left open, not merged**: the original PR claimed a TypeScript
+  bump (already landed separately via #54) and a Supabase CLI bump that never actually
+  happened, plus an unjustified `tsconfig.json` change that silently dropped typecheck
+  coverage on `apps/web` test files. Redid it for real (`supabase` 2.102.0 → 2.109.0,
+  dropped the tsconfig change, verified typecheck still passes without it) and pushed to
+  the same branch. **Awaiting the operator's final look before merging** — was not
+  auto-merged per their explicit "redo it, bring it back" decision.
+
+**Issue #104** filed and diagnosed: `main`'s `migrations` CI check has been red since PR
+#85 (non-required, doesn't block merges). Root cause found: the workflow formats the
+generated types with unpinned `npx prettier` (no access to this repo's `.prettierrc`),
+producing a cosmetic false-positive diff against the correctly-formatted committed file.
+Confirmed via a local repro (`supabase start` needs a `-x <service>` flag list to work
+around a colima/virtiofs docker-socket bug on this machine — full command in the issue).
+Not fixed here since it touches `.github/workflows/supabase.yml` (supervised path) — left
+open for the operator. **#70's actual schema change was separately verified and its types
+were regenerated correctly using the repo's own prettier config**, so #70 itself is not
+affected by the CI workflow bug.
+
+**Operator note**: mid-session, a `rm -rf` aimed at build noise accidentally deleted
+`.claude/worktrees/` (18 old agent worktree checkouts). Verified carefully afterward — every
+branch that had a worktree either had zero unique commits (already fully in main) or was
+already squash-merged via its PR. No work was lost; `git worktree prune` cleaned up the
+resulting stale git metadata. Worth tightening `rm -rf` habits going forward.
 
 ## Next steps
 
-1. **Operator decision on #97/#98**: approve (or trim) the `@capacitor/*` dependency list,
-   then someone with Xcode + Android Studio runs `scripts/capacitor/setup.sh` to actually
-   generate the native projects. Until then #42 stays open.
-2. **Below-cutoff items** (#39 tactical battle, #40 matchmaking, #41 map editor, #51 test
-   tooling, #25 smarter AI, #43 monetization — also previously skipped as supervised, same
-   root cause as #42) — queue for follow-up sweep.
-3. **PR #70 / migrations**: per prior session, verify the `Supabase / migrations` CI job
-   passes against the incremental migration once that PR's CI runs are checked.
+1. **PR #92**: operator gives it a final look and merges (or requests further changes).
+2. **Issue #104**: fix the CI workflow's type-check step to use the repo's pinned prettier
+   config instead of bare `npx prettier` — one-line fix, but touches
+   `.github/workflows/supabase.yml` (supervised).
+3. **Issues #105/#106** (from the #103 monetization audit): same-origin allowlist on Stripe
+   checkout redirect URLs; tests for the webhook/checkout edge functions.
+4. **#98 (Capacitor deps)** and other previously-deferred supervised items are still open
+   from earlier sessions — unchanged by this sweep.
 
 ## Prior session summary (2026-07-01 sweep, unchanged)
 
 - **Issue-sweep complete**: 10 issues across 4 batches (audio, platform/PWA, auth,
   multiplayer) merged into `main` — PRs #82, #83, #84, #85.
-- **Tests**: 126 engine tests, all passing; 28 web auth tests.
-- **Engine invariants**: all 4 maintained.
-- **Supabase credentials**: provisioned (`.env.local` + GitHub Actions secrets).
-- **Blocked on operator**: #97/#98 (Capacitor dependency approval + native toolchain access).
+- **Engine invariants**: all 4 maintained throughout this session's merges too (verified
+  176 engine tests passing after every rebase, including 33 new battle-board tests).
