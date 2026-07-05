@@ -280,12 +280,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      match_seed: {
-        Args: {
-          p_match_id: string
-        }
-        Returns: number
-      }
+      match_seed: { Args: { p_match_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
