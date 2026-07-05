@@ -685,6 +685,25 @@ button.primary.secondary {
   font-weight: 600;
 }
 
+/* AdSlot (docs/ARCHITECTURE.md §9): sized so a loaded ad doesn't reflow the
+   surrounding HUD/screen. Empty by default — the network script fills it. */
+.ad-slot {
+  overflow: hidden;
+}
+
+.ad-slot--between-turns {
+  width: 100%;
+  max-width: 320px;
+  min-height: 50px;
+}
+
+.ad-slot--match-end {
+  width: 100%;
+  max-width: 320px;
+  min-height: 50px;
+  margin: 16px auto 0;
+}
+
 /* Battle report sheet + hex battle board (#39) */
 
 .battle-sheet {

@@ -17,6 +17,7 @@ import {
 import { FACTIONS } from '@aop/content'
 import { chebyshevDistance } from '@aop/shared'
 import { useEffect, useMemo, useState } from 'react'
+import { AdSlot } from '../AdSlot'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
@@ -372,6 +373,12 @@ export function GameScreen({
           )}
         </div>
       </div>
+
+      {/* Between-turns placement only (docs/ARCHITECTURE.md §9): no attack/encounter
+          sheet or building modal is open, and it's never the viewer's turn to act. */}
+      {!isViewerTurn && !attackTarget && !encounter && !cityOpen && !savesOpen && (
+        <AdSlot placement="between-turns" />
+      )}
 
       {battleReport && (
         <BattleBoardSheet
