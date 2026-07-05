@@ -125,6 +125,12 @@ export interface GameSetup {
   captainVisionRadius: number
   /** XP the winning captain earns from a decisive naval victory (#21). */
   combatWinXp: number
+  /** Reputation every player starts the match with (#138). */
+  startingReputation: number
+  /** Reputation lost for attacking an ally without leaving the alliance first (#138). */
+  betrayalReputationPenalty: number
+  /** Minimum reputation a seat needs to form a new alliance (#138); existing ones are unaffected. */
+  allianceReputationMin: number
 }
 
 export interface GameConfig {
@@ -183,6 +189,15 @@ export interface PlayerState {
   isAI: boolean
   resources: ResourcePool
   eliminated: boolean
+  /**
+   * Diplomatic standing (#138). Starts at `setup.startingReputation`; betraying
+   * an ally (attacking without leaving the alliance first) costs
+   * `setup.betrayalReputationPenalty`, floored at 0. Below
+   * `setup.allianceReputationMin` a seat can no longer form new alliances.
+   * Public information — every seat's reputation is disclosed in player views,
+   * so a known oathbreaker carries the mark openly.
+   */
+  reputation: number
   /** AI behavior selection (#25), mirrored from {@link PlayerConfig.aiProfile}. Absent for humans. */
   aiProfile?: AiProfile
 }

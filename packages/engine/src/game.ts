@@ -126,6 +126,7 @@ export function createGame(config: GameConfig): GameState {
       isAI: p.isAI,
       resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
+      reputation: setup.startingReputation,
       // AI behavior (#25) carries into runtime state; omit when unset so
       // GameState holds no stray optional keys.
       ...(p.aiProfile ? { aiProfile: p.aiProfile } : {}),

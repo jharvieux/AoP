@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest'
 import {
   applyAction,
   areAllied,
+  captainsOf,
   createGame,
   InvalidActionError,
+  playerView,
   replay,
+  tileKey,
   type Action,
+  type CombatStatsData,
   type GameConfig,
+  type GameSetup,
+  type GameState,
 } from '../src'
-import { GAME_SETUP } from './fixtures'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
 /** A bare N-player config; `teams` seeds the opening alliance graph (#136). */
 function allianceConfig(playerCount = 3, teams: Record<string, string> = {}): GameConfig {
@@ -190,5 +196,185 @@ describe('alliance replay determinism (#136)', () => {
   it('replays alliance-seeded games identically', () => {
     const cfg = allianceConfig(3, { p1: 'north', p3: 'north' })
     expect(JSON.stringify(createGame(cfg))).toBe(JSON.stringify(createGame(cfg)))
+  })
+})
+
+// --- Betrayal (#138): attack an ally through the normal attackCaptain action ---
+
+const BETRAYAL_STATS: CombatStatsData = {
+  units: [
+    { id: 'grunt', attack: 5, defense: 2, health: 12 },
+    { id: 'elite', attack: 12, defense: 8, health: 40 },
+  ],
+  ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
+}
+
+/** p1+p2 (optionally allied via team seed) with combat wired in; p3 is a clean third seat. */
+function betrayalConfig(allied: boolean, setupOverrides: Partial<GameSetup> = {}): GameConfig {
+  const team = allied ? { team: 'north' } : {}
+  return {
+    seed: 11,
+    mapSize: 'small',
+    setup: { ...GAME_SETUP, ...setupOverrides },
+    combatStats: BETRAYAL_STATS,
+    players: [
+      {
+        id: 'p1',
+        name: 'P1',
+        faction: 'pirates',
+        isAI: false,
+        startingTroops: [{ unitId: 'elite', count: 8 }],
+        ...team,
+      },
+      {
+        id: 'p2',
+        name: 'P2',
+        faction: 'british',
+        isAI: false,
+        startingTroops: [{ unitId: 'grunt', count: 1 }],
+        ...team,
+      },
+      { id: 'p3', name: 'P3', faction: 'spanish', isAI: false },
+    ],
+  }
+}
+
+/**
+ * p2's captain teleported adjacent to p1's, standing on "always evade" so the
+ * outgunned defender slips away — both seats outlive the battle, isolating the
+ * betrayal effects from the elimination path.
+ */
+function betrayalState(allied = true, setupOverrides: Partial<GameSetup> = {}): GameState {
+  const state = createGame(betrayalConfig(allied, setupOverrides))
+  const p1cap = captainsOf(state, 'p1')[0]!
+  const p2cap = captainsOf(state, 'p2')[0]!
+  const adjacent = { x: p1cap.position.x + 1, y: p1cap.position.y }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === p2cap.id
+        ? { ...c, position: adjacent, standingOrders: [{ when: 'always', tactic: 'evade' }] }
+        : c,
+    ),
+  }
+}
+
+function betray(state: GameState): GameState {
+  return applyAction(state, {
+    type: 'attackCaptain',
+    playerId: 'p1',
+    captainId: captainsOf(state, 'p1')[0]!.id,
+    targetCaptainId: captainsOf(state, 'p2')[0]!.id,
+    // A pure gun line never pins the defender's evade, so p2 escapes alive.
+    attackerOrders: ['broadside'],
+  })
+}
+
+function reputationOf(state: GameState, id: string): number {
+  return state.players.find((p) => p.id === id)!.reputation
+}
+
+describe('alliance betrayal (#138)', () => {
+  it('permits attacking an ally: the alliance breaks and the attacker pays the reputation price', () => {
+    const state = betrayalState()
+    expect(areAllied(state, 'p1', 'p2')).toBe(true)
+
+    const next = betray(state)
+    // Both seats outlived the battle, so the break came from the betrayal
+    // itself — not from elimination pruning.
+    expect(next.players.every((p) => !p.eliminated)).toBe(true)
+    expect(areAllied(next, 'p1', 'p2')).toBe(false)
+    expect(next.alliances.pairs).toEqual([])
+    expect(reputationOf(next, 'p1')).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
+    // The victim's standing is untouched.
+    expect(reputationOf(next, 'p2')).toBe(GAME_SETUP.startingReputation)
+  })
+
+  it('attacking a non-ally costs no reputation and leaves the graph alone', () => {
+    const state = betrayalState(false)
+    const next = betray(state)
+    expect(reputationOf(next, 'p1')).toBe(GAME_SETUP.startingReputation)
+    expect(next.alliances).toEqual(state.alliances)
+  })
+
+  it('revokes shared vision through the betrayed ally on the next view (#137)', () => {
+    const state = betrayalState()
+    // p2's distant capital is visible to p1 only through the alliance.
+    const p2city = state.cities.find((c) => c.ownerId === 'p2')!
+    const before = playerView(state, 'p1')
+    expect(before.tiles.some((t) => tileKey(t.coord) === tileKey(p2city.position))).toBe(true)
+
+    const after = playerView(betray(state), 'p1')
+    expect(after.tiles.some((t) => tileKey(t.coord) === tileKey(p2city.position))).toBe(false)
+  })
+
+  it('discloses the betrayer’s reduced reputation to every seat — the mark is public', () => {
+    const next = betray(betrayalState())
+    const victimView = playerView(next, 'p2')
+    expect(victimView.players.find((p) => p.id === 'p1')!.reputation).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
+  })
+
+  it('floors reputation at zero (penalty is content-tunable per match)', () => {
+    const next = betray(betrayalState(true, { startingReputation: 30 }))
+    expect(reputationOf(next, 'p1')).toBe(0)
+  })
+
+  it('locks a seat below the reputation floor out of forming new alliances, in both directions', () => {
+    // One betrayal at penalty 80 drops p1 to 20, under the floor of 30.
+    let state = betray(betrayalState(true, { betrayalReputationPenalty: 80 }))
+    expect(() =>
+      applyAction(state, { type: 'proposeAlliance', playerId: 'p1', targetId: 'p3' }),
+    ).toThrow(InvalidActionError)
+    // Nor can a clean seat court the oathbreaker.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+    expect(() =>
+      applyAction(state, { type: 'proposeAlliance', playerId: 'p3', targetId: 'p1' }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('re-checks reputation at accept time — a proposal made before the betrayal cannot land after it', () => {
+    let state = betrayalState(true, { betrayalReputationPenalty: 80 })
+    state = applyAction(state, { type: 'proposeAlliance', playerId: 'p1', targetId: 'p3' })
+    state = betray(state)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+    expect(() =>
+      applyAction(state, { type: 'acceptAlliance', playerId: 'p3', proposerId: 'p1' }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('stays above the floor after a single betrayal at default tuning — one backstab is a playable gambit', () => {
+    const next = betray(betrayalState())
+    expect(reputationOf(next, 'p1')).toBeGreaterThanOrEqual(GAME_SETUP.allianceReputationMin)
+    // Diplomacy is dented, not dead: the betrayer can still court the third seat.
+    const courted = applyAction(next, { type: 'proposeAlliance', playerId: 'p1', targetId: 'p3' })
+    expect(courted.alliances.proposals).toEqual([{ from: 'p1', to: 'p3' }])
+  })
+
+  it('replays a betrayal log — combat RNG, break, and penalty — to an identical state', () => {
+    const log: Action[] = [
+      {
+        type: 'attackCaptain',
+        playerId: 'p1',
+        captainId: captainsOf(betrayalState(), 'p1')[0]!.id,
+        targetCaptainId: captainsOf(betrayalState(), 'p2')[0]!.id,
+      },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(betrayalState(), log)
+    const b = replay(betrayalState(), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+    expect(areAllied(a, 'p1', 'p2')).toBe(false)
+    expect(reputationOf(a, 'p1')).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
   })
 })

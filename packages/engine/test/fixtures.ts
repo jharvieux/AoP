@@ -69,6 +69,9 @@ export const GAME_SETUP: GameSetup = {
   cityVisionRadius: 3,
   captainVisionRadius: 2,
   combatWinXp: 40,
+  startingReputation: 100,
+  betrayalReputationPenalty: 40,
+  allianceReputationMin: 30,
 }
 
 export const AI_TUNING: AiTuning = {
