@@ -1,5 +1,6 @@
 export * from './actions'
 export * from './ai'
+export * from './alliances'
 export * from './battleBoard'
 export * from './combat'
 export * from './hex'

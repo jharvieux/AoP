@@ -148,6 +148,43 @@ export interface ResolveEncounterAction {
   choice: EncounterChoice
 }
 
+/**
+ * Offer an alliance to another seat (#136). Step one of the turn-ordered
+ * two-step consent: `playerId` proposes on their own turn; the offer stands as a
+ * pending {@link AllianceProposal} until `targetId` accepts (on their turn) via
+ * {@link AcceptAllianceAction}. Rejected if the seats are already allied, a
+ * proposal already stands between them (in either direction), or `targetId` is
+ * absent, self, or eliminated.
+ */
+export interface ProposeAllianceAction {
+  type: 'proposeAlliance'
+  playerId: string
+  targetId: string
+}
+
+/**
+ * Accept a standing alliance proposal (#136). Step two of consent: `playerId`
+ * accepts on their own turn an offer that `proposerId` made to them, forming a
+ * mutual alliance. Rejected unless a proposal from `proposerId` to `playerId`
+ * is actually pending — an accept with no matching proposal is never valid.
+ */
+export interface AcceptAllianceAction {
+  type: 'acceptAlliance'
+  playerId: string
+  proposerId: string
+}
+
+/**
+ * Break an existing alliance (#136). `playerId` unilaterally dissolves the
+ * alliance with `otherId` on their own turn; shared vision through the ex-ally
+ * drops instantly (#137). Rejected unless the two are currently allied.
+ */
+export interface LeaveAllianceAction {
+  type: 'leaveAlliance'
+  playerId: string
+  otherId: string
+}
+
 export type Action =
   | EndTurnAction
   | ResignAction
@@ -161,6 +198,9 @@ export type Action =
   | ChooseCaptainSkillAction
   | UpgradeShipAction
   | ResolveEncounterAction
+  | ProposeAllianceAction
+  | AcceptAllianceAction
+  | LeaveAllianceAction
 
 export class InvalidActionError extends Error {
   constructor(

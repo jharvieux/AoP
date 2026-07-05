@@ -4,7 +4,7 @@ import type { CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { TileType } from './map'
 import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
-import { currentlyVisibleTiles, tileKey } from './visibility'
+import { tileKey, visibleTilesWithAllies } from './visibility'
 
 /**
  * Fog-of-war player view — the anti-cheat boundary (docs/MULTIPLAYER.md §7).
@@ -25,6 +25,13 @@ import { currentlyVisibleTiles, tileKey } from './visibility'
  * - Enemy city interiors (buildings/garrison/recruit pools) and treasuries.
  * - Enemy captains' standing orders, movement, XP, skills and ship upgrades —
  *   knowing a defender's standing orders would break interactive attacks (§7).
+ *
+ * Allied seats (#137) extend only the viewer's *current vision*: their live
+ * sightlines are unioned in, so the viewer sees the tiles and units (as bare
+ * hulls) their allies see. An ally's treasury, city interiors, and captain
+ * manifests/orders/XP stay stripped exactly as an enemy's would — an alliance
+ * shares eyes, never books. The union is live: on {@link areAllied} turning
+ * false (a broken alliance) those sightlines vanish on the next view.
  */
 export interface PlayerView {
   /** The seat identity this view was rendered for (engine player id, e.g. `seat-0`). */
@@ -50,10 +57,26 @@ export interface PlayerView {
   captains: ViewCaptain[]
   encounters: ViewEncounter[]
   /**
+   * The viewer's own alliance relationships (#136/#137). Only the viewer's
+   * pairs and proposals are disclosed — a third-party alliance between two other
+   * seats never appears here, so the graph doesn't leak who else has allied.
+   */
+  alliances: ViewAlliances
+  /**
    * Always `null`. Present so the shape stays obviously distinct from
    * `GameState`, and as a guard against a view being fed back in as truth.
    */
   rngState: null
+}
+
+/** The viewer's alliance state, viewer-scoped (see {@link PlayerView.alliances}). */
+export interface ViewAlliances {
+  /** Seats currently allied with the viewer. */
+  allies: string[]
+  /** Seats the viewer has proposed to, still awaiting their acceptance. */
+  outgoingProposals: string[]
+  /** Seats that have proposed to the viewer, awaiting the viewer's acceptance. */
+  incomingProposals: string[]
 }
 
 export interface ViewRules {
@@ -123,7 +146,7 @@ export interface ViewEncounter {
  * the same call, live spectating (§12). Must never read anything outside `state`.
  */
 export function playerView(state: GameState, viewerId: string): PlayerView {
-  const visibleKeys = new Set(currentlyVisibleTiles(state, viewerId).map(tileKey))
+  const visibleKeys = new Set(visibleTilesWithAllies(state, viewerId).map(tileKey))
   const exploredKeys = new Set(state.exploredTiles[viewerId] ?? [])
   for (const key of visibleKeys) exploredKeys.add(key)
 
@@ -206,6 +229,20 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     .filter((e) => e.active && visibleKeys.has(tileKey(e.position)))
     .map((e) => ({ id: e.id, kind: e.kind, position: e.position, active: e.active }))
 
+  // Viewer-scoped alliance state: only pairs and proposals that touch the viewer
+  // (never a third-party alliance between two other seats).
+  const alliances: ViewAlliances = {
+    allies: state.alliances.pairs
+      .filter((p) => p.a === viewerId || p.b === viewerId)
+      .map((p) => (p.a === viewerId ? p.b : p.a)),
+    outgoingProposals: state.alliances.proposals
+      .filter((p) => p.from === viewerId)
+      .map((p) => p.to),
+    incomingProposals: state.alliances.proposals
+      .filter((p) => p.to === viewerId)
+      .map((p) => p.from),
+  }
+
   const rules: ViewRules = {
     setup: state.config.setup,
     mapSize: state.config.mapSize,
@@ -228,6 +265,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     cities,
     captains,
     encounters,
+    alliances,
     rngState: null,
   }
 }
