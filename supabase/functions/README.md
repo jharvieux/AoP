@@ -13,6 +13,8 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `submit-action`   | `POST { matchId, expectedSeq, action } -> { seq, view }`        | #33   |
 | `end-turn`        | `POST { matchId } -> { seq, view }`                             | #33   |
 | `get-player-view` | `POST { matchId } -> { seq, seat, view, turnDeadline }`         | #34   |
+| `sweep-turns`      | `POST -> { swept }` (§8 turn-timer sweep; service-role only)    | #129  |
+| `reclaim-seat`     | `POST { matchId } -> { seat }` (returning human from ai_takeover) | #134  |
 
 Maintenance (not player-facing — gated by a shared secret, never a user JWT):
 
@@ -86,3 +88,9 @@ to the value in `_shared/match.ts`).
 > Note: local invocation and CI coverage are gated on a running Supabase stack; the pure
 > reconstruction + view-filter logic these functions call is covered by the engine's Vitest
 > suite (`packages/engine/test/playerView.test.ts` and the replay tests).
+
+`sweep-turns` has no user JWT to derive a caller from, so it's gated differently: the
+request's `Authorization` header must be `Bearer <SUPABASE_SERVICE_ROLE_KEY>` (the same
+convention pg_cron and other trusted server-side callers use). Scheduling it on a cadence
+(pg_cron, per §8) is tracked separately (#130); for now it's invoked manually or by an
+external scheduler hitting the deployed URL with that header.
