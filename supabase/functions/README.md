@@ -16,6 +16,7 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `sweep-turns`       | `POST -> { swept }` (§8 turn-timer sweep; service-role only)              | #129  |
 | `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
 | `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list) | #150  |
+| `get-leaderboard`   | `POST { limit? } -> { entries }` (top-N ranked players)                   | #154  |
 
 Maintenance (not player-facing — gated by a shared secret or the service role, never a user JWT):
 
@@ -57,6 +58,21 @@ only the query and the safe projection. Pagination is keyset by the composite
 so lobbies sharing a `created_at` second still page cleanly (a bare-timestamp cursor would
 skip same-second ties at a page boundary, #150). Joining still goes through `join-match`;
 this function only tells a client which `matchId`s exist to join.
+
+`get-leaderboard` (#154) is a ranked, read-only top-N view of `player_ratings`
+(#151/#152): any authenticated user may call it, gated only on login like
+`list-open-matches` — there's no per-match/seat scoping to check. Same access-control
+reasoning as `list-open-matches`: a service-role function returning a hand-picked safe
+projection (`LeaderboardEntry`: rank, user id, display name, rating, matches played)
+rather than loosening `player_ratings` RLS (read-your-own-row only) or `profiles` RLS
+(match-participant-only) into a public grant. The ranking/tiebreak/page-size policy is
+the pure `buildLeaderboard`/`clampLeaderboardLimit` in `@aop/shared`; the function owns
+only the query (`ORDER BY rating DESC, user_id ASC LIMIT take`, matching that policy's
+tiebreak exactly) and the `profiles` join for display names. **Scope**: a single
+always-on leaderboard, not seasonal — `player_ratings` has no season dimension, and no
+season length/reset model is specified anywhere in the docs, so one isn't invented here;
+see `@aop/shared/leaderboard.ts` for the full reasoning. Season support and any UI
+(#155) are separate, deferred work.
 
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side
@@ -123,7 +139,10 @@ to the value in `_shared/match.ts`).
 > §8 missed-turn → `ai_takeover` transition live in `@aop/shared` (`src/multiplayer.ts`)
 > and are unit-tested in `apps/web/src/multiplayer/turnSync.test.ts`. The `list-open-matches`
 > filter/sort/page policy (§14, #150) is the pure `selectOpenMatches`/`clampOpenMatchLimit`
-> in `@aop/shared`, unit-tested in `apps/web/src/multiplayer/openMatches.test.ts`.
+> in `@aop/shared`, unit-tested in `apps/web/src/multiplayer/openMatches.test.ts`. The
+> `get-leaderboard` ranking/tiebreak/page-size policy (#154) is the pure
+> `buildLeaderboard`/`clampLeaderboardLimit` in `@aop/shared`, unit-tested in
+> `packages/engine/test/leaderboard.test.ts`.
 
 `sweep-turns` has no user JWT to derive a caller from, so it's gated differently: the
 request's `Authorization` header must be `Bearer <SUPABASE_SERVICE_ROLE_KEY>` (the same

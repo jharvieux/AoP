@@ -36,6 +36,17 @@ export {
 // drain orchestration, shared by the drain Edge Function and its vitest suite.
 export * from './matchmaking'
 
+// Leaderboards (#154) — pure ranking/pagination over `player_ratings`, shared by the
+// `get-leaderboard` Edge Function and its vitest suite. See `./leaderboard` for the
+// "seasonal" scope decision.
+export {
+  type LeaderboardCandidate,
+  type LeaderboardEntry,
+  LEADERBOARD_PAGE_MAX,
+  clampLeaderboardLimit,
+  buildLeaderboard,
+} from './leaderboard'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [
