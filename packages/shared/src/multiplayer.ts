@@ -8,6 +8,8 @@
  * constraint).
  */
 
+import type { MapSize } from './index'
+
 /**
  * The `@aop/engine` version pinned into `matches.engine_version` when a match
  * is created (`supabase/functions/create-match/index.ts`) and compared
@@ -129,4 +131,73 @@ export interface SeatReclaimUpdate {
  */
 export function reclaimSeatUpdate(): SeatReclaimUpdate {
   return { status: 'active', missed_turns: 0 }
+}
+
+/**
+ * A single open-lobby entry in the public match browser (#150, docs/MULTIPLAYER.md
+ * §14 Phase 4). Deliberately a **safe projection** of a `matches` row: it carries
+ * only what any authenticated user may learn about a match they have not joined —
+ * never `seed` (would enable the §11 chosen-seed / RNG-prediction attacks) nor
+ * `invite_code` (would defeat private, invite-only matches). The `matches` table
+ * itself stays unreadable to non-seated clients (RLS `matches_select_seated`); this
+ * projection reaches the client only through the service-role `list-open-matches`
+ * Edge Function, so the table's access model is unchanged.
+ */
+export interface OpenMatchSummary {
+  matchId: string
+  mapSize: MapSize
+  maxPlayers: number
+  /** Seats already taken (human or AI); the match is joinable while this is `< maxPlayers`. */
+  playerCount: number
+  /** Seconds per turn; `null` for an untimed match. Lets the browser sort live vs async. */
+  turnTimerSeconds: number | null
+  /** ISO-8601 creation time; doubles as the keyset-pagination cursor. */
+  createdAt: string
+}
+
+/** Hard cap on one page of the match browser (#150) — a lobby list, not a feed. */
+export const OPEN_MATCH_PAGE_MAX = 50
+
+export interface OpenMatchQuery {
+  /** Requested page size; silently clamped to `1..OPEN_MATCH_PAGE_MAX`. */
+  limit?: number
+  /** Keyset cursor: return only matches created strictly before this ISO timestamp. */
+  before?: string | null
+}
+
+/** Clamp a requested page size into `1..OPEN_MATCH_PAGE_MAX`; undefined/invalid → the max. */
+export function clampOpenMatchLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return OPEN_MATCH_PAGE_MAX
+  return Math.min(Math.max(1, Math.floor(limit)), OPEN_MATCH_PAGE_MAX)
+}
+
+/** Newest `createdAt` first, `matchId` descending as a stable tiebreaker. */
+function compareOpenMatches(a: OpenMatchSummary, b: OpenMatchSummary): number {
+  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1
+  return a.matchId < b.matchId ? 1 : a.matchId > b.matchId ? -1 : 0
+}
+
+/**
+ * Filter, sort, and page the open-match browser list (#150). Pure so the lobby
+ * browser's core rules are unit-tested without a live Supabase stack:
+ *
+ *  - **joinable only**: a seat must be free (`playerCount < maxPlayers`) — a full
+ *    lobby is not offered even though its row is still `status = 'lobby'`.
+ *  - **newest first**, tie-broken by `matchId` for a deterministic order.
+ *  - **keyset paged**: `before` drops anything at or after the previous page's last
+ *    `createdAt`; the result is capped at {@link clampOpenMatchLimit}.
+ *
+ * `status = 'lobby'` and the private-match exclusion are applied upstream (the Edge
+ * Function's SQL and projection) before candidates reach here.
+ */
+export function selectOpenMatches(
+  candidates: readonly OpenMatchSummary[],
+  query: OpenMatchQuery = {},
+): OpenMatchSummary[] {
+  const before = query.before ?? null
+  return candidates
+    .filter((m) => m.playerCount < m.maxPlayers)
+    .filter((m) => before === null || m.createdAt < before)
+    .sort(compareOpenMatches)
+    .slice(0, clampOpenMatchLimit(query.limit))
 }

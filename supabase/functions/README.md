@@ -5,16 +5,17 @@ Each function runs the **same `@aop/engine` reducer the client runs** (§2), aga
 reconstructed from the action log, under Deno. The engine is dependency-free and touches no
 DOM/Node/Deno API, so it runs here unmodified.
 
-| Function          | Contract (§5)                                                     | Issue |
-| ----------------- | ----------------------------------------------------------------- | ----- |
-| `create-match`    | `POST { settings } -> { matchId, inviteCode }`                    | #32   |
-| `join-match`      | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`   | #32   |
-| `start-match`     | `POST { matchId } -> { seq: 0 }` (creator only)                   | #32   |
-| `submit-action`   | `POST { matchId, expectedSeq, action } -> { seq, view }`          | #33   |
-| `end-turn`        | `POST { matchId } -> { seq, view }`                               | #33   |
-| `get-player-view` | `POST { matchId } -> { seq, seat, view, turnDeadline }`           | #34   |
-| `sweep-turns`     | `POST -> { swept }` (§8 turn-timer sweep; service-role only)      | #129  |
-| `reclaim-seat`    | `POST { matchId } -> { seat }` (returning human from ai_takeover) | #134  |
+| Function            | Contract (§5)                                                             | Issue |
+| ------------------- | ------------------------------------------------------------------------- | ----- |
+| `create-match`      | `POST { settings } -> { matchId, inviteCode }`                            | #32   |
+| `join-match`        | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`           | #32   |
+| `start-match`       | `POST { matchId } -> { seq: 0 }` (creator only)                           | #32   |
+| `submit-action`     | `POST { matchId, expectedSeq, action } -> { seq, view }`                  | #33   |
+| `end-turn`          | `POST { matchId } -> { seq, view }`                                       | #33   |
+| `get-player-view`   | `POST { matchId } -> { seq, seat, view, turnDeadline }`                   | #34   |
+| `sweep-turns`       | `POST -> { swept }` (§8 turn-timer sweep; service-role only)              | #129  |
+| `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
+| `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list) | #150  |
 
 Maintenance (not player-facing — gated by a shared secret, never a user JWT):
 
@@ -29,6 +30,17 @@ from `state->'round'` (no schema column), and serializes against `submit-action`
 per-match seq guard (deletes are scoped to `seq <= action_count` read at the start, so a
 concurrently-written newer snapshot is never touched). Requires `Authorization: Bearer
 <CRON_SECRET>`; fails closed if `CRON_SECRET` is unset. Cron scheduling is out of scope (#37).
+
+`list-open-matches` (§14, #150) is the public match browser's backend — the only read
+path that does **not** require the caller to already hold a seat. Rather than loosen the
+`matches` RLS (`matches_select_seated`, which restricts the table to seated players) or add
+a column-safe view/grant, it runs as a service-role function and returns a hand-picked safe
+projection (`OpenMatchSummary`: match id, map size, max players, current seat count, turn
+timer, created_at) of `lobby`-status, non-full, non-private matches — never `seed`,
+`invite_code`, or the full `settings`. The `matches` table's access model is untouched. The
+filter/sort/page policy is the pure `selectOpenMatches` in `@aop/shared`; the function owns
+only the query and the safe projection. Joining still goes through `join-match`; this
+function only tells a client which `matchId`s exist to join.
 
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side
@@ -91,7 +103,9 @@ to the value in `_shared/match.ts`).
 > tests. Server-side AI turns replaying action-for-action (#133): the "AI turn action log"
 > tests in `packages/engine/test/ai.test.ts`. The turn-poke leak-audit shape (§7) and the
 > §8 missed-turn → `ai_takeover` transition live in `@aop/shared` (`src/multiplayer.ts`)
-> and are unit-tested in `apps/web/src/multiplayer/turnSync.test.ts`.
+> and are unit-tested in `apps/web/src/multiplayer/turnSync.test.ts`. The `list-open-matches`
+> filter/sort/page policy (§14, #150) is the pure `selectOpenMatches`/`clampOpenMatchLimit`
+> in `@aop/shared`, unit-tested in `apps/web/src/multiplayer/openMatches.test.ts`.
 
 `sweep-turns` has no user JWT to derive a caller from, so it's gated differently: the
 request's `Authorization` header must be `Bearer <SUPABASE_SERVICE_ROLE_KEY>` (the same
