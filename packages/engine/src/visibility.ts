@@ -1,4 +1,5 @@
 import type { Coord } from '@aop/shared'
+import { pairsContain } from './alliances'
 import type { GameMap } from './map'
 import type { GameState } from './types'
 
@@ -49,6 +50,36 @@ export function currentlyVisibleTiles(state: GameState, playerId: string): Coord
   }
   for (const captain of state.captains) {
     if (captain.ownerId === playerId) add(captain.position, captainVisionRadius)
+  }
+  return tiles
+}
+
+/**
+ * Tiles currently visible to `viewerId` unioned with those visible to every seat
+ * it is allied with right now (#137, shared vision). Allied vision is a *live*
+ * union — recomputed from the current alliance graph on every call — so breaking
+ * an alliance revokes the shared sightlines on the very next view. Deliberately
+ * NOT folded into the persistent `exploredTiles` (only own vision is, via
+ * {@link accumulateExploredTiles}), so a tile seen solely through an ally is not
+ * "remembered" once the alliance ends. Eliminated allies contribute nothing.
+ */
+export function visibleTilesWithAllies(state: GameState, viewerId: string): Coord[] {
+  const seen = new Set<string>()
+  const tiles: Coord[] = []
+  const addFor = (id: string) => {
+    for (const tile of currentlyVisibleTiles(state, id)) {
+      const key = tileKey(tile)
+      if (!seen.has(key)) {
+        seen.add(key)
+        tiles.push(tile)
+      }
+    }
+  }
+  addFor(viewerId)
+  for (const p of state.players) {
+    if (p.id !== viewerId && !p.eliminated && pairsContain(state.alliances.pairs, viewerId, p.id)) {
+      addFor(p.id)
+    }
   }
   return tiles
 }
