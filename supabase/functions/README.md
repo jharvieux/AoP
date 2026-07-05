@@ -14,10 +14,25 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `end-turn`        | `POST { matchId } -> { seq, view }`                             | #33   |
 | `get-player-view` | `POST { matchId } -> { seq, seat, view, turnDeadline }`         | #34   |
 
+Maintenance (not player-facing — gated by a shared secret, never a user JWT):
+
+| Function            | Contract                                                                      | Issue |
+| ------------------- | ----------------------------------------------------------------------------- | ----- |
+| `compact-snapshots` | `POST { matchId?, roundsPerSnapshot? } -> { matchesProcessed, totalDeleted }` | #37   |
+
+`compact-snapshots` (§10) trims each active match's `match_snapshots` history to the keep-set
+— snapshot 0, the two newest, and one per N rounds — leaving the action log intact so
+`reconstructState` output is byte-identical before and after. It reads each snapshot's round
+from `state->'round'` (no schema column), and serializes against `submit-action` with a
+per-match seq guard (deletes are scoped to `seq <= action_count` read at the start, so a
+concurrently-written newer snapshot is never touched). Requires `Authorization: Bearer
+<CRON_SECRET>`; fails closed if `CRON_SECRET` is unset. Cron scheduling is out of scope (#37).
+
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side
-`ContentCatalog`/`GameConfig` builder, twin of `apps/web/src/catalog.ts`), and `match.ts`
-(state reconstruction, the `submit-action` transaction, settings/faction validation).
+`ContentCatalog`/`GameConfig` builder, twin of `apps/web/src/catalog.ts`), `match.ts`
+(state reconstruction, the `submit-action` transaction, settings/faction validation), and
+`compaction.ts` (the snapshot keep-set I/O; the pure policy lives in `@aop/shared`).
 
 ## Monetization (docs/ARCHITECTURE.md §9)
 
