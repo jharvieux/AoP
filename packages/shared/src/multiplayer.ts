@@ -9,6 +9,17 @@
  */
 
 /**
+ * The `@aop/engine` version pinned into `matches.engine_version` when a match
+ * is created (`supabase/functions/create-match/index.ts`) and compared
+ * against by the replay viewer's version guard
+ * (`apps/web/src/multiplayer/matchReplay.ts`, docs/MULTIPLAYER.md §10). Kept
+ * here as the single source of truth so the server and client sides can never
+ * drift apart on a future engine version bump — bump this alongside any
+ * breaking `@aop/engine` change.
+ */
+export const ENGINE_VERSION = '0.0.1'
+
+/**
  * The Realtime poke broadcast on channel `match:{id}` after a turn advances
  * (docs/MULTIPLAYER.md §6). It carries a sequence number and nothing else: the
  * §7 leak-audit forbids any game state on this channel, since it is emitted to

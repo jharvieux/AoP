@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createGame } from '@aop/engine'
 import { buildMatchConfig, type SeatConfig } from './matchConfig'
 
 const SEATS: SeatConfig[] = [
@@ -36,5 +37,21 @@ describe('buildMatchConfig', () => {
     const a = buildMatchConfig(7, 'medium', SEATS)
     const b = buildMatchConfig(7, 'medium', SEATS)
     expect(a).toEqual(b)
+  })
+
+  // #169: the client catalog carries a `resourceNodes` field the server's
+  // twin omits (apps/web/src/catalog.ts vs supabase/functions/_shared/catalog.ts).
+  // That's currently inert because `buildMatchConfig` never sets
+  // `mapDefinition`, and the engine only seeds `GameState.resourceNodes` from
+  // `mapDefinition` (packages/engine/src/game.ts) — so a multiplayer-sourced
+  // config always starts with zero resource nodes on the board regardless of
+  // the catalog divergence. This test pins that inertness so a future change
+  // that starts wiring up `mapDefinition` here is forced to also reconcile
+  // the two catalogs.
+  it('never seeds resource nodes onto the board (mapDefinition is unset for multiplayer)', () => {
+    const config = buildMatchConfig(7, 'small', SEATS)
+    expect(config.mapDefinition).toBeUndefined()
+    const state = createGame(config)
+    expect(state.resourceNodes).toEqual([])
   })
 })

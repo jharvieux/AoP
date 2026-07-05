@@ -35,8 +35,6 @@ export interface MatchSettings {
   missedTurnThreshold: number
 }
 
-export const ENGINE_VERSION = '0.0.1'
-
 export const seatPlayerId = (seat: number): string => `seat-${seat}`
 
 export function parseSeat(playerId: string): number {
