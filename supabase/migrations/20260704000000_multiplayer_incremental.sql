@@ -56,9 +56,3 @@ alter table cloud_saves enable row level security;
 drop policy if exists cloud_saves_all_own on cloud_saves;
 create policy cloud_saves_all_own on cloud_saves
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-
--- ---------------------------------------------------------------------------
--- Indexes for query performance (#32, #33)
--- ---------------------------------------------------------------------------
-create index if not exists match_players_user_idx on match_players(user_id);
-create index if not exists matches_timer_idx on matches(status, turn_deadline);
