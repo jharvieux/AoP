@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   clampOpenMatchLimit,
+  decodeOpenMatchCursor,
+  encodeOpenMatchCursor,
   OPEN_MATCH_PAGE_MAX,
   selectOpenMatches,
+  type OpenMatchCursor,
   type OpenMatchSummary,
 } from '@aop/shared'
 
@@ -61,14 +64,47 @@ describe('selectOpenMatches', () => {
     expect(result.map((m) => m.matchId)).toEqual(['z', 'b', 'a'])
   })
 
-  it('applies the keyset cursor: only matches strictly before `before`', () => {
+  it('applies the keyset cursor: only matches that sort strictly after the cursor tuple', () => {
     const a = summary({ matchId: 'a', createdAt: '2026-07-05T09:00:00.000Z' })
     const b = summary({ matchId: 'b', createdAt: '2026-07-05T10:00:00.000Z' })
     const boundary = summary({ matchId: 'c', createdAt: '2026-07-05T11:00:00.000Z' })
     const result = selectOpenMatches([a, b, boundary], {
-      before: '2026-07-05T11:00:00.000Z',
+      before: { createdAt: '2026-07-05T11:00:00.000Z', matchId: 'c' },
     })
     expect(result.map((m) => m.matchId)).toEqual(['b', 'a'])
+  })
+
+  it('pages through same-`createdAt` matches without skipping or duplicating any (composite cursor)', () => {
+    // Regression for the #150 audit blocker: several lobbies created in the same second.
+    // A bare-`createdAt` cursor (nextBefore = last row's timestamp, filter `createdAt < before`)
+    // would drop EVERY same-second row on page two, so any tie split across a page boundary
+    // vanished from every page. The `(createdAt, matchId)` tuple cursor must page cleanly.
+    const ts = '2026-07-05T12:00:00.000Z'
+    const all = Array.from({ length: 5 }, (_, i) => summary({ matchId: `m${i}`, createdAt: ts }))
+
+    const seen: string[] = []
+    let before: OpenMatchCursor | null = null
+    for (let guard = 0; guard < 100; guard++) {
+      const page = selectOpenMatches(all, { limit: 2, before })
+      if (page.length === 0) break
+      seen.push(...page.map((m) => m.matchId))
+      const last = page[page.length - 1]!
+      before = { createdAt: last.createdAt, matchId: last.matchId }
+      if (page.length < 2) break // short page ⇒ end of list
+    }
+
+    expect(new Set(seen).size).toBe(seen.length) // no duplicates
+    expect([...seen].sort()).toEqual(['m0', 'm1', 'm2', 'm3', 'm4']) // every match returned exactly once
+  })
+
+  it('round-trips a cursor through encode/decode and rejects malformed input', () => {
+    const cursor: OpenMatchCursor = { createdAt: '2026-07-05T12:00:00.000Z', matchId: 'm-42' }
+    expect(decodeOpenMatchCursor(encodeOpenMatchCursor(cursor))).toEqual(cursor)
+    expect(decodeOpenMatchCursor(null)).toBeNull()
+    expect(decodeOpenMatchCursor('no-separator')).toBeNull()
+    expect(decodeOpenMatchCursor('|missing-created-at')).toBeNull()
+    expect(decodeOpenMatchCursor('missing-match-id|')).toBeNull()
+    expect(decodeOpenMatchCursor(123)).toBeNull()
   })
 
   it('caps the result at the requested (clamped) page size, newest first', () => {

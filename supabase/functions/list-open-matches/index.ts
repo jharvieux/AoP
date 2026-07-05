@@ -16,6 +16,8 @@ import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/h
 import type { MatchSettings } from '../_shared/match.ts'
 import {
   clampOpenMatchLimit,
+  decodeOpenMatchCursor,
+  encodeOpenMatchCursor,
   OPEN_MATCH_PAGE_MAX,
   selectOpenMatches,
   type OpenMatchSummary,
@@ -33,7 +35,7 @@ Deno.serve(async (req) => {
     await requireUserId(req) // any authenticated user; no seat required
     const body = (await req.json().catch(() => ({}))) as { limit?: unknown; before?: unknown }
     const limit = body.limit === undefined ? undefined : Number(body.limit)
-    const before = typeof body.before === 'string' ? body.before : null
+    const before = decodeOpenMatchCursor(body.before)
 
     const db = serviceClient()
 
@@ -42,8 +44,12 @@ Deno.serve(async (req) => {
       .select('id, settings, created_at')
       .eq('status', 'lobby')
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(RAW_FETCH_LIMIT)
-    if (before) query = query.lt('created_at', before)
+    // Coarse pre-filter only: `<=` keeps same-`created_at` rows in the candidate set so the
+    // precise `(createdAt, matchId)` keyset filter in selectOpenMatches can drop just the
+    // already-returned ones — a strict `<` here would skip same-second ties at a page boundary.
+    if (before) query = query.lte('created_at', before.createdAt)
     const { data: rows, error } = await query
     if (error) throw new AppError('INTERNAL', error.message)
 
@@ -68,10 +74,13 @@ Deno.serve(async (req) => {
     }
 
     const matches = selectOpenMatches(summaries, { limit, before })
-    // A full page means there may be more; hand back a keyset cursor. A short page is
-    // the end of the list, so no cursor.
+    // A full page means there may be more; hand back a keyset cursor encoding the last
+    // row's full `(createdAt, matchId)` tuple. A short page is the end of the list, so no cursor.
+    const last = matches[matches.length - 1]
     const nextBefore =
-      matches.length === clampOpenMatchLimit(limit) ? matches[matches.length - 1]!.createdAt : null
+      last && matches.length === clampOpenMatchLimit(limit)
+        ? encodeOpenMatchCursor({ createdAt: last.createdAt, matchId: last.matchId })
+        : null
 
     return jsonResponse({ matches, nextBefore })
   } catch (err) {

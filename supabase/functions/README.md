@@ -39,8 +39,11 @@ projection (`OpenMatchSummary`: match id, map size, max players, current seat co
 timer, created_at) of `lobby`-status, non-full, non-private matches — never `seed`,
 `invite_code`, or the full `settings`. The `matches` table's access model is untouched. The
 filter/sort/page policy is the pure `selectOpenMatches` in `@aop/shared`; the function owns
-only the query and the safe projection. Joining still goes through `join-match`; this
-function only tells a client which `matchId`s exist to join.
+only the query and the safe projection. Pagination is keyset by the composite
+`(createdAt, matchId)` tuple — the opaque `before`/`nextBefore` cursor encodes both fields,
+so lobbies sharing a `created_at` second still page cleanly (a bare-timestamp cursor would
+skip same-second ties at a page boundary, #150). Joining still goes through `join-match`;
+this function only tells a client which `matchId`s exist to join.
 
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side
