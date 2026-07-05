@@ -42,7 +42,10 @@ export interface MatchReplayData {
 interface MatchRow {
   id: string
   status: string
-  settings: { mapSize: MapSize }
+  // Diplomacy knobs (#177) are optional here: matches created before they became
+  // host-configurable have no such fields, and `buildMatchConfig` falls back to
+  // the content defaults those matches actually ran with.
+  settings: { mapSize: MapSize; betrayalReputationPenalty?: number; betrayalTruceRounds?: number }
   engine_version: string
 }
 
@@ -135,7 +138,10 @@ export class MatchReplayClient {
       displayName: s.user_id ? (names.get(s.user_id) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
     }))
 
-    const config = buildMatchConfig(seed, match.settings.mapSize, seatConfigs)
+    const config = buildMatchConfig(seed, match.settings.mapSize, seatConfigs, {
+      betrayalReputationPenalty: match.settings.betrayalReputationPenalty,
+      betrayalTruceRounds: match.settings.betrayalTruceRounds,
+    })
 
     const actionRows = await this.fetchMany<ActionRow>(
       session,

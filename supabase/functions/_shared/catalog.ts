@@ -80,6 +80,16 @@ export interface SeatConfig {
 }
 
 /**
+ * Host-configurable overrides (#177) applied on top of `GAME_SETUP` when building
+ * a match's frozen setup. Undefined fields fall back to the content default, so a
+ * match created before these became configurable rebuilds identically.
+ */
+export interface MatchSetupOverrides {
+  betrayalReputationPenalty?: number | undefined
+  betrayalTruceRounds?: number | undefined
+}
+
+/**
  * Build the frozen `GameConfig` a match starts from. Seat identity — not user id
  * — is the engine's player id (§13), so seat reclaim and AI takeover never touch
  * the action log. Seats must be passed in turn order (seat 0 first).
@@ -88,6 +98,7 @@ export function buildMatchConfig(
   seed: number,
   mapSize: GameConfig['mapSize'],
   seats: SeatConfig[],
+  setupOverrides: MatchSetupOverrides = {},
 ): GameConfig {
   const players: PlayerConfig[] = seats.map((s) => ({
     id: `seat-${s.seat}`,
@@ -100,7 +111,12 @@ export function buildMatchConfig(
     seed,
     mapSize,
     players,
-    setup: GAME_SETUP,
+    setup: {
+      ...GAME_SETUP,
+      betrayalReputationPenalty:
+        setupOverrides.betrayalReputationPenalty ?? GAME_SETUP.betrayalReputationPenalty,
+      betrayalTruceRounds: setupOverrides.betrayalTruceRounds ?? GAME_SETUP.betrayalTruceRounds,
+    },
     combatStats: combatStatsData(),
     content: buildCatalog(),
     aiTuning: AI_TUNING,

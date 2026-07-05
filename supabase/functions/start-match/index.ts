@@ -60,7 +60,10 @@ Deno.serve(async (req) => {
       displayName: s.user_id ? (names.get(s.user_id) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
     }))
 
-    const config = buildMatchConfig(Number(match.seed), settings.mapSize, seatConfigs)
+    const config = buildMatchConfig(Number(match.seed), settings.mapSize, seatConfigs, {
+      betrayalReputationPenalty: settings.betrayalReputationPenalty,
+      betrayalTruceRounds: settings.betrayalTruceRounds,
+    })
     const state = createGame(config)
 
     const snap = await db

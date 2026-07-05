@@ -26,10 +26,21 @@ function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+// Diplomacy knob bounds (#177). Reputation starts at 100 and floors at 0, so a
+// betrayal cost of 0..100 spans "treachery is free" to "one betrayal is
+// ruinous". A 0..10-round truce covers "no protection" (immediate free strikes,
+// the pre-#177 behavior) up to a long, telegraphed cooldown.
+const BETRAYAL_PENALTY_MIN = 0
+const BETRAYAL_PENALTY_MAX = 100
+const TRUCE_ROUNDS_MIN = 0
+const TRUCE_ROUNDS_MAX = 10
+
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const { factionName } = useTheme()
   const [mapSize, setMapSize] = useState<MapSize>('small')
   const [playerCount, setPlayerCount] = useState(2)
+  const [betrayalPenalty, setBetrayalPenalty] = useState(GAME_SETUP.betrayalReputationPenalty)
+  const [truceRounds, setTruceRounds] = useState(GAME_SETUP.betrayalTruceRounds)
   const [players, setPlayers] = useState<PlayerConfig[]>(
     Array.from({ length: 2 }, (_, i) => createDefaultPlayer(i)),
   )
@@ -86,7 +97,12 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
       players: players.map((p) => ({ ...p, startingTroops: starterTroops(p.faction) })),
       // Freeze opening-state + combat + economy/content balance snapshots from
       // @aop/content into the match so the pure engine holds no balance data.
-      setup: GAME_SETUP,
+      // The host's two diplomacy knobs (#177) override the content defaults.
+      setup: {
+        ...GAME_SETUP,
+        betrayalReputationPenalty: betrayalPenalty,
+        betrayalTruceRounds: truceRounds,
+      },
       combatStats: combatStatsData(),
       content: buildCatalog(),
       aiTuning: AI_TUNING,
@@ -118,6 +134,34 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">Betrayal reputation cost ({betrayalPenalty})</label>
+          <input
+            type="range"
+            min={BETRAYAL_PENALTY_MIN}
+            max={BETRAYAL_PENALTY_MAX}
+            step={5}
+            value={betrayalPenalty}
+            onChange={(e) => setBetrayalPenalty(Number(e.target.value))}
+            aria-label="Betrayal reputation cost"
+          />
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">
+            Betrayal truce window ({truceRounds} {truceRounds === 1 ? 'round' : 'rounds'})
+          </label>
+          <input
+            type="range"
+            min={TRUCE_ROUNDS_MIN}
+            max={TRUCE_ROUNDS_MAX}
+            step={1}
+            value={truceRounds}
+            onChange={(e) => setTruceRounds(Number(e.target.value))}
+            aria-label="Betrayal truce window in rounds"
+          />
         </div>
 
         <div className="setup-section">

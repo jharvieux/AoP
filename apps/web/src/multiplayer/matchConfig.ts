@@ -34,6 +34,17 @@ export interface SeatConfig {
 }
 
 /**
+ * Host-configurable overrides (#177) applied on top of `GAME_SETUP` when building
+ * a match's frozen setup. Undefined fields fall back to the content default, so a
+ * match created before these became configurable rebuilds identically. Twin of
+ * `MatchSetupOverrides` in `supabase/functions/_shared/catalog.ts`.
+ */
+export interface MatchSetupOverrides {
+  betrayalReputationPenalty?: number | undefined
+  betrayalTruceRounds?: number | undefined
+}
+
+/**
  * Rebuilds the frozen `GameConfig` a match started from, from its persisted
  * seed/mapSize/seats — the same assembly the `start-match` Edge Function runs
  * server-side (docs/MULTIPLAYER.md §5, §10). Seat identity, not user id, is
@@ -44,6 +55,7 @@ export function buildMatchConfig(
   seed: number,
   mapSize: GameConfig['mapSize'],
   seats: SeatConfig[],
+  setupOverrides: MatchSetupOverrides = {},
 ): GameConfig {
   const players: PlayerConfig[] = seats.map((s) => ({
     id: `seat-${s.seat}`,
@@ -56,7 +68,12 @@ export function buildMatchConfig(
     seed,
     mapSize,
     players,
-    setup: GAME_SETUP,
+    setup: {
+      ...GAME_SETUP,
+      betrayalReputationPenalty:
+        setupOverrides.betrayalReputationPenalty ?? GAME_SETUP.betrayalReputationPenalty,
+      betrayalTruceRounds: setupOverrides.betrayalTruceRounds ?? GAME_SETUP.betrayalTruceRounds,
+    },
     combatStats: combatStatsData(),
     content: buildCatalog(),
     aiTuning: AI_TUNING,

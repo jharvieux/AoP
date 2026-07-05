@@ -381,6 +381,90 @@ describe('alliance betrayal (#138)', () => {
   })
 })
 
+describe('alliance betrayal truce window (#177)', () => {
+  const leaveP1P2 = (state: GameState): GameState =>
+    applyAction(state, { type: 'leaveAlliance', playerId: 'p1', otherId: 'p2' })
+
+  // Pass the turn around the full three-seat table so `state.round` ticks up by
+  // one; it starts and ends on p1's turn, so the result is p1's to act on.
+  const advanceRound = (state: GameState): GameState =>
+    (['p1', 'p2', 'p3'] as const).reduce(
+      (s, id) => applyAction(s, { type: 'endTurn', playerId: id }),
+      state,
+    )
+
+  it('still charges betrayal for a leave-then-immediate-strike inside the window', () => {
+    // The #177 gap: leaving unilaterally then striking the same turn used to be free.
+    const left = leaveP1P2(betrayalState())
+    expect(areAllied(left, 'p1', 'p2')).toBe(false)
+    const next = betray(left)
+    expect(reputationOf(next, 'p1')).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
+    // The truce entry is spent by the strike — a second hit can't be billed again.
+    expect(next.alliances.broken ?? []).toEqual([])
+  })
+
+  it('still charges betrayal a round after leaving — the window outlasts the same turn', () => {
+    const waited = advanceRound(leaveP1P2(betrayalState())) // round 2; 2 − 1 = 1 < 2
+    expect(waited.round).toBe(2)
+    const next = betray(waited)
+    expect(reputationOf(next, 'p1')).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
+  })
+
+  it('is a free, penalty-free strike once the truce window has fully elapsed', () => {
+    let state = leaveP1P2(betrayalState()) // left in round 1
+    state = advanceRound(advanceRound(state)) // round 3; 3 − 1 = 2, window elapsed
+    expect(state.round).toBe(3)
+    const before = state.alliances
+    const next = betray(state)
+    expect(reputationOf(next, 'p1')).toBe(GAME_SETUP.startingReputation)
+    // No current alliance and no penalty: the graph is left untouched.
+    expect(next.alliances).toEqual(before)
+  })
+
+  it('a truce of 0 restores the pre-#177 rule: leaving frees an immediate strike', () => {
+    const state = leaveP1P2(betrayalState(true, { betrayalTruceRounds: 0 }))
+    // With the window disabled, no truce entry is even recorded.
+    expect(state.alliances.broken ?? []).toEqual([])
+    const next = betray(state)
+    expect(reputationOf(next, 'p1')).toBe(GAME_SETUP.startingReputation)
+  })
+
+  it('applies the host-configured reputation cost to a truce-window betrayal, not the default', () => {
+    const next = betray(leaveP1P2(betrayalState(true, { betrayalReputationPenalty: 70 })))
+    expect(reputationOf(next, 'p1')).toBe(GAME_SETUP.startingReputation - 70)
+  })
+
+  it('replays a leave→wait→strike log to a byte-identical state', () => {
+    const capId = (id: string): string => captainsOf(betrayalState(), id)[0]!.id
+    const log: Action[] = [
+      { type: 'leaveAlliance', playerId: 'p1', otherId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p3' },
+      {
+        type: 'attackCaptain',
+        playerId: 'p1',
+        captainId: capId('p1'),
+        targetCaptainId: capId('p2'),
+        attackerOrders: ['broadside'],
+      },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(betrayalState(), log)
+    const b = replay(betrayalState(), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+    // Struck in round 2 (2 − 1 = 1 < 2): still inside the window, so betrayal.
+    expect(reputationOf(a, 'p1')).toBe(
+      GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
+    )
+  })
+})
+
 describe('allianceComponents (#140 alliance-cluster mirroring)', () => {
   const state = (pairs: [string, string][]): AllianceState => ({
     pairs: pairs.map(([a, b]) => ({ a, b })),

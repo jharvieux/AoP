@@ -24,10 +24,13 @@ import {
 } from './actions'
 import {
   canonicalPair,
+  clearBrokenAlliance,
   pairEquals,
   pairsContain,
   proposalBetween,
   pruneAlliancesForSeats,
+  recordBrokenAlliance,
+  wasAllyWithinTruce,
 } from './alliances'
 import {
   BOARD_DOCTRINES,
@@ -63,7 +66,7 @@ import {
   TACTICS,
   type TacticDriver,
 } from './tactics'
-import type { Captain, CityState, GameState, PlayerState, TroopStack } from './types'
+import type { AllianceState, Captain, CityState, GameState, PlayerState, TroopStack } from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /**
@@ -323,11 +326,16 @@ function attackCaptain(
     }
   }
 
-  // Betrayal (#138): attacking an ally is legal — no leave step required — but
-  // the alliance dissolves and the attacker pays the reputation price, in the
-  // same action as the battle itself (never an intermediate state where an ally
-  // was attacked and the alliance stands).
-  const betrayal = areAllied(state, attacker.ownerId, target.ownerId)
+  // Betrayal (#138, #177): attacking an ally is legal — no leave step required —
+  // but the alliance dissolves and the attacker pays the reputation price, in
+  // the same action as the battle itself (never an intermediate state where an
+  // ally was attacked and the alliance stands). It is equally a betrayal to
+  // strike an ex-ally still inside the truce window (#177): leaving first no
+  // longer buys a free same-turn backstab — only waiting out the window does.
+  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
+  const betrayal =
+    areAllied(state, attacker.ownerId, target.ownerId) ||
+    wasAllyWithinTruce(state.alliances, attacker.ownerId, target.ownerId, state.round, truceRounds)
 
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
@@ -393,13 +401,19 @@ function attackCaptain(
           : p,
       )
     : state.players
+  // On a betrayal, drop any live pair (the current-ally case) and clear the
+  // truce entry (the ex-ally case) so the same window can't be billed twice.
   const alliances = betrayal
-    ? {
-        pairs: state.alliances.pairs.filter(
-          (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
-        ),
-        proposals: state.alliances.proposals,
-      }
+    ? clearBrokenAlliance(
+        {
+          ...state.alliances,
+          pairs: state.alliances.pairs.filter(
+            (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
+          ),
+        },
+        attacker.ownerId,
+        target.ownerId,
+      )
     : state.alliances
 
   const settled = settleEliminations({
@@ -818,7 +832,7 @@ function proposeAlliance(state: GameState, action: ProposeAllianceAction): GameS
   return {
     ...state,
     alliances: {
-      pairs,
+      ...state.alliances,
       proposals: [...proposals, { from: action.playerId, to: action.targetId }],
     },
   }
@@ -837,31 +851,45 @@ function acceptAlliance(state: GameState, action: AcceptAllianceAction): GameSta
     throw new InvalidActionError(`No alliance proposal from ${action.proposerId} to accept`, action)
   }
   requireAllianceReputation(state, [action.playerId, action.proposerId], action)
+  // Re-forming an alliance voids any lingering truce entry from a past break
+  // (#177): you cannot be inside a truce window for an alliance you are back in.
   return {
     ...state,
-    alliances: {
-      pairs: [...pairs, canonicalPair(action.playerId, action.proposerId)],
-      proposals: proposals.filter((_, i) => i !== idx),
-    },
+    alliances: clearBrokenAlliance(
+      {
+        ...state.alliances,
+        pairs: [...pairs, canonicalPair(action.playerId, action.proposerId)],
+        proposals: proposals.filter((_, i) => i !== idx),
+      },
+      action.playerId,
+      action.proposerId,
+    ),
   }
 }
 
 /**
  * Break an existing alliance (#136). Unilateral: the acting seat dissolves its
  * pair with `otherId`; shared vision through the ex-ally drops on the next view
- * (#137). Rejected unless the two are currently allied.
+ * (#137). Rejected unless the two are currently allied. Opens the betrayal truce
+ * window (#177): while it stands, attacking the ex-ally is still betrayal, so
+ * leaving no longer buys a free same-turn backstab.
  */
 function leaveAlliance(state: GameState, action: LeaveAllianceAction): GameState {
-  const { pairs, proposals } = state.alliances
+  const { pairs } = state.alliances
   if (!pairsContain(pairs, action.playerId, action.otherId)) {
     throw new InvalidActionError(`Not allied with ${action.otherId}`, action)
   }
+  const dropped: AllianceState = {
+    ...state.alliances,
+    pairs: pairs.filter((p) => !pairEquals(p, action.playerId, action.otherId)),
+  }
+  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
   return {
     ...state,
-    alliances: {
-      pairs: pairs.filter((p) => !pairEquals(p, action.playerId, action.otherId)),
-      proposals,
-    },
+    alliances:
+      truceRounds > 0
+        ? recordBrokenAlliance(dropped, action.playerId, action.otherId, state.round, truceRounds)
+        : dropped,
   }
 }
 

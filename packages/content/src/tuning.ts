@@ -161,9 +161,19 @@ export interface GameSetup {
   /**
    * Reputation lost for betrayal (#138) — attacking an ally without leaving the
    * alliance first. The primary betrayal-cost knob: raise it to make treachery
-   * rarer, lower it to make alliances more fluid.
+   * rarer, lower it to make alliances more fluid. Host-configurable per match
+   * (#177); the default here is the slider's opening value.
    */
   betrayalReputationPenalty: number
+  /**
+   * Betrayal truce window (#177): rounds that must elapse after leaving an
+   * alliance before attacking the ex-ally is a free, penalty-free strike. Until
+   * then, hitting the ex-ally still costs `betrayalReputationPenalty` — so
+   * leaving first no longer buys a free same-turn backstab (the #177 gap). `0`
+   * disables the truce (immediate free strikes, the pre-#177 behavior).
+   * Host-configurable per match; the default here is the slider's opening value.
+   */
+  betrayalTruceRounds: number
   /**
    * Minimum reputation a seat needs to form a NEW alliance (#138) — below it,
    * proposals involving that seat are rejected. Existing alliances are
@@ -231,6 +241,11 @@ export const GAME_SETUP: GameSetup = {
   combatWinXp: 40,
   startingReputation: 100,
   betrayalReputationPenalty: 40,
+  // Two rounds: after leaving, both the break round and the next round still
+  // count as betrayal, so the ex-ally gets at least one full turn cycle of
+  // warning before the strike goes free — a one-round window could let an
+  // attacker who left just before the victim's turn strike almost immediately.
+  betrayalTruceRounds: 2,
   allianceReputationMin: 30,
 }
 

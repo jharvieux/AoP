@@ -129,6 +129,15 @@ export interface GameSetup {
   startingReputation: number
   /** Reputation lost for attacking an ally without leaving the alliance first (#138). */
   betrayalReputationPenalty: number
+  /**
+   * Truce window (#177): rounds that must pass after leaving an alliance before
+   * attacking the ex-ally is a free, penalty-free strike. While fewer than this
+   * many rounds have elapsed since the break, hitting the ex-ally still counts
+   * as betrayal and costs `betrayalReputationPenalty` — closing the
+   * leave-then-strike backstab. `0` disables the truce (immediate free strikes,
+   * the pre-#177 behavior). Host-configurable at match setup.
+   */
+  betrayalTruceRounds: number
   /** Minimum reputation a seat needs to form a new alliance (#138); existing ones are unaffected. */
   allianceReputationMin: number
 }
@@ -226,6 +235,22 @@ export interface AllianceProposal {
 }
 
 /**
+ * An alliance left within the last `betrayalTruceRounds` rounds (#177). Stored
+ * with the seat ids in canonical order (`a` &lt; `b`, like {@link AlliancePair})
+ * plus the `round` the alliance was left, so `attackCaptain` can tell a
+ * penalty-free strike (the truce window has elapsed) from a leave-then-strike
+ * backstab (it has not) without re-reading the removed pair. Self-cleaning:
+ * expired entries are dropped when the next break is recorded, so the list
+ * stays bounded to alliances broken inside the current truce window.
+ */
+export interface BrokenAlliance {
+  a: string
+  b: string
+  /** 1-based {@link GameState.round} in which the alliance was left. */
+  round: number
+}
+
+/**
  * The dynamic alliance graph (#136) — the single source of truth for who is
  * allied with whom, seeded at game start from {@link PlayerConfig.team} and
  * mutated only by the propose/accept/leave actions through `applyAction()`.
@@ -236,6 +261,13 @@ export interface AllianceState {
   pairs: AlliancePair[]
   /** Outstanding proposals awaiting the recipient's accept. */
   proposals: AllianceProposal[]
+  /**
+   * Recently-left alliances still inside the betrayal truce window (#177).
+   * Absent when none are pending (and on pre-#177 snapshots, which replay
+   * unchanged: no truce entries means no truce protection, matching the
+   * behavior those matches were frozen with).
+   */
+  broken?: BrokenAlliance[]
 }
 
 /**
