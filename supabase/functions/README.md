@@ -17,11 +17,24 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
 | `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list) | #150  |
 
-Maintenance (not player-facing — gated by a shared secret, never a user JWT):
+Maintenance (not player-facing — gated by a shared secret or the service role, never a user JWT):
 
 | Function            | Contract                                                                      | Issue |
 | ------------------- | ----------------------------------------------------------------------------- | ----- |
 | `compact-snapshots` | `POST { matchId?, roundsPerSnapshot? } -> { matchesProcessed, totalDeleted }` | #37   |
+| `drain-matchmaking` | `POST -> { matchesCreated, playersMatched, matches }` (service-role only)     | #153  |
+
+`drain-matchmaking` (§14) drains the quick-match queue: it groups compatible waiters (same
+`match_size` + `map_size`, FIFO) into fresh matches, seats them, starts each match (createGame
+→ seq-0 snapshot → `active`), and removes them from the queue. Overlapping invocations are
+safe: each group is claimed by the `claim_matchmaking_group` RPC (`SELECT ... FOR UPDATE SKIP
+LOCKED` + delete-in-transaction, `supabase/migrations/20260706000000_matchmaking_queue.sql`),
+so two drains lock disjoint rows and no waiter is ever double-matched; a short bucket claims
+nobody, so the queue is never left half-consumed. Service-role gated (no user JWT); cron wiring
+is `20260706000001_matchmaking_drain_cron.sql` (every minute, the #130/#144 Vault pattern).
+Players join/leave the queue with direct RLS-scoped writes to their own `matchmaking_queue`
+row — no enqueue Edge Function. Rating-based matchmaking (#151/#152) and the queue UI (#155)
+are separate issues.
 
 `compact-snapshots` (§10) trims each active match's `match_snapshots` history to the keep-set
 — snapshot 0, the two newest, and one per N rounds — leaving the action log intact so
@@ -48,8 +61,10 @@ this function only tells a client which `matchId`s exist to join.
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side
 `ContentCatalog`/`GameConfig` builder, twin of `apps/web/src/catalog.ts`), `match.ts`
-(state reconstruction, the `submit-action` transaction, settings/faction validation), and
-`compaction.ts` (the snapshot keep-set I/O; the pure policy lives in `@aop/shared`).
+(state reconstruction, the `submit-action` transaction, settings/faction validation),
+`compaction.ts` (the snapshot keep-set I/O; the pure policy lives in `@aop/shared`), and
+`matchmaking.ts` (the quick-match drain I/O; the pure grouping/seat policy and the DI drain
+orchestration live in `@aop/shared`).
 
 ## Monetization (docs/ARCHITECTURE.md §9)
 
