@@ -7,6 +7,8 @@ import {
   pathCost,
   visibleState,
   type Action,
+  type BattleReport,
+  type BoardOrder,
   type EncounterChoice,
   type EncounterKind,
   type GameState,
@@ -15,6 +17,7 @@ import {
 import { FACTIONS } from '@aop/content'
 import { chebyshevDistance } from '@aop/shared'
 import { useEffect, useMemo, useState } from 'react'
+import { BattleBoardSheet } from '../BattleBoardSheet'
 import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
@@ -34,12 +37,22 @@ const ODDS_TRIALS = 120
 
 interface GameScreenProps {
   game: GameState
+  /** Structured result of the last combat, shown in the battle sheet (#39). */
+  battleReport: BattleReport | null
+  onDismissBattleReport: () => void
   onAction: (action: Action) => void
   onSaveSlot: (slotId: string) => Promise<void>
   onLoadSlot: (slotId: string) => void
 }
 
-export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScreenProps) {
+export function GameScreen({
+  game,
+  battleReport,
+  onDismissBattleReport,
+  onAction,
+  onSaveSlot,
+  onLoadSlot,
+}: GameScreenProps) {
   const { factionName } = useTheme()
   const player = currentPlayer(game)
   // Fog and interaction are anchored to the human seat, so the view stays stable
@@ -57,7 +70,9 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   // AI seats play themselves, one action per tick, so the main thread never
   // blocks. The same nextAiAction() runs unchanged in a worker or edge function.
   useEffect(() => {
-    if (game.status !== 'active' || !player.isAI) return
+    // Pause while the battle sheet is open so the player can read the report
+    // before the AI plays on.
+    if (game.status !== 'active' || !player.isAI || battleReport) return
     let cancelled = false
     const id = setTimeout(() => {
       if (cancelled) return
@@ -67,7 +82,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
       cancelled = true
       clearTimeout(id)
     }
-  }, [game, player, onAction])
+  }, [game, player, onAction, battleReport])
 
   const { visible, explored } = useMemo(() => visibleState(game, viewer.id), [game, viewer.id])
   const visibleKeys = useMemo(() => new Set(visible.map((c) => `${c.x},${c.y}`)), [visible])
@@ -254,6 +269,17 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
         orders,
       })
     },
+    onSetBoardOrders: (boardOrders: BoardOrder[]) => {
+      if (!viewerCaptainAtCity) return
+      // Board doctrine rides the same action; naval orders are re-sent as-is.
+      onAction({
+        type: 'setStandingOrders',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        orders: viewerCaptainAtCity.standingOrders ?? [],
+        boardOrders,
+      })
+    },
     onChooseCaptainSkill: (skillId: string) => {
       if (!viewerCaptainAtCity) return
       onAction({
@@ -346,6 +372,14 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
           )}
         </div>
       </div>
+
+      {battleReport && (
+        <BattleBoardSheet
+          report={battleReport}
+          playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
+          onClose={onDismissBattleReport}
+        />
+      )}
 
       {attackTarget && odds && (
         <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>

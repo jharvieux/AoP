@@ -12,8 +12,10 @@ _Pirate-themed strategy game loosely based on Heroes of Might and Magic._
 - **Combat**: ship-vs-ship and city assault. Outcome driven by ship strength (hull, cannons,
   upgrades), captain skills, and troop composition. **Hybrid model**: combat resolves in
   rounds, and each round the player picks a tactic (broadside, board, ram, flee, …) that
-  shifts the odds — auto-resolve stays available for lopsided fights. A full HoMM-style
-  tactical battle board for troop/land combat is a planned future upgrade.
+  shifts the odds — auto-resolve stays available for lopsided fights. A landed boarding
+  action sends both crews to the full HoMM-style **tactical battle board** (#39): a hex
+  grid with initiative order, terrain, retaliation, and flanking, where the melee decides
+  the battle.
 - **Random encounters**: merchants (trade), natives (trade/fight/quest), settlers
   (recruit/escort/raid).
 - **Multiplayer**: match-based, asynchronous turns (a match may span days; players are
@@ -104,8 +106,15 @@ defenders set **standing orders** (default stance/tactic priorities per fleet an
 "evade if outgunned, else broadside"); the attacker plays their rounds interactively against
 the defender's orders. This is the same mechanism the AI uses, so it comes nearly free.
 
-Because all combat flows through one engine function, the future tactical battle board for
-troop combat replaces the resolver without touching networking or persistence.
+Because all combat flows through one engine function, the tactical battle board (#39)
+replaced the troop-combat resolver without touching networking or persistence: a landed
+grapple halts the gunnery and the crews fight it out on a hex board (initiative by unit
+speed, terrain movement costs and cover, one retaliation per round, flanking). The same
+three-driver pattern carries over — the attacker's recorded board commands ride the
+attack action, offline defenders fight by saved board doctrine, and the AI drives
+auto-resolve. Board combat is enabled by the battle tuning in a match's frozen stats
+snapshot, so pre-existing saves and logs replay unchanged. City assaults will reuse the
+same board via its land-combat entry point.
 
 ## 7. AI
 
@@ -137,8 +146,9 @@ filtered views, async turn notifications + turn timers, alliances (shared vision
 non-aggression, chat), reconnect/resume, replays.
 
 **Phase 4 — Polish & expansion**
-Tactical battle board for troop/land combat, matchmaking/rankings, more maps + a map
-editor, Capacitor native builds with push notifications.
+Tactical battle board for troop/land combat (engine + playback shipped in #39; interactive
+battle UI tracked in #93), matchmaking/rankings, more maps + a map editor, Capacitor
+native builds with push notifications.
 
 ## 9. Accounts, ads & monetization
 

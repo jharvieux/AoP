@@ -1,4 +1,11 @@
-import { applyAction, createGame, replay, type Action, type GameState } from '@aop/engine'
+import {
+  applyActionWithOutcome,
+  createGame,
+  replay,
+  type Action,
+  type BattleReport,
+  type GameState,
+} from '@aop/engine'
 import { useEffect, useState } from 'react'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
@@ -21,6 +28,9 @@ export function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
+  // Structured result of the last combat, for the battle report sheet (#39).
+  // Derived output, never part of the replayable state or the saved log.
+  const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
   // A test-play match launched from the map editor (#41) skips autosave and
   // returns to the editor (not the main menu) when it ends.
   const [isTestPlay, setIsTestPlay] = useState(false)
@@ -30,6 +40,7 @@ export function App() {
     // from @aop/content (see NewGameSetup); the engine itself holds no balance data.
     setConfig(setupConfig)
     setActionLog([])
+    setBattleReport(null)
     setGame(createGame(setupConfig))
     setIsTestPlay(false)
     setScreen('game')
@@ -50,12 +61,14 @@ export function App() {
   // skip autosave so sculpting a draft map never clobbers a real save slot.
   function handleAction(action: Action) {
     if (!game || !config) return
-    const next = applyAction(game, action)
+    const outcome = applyActionWithOutcome(game, action)
+    const next = outcome.state
     const nextLog = [...actionLog, action]
     setGame(next)
     setActionLog(nextLog)
+    if (outcome.battleReport) setBattleReport(outcome.battleReport)
     if (!isTestPlay) void saveGame('autosave', config, nextLog, next.round)
-    if (next.status === 'finished') setScreen('game-over')
+    if (next.status === 'finished' && !outcome.battleReport) setScreen('game-over')
   }
 
   async function handleSaveSlot(slotId: string) {
@@ -68,8 +81,15 @@ export function App() {
     if (!record) return
     setConfig(record.config)
     setActionLog(record.actions)
+    setBattleReport(null)
     setGame(replay(createGame(record.config), record.actions))
     setScreen('game')
+  }
+
+  /** Closing the battle sheet is what advances to game-over after a final blow. */
+  function handleDismissBattleReport() {
+    setBattleReport(null)
+    if (game?.status === 'finished') setScreen('game-over')
   }
 
   function handleRematch() {
@@ -115,6 +135,8 @@ export function App() {
       {screen === 'game' && game && (
         <GameScreen
           game={game}
+          battleReport={battleReport}
+          onDismissBattleReport={handleDismissBattleReport}
           onAction={handleAction}
           onSaveSlot={handleSaveSlot}
           onLoadSlot={handleLoadSlot}

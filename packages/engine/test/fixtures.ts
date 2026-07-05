@@ -4,6 +4,7 @@ import type {
   AiPersonality,
   AiPersonalityWeights,
   AiTuning,
+  BattleTuning,
   CombatTuning,
   GameSetup,
   MapValidationLimits,
@@ -31,6 +32,30 @@ export const TACTICS_TUNING: TacticsTuning = {
   disadvantage: 0.8,
   ramHullMin: 50,
   outgunnedRatio: 1.5,
+}
+
+export const BATTLE_TUNING: BattleTuning = {
+  boardWidth: 11,
+  boardHeight: 8,
+  maxStacksPerSide: 7,
+  maxRounds: 30,
+  defaultUnitSpeed: 4,
+  damageRollMin: 0.9,
+  damageRollSpread: 0.2,
+  attackDefenseFactor: 0.05,
+  minDamageModifier: 0.4,
+  maxDamageModifier: 2,
+  flankingBonus: 1.2,
+  coverDamageReduction: 0.25,
+  holdDamageReduction: 0.15,
+  roughMoveCost: 2,
+  boardingBlockedDensity: 0.12,
+  boardingRoughDensity: 0,
+  boardingCoverDensity: 0.06,
+  landBlockedDensity: 0.08,
+  landRoughDensity: 0.12,
+  landCoverDensity: 0.1,
+  outnumberedRatio: 1.5,
 }
 
 export const GAME_SETUP: GameSetup = {
