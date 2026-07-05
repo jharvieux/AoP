@@ -50,6 +50,7 @@ const RECRUIT_UNIT: Record<FactionId, string> = {
   british: 'sailor',
   spanish: 'milicia',
   dutch: 'company-hand',
+  french: 'corsaire',
 }
 
 export const ENCOUNTERS: EncounterCatalog = {

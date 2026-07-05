@@ -42,14 +42,18 @@ import { findPath } from './pathfinding'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
 import {
+  aggressiveTacticDriver,
   aiTacticDriver,
+  cautiousTacticDriver,
   ORDER_CONDITIONS,
+  plainTacticDriver,
   resolveTacticalCombat,
   standingOrdersDriver,
   tacticPlanDriver,
   TACTICS,
+  type TacticDriver,
 } from './tactics'
-import type { Captain, CityState, GameState, TroopStack } from './types'
+import type { Captain, CityState, GameState, PlayerState, TroopStack } from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /**
@@ -248,6 +252,20 @@ export function captainToCombatant(
   return combatant
 }
 
+/**
+ * The combat AI driver a seat fights with when it has no player-supplied orders
+ * (#25). Human seats and unprofiled AIs use the default; profiled AIs get a
+ * personality-flavored driver, with `easy` deliberately playing the weak line.
+ */
+function aiTacticDriverForOwner(state: GameState, ownerId: string): TacticDriver {
+  const profile = state.players.find((p) => p.id === ownerId)?.aiProfile
+  if (!profile) return aiTacticDriver
+  if (profile.difficulty === 'easy') return plainTacticDriver
+  if (profile.personality === 'aggressive') return aggressiveTacticDriver
+  if (profile.personality === 'economic') return cautiousTacticDriver
+  return aiTacticDriver
+}
+
 function attackCaptain(
   state: GameState,
   action: AttackCaptainAction,
@@ -300,10 +318,10 @@ function attackCaptain(
     {
       attacker: action.attackerOrders?.length
         ? tacticPlanDriver(action.attackerOrders)
-        : aiTacticDriver,
+        : aiTacticDriverForOwner(state, attacker.ownerId),
       defender: target.standingOrders?.length
         ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-        : aiTacticDriver,
+        : aiTacticDriverForOwner(state, target.ownerId),
       // Board melee (#39): the attacker plays its recorded commands; the
       // defender fights by the board orders its own owner saved in state.
       // Either side without a plan is driven by the board AI.
@@ -756,7 +774,7 @@ function advanceTurn(state: GameState): GameState {
       ? state.players.map((p) =>
           p.eliminated
             ? p
-            : { ...p, resources: addResources(p.resources, playerIncome(state, p.id, content)) },
+            : { ...p, resources: addResources(p.resources, difficultyIncome(state, p, content)) },
         )
       : state.players
 
@@ -783,6 +801,24 @@ function advanceTurn(state: GameState): GameState {
     { ...state, currentPlayerIndex: index, round, players, cities, encounters },
     state.players[index]!.id,
   )
+}
+
+/**
+ * A player's per-round income after their difficulty modifier (#25). `hard` AIs
+ * may collect a bonus; `easy`/`normal` (and every human seat) take the raw income
+ * unchanged — the no-resource-cheating guarantee. Floored to keep integer pools.
+ */
+function difficultyIncome(state: GameState, player: PlayerState, content: ContentCatalog) {
+  const income = playerIncome(state, player.id, content)
+  const table = state.config.aiDifficulties
+  const mult = player.aiProfile && table ? table[player.aiProfile.difficulty].incomeMult : 1
+  if (mult === 1) return income
+  return {
+    gold: Math.floor(income.gold * mult),
+    timber: Math.floor(income.timber * mult),
+    iron: Math.floor(income.iron * mult),
+    rum: Math.floor(income.rum * mult),
+  }
 }
 
 /** Restore a player's captains to full movement at the start of their turn. */

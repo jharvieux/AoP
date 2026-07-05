@@ -219,6 +219,54 @@ export const aiTacticDriver: TacticDriver = {
   },
 }
 
+/**
+ * Aggressive combat AI (#25): press the attack. Pin a fleeing enemy, otherwise
+ * force close-quarters (board, then ram) to end the fight fast; only break off
+ * when nearly sunk. Suits the `aggressive` personality.
+ */
+export const aggressiveTacticDriver: TacticDriver = {
+  choose(ctx) {
+    if (ctx.ownHp < ctx.enemyHp * 0.25 && ctx.available.includes('evade')) return 'evade'
+    if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
+      if (ctx.available.includes('board')) return 'board'
+      if (ctx.available.includes('ram')) return 'ram'
+    }
+    if (ctx.available.includes('board')) return 'board'
+    if (ctx.available.includes('ram')) return 'ram'
+    return 'broadside'
+  },
+}
+
+/**
+ * Cautious combat AI (#25): preserve the fleet. Break off the moment the fight
+ * turns against you (ramming a chaser who has grappled you, since evading a held
+ * ship is doomed), and only commit to boarding from a commanding lead. Suits the
+ * `economic` personality, which would rather keep its ships than trade them.
+ */
+export const cautiousTacticDriver: TacticDriver = {
+  choose(ctx) {
+    if (ctx.ownHp < ctx.enemyHp && ctx.available.includes('evade')) {
+      const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
+      if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
+        return 'ram'
+      }
+      return 'evade'
+    }
+    if (ctx.ownStrength > ctx.enemyStrength * 1.4 && ctx.available.includes('board')) return 'board'
+    return 'broadside'
+  },
+}
+
+/**
+ * Unskilled combat AI (#25): hold the gun line and never adapt. Deliberately
+ * weaker than {@link aiTacticDriver} — the tactical play of an `easy` opponent.
+ */
+export const plainTacticDriver: TacticDriver = {
+  choose(ctx) {
+    return ctx.available.includes('broadside') ? 'broadside' : (ctx.available[0] ?? 'broadside')
+  },
+}
+
 export interface TacticalDrivers {
   attacker: TacticDriver
   defender: TacticDriver

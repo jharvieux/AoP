@@ -225,6 +225,70 @@ export const AI_TUNING: AiTuning = {
 }
 
 /**
+ * AI personalities & difficulty (#25). These overlays and modifiers are balance
+ * data, so — like {@link AiTuning} — they live here and get frozen into a match's
+ * config. The type shapes mirror @aop/engine's `AiPersonalityWeights` /
+ * `AiDifficultyModifier`; @aop/content never imports @aop/engine (the engine
+ * stays the leaf), so they are restated structurally here.
+ */
+export type AiPersonality = 'aggressive' | 'economic' | 'opportunist'
+export type AiDifficulty = 'easy' | 'normal' | 'hard'
+
+export interface AiPersonalityWeights {
+  combatScoreMult: number
+  engageMinRatioMult: number
+  economyScoreMult: number
+  minGoldReserveMult: number
+}
+
+export interface AiDifficultyModifier {
+  blunderChance: number
+  incomeMult: number
+}
+
+/**
+ * Weight overlays multiplied into {@link AI_TUNING} per personality:
+ * - aggressive: fights hard and often (higher combat scores, a far lower engage
+ *   threshold), spends its reserve freely, and under-invests in economy.
+ * - economic: hoards gold and builds up (higher economy scores + reserve) and
+ *   only fights from a clear advantage (raised engage threshold).
+ * - opportunist: a balanced raider — slightly combat-leaning but pickier about
+ *   its fights, closing on targets it can beat while it keeps developing.
+ */
+export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {
+  aggressive: {
+    combatScoreMult: 1.6,
+    engageMinRatioMult: 0.7,
+    economyScoreMult: 0.9,
+    minGoldReserveMult: 0.6,
+  },
+  economic: {
+    combatScoreMult: 0.8,
+    engageMinRatioMult: 1.3,
+    economyScoreMult: 1.6,
+    minGoldReserveMult: 1.6,
+  },
+  opportunist: {
+    combatScoreMult: 1.15,
+    engageMinRatioMult: 1.1,
+    economyScoreMult: 1.1,
+    minGoldReserveMult: 1,
+  },
+}
+
+/**
+ * Difficulty modifiers. `blunderChance` is how often the AI takes its runner-up
+ * move instead of its best; `incomeMult` is a per-round resource bonus. Per #25,
+ * `incomeMult` MUST stay 1 for `easy`/`normal` (no resource cheating) — only
+ * `hard` collects a bonus.
+ */
+export const AI_DIFFICULTIES: Record<AiDifficulty, AiDifficultyModifier> = {
+  easy: { blunderChance: 0.35, incomeMult: 1 },
+  normal: { blunderChance: 0, incomeMult: 1 },
+  hard: { blunderChance: 0, incomeMult: 1.25 },
+}
+
+/**
  * Bounds an authored {@link MapDefinition} (@aop/engine, #62) must satisfy.
  * Mirrors the engine's `MapValidationLimits` shape so `validateMapDefinition`
  * can be called with this data without the engine importing @aop/content.

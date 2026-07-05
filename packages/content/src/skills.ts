@@ -185,8 +185,50 @@ const DUTCH_TREE = tree('dutch', [
   },
 ])
 
+const FRENCH_TREE = tree('french', [
+  {
+    id: 'french-gunnery-1',
+    name: 'Corsair Broadside',
+    description: 'Privateer gun crews trained for speed over precision: +12% attack.',
+    category: 'gunnery',
+    tier: 1,
+    attackBonusPct: 12,
+    defenseBonusPct: 0,
+  },
+  {
+    id: 'french-navigation-1',
+    name: 'Swift Corsair Rigging',
+    description: 'Lighter rigging built for the chase: +11% defense.',
+    category: 'navigation',
+    tier: 2,
+    attackBonusPct: 0,
+    defenseBonusPct: 11,
+  },
+  {
+    id: 'french-boarding-1',
+    name: 'Musketeer Volley',
+    description: 'Disciplined musket fire before the boarders close: +9% attack, +5% defense.',
+    category: 'boarding',
+    tier: 3,
+    attackBonusPct: 9,
+    defenseBonusPct: 5,
+  },
+  {
+    id: 'french-plunder-1',
+    name: "Corsair's Bounty",
+    description: "The crown pays well for a captain's prize: +7% attack, +9% defense.",
+    category: 'plunder',
+    tier: 4,
+    attackBonusPct: 7,
+    defenseBonusPct: 9,
+  },
+])
+
 export const SKILLS: Record<string, SkillDef> = Object.fromEntries(
-  [...PIRATES_TREE, ...BRITISH_TREE, ...SPANISH_TREE, ...DUTCH_TREE].map((s) => [s.id, s]),
+  [...PIRATES_TREE, ...BRITISH_TREE, ...SPANISH_TREE, ...DUTCH_TREE, ...FRENCH_TREE].map((s) => [
+    s.id,
+    s,
+  ]),
 )
 
 /** A faction's skill tree, ordered by tier — the order the mobile skill-tree UI lists picks in. */
