@@ -8,17 +8,7 @@
 
 import { serviceClient } from '../_shared/client.ts'
 import { errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { verifyStripeSignature } from '../_shared/stripe.ts'
-
-interface CheckoutSessionCompleted {
-  type?: string
-  data?: {
-    object?: {
-      client_reference_id?: string
-      metadata?: { user_id?: string }
-    }
-  }
-}
+import { processStripeWebhook } from '../_shared/stripe.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -30,15 +20,11 @@ Deno.serve(async (req) => {
     // Signature verification needs Stripe's exact raw bytes — read as text
     // before any JSON parsing.
     const rawBody = await req.text()
-    const valid = await verifyStripeSignature(rawBody, req.headers.get('Stripe-Signature'), secret)
-    if (!valid)
-      return jsonResponse({ error: { code: 'FORBIDDEN', message: 'Invalid signature' } }, 400)
-
-    const event = JSON.parse(rawBody) as CheckoutSessionCompleted
-    if (event.type === 'checkout.session.completed') {
-      const object = event.data?.object
-      const userId = object?.client_reference_id ?? object?.metadata?.user_id
-      if (userId) {
+    const outcome = await processStripeWebhook({
+      rawBody,
+      signatureHeader: req.headers.get('Stripe-Signature'),
+      secret,
+      grantRemoveAds: async (userId) => {
         const db = serviceClient()
         const { error } = await db
           .from('entitlements')
@@ -47,8 +33,11 @@ Deno.serve(async (req) => {
             { onConflict: 'user_id,key', ignoreDuplicates: true },
           )
         if (error) throw new Error(`Could not grant entitlement: ${error.message}`)
-      }
-    }
+      },
+    })
+
+    if (!outcome.ok)
+      return jsonResponse({ error: { code: 'FORBIDDEN', message: 'Invalid signature' } }, 400)
 
     return jsonResponse({ received: true })
   } catch (err) {

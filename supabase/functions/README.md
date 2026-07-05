@@ -31,9 +31,13 @@ package), the same "just `fetch`" convention as `apps/web/src/auth/supabaseAuth.
 | `stripe-webhook`          | `POST` (called by Stripe, `Stripe-Signature` header) | Grants `remove_ads` on `checkout.session.completed`. |
 
 Additional env vars beyond the ones listed under Deploy & run below: `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET` (from the Stripe dashboard's webhook endpoint config), and
-`STRIPE_REMOVE_ADS_PRICE_ID` (the Price id for the one-time "remove ads" product) — see
-`.env.example` at the repo root. Native IAP (App/Play Store) is not implemented here yet;
+`STRIPE_WEBHOOK_SECRET` (from the Stripe dashboard's webhook endpoint config),
+`STRIPE_REMOVE_ADS_PRICE_ID` (the Price id for the one-time "remove ads" product), and
+`CHECKOUT_ALLOWED_ORIGINS` — a **required**, comma-separated allowlist of the web app's own
+origin(s) (e.g. `https://ageofplunder.app,http://localhost:5173`). `create-checkout-session`
+rejects any `successUrl`/`cancelUrl` outside these origins (open-redirect guard, #105) and
+fails closed if the var is unset. See `.env.example` at the repo root. Native IAP
+(App/Play Store) is not implemented here yet;
 it needs real store credentials to verify receipts against, which is an operator action —
 see the client-side hook in `apps/web/src/monetization/iap.ts`.
 
