@@ -1,8 +1,15 @@
 import { useState } from 'react'
-import { AI_TUNING, FACTIONS, GAME_SETUP, combatStatsData } from '@aop/content'
+import {
+  AI_DIFFICULTIES,
+  AI_PERSONALITIES,
+  AI_TUNING,
+  GAME_SETUP,
+  combatStatsData,
+} from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
-import type { PlayerConfig, TroopStack } from '@aop/engine'
+import type { AiDifficulty, AiPersonality, AiProfile, PlayerConfig } from '@aop/engine'
 import { buildCatalog } from '../catalog'
+import { createDefaultPlayer, DEFAULT_AI_PROFILE, FACTIONS_ARRAY, starterTroops } from '../players'
 import { useTheme } from '../theme/ThemeContext'
 import type { GameSetupConfig } from '../types'
 
@@ -12,28 +19,11 @@ interface NewGameSetupProps {
 }
 
 const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
-const FACTIONS_ARRAY = Object.values(FACTIONS)
+const PERSONALITIES: AiPersonality[] = ['aggressive', 'economic', 'opportunist']
+const DIFFICULTIES: AiDifficulty[] = ['easy', 'normal', 'hard']
 
-function getDefaultFaction(index: number): FactionId {
-  const faction = FACTIONS_ARRAY[index % FACTIONS_ARRAY.length]
-  if (!faction) throw new Error('No factions available')
-  return faction.id
-}
-
-/** Starting crew for a faction's captain, drawn from its tier-1 unit in @aop/content. */
-function starterTroops(faction: FactionId): TroopStack[] {
-  const unit = FACTIONS[faction].units[0]
-  if (!unit) throw new Error(`Faction ${faction} has no units`)
-  return [{ unitId: unit.id, count: 6 }]
-}
-
-function createDefaultPlayer(index: number): PlayerConfig {
-  return {
-    id: index === 0 ? 'player-0' : `ai-${index}`,
-    name: index === 0 ? 'You' : `Captain ${index}`,
-    faction: getDefaultFaction(index),
-    isAI: index !== 0,
-  }
+function titleCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
@@ -70,7 +60,21 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
     const updated = [...players]
     const current = updated[index]
     if (current) {
-      updated[index] = { ...current, isAI: !current.isAI }
+      const isAI = !current.isAI
+      const { aiProfile, ...rest } = current
+      // An AI seat carries a profile; a human seat drops it.
+      updated[index] = isAI
+        ? { ...rest, isAI, aiProfile: aiProfile ?? { ...DEFAULT_AI_PROFILE } }
+        : { ...rest, isAI }
+      setPlayers(updated)
+    }
+  }
+
+  function handleProfileChange(index: number, patch: Partial<AiProfile>) {
+    const updated = [...players]
+    const current = updated[index]
+    if (current?.aiProfile) {
+      updated[index] = { ...current, aiProfile: { ...current.aiProfile, ...patch } }
       setPlayers(updated)
     }
   }
@@ -86,6 +90,8 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
       combatStats: combatStatsData(),
       content: buildCatalog(),
       aiTuning: AI_TUNING,
+      aiPersonalities: AI_PERSONALITIES,
+      aiDifficulties: AI_DIFFICULTIES,
     })
   }
 
@@ -159,6 +165,42 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
                     </option>
                   ))}
                 </select>
+                {player.isAI && player.aiProfile && (
+                  <div className="ai-profile">
+                    <select
+                      className="personality-select"
+                      value={player.aiProfile.personality}
+                      onChange={(e) =>
+                        handleProfileChange(index, {
+                          personality: e.target.value as AiPersonality,
+                        })
+                      }
+                      title="AI personality"
+                    >
+                      {PERSONALITIES.map((p) => (
+                        <option key={p} value={p}>
+                          {titleCase(p)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="difficulty-select"
+                      value={player.aiProfile.difficulty}
+                      onChange={(e) =>
+                        handleProfileChange(index, {
+                          difficulty: e.target.value as AiDifficulty,
+                        })
+                      }
+                      title="AI difficulty"
+                    >
+                      {DIFFICULTIES.map((d) => (
+                        <option key={d} value={d}>
+                          {titleCase(d)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             ))}
           </div>

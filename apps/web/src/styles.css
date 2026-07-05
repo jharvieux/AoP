@@ -137,6 +137,10 @@ button.large {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
+  /* Gesture audit (#42): contain scroll chaining so a fully-scrolled panel
+     doesn't rubber-band into the native WebView chrome (Android's overscroll
+     glow / iOS's edge-swipe-back gesture reading it as a navigation swipe). */
+  overscroll-behavior: contain;
 }
 
 .menu-screen {
@@ -497,6 +501,7 @@ button.primary.secondary {
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: #122f4d;
   border-top: 2px solid #2a5580;
   border-radius: 16px 16px 0 0;
@@ -678,4 +683,102 @@ button.primary.secondary {
   border-radius: 4px;
   padding: 6px 14px;
   font-weight: 600;
+}
+
+.map-editor-screen {
+  padding: 16px;
+  overflow: hidden;
+}
+
+.map-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+
+.map-editor-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.map-editor-canvas-wrap {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: #0b1d2d;
+  border-radius: 8px;
+  border: 1px solid #2a5580;
+}
+
+.map-editor-canvas {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.map-editor-validation {
+  width: 240px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding-left: 8px;
+  border-left: 1px solid #2a5580;
+}
+
+.map-editor-name-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 2px solid #2a5580;
+  border-radius: 6px;
+  background: #122f4d;
+  color: #e8dcc0;
+  font-size: 0.9rem;
+}
+
+.map-editor-hint {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+.map-editor-code-box {
+  width: 100%;
+  min-height: 70px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 2px solid #2a5580;
+  border-radius: 6px;
+  background: #0b1d2d;
+  color: #e8dcc0;
+  font-family: monospace;
+  font-size: 0.75rem;
+  resize: vertical;
+}
+
+.map-editor-error {
+  color: #e0685a;
+  font-size: 0.8rem;
+}
+
+.map-editor-status {
+  color: #3be2a1;
+  font-size: 0.8rem;
+}
+
+.map-editor-valid {
+  color: #3be2a1;
+  font-size: 0.85rem;
+}
+
+.map-editor-error-list {
+  list-style: disc;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: #e0b64f;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }

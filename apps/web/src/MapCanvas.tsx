@@ -20,7 +20,9 @@ const TILE = 32
 const MIN_SCALE = 0.4
 const MAX_SCALE = 3
 
-const TILE_COLOR = {
+// Exported so the map editor canvas (#41) renders tiles/encounters with the
+// same palette as gameplay — one visual vocabulary for "what a tile means".
+export const TILE_COLOR = {
   deep: '#1b4a6b',
   shallows: '#2a6a8f',
   land: '#4a7c3f',
@@ -32,7 +34,7 @@ const OWN_SHIP = '#3be2a1'
 const ENEMY_SHIP = '#e23b3b'
 const OWN_CITY = '#c9a227'
 const ENEMY_CITY = '#9aa0a6'
-const ENCOUNTER_COLOR = {
+export const ENCOUNTER_COLOR = {
   merchant: '#e0b64f',
   natives: '#6fbf73',
   settlers: '#c98bdb',
