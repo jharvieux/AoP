@@ -30,6 +30,7 @@ import { DIALOGUE } from '../audio/dialogueClips'
 import { useEncounterAudio } from '../audio/useEncounterAudio'
 import { hapticImpact, hapticTap } from '../haptics'
 import { UI_ICON } from '../uiIcons'
+import { ENCOUNTER_PORTRAIT } from '../encounterPortraits'
 
 const BATTLE_TAUNT_KEY = 'battle-taunt'
 
@@ -461,6 +462,12 @@ export function GameScreen({
           }
           onClose={() => setEncounterId(null)}
         >
+          <img
+            className="encounter-portrait"
+            src={ENCOUNTER_PORTRAIT[encounter.kind]}
+            alt=""
+            aria-hidden
+          />
           <section className="button-group">
             {encounterChoices.map((choice) => (
               <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>

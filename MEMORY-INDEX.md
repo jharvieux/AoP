@@ -1,15 +1,10 @@
 # MEMORY index
 
-One line per decision, newest first. Rebuild with:
-
-```bash
-{ printf '# MEMORY index\n\n'; \
-  printf 'One line per decision, newest first.\n\n## Entries\n\n'; \
-  grep -E '^## D-[0-9]+' MEMORY.md | sed 's/^## /- /'; } > MEMORY-INDEX.md
-```
+One line per decision, newest first.
 
 ## Entries
 
+- D-016 — 2026-07-05 — Art (#89): DreamShaper painterly re-pass, character/vehicle art only
 - D-015 — 2026-07-04 — Tactical battle board: hex melee decides boardings; gated by frozen battle tuning
 - D-014 — 2026-07-04 — Capacitor (#42): scaffold only, defer the dependency install
 - D-013 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
