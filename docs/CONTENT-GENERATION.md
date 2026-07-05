@@ -1,10 +1,9 @@
 # Content generation pipeline
 
 How locally-generated audio and art get from a text prompt into the game. This complements
-the tool-level setup guide (`~/AI-TOOLS-GUIDE.md`, not checked into the repo — it documents
-what's installed on the operator's machine) with the parts that are repo-specific: where
-generated files live, what "done" looks like, and which files in this codebase they hook
-into.
+the tool-level setup guide (`docs/AI-TOOLS-GUIDE.md`) with the parts that are repo-specific:
+where generated files live, what "done" looks like, and which files in this codebase they
+hook into.
 
 **Status as of this writing**: the tooling to generate NPC dialogue clips (issue #75,
 script at `~/aop-ai-tools/`) exists and works, but the 10 predefined `.wav` files have not

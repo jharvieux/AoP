@@ -1,46 +1,74 @@
-import { applyAction, createGame, replay, type Action, type GameState } from '@aop/engine'
-import { useState } from 'react'
+import {
+  applyActionWithOutcome,
+  createGame,
+  replay,
+  type Action,
+  type BattleReport,
+  type GameState,
+} from '@aop/engine'
+import { useEffect, useState } from 'react'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { AccountScreen } from './screens/AccountScreen'
+import { MapEditorScreen } from './screens/MapEditorScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
+import { registerBackButtonHandler } from './plugins/androidBackButton'
 
-type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs' | 'account'
+type Screen = 'menu' | 'setup' | 'game' | 'game-over' | 'theme-packs' | 'account' | 'map-editor'
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('menu')
   const [game, setGame] = useState<GameState | null>(null)
   const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
+  // Structured result of the last combat, for the battle report sheet (#39).
+  // Derived output, never part of the replayable state or the saved log.
+  const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
+  // A test-play match launched from the map editor (#41) skips autosave and
+  // returns to the editor (not the main menu) when it ends.
+  const [isTestPlay, setIsTestPlay] = useState(false)
 
   function handleStartNewGame(setupConfig: GameSetupConfig) {
     // config already carries setup + startingTroops + frozen combatStats + content
     // from @aop/content (see NewGameSetup); the engine itself holds no balance data.
     setConfig(setupConfig)
     setActionLog([])
+    setBattleReport(null)
     setGame(createGame(setupConfig))
+    setIsTestPlay(false)
     setScreen('game')
     audioManager.play(DIALOGUE.narratorIntro, { key: 'narrator-intro' })
   }
 
+  function handleTestPlay(setupConfig: GameSetupConfig) {
+    setConfig(setupConfig)
+    setActionLog([])
+    setGame(createGame(setupConfig))
+    setIsTestPlay(true)
+    setScreen('game')
+  }
+
   // Every mutation flows through here so the action log stays authoritative —
   // saves persist the log (not raw state) and load replays it, the same
-  // event-sourced path multiplayer will use server-side (#4).
+  // event-sourced path multiplayer will use server-side (#4). Test-play matches
+  // skip autosave so sculpting a draft map never clobbers a real save slot.
   function handleAction(action: Action) {
     if (!game || !config) return
-    const next = applyAction(game, action)
+    const outcome = applyActionWithOutcome(game, action)
+    const next = outcome.state
     const nextLog = [...actionLog, action]
     setGame(next)
     setActionLog(nextLog)
-    void saveGame('autosave', config, nextLog, next.round)
-    if (next.status === 'finished') setScreen('game-over')
+    if (outcome.battleReport) setBattleReport(outcome.battleReport)
+    if (!isTestPlay) void saveGame('autosave', config, nextLog, next.round)
+    if (next.status === 'finished' && !outcome.battleReport) setScreen('game-over')
   }
 
   async function handleSaveSlot(slotId: string) {
@@ -53,8 +81,15 @@ export function App() {
     if (!record) return
     setConfig(record.config)
     setActionLog(record.actions)
+    setBattleReport(null)
     setGame(replay(createGame(record.config), record.actions))
     setScreen('game')
+  }
+
+  /** Closing the battle sheet is what advances to game-over after a final blow. */
+  function handleDismissBattleReport() {
+    setBattleReport(null)
+    if (game?.status === 'finished') setScreen('game-over')
   }
 
   function handleRematch() {
@@ -62,9 +97,21 @@ export function App() {
   }
 
   function handleReturnToMenu() {
-    setScreen('menu')
+    setScreen(isTestPlay ? 'map-editor' : 'menu')
     setGame(null)
+    setIsTestPlay(false)
   }
+
+  // Android hardware back / gesture-nav back: return to the menu from any
+  // other screen instead of falling through to Capacitor's default (exiting
+  // the app) — see plugins/androidBackButton.ts. No-op on web/no native shell.
+  useEffect(() => {
+    return registerBackButtonHandler(() => {
+      if (screen === 'menu') return false
+      setScreen('menu')
+      return true
+    })
+  }, [screen])
 
   return (
     <div className="app">
@@ -74,6 +121,7 @@ export function App() {
           onStart={() => setScreen('setup')}
           onThemePacks={() => setScreen('theme-packs')}
           onAccount={() => setScreen('account')}
+          onMapEditor={() => setScreen('map-editor')}
         />
       )}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
@@ -81,9 +129,14 @@ export function App() {
       {screen === 'setup' && (
         <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
       )}
+      {screen === 'map-editor' && (
+        <MapEditorScreen onBack={() => setScreen('menu')} onTestPlay={handleTestPlay} />
+      )}
       {screen === 'game' && game && (
         <GameScreen
           game={game}
+          battleReport={battleReport}
+          onDismissBattleReport={handleDismissBattleReport}
           onAction={handleAction}
           onSaveSlot={handleSaveSlot}
           onLoadSlot={handleLoadSlot}

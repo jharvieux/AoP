@@ -10,6 +10,8 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-015 — 2026-07-04 — Tactical battle board: hex melee decides boardings; gated by frozen battle tuning
+- D-014 — 2026-07-04 — Capacitor (#42): scaffold only, defer the dependency install
 - D-013 — 2026-07-01 — Phase-1 engine vertical slice: map, pathfinding, hybrid combat, AI, sim harness
 - D-012 — 2026-07-01 — Port pre-pr-reviewer audit agent from ATC (partial reversal of D-011)
 - D-011 — 2026-07-01 — Adopt ATC harness conventions (CLAUDE.md, MEMORY/SESSION, hooks, bare model labels)
