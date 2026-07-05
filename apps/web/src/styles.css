@@ -937,3 +937,106 @@ button.primary.secondary {
   flex-direction: column;
   gap: 6px;
 }
+
+/* Diplomacy panel + chat UI (#141): alliances/proposals/reputation, and the
+   per-match "all"/"alliance" chat channels. */
+
+.diplomacy-section {
+  margin-bottom: 16px;
+}
+
+.diplomacy-section h3 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.diplomacy-empty {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.diplomacy-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.diplomacy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #2a5580;
+  border-radius: 8px;
+  background: #0e2740;
+}
+
+.diplomacy-row__name {
+  font-weight: 700;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.diplomacy-row__reputation {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.diplomacy-row__hint {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.chat-panel__tabs {
+  margin-bottom: 10px;
+}
+
+.chat-panel__messages {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #0e2740;
+  font-size: 0.85rem;
+}
+
+.chat-message--own {
+  background: #163a5c;
+  align-self: flex-end;
+}
+
+.chat-message__author {
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.chat-panel__composer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-panel__composer .text-input {
+  flex: 1;
+}
