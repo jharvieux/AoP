@@ -338,6 +338,38 @@ export type Database = {
           },
         ]
       }
+      player_ratings: {
+        Row: {
+          created_at: string
+          matches_played: number
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          matches_played?: number
+          rating?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          matches_played?: number
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'player_ratings_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
