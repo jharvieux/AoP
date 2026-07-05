@@ -157,6 +157,7 @@ export const FACTION_BUILDING_NAMES: Partial<Record<FactionId, Record<string, st
   british: { barracks: 'Drill Yard', palisade: 'Redoubt' },
   spanish: { barracks: 'Cuartel', palisade: 'Empalizada' },
   dutch: { barracks: 'Schutterij Hall', palisade: 'Aardwerk' },
+  french: { barracks: 'Caserne', palisade: 'Palissade' },
 }
 
 /** The display name for a building, honoring per-faction flavor overrides. */

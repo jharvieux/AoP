@@ -1,0 +1,3 @@
+# Machine-generated; owned by pnpm, not by the formatter. Prettier 3.9 began
+# reformatting its YAML, which broke `pnpm verify` on an untouched lockfile.
+pnpm-lock.yaml

@@ -17,6 +17,8 @@ export interface UnitDef {
   goldCost: number
   /** New recruits available per round, replenished up to no cap (HoMM weekly-growth style). */
   weeklyGrowth: number
+  /** Battle-board speed (#39): hexes per activation, and initiative rank (faster acts first). */
+  speed: number
 }
 
 export interface FactionDef {
@@ -41,6 +43,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 6,
         goldCost: 25,
         weeklyGrowth: 8,
+        speed: 6,
       },
       {
         id: 'cutthroat',
@@ -51,6 +54,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 12,
         goldCost: 60,
         weeklyGrowth: 5,
+        speed: 6,
       },
       {
         id: 'buccaneer',
@@ -61,6 +65,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 22,
         goldCost: 140,
         weeklyGrowth: 3,
+        speed: 5,
       },
       {
         id: 'dread-corsair',
@@ -71,6 +76,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 40,
         goldCost: 320,
         weeklyGrowth: 1,
+        speed: 5,
       },
     ],
   },
@@ -88,6 +94,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 7,
         goldCost: 30,
         weeklyGrowth: 8,
+        speed: 5,
       },
       {
         id: 'redcoat',
@@ -98,6 +105,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 14,
         goldCost: 70,
         weeklyGrowth: 5,
+        speed: 4,
       },
       {
         id: 'royal-marine',
@@ -108,6 +116,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 24,
         goldCost: 150,
         weeklyGrowth: 3,
+        speed: 5,
       },
       {
         id: 'ship-of-the-line-crew',
@@ -118,6 +127,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 42,
         goldCost: 340,
         weeklyGrowth: 1,
+        speed: 4,
       },
     ],
   },
@@ -135,6 +145,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 8,
         goldCost: 30,
         weeklyGrowth: 8,
+        speed: 4,
       },
       {
         id: 'rodelero',
@@ -145,6 +156,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 13,
         goldCost: 65,
         weeklyGrowth: 5,
+        speed: 5,
       },
       {
         id: 'conquistador',
@@ -155,6 +167,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 23,
         goldCost: 155,
         weeklyGrowth: 3,
+        speed: 5,
       },
       {
         id: 'tercio-veteran',
@@ -165,6 +178,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 44,
         goldCost: 350,
         weeklyGrowth: 1,
+        speed: 4,
       },
     ],
   },
@@ -182,6 +196,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 7,
         goldCost: 22,
         weeklyGrowth: 8,
+        speed: 4,
       },
       {
         id: 'schutter',
@@ -192,6 +207,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 12,
         goldCost: 55,
         weeklyGrowth: 5,
+        speed: 5,
       },
       {
         id: 'sea-beggar',
@@ -202,6 +218,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 21,
         goldCost: 135,
         weeklyGrowth: 3,
+        speed: 6,
       },
       {
         id: 'voc-guard',
@@ -212,6 +229,59 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         health: 45,
         goldCost: 330,
         weeklyGrowth: 1,
+        speed: 3,
+      },
+    ],
+  },
+  french: {
+    id: 'french',
+    name: 'French',
+    description:
+      'Corsairs and crown regiments alike: aggressive gunnery and rapid rearmament, at the cost of a thinner hull.',
+    units: [
+      {
+        id: 'corsaire',
+        name: 'Corsaire',
+        tier: 1,
+        attack: 2,
+        defense: 1,
+        health: 6,
+        goldCost: 24,
+        weeklyGrowth: 9,
+        speed: 6,
+      },
+      {
+        id: 'mousquetaire',
+        name: 'Mousquetaire',
+        tier: 2,
+        attack: 6,
+        defense: 2,
+        health: 12,
+        goldCost: 65,
+        weeklyGrowth: 6,
+        speed: 6,
+      },
+      {
+        id: 'grenadier',
+        name: 'Grenadier',
+        tier: 3,
+        attack: 9,
+        defense: 4,
+        health: 20,
+        goldCost: 150,
+        weeklyGrowth: 4,
+        speed: 5,
+      },
+      {
+        id: 'garde-du-roi',
+        name: 'Garde du Roi',
+        tier: 4,
+        attack: 15,
+        defense: 7,
+        health: 38,
+        goldCost: 330,
+        weeklyGrowth: 2,
+        speed: 5,
       },
     ],
   },

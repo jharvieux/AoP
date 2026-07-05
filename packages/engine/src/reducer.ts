@@ -20,6 +20,13 @@ import {
   type UpgradeShipAction,
 } from './actions'
 import {
+  BOARD_DOCTRINES,
+  BOARD_ORDER_CONDITIONS,
+  boardOrdersDriver,
+  boardPlanDriver,
+  type BoardCommand,
+} from './battleBoard'
+import {
   createCombatStats,
   effectiveShip,
   type BattleReport,
@@ -35,14 +42,18 @@ import { findPath } from './pathfinding'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
 import {
+  aggressiveTacticDriver,
   aiTacticDriver,
+  cautiousTacticDriver,
   ORDER_CONDITIONS,
+  plainTacticDriver,
   resolveTacticalCombat,
   standingOrdersDriver,
   tacticPlanDriver,
   TACTICS,
+  type TacticDriver,
 } from './tactics'
-import type { Captain, CityState, GameState, TroopStack } from './types'
+import type { Captain, CityState, GameState, PlayerState, TroopStack } from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /**
@@ -241,6 +252,20 @@ export function captainToCombatant(
   return combatant
 }
 
+/**
+ * The combat AI driver a seat fights with when it has no player-supplied orders
+ * (#25). Human seats and unprofiled AIs use the default; profiled AIs get a
+ * personality-flavored driver, with `easy` deliberately playing the weak line.
+ */
+function aiTacticDriverForOwner(state: GameState, ownerId: string): TacticDriver {
+  const profile = state.players.find((p) => p.id === ownerId)?.aiProfile
+  if (!profile) return aiTacticDriver
+  if (profile.difficulty === 'easy') return plainTacticDriver
+  if (profile.personality === 'aggressive') return aggressiveTacticDriver
+  if (profile.personality === 'economic') return cautiousTacticDriver
+  return aiTacticDriver
+}
+
 function attackCaptain(
   state: GameState,
   action: AttackCaptainAction,
@@ -269,6 +294,11 @@ function attackCaptain(
       throw new InvalidActionError(`Unknown tactic '${tactic}' in attacker orders`, action)
     }
   }
+  for (const command of action.boardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
 
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
@@ -288,10 +318,19 @@ function attackCaptain(
     {
       attacker: action.attackerOrders?.length
         ? tacticPlanDriver(action.attackerOrders)
-        : aiTacticDriver,
+        : aiTacticDriverForOwner(state, attacker.ownerId),
       defender: target.standingOrders?.length
         ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-        : aiTacticDriver,
+        : aiTacticDriverForOwner(state, target.ownerId),
+      // Board melee (#39): the attacker plays its recorded commands; the
+      // defender fights by the board orders its own owner saved in state.
+      // Either side without a plan is driven by the board AI.
+      ...(action.boardCommands?.length
+        ? { attackerBoard: boardPlanDriver(action.boardCommands) }
+        : {}),
+      ...(target.boardOrders?.length
+        ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
+        : {}),
     },
   )
   const { report } = result
@@ -321,6 +360,19 @@ function attackCaptain(
 
 const MAX_STANDING_ORDERS = 8
 
+/** Structural check on an action-log board command: plain integers only. */
+function isValidBoardCommand(command: BoardCommand): boolean {
+  if (!Number.isInteger(command.stackId) || command.stackId < 0) return false
+  if (command.to !== undefined) {
+    if (!Number.isInteger(command.to.col) || !Number.isInteger(command.to.row)) return false
+    if (command.to.col < 0 || command.to.row < 0) return false
+  }
+  if (command.targetId !== undefined) {
+    if (!Number.isInteger(command.targetId) || command.targetId < 0) return false
+  }
+  return true
+}
+
 function setStandingOrders(state: GameState, action: SetStandingOrdersAction): GameState {
   const captain = state.captains.find((c) => c.id === action.captainId)
   if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
@@ -335,10 +387,35 @@ function setStandingOrders(state: GameState, action: SetStandingOrdersAction): G
       throw new InvalidActionError(`Invalid standing order '${order.when}/${order.tactic}'`, action)
     }
   }
+  if (action.boardOrders) {
+    if (action.boardOrders.length > MAX_STANDING_ORDERS) {
+      throw new InvalidActionError(`At most ${MAX_STANDING_ORDERS} board orders`, action)
+    }
+    for (const order of action.boardOrders) {
+      if (
+        !BOARD_DOCTRINES.includes(order.doctrine) ||
+        !BOARD_ORDER_CONDITIONS.includes(order.when)
+      ) {
+        throw new InvalidActionError(
+          `Invalid board order '${order.when}/${order.doctrine}'`,
+          action,
+        )
+      }
+    }
+  }
   return {
     ...state,
     captains: state.captains.map((c) =>
-      c.id === captain.id ? { ...c, standingOrders: action.orders.map((o) => ({ ...o })) } : c,
+      c.id === captain.id
+        ? {
+            ...c,
+            standingOrders: action.orders.map((o) => ({ ...o })),
+            // Absent = untouched; [] = cleared. Naval orders always replace.
+            ...(action.boardOrders
+              ? { boardOrders: action.boardOrders.map((o) => ({ ...o })) }
+              : {}),
+          }
+        : c,
     ),
   }
 }
@@ -697,7 +774,7 @@ function advanceTurn(state: GameState): GameState {
       ? state.players.map((p) =>
           p.eliminated
             ? p
-            : { ...p, resources: addResources(p.resources, playerIncome(state, p.id, content)) },
+            : { ...p, resources: addResources(p.resources, difficultyIncome(state, p, content)) },
         )
       : state.players
 
@@ -724,6 +801,24 @@ function advanceTurn(state: GameState): GameState {
     { ...state, currentPlayerIndex: index, round, players, cities, encounters },
     state.players[index]!.id,
   )
+}
+
+/**
+ * A player's per-round income after their difficulty modifier (#25). `hard` AIs
+ * may collect a bonus; `easy`/`normal` (and every human seat) take the raw income
+ * unchanged — the no-resource-cheating guarantee. Floored to keep integer pools.
+ */
+function difficultyIncome(state: GameState, player: PlayerState, content: ContentCatalog) {
+  const income = playerIncome(state, player.id, content)
+  const table = state.config.aiDifficulties
+  const mult = player.aiProfile && table ? table[player.aiProfile.difficulty].incomeMult : 1
+  if (mult === 1) return income
+  return {
+    gold: Math.floor(income.gold * mult),
+    timber: Math.floor(income.timber * mult),
+    iron: Math.floor(income.iron * mult),
+    rum: Math.floor(income.rum * mult),
+  }
 }
 
 /** Restore a player's captains to full movement at the start of their turn. */

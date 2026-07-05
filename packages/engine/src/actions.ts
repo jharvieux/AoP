@@ -5,6 +5,7 @@
  */
 
 import type { Coord } from '@aop/shared'
+import type { BoardCommand, BoardOrder } from './battleBoard'
 import type { EncounterChoice } from './content'
 import type { StandingOrder, TacticId } from './tactics'
 
@@ -50,6 +51,16 @@ export interface AttackCaptainAction {
   captainId: string
   targetCaptainId: string
   attackerOrders?: TacticId[]
+  /**
+   * The attacker's recorded battle-board commands (#39), one per activation of
+   * the attacker's stacks, used if the battle goes to a boarding melee. An
+   * interactive client simulates the board locally (the engine's board step is
+   * pure), records the player's commands here, and the server re-derives the
+   * identical fight from the log. Omitted means the board AI fights the melee.
+   * Like `attackerOrders`, the defender's side is never accepted from the
+   * attacker — it comes from the target captain's own board orders in state.
+   */
+  boardCommands?: BoardCommand[]
 }
 
 /**
@@ -62,6 +73,13 @@ export interface SetStandingOrdersAction {
   playerId: string
   captainId: string
   orders: StandingOrder[]
+  /**
+   * Conditional board doctrine (#39) used when this captain's crew is dragged
+   * into a boarding melee while its owner is offline — the board analog of the
+   * naval `orders`. Omitted leaves the captain's board orders untouched; an
+   * empty array clears them (back to the board AI).
+   */
+  boardOrders?: BoardOrder[]
 }
 
 /** Construct a building in one of the player's cities. HoMM-style: one build per city per turn. */

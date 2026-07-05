@@ -1,6 +1,25 @@
 import type { Coord } from '@aop/shared'
 import { chebyshevDistance } from '@aop/shared'
+import type { EncounterKind } from './content'
 import { inBounds, isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } from './map'
+
+/**
+ * An author-placed encounter (#41 map editor). When a `MapDefinition` carries
+ * these, `createGame` seeds `GameState.encounters` from this fixed list
+ * instead of scattering encounters via the seeded RNG (`spawnEncounters`) —
+ * still deterministic (no RNG draw at all), so authored placements replay
+ * identically without disturbing the RNG stream generated maps rely on.
+ */
+export interface EncounterPlacement {
+  kind: EncounterKind
+  position: Coord
+}
+
+const VALID_ENCOUNTER_KINDS: ReadonlySet<string> = new Set<EncounterKind>([
+  'merchant',
+  'natives',
+  'settlers',
+])
 
 /**
  * Authored maps (#62): a hand-built map is wire-compatible with a generated
@@ -9,8 +28,13 @@ import { inBounds, isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } fr
  * where the map came from. "Definition" names the authoring intent; nothing
  * about the runtime representation changes, which keeps replays, saves, and
  * multiplayer authority indifferent to the map's origin.
+ *
+ * `encounters` is optional and editor-only in origin: omit it (or leave it
+ * empty) and `createGame` falls back to the normal seeded encounter scatter.
  */
-export type MapDefinition = GameMap
+export interface MapDefinition extends GameMap {
+  encounters?: EncounterPlacement[]
+}
 
 /**
  * Snapshot any map (generated or authored) as a standalone, editable
@@ -173,6 +197,34 @@ export function validateMapDefinition(
       }
     })
   }
+
+  // Author-placed encounters (#41): must be a known kind, in bounds, and on
+  // navigable water — the same constraint spawnEncounters enforces for
+  // procedural placements. This is an untrusted-input boundary (map codes can
+  // be hand-edited or corrupted before import), so an unrecognized `kind`
+  // must fail loud here rather than reach the reducer's content lookup.
+  def.encounters?.forEach((enc, i) => {
+    if (!VALID_ENCOUNTER_KINDS.has(enc.kind)) {
+      errors.push({
+        code: 'encounter-invalid-kind',
+        message: `encounter ${i} has unrecognized kind "${String(enc.kind)}"`,
+      })
+      return
+    }
+    if (!inBounds(def, enc.position.x, enc.position.y)) {
+      errors.push({
+        code: 'encounter-out-of-bounds',
+        message: `encounter ${i} (${enc.position.x},${enc.position.y}) is outside the map`,
+      })
+      return
+    }
+    if (!isWaterTile(tileAt(def, enc.position))) {
+      errors.push({
+        code: 'encounter-not-water',
+        message: `encounter ${i} (${enc.position.x},${enc.position.y}) is not a water tile`,
+      })
+    }
+  })
 
   return { valid: errors.length === 0, errors }
 }

@@ -4,9 +4,10 @@ interface MainMenuProps {
   onStart: () => void
   onThemePacks: () => void
   onAccount: () => void
+  onMapEditor: () => void
 }
 
-export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
+export function MainMenu({ onStart, onThemePacks, onAccount, onMapEditor }: MainMenuProps) {
   const { muted, volume, setMuted, setVolume } = useAudioSettings()
 
   return (
@@ -16,6 +17,9 @@ export function MainMenu({ onStart, onThemePacks, onAccount }: MainMenuProps) {
         <p className="game-subtitle">A pirate strategy game</p>
         <button className="primary large" onClick={onStart}>
           New Game
+        </button>
+        <button className="secondary large" onClick={onMapEditor}>
+          Map Editor
         </button>
         <button className="secondary large" onClick={onThemePacks}>
           Theme Packs

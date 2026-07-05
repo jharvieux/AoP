@@ -1,3 +1,4 @@
+import type { BoardBattleLog } from './battleBoard'
 import { nextFloat, type RngState } from './rng'
 import type { TroopStack } from './types'
 
@@ -21,6 +22,12 @@ export interface UnitCombatStats {
   attack: number
   defense: number
   health: number
+  /**
+   * Board speed (#39): hexes per activation and initiative rank on the tactical
+   * battle board. Optional because pre-#39 match snapshots lack it; the board
+   * falls back to {@link BattleTuning.defaultUnitSpeed}.
+   */
+  speed?: number
 }
 
 export interface ShipCombatStats {
@@ -53,12 +60,51 @@ export interface TacticsTuning {
   outgunnedRatio: number
 }
 
+/**
+ * Tuned knobs for the tactical battle board (#39). Balance data, injected like
+ * {@link CombatTuning}. Its presence in a match's frozen stats snapshot is what
+ * enables board combat at all — pre-#39 snapshots lack it, so old saves and
+ * action logs replay exactly as they always did.
+ */
+export interface BattleTuning {
+  boardWidth: number
+  boardHeight: number
+  maxStacksPerSide: number
+  maxRounds: number
+  /** Board speed used for units whose stats predate the speed field. */
+  defaultUnitSpeed: number
+  damageRollMin: number
+  damageRollSpread: number
+  /** Damage multiplier slope per point of (attack − defense). */
+  attackDefenseFactor: number
+  minDamageModifier: number
+  maxDamageModifier: number
+  /** Damage multiplier when a second friendly stack is adjacent to the target. */
+  flankingBonus: number
+  /** Fraction of damage absorbed by a target standing on cover terrain. */
+  coverDamageReduction: number
+  /** Fraction of damage absorbed by a target that held (defensive posture). */
+  holdDamageReduction: number
+  /** Movement cost of a rough hex (open and cover hexes cost 1). */
+  roughMoveCost: number
+  boardingBlockedDensity: number
+  boardingRoughDensity: number
+  boardingCoverDensity: number
+  landBlockedDensity: number
+  landRoughDensity: number
+  landCoverDensity: number
+  /** HP ratio at which the 'outnumbered' board standing order fires. */
+  outnumberedRatio: number
+}
+
 /** Plain, JSON-serializable snapshot of the combat-relevant content numbers. */
 export interface CombatStatsData {
   units: UnitCombatStats[]
   ships: ShipCombatStats[]
   combat: CombatTuning
   tactics: TacticsTuning
+  /** Absent in pre-#39 snapshots; without it, battles never go to the board. */
+  battle?: BattleTuning
 }
 
 export interface CombatStats {
@@ -66,12 +112,13 @@ export interface CombatStats {
   ship(id: string): ShipCombatStats
   combat: CombatTuning
   tactics: TacticsTuning
+  battle?: BattleTuning
 }
 
 export function createCombatStats(data: CombatStatsData): CombatStats {
   const units = new Map(data.units.map((u) => [u.id, u]))
   const ships = new Map(data.ships.map((s) => [s.id, s]))
-  return {
+  const stats: CombatStats = {
     unit(id) {
       const u = units.get(id)
       if (!u) throw new Error(`Unknown unit stats: ${id}`)
@@ -85,6 +132,8 @@ export function createCombatStats(data: CombatStatsData): CombatStats {
     combat: data.combat,
     tactics: data.tactics,
   }
+  if (data.battle) stats.battle = data.battle
+  return stats
 }
 
 /** Effective ship stats for a combatant: purchased upgrades (#22) override the class stats. */
@@ -156,6 +205,8 @@ export interface BattleReport {
     attacker: TroopStack[]
     defender: TroopStack[]
   }
+  /** Full hex-board melee record when the battle went to the board (#39). */
+  board?: BoardBattleLog
 }
 
 export interface CombatResult {
@@ -191,15 +242,24 @@ export interface RoundEndView {
   tactics: RoundTactics
   attackerHp: number
   defenderHp: number
+  /** Surviving crews after the round — lets the boarding rule (#39) require live troops. */
+  attackerTroops: TroopStack[]
+  defenderTroops: TroopStack[]
 }
 
 /**
- * Optional hook the round engine calls after each round's damage is applied. It
- * lets a resolver end the battle early — e.g. the tactical layer's flee/escape
- * rules (#18). Returning a non-null ownerId marks that side as having escaped and
- * stops the fight; returning null continues.
+ * What a {@link RoundEndHook} may signal: an ownerId string marks that side as
+ * having escaped (flee rules, #18); `{ halt: true }` stops the gunnery loop so
+ * the caller can resolve the rest of the battle itself (the boarding
+ * transition to the battle board, #39); null continues the fight.
  */
-export type RoundEndHook = (view: RoundEndView) => string | null
+export type RoundEndSignal = string | { halt: true } | null
+
+/**
+ * Optional hook the round engine calls after each round's damage is applied,
+ * while both sides still float. See {@link RoundEndSignal} for what it may do.
+ */
+export type RoundEndHook = (view: RoundEndView) => RoundEndSignal
 
 /** v1 chooser: no tactics, no modifiers. */
 export const noTactics: TacticChooser = () => ({
@@ -338,13 +398,19 @@ export function resolveRounds(
     })
 
     if (onRoundEnd && attackerHpNow > 0 && defenderHpNow > 0) {
-      escapedId = onRoundEnd({
+      const signal = onRoundEnd({
         round,
         tactics,
         attackerHp: attackerHpNow,
         defenderHp: defenderHpNow,
+        attackerTroops: attacker.troops.map((t) => ({ ...t })),
+        defenderTroops: defender.troops.map((t) => ({ ...t })),
       })
-      if (escapedId) break
+      if (typeof signal === 'string') {
+        escapedId = signal
+        break
+      }
+      if (signal?.halt) break
     }
   }
 
