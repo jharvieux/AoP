@@ -26,6 +26,11 @@ export interface FactionDef {
   name: string
   description: string
   units: UnitDef[]
+  /** Generated art (#26/#109), served from apps/web/public. MapCanvas.tsx falls back to a
+   * flat-color shape when absent (see #115). */
+  shipSpriteUrl?: string
+  /** Generated art (#26/#110). No UI screen renders this yet — see #114. */
+  captainPortraitUrl?: string
 }
 
 export const FACTIONS: Record<FactionId, FactionDef> = {
@@ -33,6 +38,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     id: 'pirates',
     name: 'Pirates',
     description: 'Outlaws of every flag. Cheap, fast, and vicious — weak in a long fight.',
+    shipSpriteUrl: '/art/factions/pirates/ship.png',
+    captainPortraitUrl: '/art/factions/pirates/captain.png',
     units: [
       {
         id: 'deckhand',
@@ -84,6 +91,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     id: 'british',
     name: 'British',
     description: 'The Royal Navy: disciplined line infantry and superior gunnery.',
+    shipSpriteUrl: '/art/factions/british/ship.png',
+    captainPortraitUrl: '/art/factions/british/captain.png',
     units: [
       {
         id: 'sailor',
@@ -135,6 +144,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     id: 'spanish',
     name: 'Spanish',
     description: 'Treasure-fleet escorts and conquistadors: heavy armor, heavy gold.',
+    shipSpriteUrl: '/art/factions/spanish/ship.png',
+    captainPortraitUrl: '/art/factions/spanish/captain.png',
     units: [
       {
         id: 'milicia',
@@ -186,6 +197,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     id: 'dutch',
     name: 'Dutch',
     description: 'Merchant-company men of the VOC: economy-focused, strong defensively.',
+    shipSpriteUrl: '/art/factions/dutch/ship.png',
+    captainPortraitUrl: '/art/factions/dutch/captain.png',
     units: [
       {
         id: 'company-hand',
@@ -238,6 +251,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'French',
     description:
       'Corsairs and crown regiments alike: aggressive gunnery and rapid rearmament, at the cost of a thinner hull.',
+    shipSpriteUrl: '/art/factions/french/ship.png',
+    captainPortraitUrl: '/art/factions/french/captain.png',
     units: [
       {
         id: 'corsaire',

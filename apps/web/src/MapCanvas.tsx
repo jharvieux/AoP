@@ -2,10 +2,13 @@ import {
   tileIndex,
   type Captain,
   type CityState,
+  type EncounterKind,
   type EncounterState,
   type GameMap,
 } from '@aop/engine'
-import { Container, Graphics } from 'pixi.js'
+import { FACTIONS } from '@aop/content'
+import type { FactionId } from '@aop/shared'
+import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
 import { useEffect, useRef } from 'react'
 import { usePixiApp } from './usePixiApp'
 
@@ -40,6 +43,86 @@ export const ENCOUNTER_COLOR = {
   settlers: '#c98bdb',
 } as const
 
+// Generated art (#26). Only shallows/land have usable tile art so far — deep/port
+// regenerations kept drifting into repeating textures or a baked-in watermark (#108),
+// so they intentionally keep the flat-color Graphics fill below as their only look.
+const TILE_SPRITE_URL: Partial<Record<keyof typeof TILE_COLOR, string>> = {
+  shallows: '/art/tiles/shallows.png',
+  land: '/art/tiles/land.png',
+}
+const CITY_SPRITE_URL = {
+  own: '/art/cities/own.png',
+  enemy: '/art/cities/enemy.png',
+} as const
+const ENCOUNTER_SPRITE_URL: Record<EncounterKind, string> = {
+  merchant: '/art/encounters/merchant.png',
+  natives: '/art/encounters/natives.png',
+  settlers: '/art/encounters/settlers.png',
+}
+
+/**
+ * Loads and caches pixi.js Textures by URL, kicking off `Assets.load` at most
+ * once per URL and marking the given dirty flag so the next tick redraws once
+ * a texture lands. Missing/broken assets resolve to no texture forever — the
+ * caller's flat-color Graphics fallback keeps rendering instead (#115).
+ */
+function createTextureLoader(dirtyRef: { current: boolean }) {
+  const cache = new Map<string, Texture>()
+  const pending = new Set<string>()
+  return function getTexture(url: string): Texture | undefined {
+    const cached = cache.get(url)
+    if (cached) return cached
+    if (!pending.has(url)) {
+      pending.add(url)
+      Assets.load(url)
+        .then((texture: Texture) => {
+          cache.set(url, texture)
+          dirtyRef.current = true
+        })
+        .catch(() => {
+          // Leave unresolved; the flat-color fallback keeps rendering this asset's slot.
+        })
+    }
+    return undefined
+  }
+}
+
+/** Get-or-create a pooled Sprite by a stable key, and drop any pool entries not
+ * touched this frame — reused across redraws instead of destroyed/recreated on
+ * every dirty tick (panning re-dirties every frame, so this matters for #27's
+ * perf budget). */
+class SpritePool {
+  private readonly sprites = new Map<string, Sprite>()
+  private readonly usedThisFrame = new Set<string>()
+
+  constructor(private readonly parent: Container) {}
+
+  begin() {
+    this.usedThisFrame.clear()
+  }
+
+  get(key: string): Sprite {
+    this.usedThisFrame.add(key)
+    let sprite = this.sprites.get(key)
+    if (!sprite) {
+      sprite = new Sprite()
+      sprite.anchor.set(0.5)
+      this.sprites.set(key, sprite)
+      this.parent.addChild(sprite)
+    }
+    return sprite
+  }
+
+  end() {
+    for (const [key, sprite] of this.sprites) {
+      if (this.usedThisFrame.has(key)) continue
+      this.parent.removeChild(sprite)
+      sprite.destroy()
+      this.sprites.delete(key)
+    }
+  }
+}
+
 interface Point {
   x: number
   y: number
@@ -63,6 +146,8 @@ export interface MapCanvasProps {
   exploredKeys: Set<string>
   selectedCaptainId: string | null
   onTileClick: (x: number, y: number) => void
+  /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
+  factionOf: (ownerId: string) => FactionId
 }
 
 export function MapCanvas(props: MapCanvasProps) {
@@ -84,10 +169,30 @@ export function MapCanvas(props: MapCanvasProps) {
 
     const world = new Container()
     const tiles = new Graphics()
+    const tileSprites = new Container()
     const entities = new Graphics()
+    const citySprites = new Container()
+    const encounterSprites = new Container()
+    const shipSprites = new Container()
     const highlight = new Graphics()
-    world.addChild(tiles, entities, highlight)
+    // Draw order: flat-color fallback first, then sprite layers on top, so a
+    // texture that finishes loading later simply covers its own fallback tile.
+    world.addChild(
+      tiles,
+      tileSprites,
+      entities,
+      citySprites,
+      encounterSprites,
+      shipSprites,
+      highlight,
+    )
     pixiApp.stage.addChild(world)
+
+    const getTexture = createTextureLoader(dirtyRef)
+    const tilePool = new SpritePool(tileSprites)
+    const cityPool = new SpritePool(citySprites)
+    const encounterPool = new SpritePool(encounterSprites)
+    const shipPool = new SpritePool(shipSprites)
 
     const view = viewRef.current
     const pointers = new Map<number, Point>()
@@ -117,6 +222,7 @@ export function MapCanvas(props: MapCanvasProps) {
         visibleKeys,
         exploredKeys,
         selectedCaptainId,
+        factionOf,
       } = propsRef.current
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
@@ -129,6 +235,7 @@ export function MapCanvas(props: MapCanvasProps) {
       const maxY = Math.min(map.height - 1, Math.ceil((h - view.y) / view.scale / TILE) + 1)
 
       tiles.clear()
+      tilePool.begin()
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
           const key = `${x},${y}`
@@ -140,39 +247,90 @@ export function MapCanvas(props: MapCanvasProps) {
             continue
           }
           const tile = map.tiles[tileIndex(map, x, y)]!
+          const spriteUrl = TILE_SPRITE_URL[tile.type]
+          const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+          if (texture) {
+            const sprite = tilePool.get(key)
+            sprite.texture = texture
+            sprite.width = TILE
+            sprite.height = TILE
+            sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
+            sprite.alpha = visibleNow ? 1 : 0.5
+            continue
+          }
           tiles.rect(x * TILE, y * TILE, TILE, TILE)
           tiles.fill({ color: TILE_COLOR[tile.type], alpha: visibleNow ? 1 : 0.5 })
         }
       }
+      tilePool.end()
 
       entities.clear()
-      // Encounters (#23): a diamond, only where currently in view, so fog hides them.
+      encounterPool.begin()
+      // Encounters (#23): art sprite when available, a flat diamond otherwise —
+      // only where currently in view, so fog hides them.
       for (const enc of encounters) {
         if (!enc.active) continue
         const key = `${enc.position.x},${enc.position.y}`
         if (!visibleKeys.has(key)) continue
         const cx = enc.position.x * TILE + TILE / 2
         const cy = enc.position.y * TILE + TILE / 2
+        const texture = getTexture(ENCOUNTER_SPRITE_URL[enc.kind])
+        if (texture) {
+          const sprite = encounterPool.get(enc.id)
+          sprite.texture = texture
+          sprite.width = TILE * 0.75
+          sprite.height = TILE * 0.75
+          sprite.position.set(cx, cy)
+          continue
+        }
         const r = TILE / 3
         entities.poly([cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy])
         entities.fill(ENCOUNTER_COLOR[enc.kind])
       }
+      encounterPool.end()
+
+      cityPool.begin()
       for (const city of cities) {
         const key = `${city.position.x},${city.position.y}`
         const own = city.ownerId === viewerId
         if (!own && !exploredKeys.has(key)) continue
+        const cx = city.position.x * TILE + TILE / 2
+        const cy = city.position.y * TILE + TILE / 2
+        const texture = getTexture(own ? CITY_SPRITE_URL.own : CITY_SPRITE_URL.enemy)
+        if (texture) {
+          const sprite = cityPool.get(city.id)
+          sprite.texture = texture
+          sprite.width = TILE - 8
+          sprite.height = TILE - 8
+          sprite.position.set(cx, cy)
+          continue
+        }
         entities.rect(city.position.x * TILE + 6, city.position.y * TILE + 6, TILE - 12, TILE - 12)
         entities.fill(own ? OWN_CITY : ENEMY_CITY)
       }
+      cityPool.end()
+
+      shipPool.begin()
       for (const cap of captains) {
         const key = `${cap.position.x},${cap.position.y}`
         const own = cap.ownerId === viewerId
         if (!own && !visibleKeys.has(key)) continue
         const cx = cap.position.x * TILE + TILE / 2
         const cy = cap.position.y * TILE + TILE / 2
+        const shipSpriteUrl = FACTIONS[factionOf(cap.ownerId)]?.shipSpriteUrl
+        const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
+        if (texture) {
+          const sprite = shipPool.get(cap.id)
+          sprite.texture = texture
+          sprite.width = TILE * 0.75
+          sprite.height = TILE * 0.75
+          sprite.position.set(cx, cy)
+          continue
+        }
         entities.circle(cx, cy, TILE / 2.6)
         entities.fill(own ? OWN_SHIP : ENEMY_SHIP)
       }
+      shipPool.end()
 
       highlight.clear()
       const selected = selectedCaptainId

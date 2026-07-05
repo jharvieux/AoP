@@ -324,6 +324,7 @@ export function GameScreen({
           exploredKeys={exploredKeys}
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
+          factionOf={factionOf}
         />
       </div>
 
