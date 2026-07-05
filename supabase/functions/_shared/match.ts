@@ -247,35 +247,51 @@ async function recordMissedTurn(
 async function finalize(db: Db, matchId: string, state: GameState): Promise<void> {
   if (state.status !== 'finished') return
   const winnerSeat = state.winnerId ? parseSeat(state.winnerId) : null
-  // The `status = 'active'` guard makes this the single authoritative
-  // active->finished transition: it matches a row exactly once. A retry (or any
-  // second finalize for this match) finds the row already 'finished', updates
-  // zero rows, and returns before touching ratings — so rating updates can never
-  // be double-applied even if the match-finish path runs twice (#152).
-  const { data, error } = await db
-    .from('matches')
-    .update({ status: 'finished', winner_seat: winnerSeat, turn_deadline: null })
-    .eq('id', matchId)
-    .eq('status', 'active')
-    .select('id')
+
+  // Compute the rating results in TypeScript (the pure #152 math), then hand them
+  // to the RPC to persist. This read is safe to run on any finalize attempt: a
+  // race-loser simply computes rows the RPC will discard.
+  const ratings = await computeRatingUpserts(db, matchId, state)
+
+  // The active->finished flip AND the player_ratings upserts run inside ONE DB
+  // transaction (#189): they commit together or not at all, closing the crash
+  // window where the old two-round-trip finalize could strand a match 'finished'
+  // with its rating write permanently lost. The `status = 'active'` idempotency
+  // guard lives inside the RPC and matches a row exactly once, so a retry or a
+  // concurrent finalize that loses the race applies nothing — rating updates can
+  // never be double-applied, the same guarantee as before, now atomic.
+  const { error } = await db.rpc('finalize_match_with_ratings', {
+    p_match_id: matchId,
+    p_winner_seat: winnerSeat,
+    p_ratings: ratings,
+  })
   if (error) throw new AppError('INTERNAL', error.message)
-  if (!data || data.length === 0) return
-  await applyMatchRatings(db, matchId, state)
+}
+
+interface RatingUpsertRow {
+  user_id: string
+  rating: number
+  matches_played: number
 }
 
 /**
- * Apply Elo rating updates for a match that just transitioned to finished
- * (#152). Runs exactly once per match, gated by the active->finished transition
- * in {@link finalize}. Only seats held by a real authenticated user are rated;
- * AI seats (`user_id is null`) are excluded. The multi-player-to-pairwise model,
+ * Compute the Elo rating rows to persist for a match that just transitioned to
+ * finished (#152). Only seats held by a real authenticated user are rated; AI
+ * seats (`user_id is null`) are excluded. The multi-player-to-pairwise model,
  * first-time-player defaulting, and every no-op case live in the pure,
  * unit-tested {@link computeMatchRatingUpdates}; this wrapper only reads the
- * current ratings and writes the results back.
+ * current ratings and shapes the results for {@link finalize}'s atomic RPC write
+ * (#189). Returns `[]` when nothing is rated (all-AI match, or no rating moved),
+ * in which case the RPC still performs the status flip and upserts nothing.
  */
-async function applyMatchRatings(db: Db, matchId: string, state: GameState): Promise<void> {
+async function computeRatingUpserts(
+  db: Db,
+  matchId: string,
+  state: GameState,
+): Promise<RatingUpsertRow[]> {
   const seatRows = await loadSeats(db, matchId)
   const userIds = seatRows.map((s) => s.user_id).filter((id): id is string => id !== null)
-  if (userIds.length === 0) return
+  if (userIds.length === 0) return []
 
   const { data: rows, error } = await db
     .from('player_ratings')
@@ -293,19 +309,11 @@ async function applyMatchRatings(db: Db, matchId: string, state: GameState): Pro
   }))
 
   const updated = computeMatchRatingUpdates(seats, current)
-  if (updated.size === 0) return
-
-  const now = new Date().toISOString()
-  const upsertRows = [...updated].map(([userId, r]) => ({
+  return [...updated].map(([userId, r]) => ({
     user_id: userId,
     rating: r.rating,
     matches_played: r.matchesPlayed,
-    updated_at: now,
   }))
-  const { error: upErr } = await db
-    .from('player_ratings')
-    .upsert(upsertRows, { onConflict: 'user_id' })
-  if (upErr) throw new AppError('INTERNAL', upErr.message)
 }
 
 const turnAdvanced = (before: GameState, after: GameState): boolean =>
