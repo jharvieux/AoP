@@ -15,6 +15,10 @@ export {
   snapshotsToDelete,
 } from './snapshots'
 
+// Multiplayer transport contracts (turn poke + timer state machine), shared by
+// the Edge Functions and the web client.
+export * from './multiplayer'
+
 export type FactionId = 'pirates' | 'british' | 'spanish' | 'dutch' | 'french'
 
 export const FACTION_IDS: readonly FactionId[] = [

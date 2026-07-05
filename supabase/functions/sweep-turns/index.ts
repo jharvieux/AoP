@@ -42,7 +42,9 @@ Deno.serve(async (req) => {
         // this match's turn between our read and this call — not a failure.
         const handled =
           err instanceof AppError &&
-          (err.code === 'NOT_YOUR_TURN' || err.code === 'SEQ_CONFLICT' || err.code === 'MATCH_STATE')
+          (err.code === 'NOT_YOUR_TURN' ||
+            err.code === 'SEQ_CONFLICT' ||
+            err.code === 'MATCH_STATE')
         if (!handled) throw err
         results.push({ matchId, seat, skipped: false, reason: err.code })
       }

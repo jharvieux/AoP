@@ -5,16 +5,16 @@ Each function runs the **same `@aop/engine` reducer the client runs** (§2), aga
 reconstructed from the action log, under Deno. The engine is dependency-free and touches no
 DOM/Node/Deno API, so it runs here unmodified.
 
-| Function          | Contract (§5)                                                   | Issue |
-| ----------------- | --------------------------------------------------------------- | ----- |
-| `create-match`    | `POST { settings } -> { matchId, inviteCode }`                  | #32   |
-| `join-match`      | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }` | #32   |
-| `start-match`     | `POST { matchId } -> { seq: 0 }` (creator only)                 | #32   |
-| `submit-action`   | `POST { matchId, expectedSeq, action } -> { seq, view }`        | #33   |
-| `end-turn`        | `POST { matchId } -> { seq, view }`                             | #33   |
-| `get-player-view` | `POST { matchId } -> { seq, seat, view, turnDeadline }`         | #34   |
-| `sweep-turns`      | `POST -> { swept }` (§8 turn-timer sweep; service-role only)    | #129  |
-| `reclaim-seat`     | `POST { matchId } -> { seat }` (returning human from ai_takeover) | #134  |
+| Function          | Contract (§5)                                                     | Issue |
+| ----------------- | ----------------------------------------------------------------- | ----- |
+| `create-match`    | `POST { settings } -> { matchId, inviteCode }`                    | #32   |
+| `join-match`      | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`   | #32   |
+| `start-match`     | `POST { matchId } -> { seq: 0 }` (creator only)                   | #32   |
+| `submit-action`   | `POST { matchId, expectedSeq, action } -> { seq, view }`          | #33   |
+| `end-turn`        | `POST { matchId } -> { seq, view }`                               | #33   |
+| `get-player-view` | `POST { matchId } -> { seq, seat, view, turnDeadline }`           | #34   |
+| `sweep-turns`     | `POST -> { swept }` (§8 turn-timer sweep; service-role only)      | #129  |
+| `reclaim-seat`    | `POST { matchId } -> { seat }` (returning human from ai_takeover) | #134  |
 
 Maintenance (not player-facing — gated by a shared secret, never a user JWT):
 
@@ -86,8 +86,12 @@ Injected at runtime by the platform: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
 to the value in `_shared/match.ts`).
 
 > Note: local invocation and CI coverage are gated on a running Supabase stack; the pure
-> reconstruction + view-filter logic these functions call is covered by the engine's Vitest
-> suite (`packages/engine/test/playerView.test.ts` and the replay tests).
+> logic these functions call is covered by the workspace Vitest suites instead. Fog/view
+> filtering and reconstruction: `packages/engine/test/playerView.test.ts` and the replay
+> tests. Server-side AI turns replaying action-for-action (#133): the "AI turn action log"
+> tests in `packages/engine/test/ai.test.ts`. The turn-poke leak-audit shape (§7) and the
+> §8 missed-turn → `ai_takeover` transition live in `@aop/shared` (`src/multiplayer.ts`)
+> and are unit-tested in `apps/web/src/multiplayer/turnSync.test.ts`.
 
 `sweep-turns` has no user JWT to derive a caller from, so it's gated differently: the
 request's `Authorization` header must be `Bearer <SUPABASE_SERVICE_ROLE_KEY>` (the same

@@ -6,7 +6,13 @@ import {
   type Action,
   type GameState,
 } from '@aop/engine'
-import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
+import {
+  FACTION_IDS,
+  nextMissedTurnStatus,
+  turnBroadcastPayload,
+  type FactionId,
+  type MapSize,
+} from '@aop/shared'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
 
@@ -175,17 +181,6 @@ async function writeSnapshot(
   if (error) throw new AppError('INTERNAL', error.message)
 }
 
-/** The `{ type: 'turn', seq }` broadcast payload (§6, §7) — sequence number only,
- * exported so the "never state" leak-audit requirement is directly unit-testable. */
-export interface TurnBroadcastPayload {
-  type: 'turn'
-  seq: number
-}
-
-export function turnBroadcastPayload(seq: number): TurnBroadcastPayload {
-  return { type: 'turn', seq }
-}
-
 /**
  * Post-commit Realtime poke (§6, §7 leak audit) on channel `match:{id}`. Best
  * effort: a dropped broadcast just means a client waits for its next
@@ -223,9 +218,9 @@ async function recordMissedTurn(
     .eq('seat', seat)
     .maybeSingle()
   if (error) throw new AppError('INTERNAL', error.message)
-  const missedTurns = (data?.missed_turns ?? 0) + 1
+  const { missedTurns, aiTakeover } = nextMissedTurnStatus(data?.missed_turns ?? 0, threshold)
   const patch: Record<string, unknown> = { missed_turns: missedTurns }
-  if (missedTurns >= threshold) patch.status = 'ai_takeover'
+  if (aiTakeover) patch.status = 'ai_takeover'
   const update = await db
     .from('match_players')
     .update(patch)
