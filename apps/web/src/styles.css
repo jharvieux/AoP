@@ -488,6 +488,25 @@ button.large {
   text-transform: uppercase;
 }
 
+/* Generated action-icon art (#26/#89), a bounded set of buttons (see uiIcons.ts) — inline
+   before the button/label text, same "icon precedes label" layout as the resource HUD. */
+.button-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+
+.garrison-row__icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: -4px;
+  margin-right: 6px;
+  border-radius: 3px;
+}
+
 button.primary.secondary {
   background: #2a5580;
   color: #e8dcc0;

@@ -60,6 +60,16 @@ const ENCOUNTER_SPRITE_URL: Record<EncounterKind, string> = {
   settlers: '/art/encounters/settlers.png',
 }
 
+// Ship sprites scale a little by class (#26/#89) so a galleon visibly reads bigger than a
+// sloop on the map, not just a different paint job. Keyed by SHIP_CLASSES id in @aop/content;
+// an unrecognized/missing class falls back to the sloop-era default size.
+const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
+  sloop: 0.65,
+  brigantine: 0.75,
+  frigate: 0.85,
+  galleon: 0.95,
+}
+
 /**
  * Loads and caches pixi.js Textures by URL, kicking off `Assets.load` at most
  * once per URL and marking the given dirty flag so the next tick redraws once
@@ -317,13 +327,16 @@ export function MapCanvas(props: MapCanvasProps) {
         if (!own && !visibleKeys.has(key)) continue
         const cx = cap.position.x * TILE + TILE / 2
         const cy = cap.position.y * TILE + TILE / 2
-        const shipSpriteUrl = FACTIONS[factionOf(cap.ownerId)]?.shipSpriteUrl
+        const faction = FACTIONS[factionOf(cap.ownerId)]
+        const shipSpriteUrl =
+          faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
         if (texture) {
           const sprite = shipPool.get(cap.id)
+          const size = TILE * (SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
           sprite.texture = texture
-          sprite.width = TILE * 0.75
-          sprite.height = TILE * 0.75
+          sprite.width = size
+          sprite.height = size
           sprite.position.set(cx, cy)
           continue
         }

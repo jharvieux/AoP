@@ -32,12 +32,26 @@ export interface FactionDef {
   name: string
   description: string
   units: UnitDef[]
-  /** Generated art (#26/#109), served from apps/web/public. MapCanvas.tsx falls back to a
-   * flat-color shape when absent (see #115). */
+  /** Generated art (#26/#109), served from apps/web/public. Doubles as the "sloop" (smallest
+   * ship class) look and the fallback for any ship class missing a size-specific sprite below.
+   * MapCanvas.tsx falls back to a flat-color shape when no sprite at all is available (#115). */
   shipSpriteUrl?: string
+  /**
+   * Per-ship-class size variants (#26/#89), keyed by a `SHIP_CLASSES` id (see `ships.ts`;
+   * currently `brigantine` | `frigate` | `galleon` — `sloop` is covered by `shipSpriteUrl`
+   * above). MapCanvas.tsx looks up the captain's actual ship class here, falling back to
+   * `shipSpriteUrl` for `sloop` or any class not yet generated.
+   */
+  shipSpriteUrlsByClass?: Partial<Record<string, string>>
   /** Generated art (#26/#110), served from apps/web/public. Rendered per-captain in the
    * army/garrison list and the attack-confirmation sheet (#114). */
   captainPortraitUrl?: string
+  /**
+   * Per-unit-tier troop icon (#26/#89), keyed by `UnitDef['tier']`. Tier 1 has no dedicated
+   * art yet — CityScreen and BattleBoardSheet fall back to their existing text-only rendering
+   * when a tier is missing here.
+   */
+  unitTierSpriteUrls?: Partial<Record<UnitDef['tier'], string>>
 }
 
 export const FACTIONS: Record<FactionId, FactionDef> = {
@@ -46,7 +60,17 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'Pirates',
     description: 'Outlaws of every flag. Cheap, fast, and vicious — weak in a long fight.',
     shipSpriteUrl: '/art/factions/pirates/ship.png',
+    shipSpriteUrlsByClass: {
+      brigantine: '/art/factions/pirates/ship_brigantine.png',
+      frigate: '/art/factions/pirates/ship_frigate.png',
+      galleon: '/art/factions/pirates/ship_galleon.png',
+    },
     captainPortraitUrl: '/art/factions/pirates/captain.png',
+    unitTierSpriteUrls: {
+      2: '/art/factions/pirates/unit_tier2.png',
+      3: '/art/factions/pirates/unit_tier3.png',
+      4: '/art/factions/pirates/unit_tier4.png',
+    },
     units: [
       {
         id: 'deckhand',
@@ -111,7 +135,17 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'British',
     description: 'The Royal Navy: disciplined line infantry and superior gunnery.',
     shipSpriteUrl: '/art/factions/british/ship.png',
+    shipSpriteUrlsByClass: {
+      brigantine: '/art/factions/british/ship_brigantine.png',
+      frigate: '/art/factions/british/ship_frigate.png',
+      galleon: '/art/factions/british/ship_galleon.png',
+    },
     captainPortraitUrl: '/art/factions/british/captain.png',
+    unitTierSpriteUrls: {
+      2: '/art/factions/british/unit_tier2.png',
+      3: '/art/factions/british/unit_tier3.png',
+      4: '/art/factions/british/unit_tier4.png',
+    },
     units: [
       {
         id: 'sailor',
@@ -176,7 +210,17 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'Spanish',
     description: 'Treasure-fleet escorts and conquistadors: heavy armor, heavy gold.',
     shipSpriteUrl: '/art/factions/spanish/ship.png',
+    shipSpriteUrlsByClass: {
+      brigantine: '/art/factions/spanish/ship_brigantine.png',
+      frigate: '/art/factions/spanish/ship_frigate.png',
+      galleon: '/art/factions/spanish/ship_galleon.png',
+    },
     captainPortraitUrl: '/art/factions/spanish/captain.png',
+    unitTierSpriteUrls: {
+      2: '/art/factions/spanish/unit_tier2.png',
+      3: '/art/factions/spanish/unit_tier3.png',
+      4: '/art/factions/spanish/unit_tier4.png',
+    },
     units: [
       {
         id: 'milicia',
@@ -241,7 +285,17 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     name: 'Dutch',
     description: 'Merchant-company men of the VOC: economy-focused, strong defensively.',
     shipSpriteUrl: '/art/factions/dutch/ship.png',
+    shipSpriteUrlsByClass: {
+      brigantine: '/art/factions/dutch/ship_brigantine.png',
+      frigate: '/art/factions/dutch/ship_frigate.png',
+      galleon: '/art/factions/dutch/ship_galleon.png',
+    },
     captainPortraitUrl: '/art/factions/dutch/captain.png',
+    unitTierSpriteUrls: {
+      2: '/art/factions/dutch/unit_tier2.png',
+      3: '/art/factions/dutch/unit_tier3.png',
+      4: '/art/factions/dutch/unit_tier4.png',
+    },
     units: [
       {
         id: 'company-hand',
@@ -307,7 +361,17 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description:
       'Corsairs and crown regiments alike: aggressive gunnery and rapid rearmament, at the cost of a thinner hull.',
     shipSpriteUrl: '/art/factions/french/ship.png',
+    shipSpriteUrlsByClass: {
+      brigantine: '/art/factions/french/ship_brigantine.png',
+      frigate: '/art/factions/french/ship_frigate.png',
+      galleon: '/art/factions/french/ship_galleon.png',
+    },
     captainPortraitUrl: '/art/factions/french/captain.png',
+    unitTierSpriteUrls: {
+      2: '/art/factions/french/unit_tier2.png',
+      3: '/art/factions/french/unit_tier3.png',
+      4: '/art/factions/french/unit_tier4.png',
+    },
     units: [
       {
         id: 'corsaire',
