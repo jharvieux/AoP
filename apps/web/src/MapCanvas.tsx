@@ -45,12 +45,18 @@ export const ENCOUNTER_COLOR = {
   settlers: '#c98bdb',
 } as const
 
-// Generated art (#26). Only shallows/land have usable tile art so far — deep/port
-// regenerations kept drifting into repeating textures or a baked-in watermark (#108),
-// so they intentionally keep the flat-color Graphics fill below as their only look.
+// Generated art (#26). All four tile types now have usable art (#108's retry pass shipped
+// `deep`/`port` after two prior attempts drifted into repeating decorative motifs and a
+// baked-in watermark — see #108 for the full history). The switch that finally worked for
+// `deep`: the DreamShaper checkpoint instead of sd-v1.5, plus dropping "isolated
+// object/product shot" framing that had been pushing that checkpoint toward an app-icon
+// composition. `TILE_COLOR` below is kept as the fallback for any tile type whose art
+// fails to load.
 const TILE_SPRITE_URL: Partial<Record<keyof typeof TILE_COLOR, string>> = {
   shallows: '/art/tiles/shallows.png',
   land: '/art/tiles/land.png',
+  port: '/art/tiles/port.png',
+  deep: '/art/tiles/deep.png',
 }
 const CITY_SPRITE_URL = {
   own: '/art/cities/own.png',
