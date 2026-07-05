@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allianceComponents,
   applyAction,
   areAllied,
   captainsOf,
@@ -10,6 +11,7 @@ import {
   tileKey,
   type Action,
   type CombatStatsData,
+  type AllianceState,
   type GameConfig,
   type GameSetup,
   type GameState,
@@ -376,5 +378,85 @@ describe('alliance betrayal (#138)', () => {
     expect(reputationOf(a, 'p1')).toBe(
       GAME_SETUP.startingReputation - GAME_SETUP.betrayalReputationPenalty,
     )
+  })
+})
+
+describe('allianceComponents (#140 alliance-cluster mirroring)', () => {
+  const state = (pairs: [string, string][]): AllianceState => ({
+    pairs: pairs.map(([a, b]) => ({ a, b })),
+    proposals: [],
+  })
+
+  it('maps a seat in no alliance to nothing', () => {
+    expect(allianceComponents(state([])).size).toBe(0)
+  })
+
+  it('maps both members of a pair to the lower seat id', () => {
+    const c = allianceComponents(state([['seat-1', 'seat-2']]))
+    expect(c.get('seat-1')).toBe('seat-1')
+    expect(c.get('seat-2')).toBe('seat-1')
+  })
+
+  it('collapses a transitive chain into one component keyed by its lowest member', () => {
+    // Pairwise A–B and B–C are not transitive for areAllied, but a shared
+    // channel groups the connected component: all three share one cluster.
+    const c = allianceComponents(
+      state([
+        ['seat-1', 'seat-2'],
+        ['seat-2', 'seat-0'],
+      ]),
+    )
+    expect(c.get('seat-0')).toBe('seat-0')
+    expect(c.get('seat-1')).toBe('seat-0')
+    expect(c.get('seat-2')).toBe('seat-0')
+  })
+
+  it('keeps disjoint alliances in separate clusters', () => {
+    const c = allianceComponents(
+      state([
+        ['seat-3', 'seat-5'],
+        ['seat-1', 'seat-2'],
+      ]),
+    )
+    expect(c.get('seat-3')).toBe('seat-3')
+    expect(c.get('seat-5')).toBe('seat-3')
+    expect(c.get('seat-1')).toBe('seat-1')
+    expect(c.get('seat-2')).toBe('seat-1')
+  })
+
+  it('is independent of pair ordering (deterministic representatives)', () => {
+    const a = allianceComponents(
+      state([
+        ['seat-2', 'seat-4'],
+        ['seat-0', 'seat-2'],
+      ]),
+    )
+    const b = allianceComponents(
+      state([
+        ['seat-0', 'seat-2'],
+        ['seat-4', 'seat-2'],
+      ]),
+    )
+    expect([...a.entries()].sort()).toEqual([...b.entries()].sort())
+    expect(a.get('seat-4')).toBe('seat-0')
+  })
+
+  it('tracks representatives through a propose/accept/leave game', () => {
+    // p1–p2 alliance forms then p1 leaves; only p2–p3 remains a cluster.
+    const log: Action[] = [
+      { type: 'proposeAlliance', playerId: 'p1', targetId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'acceptAlliance', playerId: 'p2', proposerId: 'p1' },
+      { type: 'proposeAlliance', playerId: 'p2', targetId: 'p3' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'acceptAlliance', playerId: 'p3', proposerId: 'p2' },
+      { type: 'endTurn', playerId: 'p3' },
+      { type: 'leaveAlliance', playerId: 'p1', otherId: 'p2' },
+    ]
+    const final = replay(createGame(allianceConfig(3)), log)
+    const c = allianceComponents(final.alliances)
+    expect(c.has('p1')).toBe(false)
+    expect(c.get('p2')).toBe('p2')
+    expect(c.get('p3')).toBe('p2')
   })
 })

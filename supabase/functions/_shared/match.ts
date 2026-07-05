@@ -1,4 +1,5 @@
 import {
+  allianceComponents,
   applyAction,
   nextAiAction,
   replay,
@@ -334,7 +335,40 @@ async function submitActionInternal(
   }
 
   await finalize(db, matchId, state)
+  await mirrorAllianceIds(db, matchId, state)
   return { seq: count, state }
+}
+
+/**
+ * Mirror the engine's alliance graph (#136/#137) onto the metadata column
+ * `match_players.alliance_id` (#140). Each seat's alliance_id becomes the lowest
+ * seat number in its connected alliance component (see `allianceComponents`), or
+ * null when the seat holds no alliance. The engine's `AllianceState` stays the
+ * source of truth for game logic; this column only powers the alliance chat
+ * channel's RLS (a seat reads an alliance message iff its *current* alliance_id
+ * matches the message's), so a seat that leaves an alliance loses the channel
+ * exactly as it loses shared vision (#137). Runs once per accepted submission,
+ * writing only the rows whose alliance_id actually changed.
+ */
+async function mirrorAllianceIds(db: Db, matchId: string, state: GameState): Promise<void> {
+  const components = allianceComponents(state.alliances)
+  const { data, error } = await db
+    .from('match_players')
+    .select('seat, alliance_id')
+    .eq('match_id', matchId)
+  if (error) throw new AppError('INTERNAL', error.message)
+
+  for (const row of data ?? []) {
+    const rep = components.get(seatPlayerId(row.seat))
+    const allianceId = rep === undefined ? null : parseSeat(rep)
+    if (row.alliance_id === allianceId) continue
+    const update = await db
+      .from('match_players')
+      .update({ alliance_id: allianceId })
+      .eq('match_id', matchId)
+      .eq('seat', row.seat)
+    if (update.error) throw new AppError('INTERNAL', update.error.message)
+  }
 }
 
 async function resetActorTurnState(db: Db, matchId: string, seat: number): Promise<void> {
