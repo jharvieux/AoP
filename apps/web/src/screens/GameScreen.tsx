@@ -7,6 +7,8 @@ import {
   pathCost,
   visibleState,
   type Action,
+  type BattleReport,
+  type BoardOrder,
   type EncounterChoice,
   type EncounterKind,
   type GameState,
@@ -15,14 +17,18 @@ import {
 import { FACTIONS } from '@aop/content'
 import { chebyshevDistance } from '@aop/shared'
 import { useEffect, useMemo, useState } from 'react'
+import { AdSlot } from '../AdSlot'
+import { BattleBoardSheet } from '../BattleBoardSheet'
 import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
+import { BottomSheet } from '../components/BottomSheet'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
 import { useEncounterAudio } from '../audio/useEncounterAudio'
+import { hapticImpact, hapticTap } from '../haptics'
 
 const BATTLE_TAUNT_KEY = 'battle-taunt'
 
@@ -32,12 +38,22 @@ const ODDS_TRIALS = 120
 
 interface GameScreenProps {
   game: GameState
+  /** Structured result of the last combat, shown in the battle sheet (#39). */
+  battleReport: BattleReport | null
+  onDismissBattleReport: () => void
   onAction: (action: Action) => void
   onSaveSlot: (slotId: string) => Promise<void>
   onLoadSlot: (slotId: string) => void
 }
 
-export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScreenProps) {
+export function GameScreen({
+  game,
+  battleReport,
+  onDismissBattleReport,
+  onAction,
+  onSaveSlot,
+  onLoadSlot,
+}: GameScreenProps) {
   const { factionName } = useTheme()
   const player = currentPlayer(game)
   // Fog and interaction are anchored to the human seat, so the view stays stable
@@ -55,7 +71,9 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   // AI seats play themselves, one action per tick, so the main thread never
   // blocks. The same nextAiAction() runs unchanged in a worker or edge function.
   useEffect(() => {
-    if (game.status !== 'active' || !player.isAI) return
+    // Pause while the battle sheet is open so the player can read the report
+    // before the AI plays on.
+    if (game.status !== 'active' || !player.isAI || battleReport) return
     let cancelled = false
     const id = setTimeout(() => {
       if (cancelled) return
@@ -65,7 +83,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
       cancelled = true
       clearTimeout(id)
     }
-  }, [game, player, onAction])
+  }, [game, player, onAction, battleReport])
 
   const { visible, explored } = useMemo(() => visibleState(game, viewer.id), [game, viewer.id])
   const visibleKeys = useMemo(() => new Set(visible.map((c) => `${c.x},${c.y}`)), [visible])
@@ -179,6 +197,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
+    hapticImpact()
     audioManager.play(DIALOGUE.battleCharge)
     onAction({
       type: 'attackCaptain',
@@ -200,6 +219,7 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
 
   function resolveEncounter(choice: string) {
     if (!selectedCaptain || !encounter) return
+    hapticImpact()
     playEncounterResolutionBark(encounter.kind, choice)
     onAction({
       type: 'resolveEncounter',
@@ -213,11 +233,13 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
   }
 
   function endTurn() {
+    hapticTap()
     setSelectedCaptainId(null)
     onAction({ type: 'endTurn', playerId: player.id })
   }
 
   function resign() {
+    hapticImpact()
     onAction({ type: 'resign', playerId: player.id })
     setConfirmingResign(false)
   }
@@ -246,6 +268,17 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
         playerId: viewer.id,
         captainId: viewerCaptainAtCity.id,
         orders,
+      })
+    },
+    onSetBoardOrders: (boardOrders: BoardOrder[]) => {
+      if (!viewerCaptainAtCity) return
+      // Board doctrine rides the same action; naval orders are re-sent as-is.
+      onAction({
+        type: 'setStandingOrders',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        orders: viewerCaptainAtCity.standingOrders ?? [],
+        boardOrders,
       })
     },
     onChooseCaptainSkill: (skillId: string) => {
@@ -278,11 +311,43 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
           {factionName(player.faction, FACTIONS[player.faction].name)})
         </span>
         <ResourceHud resources={viewer.resources} />
+      </header>
+
+      <div className="map-container">
+        <MapCanvas
+          map={game.map}
+          captains={game.captains}
+          cities={game.cities}
+          encounters={game.encounters}
+          viewerId={viewer.id}
+          visibleKeys={visibleKeys}
+          exploredKeys={exploredKeys}
+          selectedCaptainId={selectedCaptainId}
+          onTileClick={handleTileClick}
+        />
+      </div>
+
+      {/* Primary actions live in a bottom bar, not the header, so they sit in
+          the thumb-reach zone on one-handed phone use (#27). */}
+      <div className="bottom-action-bar">
         <div className="button-group">
-          <button className="secondary" onClick={() => setCityOpen(true)} disabled={!isViewerTurn}>
+          <button
+            className="secondary"
+            onClick={() => {
+              hapticTap()
+              setCityOpen(true)
+            }}
+            disabled={!isViewerTurn}
+          >
             City
           </button>
-          <button className="secondary" onClick={() => setSavesOpen(true)}>
+          <button
+            className="secondary"
+            onClick={() => {
+              hapticTap()
+              setSavesOpen(true)
+            }}
+          >
             Saves
           </button>
           <button className="primary" onClick={endTurn} disabled={player.isAI}>
@@ -307,80 +372,61 @@ export function GameScreen({ game, onAction, onSaveSlot, onLoadSlot }: GameScree
             </>
           )}
         </div>
-      </header>
-
-      <div className="map-container">
-        <MapCanvas
-          map={game.map}
-          captains={game.captains}
-          cities={game.cities}
-          encounters={game.encounters}
-          viewerId={viewer.id}
-          visibleKeys={visibleKeys}
-          exploredKeys={exploredKeys}
-          selectedCaptainId={selectedCaptainId}
-          onTileClick={handleTileClick}
-        />
       </div>
 
+      {/* Between-turns placement only (docs/ARCHITECTURE.md §9): no attack/encounter
+          sheet or building modal is open, and it's never the viewer's turn to act. */}
+      {!isViewerTurn && !attackTarget && !encounter && !cityOpen && !savesOpen && (
+        <AdSlot placement="between-turns" />
+      )}
+
+      {battleReport && (
+        <BattleBoardSheet
+          report={battleReport}
+          playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
+          onClose={onDismissBattleReport}
+        />
+      )}
+
       {attackTarget && odds && (
-        <div className="sheet-backdrop" onClick={() => setAttackTargetId(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet__header">
-              <h2>Engage {attackTarget.name}?</h2>
-              <button
-                className="sheet__close"
-                onClick={() => setAttackTargetId(null)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <section>
-              <p className="building-option__hint">
-                You win {Math.round(odds.attackerWinProbability * 100)}% · They win{' '}
-                {Math.round(odds.defenderWinProbability * 100)}% · A side breaks off{' '}
-                {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
-              </p>
-              <button className="primary" onClick={confirmAttack}>
-                Attack
-              </button>
-            </section>
-          </div>
-        </div>
+        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+          <section>
+            <p className="building-option__hint">
+              You win {Math.round(odds.attackerWinProbability * 100)}% · They win{' '}
+              {Math.round(odds.defenderWinProbability * 100)}% · A side breaks off{' '}
+              {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
+            </p>
+            <button className="primary" onClick={confirmAttack}>
+              Attack
+            </button>
+          </section>
+        </BottomSheet>
       )}
 
       {encounter && (
-        <div className="sheet-backdrop" onClick={() => setEncounterId(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet__header">
-              <h2>
-                {encounter.kind === 'merchant'
-                  ? 'A merchant ship hails you'
-                  : encounter.kind === 'natives'
-                    ? 'A native village on the shore'
-                    : 'A band of settlers adrift'}
-                {isEncounterAudioPlaying && (
-                  <span className="encounter-audio-indicator"> · Playing…</span>
-                )}
-              </h2>
-              <button
-                className="sheet__close"
-                onClick={() => setEncounterId(null)}
-                aria-label="Close"
-              >
-                ×
+        <BottomSheet
+          title={
+            <>
+              {encounter.kind === 'merchant'
+                ? 'A merchant ship hails you'
+                : encounter.kind === 'natives'
+                  ? 'A native village on the shore'
+                  : 'A band of settlers adrift'}
+              {isEncounterAudioPlaying && (
+                <span className="encounter-audio-indicator"> · Playing…</span>
+              )}
+            </>
+          }
+          onClose={() => setEncounterId(null)}
+        >
+          <section className="button-group">
+            {encounterChoices.map((choice) => (
+              <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
+                {choice[0]!.toUpperCase() + choice.slice(1)}
               </button>
-            </div>
-            <section className="button-group">
-              {encounterChoices.map((choice) => (
-                <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
-                  {choice[0]!.toUpperCase() + choice.slice(1)}
-                </button>
-              ))}
-            </section>
-          </div>
-        </div>
+            ))}
+          </section>
+        </BottomSheet>
       )}
 
       {cityOpen && viewerCity && cityCallbacks && (

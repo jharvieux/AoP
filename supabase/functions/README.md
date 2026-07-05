@@ -19,6 +19,24 @@ envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the serv
 `ContentCatalog`/`GameConfig` builder, twin of `apps/web/src/catalog.ts`), and `match.ts`
 (state reconstruction, the `submit-action` transaction, settings/faction validation).
 
+## Monetization (docs/ARCHITECTURE.md §9)
+
+Unrelated to the multiplayer engine pipeline above — these back the web remove-ads
+purchase. `_shared/stripe.ts` is a dependency-free Stripe REST client (no `stripe` npm
+package), the same "just `fetch`" convention as `apps/web/src/auth/supabaseAuth.ts`.
+
+| Function                  | Contract                                             | Notes                                                |
+| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `create-checkout-session` | `POST { successUrl, cancelUrl } -> { url }`          | Authenticated. Returns a Stripe-hosted Checkout URL. |
+| `stripe-webhook`          | `POST` (called by Stripe, `Stripe-Signature` header) | Grants `remove_ads` on `checkout.session.completed`. |
+
+Additional env vars beyond the ones listed under Deploy & run below: `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET` (from the Stripe dashboard's webhook endpoint config), and
+`STRIPE_REMOVE_ADS_PRICE_ID` (the Price id for the one-time "remove ads" product) — see
+`.env.example` at the repo root. Native IAP (App/Play Store) is not implemented here yet;
+it needs real store credentials to verify receipts against, which is an operator action —
+see the client-side hook in `apps/web/src/monetization/iap.ts`.
+
 ## Design invariants
 
 - **Seat identity, not user id, is the engine player id** (`seat-0`, `seat-1`, …; §13).

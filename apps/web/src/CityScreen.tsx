@@ -12,6 +12,7 @@ import {
   availableSkillPicks,
   effectiveShipStats,
   levelForXp,
+  type BoardOrder,
   type Captain,
   type CityState,
   type StandingOrder,
@@ -19,6 +20,8 @@ import {
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 import { useTheme } from './theme/ThemeContext'
+import { BottomSheet } from './components/BottomSheet'
+import { hapticTap } from './haptics'
 
 interface CityScreenProps {
   city: CityState
@@ -30,6 +33,7 @@ interface CityScreenProps {
   onRecruit: (unitId: string) => void
   onTransfer: (direction: 'toShip' | 'toGarrison', unitId: string) => void
   onSetStandingOrders: (orders: StandingOrder[]) => void
+  onSetBoardOrders: (orders: BoardOrder[]) => void
   onChooseCaptainSkill: (skillId: string) => void
   onUpgradeShip: (track: string) => void
 }
@@ -59,7 +63,34 @@ const STANDING_ORDER_PLANS: { id: string; label: string; orders: StandingOrder[]
   { id: 'boarder', label: 'Boarder (always board)', orders: [{ when: 'always', tactic: 'board' }] },
 ]
 
-function ordersMatch(a: StandingOrder[] | undefined, b: StandingOrder[]): boolean {
+/** Preset melee doctrines for the battle board (#39) — the boarding defence analog. */
+const BOARD_ORDER_PLANS: { id: string; label: string; orders: BoardOrder[] }[] = [
+  {
+    id: 'hold',
+    label: 'Hold the line (stand and repel)',
+    orders: [{ when: 'always', doctrine: 'holdLine' }],
+  },
+  {
+    id: 'charge',
+    label: 'Charge (advance and engage)',
+    orders: [{ when: 'always', doctrine: 'advance' }],
+  },
+  {
+    id: 'defensive',
+    label: 'Defensive (hold if outnumbered, else advance)',
+    orders: [
+      { when: 'outnumbered', doctrine: 'holdLine' },
+      { when: 'always', doctrine: 'advance' },
+    ],
+  },
+  {
+    id: 'skirmish',
+    label: 'Skirmish (hit and run)',
+    orders: [{ when: 'always', doctrine: 'skirmish' }],
+  },
+]
+
+function ordersMatch<T>(a: T[] | undefined, b: T[]): boolean {
   return JSON.stringify(a ?? []) === JSON.stringify(b)
 }
 
@@ -84,6 +115,7 @@ export function CityScreen({
   onRecruit,
   onTransfer,
   onSetStandingOrders,
+  onSetBoardOrders,
   onChooseCaptainSkill,
   onUpgradeShip,
 }: CityScreenProps) {
@@ -102,16 +134,36 @@ export function CityScreen({
   const troopsAboard = (unitId: string) =>
     captain?.troops.find((t) => t.unitId === unitId)?.count ?? 0
 
-  return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__header">
-          <h2>{city.name}</h2>
-          <button className="sheet__close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
+  // Every committed action gets a light tap so the sheet's dense button rows
+  // (recruit/load/unload/build/upgrade) feel responsive on touch (#27).
+  function build(buildingId: string) {
+    hapticTap()
+    onBuild(buildingId)
+  }
+  function recruit(unitId: string) {
+    hapticTap()
+    onRecruit(unitId)
+  }
+  function transfer(direction: 'toShip' | 'toGarrison', unitId: string) {
+    hapticTap()
+    onTransfer(direction, unitId)
+  }
+  function setStandingOrders(orders: StandingOrder[]) {
+    hapticTap()
+    onSetStandingOrders(orders)
+  }
+  function chooseCaptainSkill(skillId: string) {
+    hapticTap()
+    onChooseCaptainSkill(skillId)
+  }
+  function upgradeShip(track: string) {
+    hapticTap()
+    onUpgradeShip(track)
+  }
 
+  return (
+    <BottomSheet title={city.name} onClose={onClose}>
+      <>
         <section>
           <h3>Standing buildings</h3>
           <ul className="building-list">
@@ -133,7 +185,7 @@ export function CityScreen({
                   <button
                     className="building-option"
                     disabled={disabled}
-                    onClick={() => onBuild(def.id)}
+                    onClick={() => build(def.id)}
                   >
                     <span>{buildingDisplayName(def.id, faction)}</span>
                     <span className="building-option__cost">{costLabel(def.cost)}</span>
@@ -171,13 +223,13 @@ export function CityScreen({
                       : `Avail ${available} · Garrison ${garrisoned} · Aboard ${aboard}`}
                   </span>
                   <div className="garrison-row__actions">
-                    <button disabled={!canRecruit} onClick={() => onRecruit(unit.id)}>
+                    <button disabled={!canRecruit} onClick={() => recruit(unit.id)}>
                       Recruit ({unit.goldCost}g)
                     </button>
-                    <button disabled={!canLoad} onClick={() => onTransfer('toShip', unit.id)}>
+                    <button disabled={!canLoad} onClick={() => transfer('toShip', unit.id)}>
                       Load
                     </button>
-                    <button disabled={!canUnload} onClick={() => onTransfer('toGarrison', unit.id)}>
+                    <button disabled={!canUnload} onClick={() => transfer('toGarrison', unit.id)}>
                       Unload
                     </button>
                   </div>
@@ -200,9 +252,34 @@ export function CityScreen({
                   <div className="garrison-row__actions">
                     <button
                       disabled={ordersMatch(captain.standingOrders, plan.orders)}
-                      onClick={() => onSetStandingOrders(plan.orders)}
+                      onClick={() => setStandingOrders(plan.orders)}
                     >
                       {ordersMatch(captain.standingOrders, plan.orders) ? 'Active' : 'Set'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {captain && (
+          <section>
+            <h3>Boarding defence — {captain.name}</h3>
+            <p className="building-option__hint">
+              Melee doctrine your crew fights by on the battle board when boarded while you're
+              offline.
+            </p>
+            <ul className="building-list">
+              {BOARD_ORDER_PLANS.map((plan) => (
+                <li key={plan.id} className="garrison-row">
+                  <span className="garrison-row__name">{plan.label}</span>
+                  <div className="garrison-row__actions">
+                    <button
+                      disabled={ordersMatch(captain.boardOrders, plan.orders)}
+                      onClick={() => onSetBoardOrders(plan.orders)}
+                    >
+                      {ordersMatch(captain.boardOrders, plan.orders) ? 'Active' : 'Set'}
                     </button>
                   </div>
                 </li>
@@ -233,7 +310,7 @@ export function CityScreen({
                       {next ? ` · +${next.amount} for ${next.goldCost}g` : ' · Maxed'}
                     </span>
                     <div className="garrison-row__actions">
-                      <button disabled={disabled} onClick={() => onUpgradeShip(track)}>
+                      <button disabled={disabled} onClick={() => upgradeShip(track)}>
                         Upgrade
                       </button>
                     </div>
@@ -273,7 +350,7 @@ export function CityScreen({
                           <div className="garrison-row__actions">
                             <button
                               disabled={owned || !canPick}
-                              onClick={() => onChooseCaptainSkill(skill.id)}
+                              onClick={() => chooseCaptainSkill(skill.id)}
                             >
                               {owned ? 'Learned' : 'Learn'}
                             </button>
@@ -287,7 +364,7 @@ export function CityScreen({
             })()}
           </section>
         )}
-      </div>
-    </div>
+      </>
+    </BottomSheet>
   )
 }

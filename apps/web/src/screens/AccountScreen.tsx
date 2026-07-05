@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth'
-import { AuthError, OAUTH_PROVIDERS, type OAuthProvider } from '../auth'
+import { AuthError, OAUTH_PROVIDERS, type AuthSession, type OAuthProvider } from '../auth'
+import { resolveSupabaseConfig } from '../auth/config'
+import { CheckoutError, createRemoveAdsCheckoutUrl } from '../monetization/checkout'
+import { useRemoveAds } from '../monetization/useRemoveAds'
 
 interface AccountScreenProps {
   onBack: () => void
@@ -16,6 +19,49 @@ const PROVIDER_LABELS: Record<OAuthProvider, string> = {
 function messageFor(err: unknown): string {
   if (err instanceof AuthError) return err.message
   return 'Something went wrong. Please try again.'
+}
+
+/**
+ * Web remove-ads purchase entry point (docs/ARCHITECTURE.md §9): redirects to
+ * a Stripe-hosted Checkout page — no Stripe.js needed client-side, see
+ * monetization/checkout.ts. Only reachable once signed in, since the
+ * entitlement is keyed by user id and needs an account to persist.
+ */
+function RemoveAdsSection({ session }: { session: AuthSession }) {
+  const removeAds = useRemoveAds()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (removeAds) {
+    return <p className="section-label">Ads removed — thank you!</p>
+  }
+
+  async function handleClick() {
+    setError(null)
+    setBusy(true)
+    try {
+      const config = resolveSupabaseConfig()
+      if (!config) throw new CheckoutError('Checkout is unavailable in this build.')
+      const origin = window.location.origin
+      const url = await createRemoveAdsCheckoutUrl(config, session, {
+        successUrl: origin,
+        cancelUrl: origin,
+      })
+      window.location.assign(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button className="secondary large" onClick={handleClick} disabled={busy}>
+        Remove Ads
+      </button>
+      {error && <p className="theme-error">{error}</p>}
+    </>
+  )
 }
 
 /**
@@ -71,6 +117,7 @@ export function AccountScreen({ onBack }: AccountScreenProps) {
         <div className="menu-content">
           <h1 className="game-title">Account</h1>
           <p className="game-subtitle">{auth.state.user.email ?? 'Signed in'}</p>
+          <RemoveAdsSection session={auth.state.session} />
           <button className="primary large" onClick={handleSignOut} disabled={busy}>
             Sign out
           </button>

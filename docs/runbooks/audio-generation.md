@@ -3,8 +3,7 @@
 Quick-start commands for generating NPC/narrator dialogue locally. Background, quality
 bar, and how generated clips get wired into the game live in
 `docs/CONTENT-GENERATION.md`. Full local-tooling setup (what's installed, Bark vs Piper
-tradeoffs, Stable Diffusion) lives in `~/AI-TOOLS-GUIDE.md` on the operator's machine — it
-is not checked into this repo.
+tradeoffs, Stable Diffusion) lives in `docs/AI-TOOLS-GUIDE.md`.
 
 This runbook covers the tooling at `~/aop-ai-tools/`, which is **not part of this repo** —
 it runs on the operator's machine and writes output directly into
