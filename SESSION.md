@@ -1,111 +1,91 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-05 (Multiplayer epic sub-issue sweep: 5 batches / 8 issues merged
-via PRs #164-#168; #89 DreamShaper painterly re-pass complete, PR #172)._
+_Last updated: 2026-07-05 (migration-unblocked sweep round complete: 15 issues merged
+across 3 waves, PRs #174-176, #178-188, #190-191; local Supabase/colima fix, PR #187)._
 
 ## Just completed
 
-Ran `/issue-sweep` against the 34 epic sub-issues created last session (#35/#36/#37/#38/
-#40/#100 breakdowns). Built the plan directly from the sub-issues' own detailed
-model-tier/dependency/supervised-path annotations rather than re-running Haiku triage —
-they were written for exactly this purpose. Operator approved a 5-batch, 11-issue plan
-(all fully unsupervised — no migrations, no pending product decisions); everything else
-(supervised-path items, decision-blocked items, and transitively-blocked dependents) was
-excluded and left for a future round.
+Operator approved two blockers that had excluded most of the prior session's 34 epic
+sub-issues: adding new `supabase/migrations/**` (previously supervised-path excluded) and
+resolved #138 (alliance betrayal) as allow-with-reputation-cost. Ran a full new sweep round
+against every issue that unblocked.
 
-- **Batch 1 → PR #165 — multiplayer-turns** (#129 turn-timer sweep, #131 realtime
-  turn-advance broadcast + client hook, #133 real AI turns server-side, #134 seat
-  reclaim). Audit found one real gap (#134 shipped with zero tests despite the issue
-  explicitly requiring them) — fixed and re-audited clean before merge.
-- **Batch 2 → PR #164 — engine-alliances** (#136 dynamic alliance lifecycle, #137 shared
-  vision leak-audit boundary). Audit independently verified the anti-cheat boundary
-  line-by-line rather than trusting the PR description. Clean, merged.
-- **Batch 3 → PR #166 — engine-replay/snapshots** (#142 snapshot-resume determinism
-  tests, #143 compact-snapshots edge function). Audit flagged a real spec deviation
-  (substituted a lock-free seq-guard for the literal `FOR UPDATE` row lock the issue
-  asked for, to avoid a migration) — **escalated to the operator**, who approved the
-  substitute after the audit confirmed it holds the same safety guarantee. Merged.
-- **Batch 4 → PR #168 — client-reconnect** (#145, depended on #131 — held until PR #165
-  landed). Clean audit, merged.
-- **Batch 5 → PR #167 — replay-ui** (#146 local replay viewer, #147 multiplayer
-  finished-match replay loading). Audit found two low-severity drift risks (duplicated
-  `ENGINE_VERSION` constant, an overclaiming docstring re: catalog parity) — both
-  currently inert, filed as follow-up **#169** and fixed via PR #171.
-- **#26 closed** as superseded by already-shipped art work (#116/#117/#162); remaining
-  scope tracked under #89.
-- **#89 painterly re-pass → PR #172**: per operator's "continue with the painterly repass
-  on all the remaining items" instruction, used the local DreamShaper 8 checkpoint to
-  regenerate the character/vehicle art shipped in #162 — ships, ship-size-tiers, captains,
-  unit-tiers, cities, and 2 of 3 encounter sprites (47 jobs across 5 factions) — plus 3 new
-  NPC portrait assets (merchant/natives/settlers, #89 item 3, previously unillustrated),
-  wired into the encounter sheet via a new `apps/web/src/encounterPortraits.ts`.
-  **Key finding**: DreamShaper reliably wraps small flat-icon subjects (UI action icons,
-  resource icons, the `natives` hut sprite) in an unwanted circular badge frame even with a
-  strengthened negative prompt — the same failure class found for tiles last session. UI
-  icons, resource icons, tiles, and the natives hut sprite deliberately stay on sd-v1.5;
-  this is a permanent scope boundary (documented as MEMORY D-016), not a TODO. Of 47
-  character/vehicle images, 14 came back with baked-in water-band scenery or a colored
-  halo artifact; a targeted regen pass fixed 9, and the other 5 keep their existing
-  sd-v1.5 art rather than a third attempt (per-asset fallback, not factionwide).
+**Wave 1** (9 independent batches, all merged): #135 security RLS fix (P1, PR #175),
+#130+#144 combined cron migration (PR #174), #138 alliance betrayal — reputation system,
+run under **fable** per operator request for the design-judgment component (PR #176),
+#139+#140 multiplayer chat (PR #178), #148 live spectate server (PR #180), #157 push-token
+storage (PR #179), #150 match browser backend (PR #182), #151 ratings foundation — Elo (PR
+#181), #153 quick-match queue (PR #183).
 
-**Execution hazard, handled**: multiple executor agents this round accidentally operated
-on the shared main checkout (or on each other's worktrees) instead of their assigned
-isolated worktree — at least three separate collisions, including one case where a
-zombie duplicate of a stalled agent kept running unnoticed and made a real commit no one
-asked it to reconcile. Caught every instance via direct `git status`/`git worktree list`
-polling before any work was lost; recovered via `git stash` where needed, verified
-content integrity, and relaunched with strengthened isolation warnings. No commits to
-`main` were ever at risk — the shared main checkout was never used for anything but
-supervisor-level merge/rebase operations.
+**Wave 2** (unblocked by wave 1, all merged): #141 diplomacy/chat UI (PR #184), #158
+turn-notification dispatch (PR #185), #149 live spectate client (PR #186), #152 apply
+ratings on match finish (PR #188).
 
-**Operator decisions this round**: approved the 5-batch multiplayer plan as-is; declined
-to move any opus-tier item to `fable` (correctly distinguishing fable's fit for
-creative/design-judgment work from opus's fit for strict-correctness/security-boundary
-work); approved batch 3's lock-free `FOR UPDATE` substitute after independent
-verification; approved the full #89 painterly re-pass; **approved adding database
-migrations going forward**; decided #138 (alliance betrayal) as allow-with-reputation-cost
-rather than a hard block.
+**Wave 3** (unblocked by wave 2): #154 leaderboards (PR #190), #155 matchmaking web UI —
+the final item (PR #191).
+
+**Process theme this round**: several branches were cut from the same base commit and
+independently picked identical lazy migration timestamps (`20260705000000`), causing real
+`schema_migrations` primary-key collisions in CI once combined. Resolved by renaming each
+in merge order as discovered; also found the actual correct table-ordering position in
+`database.types.ts` differs from naive alphabetical-by-substring guessing (verified against
+the real `supabase gen types` generator output each time, not guessed).
+
+**Investigated and fixed local Supabase on this machine** (PR #187): `pnpm exec supabase
+start` failed every time this session under colima/virtiofs — the `vector` log-shipping
+container can't bind-mount the host Docker socket under that mount type. Disabled
+`[analytics]` in `supabase/config.toml` (nothing in the app reads from it). A second,
+separate CLI health-check timeout needs `--ignore-health-check` locally — documented in
+`docs/runbooks/local-supabase.md`. Verified the resulting stack's `gen types` output is
+byte-identical to what's committed.
+
+**Closed epics #36, #37, #38, #40** — all their described scope is now shipped. **#35**
+stays open pending #132 (email notifications, needs a `RESEND_API_KEY` secret).
+
+**Filed #189** (follow-up, not blocking): a narrow crash-window gap in #152's match-finish
+flow — if the edge function dies between the match-status flip and the `player_ratings`
+write, that match's rating update is silently and permanently skipped. Low probability,
+low stakes (a missed rating, not a corrupted match); needs a product/ops call on whether to
+harden it.
 
 ## Next steps
 
-1. **#89**: item 4 (exhaustive UI icon coverage beyond the existing 7-icon representative
-   subset) is still deferred. Item 2 (painterly style) is now resolved for character/
-   vehicle art via PR #172; icons/tiles are a deliberate permanent sd-v1.5 exception
-   (DreamShaper can't render flat isolated icons cleanly — MEMORY D-016), not a TODO.
-2. **#135**: RLS seed-leak fix still needs a migration — supervised path. **Operator has
-   now approved migrations for this round** — ready to implement.
-3. **Remaining epic sub-issues — unblocked**: of the original 34, 8 are done. The rest
-   were previously excluded as supervised-path (migrations) or blocked on a product
-   decision. **Both blockers are now resolved**: the operator has approved adding
-   migrations, and #138 (alliance betrayal) is decided as allow-with-reputation-cost
-   (not a hard block) — implement per that design. #132 (email notifications) still needs
-   a `RESEND_API_KEY` secret provisioned before it's meaningful. A follow-up sweep round
-   should now plan and execute the migration-gated sub-issues (chat, ratings,
-   matchmaking, spectating, push notifications, cron schedules) plus #138.
-4. **#93**: still needs a dedicated feature-scoping pass before it's attempted again.
-5. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
+1. **#93**: still needs a dedicated feature-scoping pass (interactive battle-board session
+   API) before it's attempted again.
+2. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
+3. **#132**: email notifications — needs a `RESEND_API_KEY` secret provisioned before
+   meaningful work can start; keeps epic #35 open.
+4. **Capacitor native track** (#98, #100, #156, #159, #160, #161): all still blocked on
+   physical device access / native project generation, unrelated to this round's work.
+5. **#189**: crash-window rating-loss gap — supervisor/product judgment call on whether to
+   harden (single transaction, or a compensating backfill job) or accept as-is.
+6. **#177**: leave-then-strike same-turn bypasses the betrayal reputation penalty — filed
+   during #138's implementation, not yet actioned.
+7. **#89 item 4**: exhaustive UI icon coverage beyond the existing 7-icon representative
+   subset, still deferred.
+
+## Prior session summary (2026-07-05, DreamShaper art re-pass + multiplayer sweep, unchanged)
+
+Ran `/issue-sweep` against the 34 epic sub-issues from an earlier session; operator
+approved an 11-issue unsupervised plan (PRs #164-168), then approved the full #89
+DreamShaper painterly re-pass (PR #172, #173). See prior git log for detail.
 
 ## Prior session summary (2026-07-05 follow-up sweep, unchanged)
 
-- **#104** (CI prettier-config fix) and **#120** (balance-sim moved to `packages/tools`)
-  merged via PRs #127/#128.
-- **#89** first pass: 30 ship/unit tier sprites + 7 UI icons generated/wired via PR #162;
-  found and fixed baked-in-scenery and bad-icon quality bugs during curation.
-- Epic breakdowns for #35/#36/#37/#38/#40/#42+#100 created 34 sub-issues; filed security
-  issue #135 (RLS seed leak) as a side effect.
-- Handled a malicious-link comment on #100 (deleted per operator instruction, confirmed
-  no duplicate).
+Fixed #104 (CI) and #120 (balance-sim tooling) via PR #127/#128; shipped the first #89 pass
+via PR #162; broke 6 epics into 34 sweep-sized sub-issues; filed #135 (RLS seed leak, since
+fixed this session).
 
 ## Prior session summary (2026-07-04 full issue-sweep, unchanged)
 
 Full `/issue-sweep`: triaged 27 open issues, planned and executed 9 batches (16 issues,
-PRs #117-#125), all merged clean. See prior git log for detail.
+PRs #117-#125), all merged clean.
 
 ## Prior session summary (2026-07-04 full open-PR review sweep, unchanged)
 
-- Reviewed all 11 open PRs; merged/closed 8 of 9. Filed #104, #105, #106.
+Reviewed all 11 open PRs; merged/closed 8 of 9. Filed #104, #105, #106.
 
 ## Prior session summary (2026-07-01 sweep, unchanged)
 
-- **Issue-sweep complete**: 10 issues across 4 batches merged — PRs #82, #83, #84, #85.
+Issue-sweep complete: 10 issues across 4 batches merged — PRs #82, #83, #84, #85.
