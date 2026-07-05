@@ -11,6 +11,12 @@ interface MainMenuProps {
   onSpectate: () => void
   /** #149: as a match creator, grant another user spectator access. */
   onDesignateSpectator: () => void
+  /** #150/#155: browse and join open public lobbies. */
+  onMatchBrowser: () => void
+  /** #153/#155: join the quick-match queue for an automatic pairing. */
+  onQuickMatch: () => void
+  /** #154/#155: view the ranked player leaderboard. */
+  onLeaderboard: () => void
 }
 
 export function MainMenu({
@@ -21,6 +27,9 @@ export function MainMenu({
   onWatchReplay,
   onSpectate,
   onDesignateSpectator,
+  onMatchBrowser,
+  onQuickMatch,
+  onLeaderboard,
 }: MainMenuProps) {
   const { muted, volume, setMuted, setVolume } = useAudioSettings()
 
@@ -49,6 +58,15 @@ export function MainMenu({
         </button>
         <button className="secondary large" onClick={onDesignateSpectator}>
           Grant Spectator Access
+        </button>
+        <button className="secondary large" onClick={onMatchBrowser}>
+          Match Browser
+        </button>
+        <button className="secondary large" onClick={onQuickMatch}>
+          Quick Match
+        </button>
+        <button className="secondary large" onClick={onLeaderboard}>
+          Leaderboard
         </button>
 
         <div className="menu-audio-settings">
