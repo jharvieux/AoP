@@ -4,6 +4,44 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-019 — 2026-07-05 — Art: generated the missing tier-1 unit sprites (5 factions)
+
+**Decision**: `unitTierSpriteUrls` in `packages/content/src/factions.ts` covered tiers 2-4
+for every faction but had no tier-1 art at all, so the cheapest/most-recruited unit in
+every faction (Deckhand, Sailor, Milicia, Company Hand, Corsaire) fell back to plain
+2-letter text in both `CityScreen`'s garrison list and the hex battle board
+(`battleBoardSvg.tsx`'s `StackToken`). Generated one new tier-1 sprite per faction on the
+DreamShaper 8 checkpoint (`~/aop-ai-tools/tier1_unit_art.py`, a new script mirroring
+`dreamshaper_repass.py`'s exact `STYLE_SUFFIX`/`NEGATIVE`/`DEFAULTS`/flood-fill-cutout
+pipeline byte-for-byte), matching D-016's precedent that character/vehicle art (unit tiers
+included) uses DreamShaper, not sd-v1.5. All 5 (pirates/british/spanish/dutch/french) came
+back clean on the **first** attempt — plain-clothed, unarmored "raw recruit" characters
+that read clearly at the actual shipped sizes (18px `garrison-row__icon`, 22px hex battle
+token) and correctly de-emphasize compared to tier 2-4 (no naval coat, no pistol/blunderbuss,
+just a simple cutlass), same faction color palette as that faction's ship/captain/tier2-4
+art. No retries were needed and nothing was left on text-fallback.
+
+**Why DreamShaper and not sd-v1.5**: D-016 drew the character/vehicle-vs-icon boundary at
+subject type, not tier number — unit-tier art (any tier) is a character subject, so it
+follows the ships/captains/cities precedent, not the flat UI/resource icon one.
+
+**Wiring**: added a `1:` entry to every faction's `unitTierSpriteUrls` (same shape as
+2-4), updated the two doc comments that said "tier 1 has no art" (`factions.ts`,
+`battleBoardSvg.tsx`), and added `apps/web/src/battleBoardSvg.test.ts` asserting
+`unitTierIconUrl` now resolves a sprite for every unit of every faction (was previously
+untested) plus the unknown-unit-id fallback. No changes needed in `CityScreen.tsx` or
+`battleBoardSvg.tsx`'s render logic — both already select art vs. text purely by whether
+`unitTierSpriteUrls[tier]` is defined.
+
+**Rejected**: shipping any of the 5 at a rougher quality just to be "done" — moot here since
+all 5 cleared on the first attempt, but per CLAUDE.md/D-018's precedent this would have
+been rejected in favor of documenting a gap and leaving that faction's tier 1 on the
+existing text fallback.
+
+**Related artifacts**: `~/aop-ai-tools/tier1_unit_art.py`, PR (this branch), #89, D-016.
+
+---
+
 ## D-018 — 2026-07-05 — Art (#89 item 4): audited remaining UI icon coverage, shipped one new status icon
 
 **Decision**: Re-audited every screen/component added since #89's original "representative
