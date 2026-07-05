@@ -97,6 +97,16 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
     return unitName(unitId, def?.name ?? unitId)
   }
 
+  // Per-unit-tier troop icon (#26/#89): undefined for tier 1 or any faction/tier that
+  // hasn't been generated yet, in which case the board keeps its plain 2-letter fallback.
+  const unitTierIconUrl = (unitId: string): string | undefined => {
+    for (const faction of Object.values(FACTIONS)) {
+      const def = faction.units.find((u) => u.id === unitId)
+      if (def) return faction.unitTierSpriteUrls?.[def.tier]
+    }
+    return undefined
+  }
+
   const eventCaption = (e: BoardEvent | undefined): string => {
     if (!board || !e) return 'Deployment'
     const name = (id: number) => {
@@ -171,6 +181,7 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                 })}
                 {stacks.map((s) => {
                   const { x, y } = hexCenter(s.position)
+                  const iconUrl = unitTierIconUrl(s.unitId)
                   return (
                     <g key={s.id}>
                       <circle
@@ -181,9 +192,26 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                         stroke="#0e1c26"
                         strokeWidth="1.5"
                       />
-                      <text x={x} y={y - 2} textAnchor="middle" className="battle-board-svg__unit">
-                        {displayUnitName(s.unitId).slice(0, 2)}
-                      </text>
+                      {iconUrl ? (
+                        <image
+                          href={iconUrl}
+                          x={x - HEX_SIZE * 0.5}
+                          y={y - HEX_SIZE * 0.58}
+                          width={HEX_SIZE}
+                          height={HEX_SIZE}
+                          clipPath="circle(46%)"
+                          preserveAspectRatio="xMidYMid slice"
+                        />
+                      ) : (
+                        <text
+                          x={x}
+                          y={y - 2}
+                          textAnchor="middle"
+                          className="battle-board-svg__unit"
+                        >
+                          {displayUnitName(s.unitId).slice(0, 2)}
+                        </text>
+                      )}
                       <text
                         x={x}
                         y={y + 10}

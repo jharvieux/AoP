@@ -29,6 +29,7 @@ import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
 import { useEncounterAudio } from '../audio/useEncounterAudio'
 import { hapticImpact, hapticTap } from '../haptics'
+import { UI_ICON } from '../uiIcons'
 
 const BATTLE_TAUNT_KEY = 'battle-taunt'
 
@@ -358,6 +359,9 @@ export function GameScreen({
             Saves
           </button>
           <button className="primary" onClick={endTurn} disabled={player.isAI}>
+            {UI_ICON.endTurn && (
+              <img className="button-icon" src={UI_ICON.endTurn} alt="" aria-hidden />
+            )}
             {player.isAI ? 'AI thinking…' : 'End Turn'}
           </button>
           {!confirmingResign ? (
@@ -429,6 +433,9 @@ export function GameScreen({
               {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
             </p>
             <button className="primary" onClick={confirmAttack}>
+              {UI_ICON.attack && (
+                <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+              )}
               Attack
             </button>
           </section>

@@ -22,6 +22,7 @@ import { canAfford } from '@aop/shared'
 import { useTheme } from './theme/ThemeContext'
 import { BottomSheet } from './components/BottomSheet'
 import { hapticTap } from './haptics'
+import { UI_ICON } from './uiIcons'
 
 interface CityScreenProps {
   city: CityState
@@ -192,7 +193,12 @@ export function CityScreen({
                     disabled={disabled}
                     onClick={() => build(def.id)}
                   >
-                    <span>{buildingDisplayName(def.id, faction)}</span>
+                    <span>
+                      {UI_ICON.build && (
+                        <img className="button-icon" src={UI_ICON.build} alt="" aria-hidden />
+                      )}
+                      {buildingDisplayName(def.id, faction)}
+                    </span>
                     <span className="building-option__cost">{costLabel(def.cost)}</span>
                   </button>
                   {!met && <p className="building-option__hint">Requires {def.requires}</p>}
@@ -254,9 +260,15 @@ export function CityScreen({
                 !locked && available > 0 && canAfford(resources, { gold: unit.goldCost })
               const canLoad = !locked && garrisoned > 0 && !!captain && aboardTotal < crewCapacity
               const canUnload = !locked && aboard > 0 && !!captain
+              const tierIconUrl = FACTIONS[faction].unitTierSpriteUrls?.[unit.tier]
               return (
                 <li key={unit.id} className="garrison-row">
-                  <span className="garrison-row__name">{unitName(unit.id, unit.name)}</span>
+                  <span className="garrison-row__name">
+                    {tierIconUrl && (
+                      <img className="garrison-row__icon" src={tierIconUrl} alt="" aria-hidden />
+                    )}
+                    {unitName(unit.id, unit.name)}
+                  </span>
                   <span className="garrison-row__counts">
                     {locked
                       ? 'Locked'
@@ -264,12 +276,21 @@ export function CityScreen({
                   </span>
                   <div className="garrison-row__actions">
                     <button disabled={!canRecruit} onClick={() => recruit(unit.id)}>
+                      {UI_ICON.recruit && (
+                        <img className="button-icon" src={UI_ICON.recruit} alt="" aria-hidden />
+                      )}
                       Recruit ({unit.goldCost}g)
                     </button>
                     <button disabled={!canLoad} onClick={() => transfer('toShip', unit.id)}>
+                      {UI_ICON.load && (
+                        <img className="button-icon" src={UI_ICON.load} alt="" aria-hidden />
+                      )}
                       Load
                     </button>
                     <button disabled={!canUnload} onClick={() => transfer('toGarrison', unit.id)}>
+                      {UI_ICON.unload && (
+                        <img className="button-icon" src={UI_ICON.unload} alt="" aria-hidden />
+                      )}
                       Unload
                     </button>
                   </div>
@@ -351,6 +372,14 @@ export function CityScreen({
                     </span>
                     <div className="garrison-row__actions">
                       <button disabled={disabled} onClick={() => upgradeShip(track)}>
+                        {UI_ICON.upgradeShip && (
+                          <img
+                            className="button-icon"
+                            src={UI_ICON.upgradeShip}
+                            alt=""
+                            aria-hidden
+                          />
+                        )}
                         Upgrade
                       </button>
                     </div>
