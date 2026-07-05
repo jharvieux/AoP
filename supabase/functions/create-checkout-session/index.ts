@@ -7,7 +7,11 @@
 
 import { requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { createCheckoutSession } from '../_shared/stripe.ts'
+import {
+  createCheckoutSession,
+  isAllowedRedirectUrl,
+  parseAllowedOrigins,
+} from '../_shared/stripe.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -20,6 +24,21 @@ Deno.serve(async (req) => {
     }
     if (!body.successUrl || !body.cancelUrl) {
       throw new AppError('BAD_REQUEST', 'successUrl and cancelUrl are required')
+    }
+
+    // Open-redirect guard (#105): only hand Stripe redirect targets on our own
+    // origin. `CHECKOUT_ALLOWED_ORIGINS` is a comma-separated allowlist (prod
+    // origin plus any dev origins); its absence is an operator misconfiguration,
+    // so fail closed rather than accept an arbitrary redirect.
+    const allowedOrigins = parseAllowedOrigins(Deno.env.get('CHECKOUT_ALLOWED_ORIGINS'))
+    if (allowedOrigins.length === 0) {
+      throw new AppError('INTERNAL', 'Missing CHECKOUT_ALLOWED_ORIGINS')
+    }
+    if (
+      !isAllowedRedirectUrl(body.successUrl, allowedOrigins) ||
+      !isAllowedRedirectUrl(body.cancelUrl, allowedOrigins)
+    ) {
+      throw new AppError('BAD_REQUEST', 'successUrl and cancelUrl must be on an allowed origin')
     }
 
     const priceId = Deno.env.get('STRIPE_REMOVE_ADS_PRICE_ID')

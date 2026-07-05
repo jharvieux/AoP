@@ -4,6 +4,17 @@
 // Functions need here (create a Checkout Session, verify a webhook signature)
 // aren't worth pulling in the `stripe` npm package for.
 
+// Signature verification, the checkout-redirect allowlist, and the webhook event
+// handler live in @aop/shared/stripe (pure, Web-standard-only) so they're covered
+// by the Vitest suite in apps/web. Re-exported here so the function entrypoints
+// keep importing everything Stripe-related from one module.
+export {
+  isAllowedRedirectUrl,
+  parseAllowedOrigins,
+  processStripeWebhook,
+  verifyStripeSignature,
+} from '@aop/shared/stripe'
+
 const STRIPE_API = 'https://api.stripe.com/v1'
 
 // deno-lint-ignore no-explicit-any
@@ -62,57 +73,4 @@ export async function createCheckoutSession(
     throw new Error(json.error?.message ?? 'Stripe checkout session creation failed')
   }
   return { id: json.id, url: json.url }
-}
-
-/**
- * Verifies a Stripe webhook request per Stripe's documented scheme: the
- * `Stripe-Signature` header carries `t=<unix timestamp>,v1=<hex hmac>`, where
- * the hmac is SHA-256 over `${timestamp}.${rawBody}` keyed by the endpoint's
- * signing secret. https://stripe.com/docs/webhooks/signatures
- *
- * `rawBody` must be the exact bytes Stripe sent (read via `req.text()` before
- * any JSON parsing) — re-serializing a parsed body will not reproduce the
- * signature.
- */
-export async function verifyStripeSignature(
-  rawBody: string,
-  signatureHeader: string | null,
-  secret: string,
-  toleranceSeconds = 300,
-  nowMs: number = Date.now(),
-): Promise<boolean> {
-  if (!signatureHeader) return false
-  const parts: Record<string, string> = {}
-  for (const kv of signatureHeader.split(',')) {
-    const [k, v] = kv.split('=')
-    if (k && v) parts[k] = v
-  }
-  const timestamp = parts.t
-  const v1 = parts.v1
-  if (!timestamp || !v1) return false
-  if (Math.abs(nowMs / 1000 - Number(timestamp)) > toleranceSeconds) return false
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const signatureBytes = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(`${timestamp}.${rawBody}`),
-  )
-  const expected = Array.from(new Uint8Array(signatureBytes))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-  return timingSafeEqual(expected, v1)
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return diff === 0
 }
