@@ -201,6 +201,52 @@ export type Database = {
           },
         ]
       }
+      match_spectators: {
+        Row: {
+          created_at: string
+          granted_by: string
+          match_id: string
+          user_id: string
+          viewing_seat: number
+        }
+        Insert: {
+          created_at?: string
+          granted_by: string
+          match_id: string
+          user_id: string
+          viewing_seat: number
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string
+          match_id?: string
+          user_id?: string
+          viewing_seat?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'match_spectators_granted_by_fkey'
+            columns: ['granted_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'match_spectators_match_id_fkey'
+            columns: ['match_id']
+            isOneToOne: false
+            referencedRelation: 'matches'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'match_spectators_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       matches: {
         Row: {
           action_count: number

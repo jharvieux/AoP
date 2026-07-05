@@ -9,6 +9,7 @@ import {
 import {
   FACTION_IDS,
   nextMissedTurnStatus,
+  resolveViewSeat,
   turnBroadcastPayload,
   type FactionId,
   type MapSize,
@@ -445,6 +446,50 @@ export async function callerSeat(db: Db, matchId: string, userId: string): Promi
   if (error) throw new AppError('INTERNAL', error.message)
   if (!data) throw new AppError('FORBIDDEN', 'You do not hold a seat in this match')
   return data.seat
+}
+
+/** Whether a `get-player-view` caller is a real seat-holder or a granted spectator (#148). */
+export type ViewerRole = 'player' | 'spectator'
+
+/** The seat a `get-player-view` caller sees, and by which entitlement. */
+export interface Viewer {
+  seat: number
+  role: ViewerRole
+}
+
+/**
+ * Resolve which seat's fog-of-war view `userId` is entitled to for `matchId`
+ * (#148, docs/MULTIPLAYER.md §12). A seat-holder sees their own seat; otherwise
+ * an explicitly-granted spectator sees exactly the one seat their grant pins.
+ * Player precedence and the null→`FORBIDDEN` decision both live in the pure,
+ * unit-tested {@link resolveViewSeat}; this wrapper only supplies the two DB
+ * reads. The returned seat then feeds the SAME `playerView(state, seat)` filter a
+ * real player's request uses — that shared code path is what makes a spectator's
+ * response byte-identical to the watched seat's own view (the anti-cheat property
+ * this issue turns on), not a spectator-specific branch.
+ */
+export async function viewerSeat(db: Db, matchId: string, userId: string): Promise<Viewer> {
+  const { data: player, error: playerErr } = await db
+    .from('match_players')
+    .select('seat')
+    .eq('match_id', matchId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (playerErr) throw new AppError('INTERNAL', playerErr.message)
+
+  const { data: spectator, error: specErr } = await db
+    .from('match_spectators')
+    .select('viewing_seat')
+    .eq('match_id', matchId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (specErr) throw new AppError('INTERNAL', specErr.message)
+
+  const seat = resolveViewSeat(player?.seat ?? null, spectator?.viewing_seat ?? null)
+  if (seat === null) {
+    throw new AppError('FORBIDDEN', 'You do not hold a seat or spectator grant in this match')
+  }
+  return { seat, role: player ? 'player' : 'spectator' }
 }
 
 /** Validate raw settings from an untrusted request body into a `MatchSettings`. */

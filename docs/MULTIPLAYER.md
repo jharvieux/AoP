@@ -283,6 +283,25 @@ Replays (#38) fall out of the design: once `finished`, the action log becomes re
 any client can re-run it through the pinned engine version. Live spectating must go through
 `visibleState` with either a chosen seat's fog or a delay — never raw state.
 
+**Live spectate, server side (#148, implemented).** Decisions taken:
+
+- **Fog-locked live, no delay.** The `playerView` filter already strips everything a seat
+  must not see, so a chosen-seat fog lock is leak-safe with zero delay — no reason to add
+  the complexity of a delayed buffer.
+- **Reuse the identical filter, unchanged.** `get-player-view` resolves a spectator to one
+  pinned seat and feeds it through the _same_ `playerView(state, seat)` call a real player's
+  request uses (`_shared/match.ts` `viewerSeat` → `@aop/shared` `resolveViewSeat`). A
+  spectator's response is therefore byte-for-byte what that seat's own player would receive —
+  asserted by `packages/engine/test/spectatorView.test.ts`, the load-bearing leak-audit test.
+- **Explicit grant, closed by default.** Spectators are named authenticated users, never
+  anonymous. Only the match creator may designate one, via the `designate-spectator` Edge
+  Function; the grant lives in `match_spectators` and pins the single seat to watch
+  (`viewing_seat`), server-side — never chosen from a request body (§5).
+- **One seat at a time, never god-mode.** The pinned seat plus seat-precedence
+  (`resolveViewSeat`: a real seat-holder always sees their own seat, so a player can't
+  self-grant a peek at another seat) guarantee a spectator never sees more than one seat's
+  fog-locked view.
+
 ## 13. Resolved design choices
 
 - Seat identity, not user id, inside engine state — enables AI takeover and seat reclaim
