@@ -17,6 +17,7 @@ import {
 } from '@aop/shared'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
+import { dispatchTurnPush } from './push.ts'
 
 /** Safety cap on actions a single AI (or ai_takeover) seat may take in one turn
  * (#133) — `nextAiAction` always offers `endTurn` as its zero-score fallback, so
@@ -85,6 +86,11 @@ async function loadSeats(db: Db, matchId: string): Promise<SeatRow[]> {
   if (error) throw new AppError('INTERNAL', error.message)
   return (data ?? []) as SeatRow[]
 }
+
+/** Adapts the DB's snake_case `SeatRow`s to the plain-data shape
+ * `turnNotificationRecipient` (`@aop/shared/push`) works with. */
+const toTurnSeats = (seats: readonly SeatRow[]) =>
+  seats.map((s) => ({ seat: s.seat, userId: s.user_id, status: s.status }))
 
 /**
  * Rebuild authoritative state at `upToSeq`: read the newest snapshot at or
@@ -331,14 +337,40 @@ async function submitActionInternal(
   }
   state = next
 
-  // Auto-play any AI / ai_takeover seats the turn advanced onto (#133).
+  // Loaded once, after any status flip this call makes to the acting seat
+  // (recordMissedTurn/resetActorTurnState above) — the seat->user mapping and
+  // status of every OTHER seat stays valid for the rest of this call, so it's
+  // safe to reuse for both the AI auto-play loop below and every turn-push
+  // dispatch (#158) this call makes.
   const seats = await loadSeats(db, matchId)
+
+  // #158: notify whoever the turn just advanced to, if that's a human seat
+  // (dispatchTurnPush no-ops for AI/ai_takeover seats and for a turn that
+  // didn't advance). Best-effort — see its doc comment.
+  if (advanced && state.status === 'active') {
+    await dispatchTurnPush(
+      db,
+      matchId,
+      toTurnSeats(seats),
+      parseSeat(state.players[state.currentPlayerIndex]!.id),
+    )
+  }
+
+  // Auto-play any AI / ai_takeover seats the turn advanced onto (#133).
   while (state.status === 'active') {
     const seat = parseSeat(state.players[state.currentPlayerIndex]!.id)
     const row = seats.find((s) => s.seat === seat)
     const isAi = !row?.user_id || row.status === 'ai_takeover'
     if (!isAi) break
-    ;({ state, count } = await runAiSeatTurn(db, matchId, seat, match.settings, state, count))
+    ;({ state, count } = await runAiSeatTurn(
+      db,
+      matchId,
+      seat,
+      match.settings,
+      state,
+      count,
+      seats,
+    ))
   }
 
   await finalize(db, matchId, state)
@@ -403,6 +435,7 @@ async function runAiSeatTurn(
   settings: MatchSettings,
   initialState: GameState,
   priorCount: number,
+  seats: readonly SeatRow[],
 ): Promise<{ state: GameState; count: number }> {
   const playerId = seatPlayerId(seat)
   let state = initialState
@@ -436,6 +469,16 @@ async function runAiSeatTurn(
     if (advanced) {
       await writeSnapshot(db, matchId, count, state)
       await broadcastTurn(db, matchId, count)
+      // #158: notify the next seat's human occupant, if any (see the call
+      // site in submitActionInternal for the full rationale).
+      if (state.status === 'active') {
+        await dispatchTurnPush(
+          db,
+          matchId,
+          toTurnSeats(seats),
+          parseSeat(state.players[state.currentPlayerIndex]!.id),
+        )
+      }
     }
     if (action.type === 'endTurn') break
   }

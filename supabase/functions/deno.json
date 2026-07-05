@@ -2,6 +2,7 @@
   "imports": {
     "@aop/shared": "../../packages/shared/src/index.ts",
     "@aop/shared/stripe": "../../packages/shared/src/stripe.ts",
+    "@aop/shared/push": "../../packages/shared/src/push.ts",
     "@aop/engine": "../../packages/engine/src/index.ts",
     "@aop/content": "../../packages/content/src/index.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
