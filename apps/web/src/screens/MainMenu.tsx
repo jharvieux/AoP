@@ -5,9 +5,17 @@ interface MainMenuProps {
   onThemePacks: () => void
   onAccount: () => void
   onMapEditor: () => void
+  /** #147: enter a finished multiplayer match id and watch its replay. */
+  onWatchReplay: () => void
 }
 
-export function MainMenu({ onStart, onThemePacks, onAccount, onMapEditor }: MainMenuProps) {
+export function MainMenu({
+  onStart,
+  onThemePacks,
+  onAccount,
+  onMapEditor,
+  onWatchReplay,
+}: MainMenuProps) {
   const { muted, volume, setMuted, setVolume } = useAudioSettings()
 
   return (
@@ -26,6 +34,9 @@ export function MainMenu({ onStart, onThemePacks, onAccount, onMapEditor }: Main
         </button>
         <button className="secondary large" onClick={onAccount}>
           Account
+        </button>
+        <button className="secondary large" onClick={onWatchReplay}>
+          Watch Replay
         </button>
 
         <div className="menu-audio-settings">

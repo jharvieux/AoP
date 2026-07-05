@@ -15,6 +15,7 @@ import { GameOverScreen } from './screens/GameOverScreen'
 import { ThemePacksScreen } from './screens/ThemePacksScreen'
 import { AccountScreen } from './screens/AccountScreen'
 import { MapEditorScreen } from './screens/MapEditorScreen'
+import { WatchReplayScreen } from './screens/WatchReplayScreen'
 import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
@@ -32,6 +33,7 @@ type Screen =
   | 'account'
   | 'map-editor'
   | 'replay'
+  | 'watch-replay'
 
 interface ReplayData {
   config: GameConfig
@@ -49,8 +51,8 @@ export function App() {
   // A test-play match launched from the map editor (#41) skips autosave and
   // returns to the editor (not the main menu) when it ends.
   const [isTestPlay, setIsTestPlay] = useState(false)
-  // #146: the config + action log currently loaded into the replay viewer,
-  // and which screen to return to when it closes.
+  // #146/#147: the config + action log currently loaded into the replay
+  // viewer, and which screen to return to when it closes.
   const [replayData, setReplayData] = useState<ReplayData | null>(null)
   const [replayReturnScreen, setReplayReturnScreen] = useState<Screen>('menu')
 
@@ -166,6 +168,13 @@ export function App() {
           onThemePacks={() => setScreen('theme-packs')}
           onAccount={() => setScreen('account')}
           onMapEditor={() => setScreen('map-editor')}
+          onWatchReplay={() => setScreen('watch-replay')}
+        />
+      )}
+      {screen === 'watch-replay' && (
+        <WatchReplayScreen
+          onBack={() => setScreen('menu')}
+          onLoaded={(data) => openReplay(data, 'menu')}
         />
       )}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
