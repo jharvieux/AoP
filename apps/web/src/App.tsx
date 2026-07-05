@@ -18,6 +18,9 @@ import { MapEditorScreen } from './screens/MapEditorScreen'
 import { WatchReplayScreen } from './screens/WatchReplayScreen'
 import { SpectateScreen } from './screens/SpectateScreen'
 import { DesignateSpectatorScreen } from './screens/DesignateSpectatorScreen'
+import { MatchBrowserScreen } from './screens/MatchBrowserScreen'
+import { QuickMatchScreen } from './screens/QuickMatchScreen'
+import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
@@ -38,6 +41,9 @@ type Screen =
   | 'watch-replay'
   | 'spectate'
   | 'designate-spectator'
+  | 'match-browser'
+  | 'quick-match'
+  | 'leaderboard'
 
 interface ReplayData {
   config: GameConfig
@@ -175,6 +181,9 @@ export function App() {
           onWatchReplay={() => setScreen('watch-replay')}
           onSpectate={() => setScreen('spectate')}
           onDesignateSpectator={() => setScreen('designate-spectator')}
+          onMatchBrowser={() => setScreen('match-browser')}
+          onQuickMatch={() => setScreen('quick-match')}
+          onLeaderboard={() => setScreen('leaderboard')}
         />
       )}
       {screen === 'watch-replay' && (
@@ -187,6 +196,9 @@ export function App() {
       {screen === 'designate-spectator' && (
         <DesignateSpectatorScreen onBack={() => setScreen('menu')} />
       )}
+      {screen === 'match-browser' && <MatchBrowserScreen onBack={() => setScreen('menu')} />}
+      {screen === 'quick-match' && <QuickMatchScreen onBack={() => setScreen('menu')} />}
+      {screen === 'leaderboard' && <LeaderboardScreen onBack={() => setScreen('menu')} />}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
       {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
       {screen === 'setup' && (
