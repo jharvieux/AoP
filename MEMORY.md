@@ -4,6 +4,55 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-016 — 2026-07-05 — Art (#89): DreamShaper painterly re-pass, character/vehicle art only
+
+**Decision**: Regenerated the ship/captain/unit/city/encounter art shipped in PR #162 using
+the DreamShaper 8 checkpoint instead of sd-v1.5, resolving the #89 item 2 painterly-style
+open question — but only for "character/vehicle" subjects (ships, ship-tiers, captains,
+unit-tiers, cities, merchant/settlers encounter sprites), not for flat UI/resource icons.
+Also added 3 new NPC portraits (merchant/natives/settlers) for #89 item 3, wired into a new
+`apps/web/src/encounterPortraits.ts` (same optional-lookup convention as `uiIcons.ts`) and
+rendered above the choice buttons in `GameScreen`'s encounter `BottomSheet`, which
+previously showed only title text.
+
+**Why DreamShaper is scoped to character/vehicle art**: smoke-testing one `ui_icons` and one
+`resources` job on DreamShaper reproduced the exact failure the prior session's tile
+comparison found — the model wraps the subject in a solid circular badge/prohibition-sign
+frame despite an explicit negative prompt (`circle, badge, disc, rounded square, app icon`,
+etc.). A second attempt with an even stronger anti-circle negative prompt reproduced the
+same framing on both. `encounters/natives` (hut) hit a related failure — a baked-in
+grass-and-trees ground plane on two attempts. Per the one-retry budget, all of these stay on
+sd-v1.5: tiles (already decided in the prior session), all 7 `ui_icons`, all 4 `resources`,
+and `encounters/natives`.
+
+**Curation on the 47 character/vehicle jobs generated**: 14 came back with a baked-in ocean
+band or dark water strip across the bottom (mostly British/French-flavored ships — that
+faction's "disciplined Union-flag navy" / "elegant frigate" flavor text appears to pull the
+model toward an at-sea composition more than pirates/spanish/dutch did) or a colored
+circular halo behind a character (2 unit-tier portraits). A second pass with a "floating in
+empty white void, no waterline/horizon" prompt addition, a stronger anti-halo negative
+prompt, and a different seed (123 instead of 42) fixed 9 of the 14. The other 5 — the base
+`british_ship`, `french_ship`, and their `brigantine` tiers plus `british_ship_frigate`/
+`ship_galleon` cousins that never cleared — keep their existing sd-v1.5 art rather than
+burning a third attempt; this is a per-asset fallback, not a factionwide one (British/French
+`ship_tiers/*_galleon` and `unit_tiers/*` did clear).
+
+**Verified**: `pnpm verify` green; headless Playwright against `vite preview` (landing → New
+Game → Play Game → City) showed zero console errors, zero failed `/art/*` requests, and
+correct non-zero natural dimensions on every loaded sprite, including the new NPC portraits.
+
+**Rejected**: retrying every one of the 11 icon/resource/hut failures individually — the
+failure mode was clearly systemic (same root cause across unrelated prompts), not
+per-image bad luck, so more attempts on the same checkpoint were unlikely to help. Also
+rejected re-running the already-approved sd-v1.5 tiles through DreamShaper — out of scope
+per the prior session's tile finding.
+
+Progress on #89 (not closing — item 4, exhaustive UI icon coverage, is still open; item 2
+is now resolved for character/vehicle art but intentionally not for icons/tiles). Related:
+#26, #76, #108, #115, PR #162.
+
+---
+
 ## D-015 — 2026-07-04 — Tactical battle board: hex melee decides boardings; gated by frozen battle tuning
 
 **Decision**: Implement #39 as a hex battle board (`battleBoard.ts` + `hex.ts`) that takes

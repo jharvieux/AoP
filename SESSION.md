@@ -2,7 +2,7 @@
 
 Transient whole-file-overwrite resume state. Update at session end.
 _Last updated: 2026-07-05 (Multiplayer epic sub-issue sweep: 5 batches / 8 issues merged
-via PRs #164-#168; DreamShaper painterly art re-pass for #89 in progress)._
+via PRs #164-#168; #89 DreamShaper painterly re-pass complete, PR #172)._
 
 ## Just completed
 
@@ -31,14 +31,23 @@ excluded and left for a future round.
 - **Batch 5 → PR #167 — replay-ui** (#146 local replay viewer, #147 multiplayer
   finished-match replay loading). Audit found two low-severity drift risks (duplicated
   `ENGINE_VERSION` constant, an overclaiming docstring re: catalog parity) — both
-  currently inert, filed as follow-up **#169** rather than blocking merge.
+  currently inert, filed as follow-up **#169** and fixed via PR #171.
 - **#26 closed** as superseded by already-shipped art work (#116/#117/#162); remaining
   scope tracked under #89.
-- **#89 painterly re-pass**: per operator's "continue with the painterly repass on all
-  the remaining items" instruction, launched a full DreamShaper-checkpoint regeneration
-  of every previously-shipped sd-v1.5 asset (ships, units, captains, UI icons, resources
-  — ~96 images across 5 factions), keeping tiles on sd-v1.5 (DreamShaper can't produce a
-  flat tile). Still running as of this write-up; PR not yet opened.
+- **#89 painterly re-pass → PR #172**: per operator's "continue with the painterly repass
+  on all the remaining items" instruction, used the local DreamShaper 8 checkpoint to
+  regenerate the character/vehicle art shipped in #162 — ships, ship-size-tiers, captains,
+  unit-tiers, cities, and 2 of 3 encounter sprites (47 jobs across 5 factions) — plus 3 new
+  NPC portrait assets (merchant/natives/settlers, #89 item 3, previously unillustrated),
+  wired into the encounter sheet via a new `apps/web/src/encounterPortraits.ts`.
+  **Key finding**: DreamShaper reliably wraps small flat-icon subjects (UI action icons,
+  resource icons, the `natives` hut sprite) in an unwanted circular badge frame even with a
+  strengthened negative prompt — the same failure class found for tiles last session. UI
+  icons, resource icons, tiles, and the natives hut sprite deliberately stay on sd-v1.5;
+  this is a permanent scope boundary (documented as MEMORY D-016), not a TODO. Of 47
+  character/vehicle images, 14 came back with baked-in water-band scenery or a colored
+  halo artifact; a targeted regen pass fixed 9, and the other 5 keep their existing
+  sd-v1.5 art rather than a third attempt (per-asset fallback, not factionwide).
 
 **Execution hazard, handled**: multiple executor agents this round accidentally operated
 on the shared main checkout (or on each other's worktrees) instead of their assigned
@@ -54,27 +63,28 @@ supervisor-level merge/rebase operations.
 to move any opus-tier item to `fable` (correctly distinguishing fable's fit for
 creative/design-judgment work from opus's fit for strict-correctness/security-boundary
 work); approved batch 3's lock-free `FOR UPDATE` substitute after independent
-verification; approved the full #89 painterly re-pass.
+verification; approved the full #89 painterly re-pass; **approved adding database
+migrations going forward**; decided #138 (alliance betrayal) as allow-with-reputation-cost
+rather than a hard block.
 
 ## Next steps
 
-1. **#89 painterly re-pass**: confirm completion, review curation quality (same rigor as
-   the original #162 pass — check for baked-in scenery/watermarks), verify/merge its PR
-   once opened.
-2. **#169**: minor cleanup (shared `ENGINE_VERSION` constant, `matchConfig.ts` docstring
-   accuracy) — sonnet-tier, not urgent.
-3. **#135**: RLS seed-leak fix still needs a migration — supervised path, still needs
-   operator sign-off before implementation (unchanged from last session).
-4. **Remaining epic sub-issues**: of the original 34, 8 are now done (this round). The
-   rest are excluded for one of three reasons — touches `supabase/migrations/**`
-   (chat/ratings/matchmaking/spectate schemas, cron schedules), blocked on an explicit
-   product decision (#138 betrayal-cost design, #132 needs a `RESEND_API_KEY` secret
-   provisioned first), or transitively blocked on one of those. A future round needs the
-   operator to work through the supervised-path list explicitly (each migration flagged
-   individually) before more of #36/#38/#40/#100's sub-issues can proceed.
-5. **#93**: still needs a dedicated feature-scoping pass before it's attempted again
-   (unchanged from last session).
-6. **#63 Tier 2**: community library (Phase 3+) still unscheduled (unchanged).
+1. **#89**: item 4 (exhaustive UI icon coverage beyond the existing 7-icon representative
+   subset) is still deferred. Item 2 (painterly style) is now resolved for character/
+   vehicle art via PR #172; icons/tiles are a deliberate permanent sd-v1.5 exception
+   (DreamShaper can't render flat isolated icons cleanly — MEMORY D-016), not a TODO.
+2. **#135**: RLS seed-leak fix still needs a migration — supervised path. **Operator has
+   now approved migrations for this round** — ready to implement.
+3. **Remaining epic sub-issues — unblocked**: of the original 34, 8 are done. The rest
+   were previously excluded as supervised-path (migrations) or blocked on a product
+   decision. **Both blockers are now resolved**: the operator has approved adding
+   migrations, and #138 (alliance betrayal) is decided as allow-with-reputation-cost
+   (not a hard block) — implement per that design. #132 (email notifications) still needs
+   a `RESEND_API_KEY` secret provisioned before it's meaningful. A follow-up sweep round
+   should now plan and execute the migration-gated sub-issues (chat, ratings,
+   matchmaking, spectating, push notifications, cron schedules) plus #138.
+4. **#93**: still needs a dedicated feature-scoping pass before it's attempted again.
+5. **#63 Tier 2**: community library (Phase 3+) still unscheduled.
 
 ## Prior session summary (2026-07-05 follow-up sweep, unchanged)
 

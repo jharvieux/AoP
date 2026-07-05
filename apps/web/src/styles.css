@@ -722,6 +722,15 @@ button.primary.secondary {
   opacity: 0.6;
 }
 
+.encounter-portrait {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 12px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .text-input {
   min-height: 44px;
   padding: 8px 12px;
