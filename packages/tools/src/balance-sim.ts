@@ -6,9 +6,16 @@
  * Because the engine is pure and deterministic, results are identical on every
  * machine and reproducible from the seed list below.
  *
- * Run with a TypeScript-aware runner from the repo root, e.g.:
+ * Lives in @aop/tools (rather than a bare `scripts/` file) so that `@aop/content`,
+ * `@aop/engine`, and `@aop/shared` resolve as workspace dependencies (#120).
  *
- *     npx tsx scripts/balance-sim.ts
+ * Run from the repo root with:
+ *
+ *     pnpm --filter @aop/tools balance-sim
+ *
+ * or equivalently:
+ *
+ *     pnpm --filter @aop/tools exec tsx src/balance-sim.ts
  *
  * Balance target: every faction's win-rate within ±5% of parity (spread ≤ 0.10).
  *

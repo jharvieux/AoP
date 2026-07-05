@@ -1,0 +1,19 @@
+{
+  "name": "@aop/tools",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "balance-sim": "tsx src/balance-sim.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aop/content": "workspace:*",
+    "@aop/engine": "workspace:*",
+    "@aop/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.8.1",
+    "typescript": "^6.0.3"
+  }
+}
