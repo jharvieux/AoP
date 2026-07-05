@@ -7,6 +7,10 @@ interface MainMenuProps {
   onMapEditor: () => void
   /** #147: enter a finished multiplayer match id and watch its replay. */
   onWatchReplay: () => void
+  /** #149: enter a live match id you've been granted spectator access to. */
+  onSpectate: () => void
+  /** #149: as a match creator, grant another user spectator access. */
+  onDesignateSpectator: () => void
 }
 
 export function MainMenu({
@@ -15,6 +19,8 @@ export function MainMenu({
   onAccount,
   onMapEditor,
   onWatchReplay,
+  onSpectate,
+  onDesignateSpectator,
 }: MainMenuProps) {
   const { muted, volume, setMuted, setVolume } = useAudioSettings()
 
@@ -37,6 +43,12 @@ export function MainMenu({
         </button>
         <button className="secondary large" onClick={onWatchReplay}>
           Watch Replay
+        </button>
+        <button className="secondary large" onClick={onSpectate}>
+          Spectate
+        </button>
+        <button className="secondary large" onClick={onDesignateSpectator}>
+          Grant Spectator Access
         </button>
 
         <div className="menu-audio-settings">
