@@ -118,6 +118,12 @@ export function GameScreen({
         (c) => c.ownerId === viewer.id && chebyshevDistance(c.position, viewerCity.position) <= 1,
       )
     : undefined
+  // Every captain the viewer owns, so the city sheet's fleet list (#114) can
+  // break the army out one row per captain instead of just the docked one.
+  const viewerCaptains = useMemo(
+    () => game.captains.filter((c) => c.ownerId === viewer.id),
+    [game.captains, viewer.id],
+  )
 
   function factionOf(ownerId: string) {
     return game.players.find((p) => p.id === ownerId)!.faction
@@ -389,8 +395,33 @@ export function GameScreen({
         />
       )}
 
-      {attackTarget && odds && (
+      {attackTarget && odds && selectedCaptain && (
         <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+          <section className="battle-intro">
+            <div className="battle-intro__side">
+              {FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (
+                <img
+                  className="battle-intro__portrait"
+                  src={FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl}
+                  alt=""
+                  aria-hidden
+                />
+              )}
+              <span>{selectedCaptain.name}</span>
+            </div>
+            <span className="battle-intro__vs">VS</span>
+            <div className="battle-intro__side">
+              {FACTIONS[factionOf(attackTarget.ownerId)].captainPortraitUrl && (
+                <img
+                  className="battle-intro__portrait"
+                  src={FACTIONS[factionOf(attackTarget.ownerId)].captainPortraitUrl}
+                  alt=""
+                  aria-hidden
+                />
+              )}
+              <span>{attackTarget.name}</span>
+            </div>
+          </section>
           <section>
             <p className="building-option__hint">
               You win {Math.round(odds.attackerWinProbability * 100)}% · They win{' '}
@@ -434,6 +465,7 @@ export function GameScreen({
         <CityScreen
           city={viewerCity}
           captain={viewerCaptainAtCity}
+          captains={viewerCaptains}
           faction={viewer.faction}
           resources={viewer.resources}
           onClose={() => setCityOpen(false)}
