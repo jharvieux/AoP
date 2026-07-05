@@ -157,8 +157,10 @@ export function eraseEntityAt(draft: EditorDraft, coord: Coord): EditorDraft {
   }
 }
 
-/** Strip editor-only annotations (resource markers) to the shape @aop/engine
- * understands. `validateMapDefinition`/`createGame` both take this. */
+/** Convert an `EditorDraft` to the shape @aop/engine understands.
+ * `validateMapDefinition`/`createGame` both take this. Resource markers carry
+ * straight through as `resourceNodes` (#101) — they're no longer editor-only
+ * annotations, they drive real per-round income once a captain holds the tile. */
 export function draftToMapDefinition(draft: EditorDraft): MapDefinition {
   return {
     width: draft.width,
@@ -166,6 +168,10 @@ export function draftToMapDefinition(draft: EditorDraft): MapDefinition {
     tiles: draft.tiles.map((t) => ({ ...t })),
     startPositions: draft.startPositions.map((c) => ({ ...c })),
     encounters: draft.encounters.map((e) => ({ kind: e.kind, position: { ...e.position } })),
+    resourceNodes: draft.resourceMarkers.map((r) => ({
+      kind: r.kind,
+      position: { ...r.position },
+    })),
   }
 }
 

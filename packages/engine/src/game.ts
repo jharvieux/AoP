@@ -4,7 +4,14 @@ import { spawnEncounters } from './encounters'
 import { generateMap, tileIndex, type GameMap } from './map'
 import { mapToDefinition } from './mapDefinition'
 import { seedRng, type RngState } from './rng'
-import type { Captain, CityState, EncounterState, GameConfig, GameState } from './types'
+import type {
+  Captain,
+  CityState,
+  EncounterState,
+  GameConfig,
+  GameState,
+  ResourceNodeState,
+} from './types'
 import { accumulateExploredTiles } from './visibility'
 
 /** The port tile of a home island — where that seat's capital city sits. */
@@ -96,6 +103,16 @@ export function createGame(config: GameConfig): GameState {
     rngState = spawned.rng
   }
 
+  // Resource nodes (#101) are author-placed only — no procedural fallback —
+  // so this simply mirrors the authored-encounters list verbatim, no RNG draw.
+  const resourceNodes: ResourceNodeState[] = (config.mapDefinition?.resourceNodes ?? []).map(
+    (n, i) => ({
+      id: `res-${i}`,
+      kind: n.kind,
+      position: { ...n.position },
+    }),
+  )
+
   const withoutVision: GameState = {
     config,
     map,
@@ -116,6 +133,7 @@ export function createGame(config: GameConfig): GameState {
     cities,
     captains,
     encounters,
+    resourceNodes,
     exploredTiles: {},
     rngState,
     actionCount: 0,

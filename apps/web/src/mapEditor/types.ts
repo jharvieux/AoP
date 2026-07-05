@@ -3,13 +3,12 @@ import type { Coord } from '@aop/shared'
 
 /**
  * Map editor domain types (#41). `EditorDraft` is a superset of the engine's
- * `MapDefinition`: everything the engine understands (tiles, start positions,
- * author-placed encounters) plus `resourceMarkers`, an editor-only annotation
- * layer. There is no map-tile "resource node" concept in @aop/engine today
- * (economy income comes from city buildings, not map entities) — markers are
- * informational placeholders that round-trip through save/export so sculpting
- * isn't lost, but `draftToMapDefinition` drops them before test-play/createGame.
- * Full resource-node economy integration is tracked in #101.
+ * `MapDefinition`: everything the engine understands — tiles, start positions,
+ * author-placed encounters, and (#101) resource markers, which
+ * `draftToMapDefinition` carries through as `MapDefinition.resourceNodes`.
+ * Whichever player has a captain standing on a marked tile collects its
+ * resource each round (see @aop/engine's `resourceNodeIncome`) — an ongoing,
+ * passive yield tied to holding the tile, not a one-time pickup.
  */
 
 export type ResourceMarkerKind = 'gold' | 'timber' | 'iron' | 'rum'

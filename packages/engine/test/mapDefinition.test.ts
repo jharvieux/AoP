@@ -11,6 +11,7 @@ import {
   type EncounterKind,
   type GameConfig,
   type MapDefinition,
+  type ResourceNodeKind,
   type Tile,
 } from '../src'
 import { GAME_SETUP, MAP_VALIDATION_LIMITS } from './fixtures'
@@ -217,6 +218,36 @@ describe('createGame with an authored map', () => {
     const b = createGame(withoutEncounters)
     expect(a.rngState).toEqual(b.rngState)
   })
+
+  it('seeds GameState.resourceNodes from authored placements (#101)', () => {
+    const config = authoredConfig(2)
+    const water = config.mapDefinition!.startPositions[0]!
+    const withNodes: GameConfig = {
+      ...config,
+      mapDefinition: {
+        ...config.mapDefinition!,
+        resourceNodes: [{ kind: 'gold', position: water }],
+      },
+    }
+    const state = createGame(withNodes)
+    expect(state.resourceNodes).toEqual([{ id: 'res-0', kind: 'gold', position: water }])
+  })
+
+  it('authored resource nodes do not consume any RNG draws (rngState untouched)', () => {
+    const config = authoredConfig(2)
+    const water = config.mapDefinition!.startPositions[0]!
+    const withNodes: GameConfig = {
+      ...config,
+      mapDefinition: {
+        ...config.mapDefinition!,
+        resourceNodes: [{ kind: 'gold', position: water }],
+      },
+    }
+    const withoutNodes: GameConfig = { ...config, mapDefinition: config.mapDefinition! }
+    const a = createGame(withNodes)
+    const b = createGame(withoutNodes)
+    expect(a.rngState).toEqual(b.rngState)
+  })
 })
 
 describe('validateMapDefinition with authored encounters', () => {
@@ -256,5 +287,38 @@ describe('validateMapDefinition with authored encounters', () => {
     expect(result.errors.map((e) => e.code)).toContain('encounter-invalid-kind')
     // Bails out of the bounds/water checks for that entry once the kind is bad.
     expect(result.errors.map((e) => e.code)).not.toContain('encounter-not-water')
+  })
+})
+
+describe('validateMapDefinition with authored resource nodes', () => {
+  it('flags a resource node placed outside the map', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.resourceNodes = [{ kind: 'gold', position: { x: 99, y: 99 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('resource-node-out-of-bounds')
+  })
+
+  it('accepts a resource node placed on land (unlike encounters, no water-only restriction)', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 2, y: 2 }, 'land', 0)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.resourceNodes = [{ kind: 'iron', position: { x: 2, y: 2 } }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).not.toContain('resource-node-out-of-bounds')
+    expect(result.errors.map((e) => e.code)).not.toContain('resource-node-invalid-kind')
+  })
+
+  it('flags an unrecognized resource-node kind instead of letting it through to the reducer', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    // Simulates a hand-edited or corrupted map code (#63 tier-1 import) — an
+    // untrusted-input boundary that must fail loud here, not crash later.
+    map.resourceNodes = [
+      { kind: 'bogus' as unknown as ResourceNodeKind, position: { x: 10, y: 10 } },
+    ]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('resource-node-invalid-kind')
+    expect(result.errors.map((e) => e.code)).not.toContain('resource-node-out-of-bounds')
   })
 })

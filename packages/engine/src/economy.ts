@@ -1,4 +1,4 @@
-import { addResources, EMPTY_RESOURCES, type ResourcePool } from '@aop/shared'
+import { addResources, coordsEqual, EMPTY_RESOURCES, type ResourcePool } from '@aop/shared'
 import type { ContentCatalog } from './content'
 import type { CityState, GameState } from './types'
 
@@ -10,15 +10,39 @@ export function cityIncome(city: CityState, catalog: ContentCatalog): ResourcePo
   }, EMPTY_RESOURCES)
 }
 
-/** Total per-round production across every city a player owns. */
+/**
+ * Per-round production from authored resource nodes (#101): a node's tile is
+ * "controlled" by whichever player has a captain currently standing on it —
+ * an ongoing, passive yield (not a one-time pickup, and not tied to city
+ * proximity), lost the moment no captain of that player occupies the tile. A
+ * node with no catalog entry for its kind, or with no captain on it, yields
+ * nothing. Determined entirely from `GameState.captains`' positions (already
+ * part of the deterministic, replayable state) — no RNG involved.
+ */
+export function resourceNodeIncome(
+  state: GameState,
+  playerId: string,
+  catalog: ContentCatalog,
+): ResourcePool {
+  return state.resourceNodes.reduce((total, node) => {
+    const def = catalog.resourceNodes?.[node.kind]
+    if (!def) return total
+    const controller = state.captains.find((c) => coordsEqual(c.position, node.position))
+    if (!controller || controller.ownerId !== playerId) return total
+    return addResources(total, def.yield)
+  }, EMPTY_RESOURCES)
+}
+
+/** Total per-round production across every city a player owns, plus any resource nodes they control. */
 export function playerIncome(
   state: GameState,
   playerId: string,
   catalog: ContentCatalog,
 ): ResourcePool {
-  return state.cities
+  const cityTotal = state.cities
     .filter((c) => c.ownerId === playerId)
     .reduce((total, city) => addResources(total, cityIncome(city, catalog)), EMPTY_RESOURCES)
+  return addResources(cityTotal, resourceNodeIncome(state, playerId, catalog))
 }
 
 /** Highest unit recruitment tier unlocked by a city's standing buildings (0 = none). */

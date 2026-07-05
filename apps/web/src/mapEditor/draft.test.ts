@@ -117,12 +117,13 @@ describe('entity placement', () => {
 })
 
 describe('draftToMapDefinition', () => {
-  it('drops resource markers (no engine concept) but keeps encounters', () => {
+  it('carries resource markers through as resourceNodes (#101), alongside encounters', () => {
     let draft = blankDraft('small')
     draft = placeEncounter(draft, { x: 3, y: 3 }, 'merchant')
     draft = placeResourceMarker(draft, { x: 4, y: 4 }, 'timber')
     const def = draftToMapDefinition(draft)
     expect(def.encounters).toEqual([{ kind: 'merchant', position: { x: 3, y: 3 } }])
+    expect(def.resourceNodes).toEqual([{ kind: 'timber', position: { x: 4, y: 4 } }])
     expect('resourceMarkers' in def).toBe(false)
   })
 })

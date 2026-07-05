@@ -1,7 +1,7 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiDifficultyModifier, AiPersonalityWeights, AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
-import type { ContentCatalog, EncounterKind } from './content'
+import type { ContentCatalog, EncounterKind, ResourceNodeKind } from './content'
 import type { GameMap } from './map'
 import type { MapDefinition } from './mapDefinition'
 import type { BoardOrder } from './battleBoard'
@@ -201,6 +201,20 @@ export interface EncounterState {
   respawnRound: number | null
 }
 
+/**
+ * An author-placed resource node on the map (#41 map editor, #101) — a fixed
+ * tile that grants its `kind`'s resource each round to whichever player
+ * currently controls it. Placed only by authored maps (never scattered by
+ * mapgen); plain data so it serializes and replays like everything else. See
+ * economy.ts's `resourceNodeIncome` for the control rule (a captain of
+ * theirs standing on the tile) and the per-round grant.
+ */
+export interface ResourceNodeState {
+  id: string
+  kind: ResourceNodeKind
+  position: Coord
+}
+
 export type GameStatus = 'active' | 'finished'
 
 /**
@@ -221,6 +235,8 @@ export interface GameState {
   captains: Captain[]
   /** Random encounters placed by mapgen (#23). Empty when the match has no encounter content. */
   encounters: EncounterState[]
+  /** Author-placed resource nodes (#101). Empty for generated maps and authored maps with none. */
+  resourceNodes: ResourceNodeState[]
   /**
    * Every tile each player has ever seen, keyed by playerId, values are
    * "x,y" tile keys. Currently-visible tiles are recomputed on demand by
