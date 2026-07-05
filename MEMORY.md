@@ -4,6 +4,53 @@ Newest entries on top. Append-only: never edit or delete prior entries (PreToolU
 enforces this). Header format: `## D-<NNN> — <YYYY-MM-DD> — <title>`. When adding an entry,
 also prepend its one-liner to `MEMORY-INDEX.md`.
 
+## D-018 — 2026-07-05 — Art (#89 item 4): audited remaining UI icon coverage, shipped one new status icon
+
+**Decision**: Re-audited every screen/component added since #89's original "representative
+subset" pass (chat, diplomacy panel, spectate, match browser, quick match, leaderboard, the
+#93 interactive battle board) for text/emoji-only buttons that would meaningfully benefit
+from generated art. Conclusion: almost none of it does, so this pass ships exactly one new
+icon (`victory`, a gold trophy for `GameOverScreen`) rather than a large icon batch, and
+closes #89.
+
+**Why the rest stayed text-only**:
+
+- `DiplomacyPanel`/`ChatPanel`/`MatchChatPanel` (#141): confirmed via PR #184's own body that
+  these are intentionally "wire-ready but not force-integrated" — no live multiplayer match
+  screen exists yet to host them, so their buttons aren't reachable in the running app at
+  all. Icon-ing unreachable UI has no player-facing value; revisit once that screen lands.
+- `MatchBrowserScreen`/`QuickMatchScreen`/`LeaderboardScreen` (#150/#153/#154): menu-style
+  screens with multi-word text buttons ("Join", "Search for Match", "Refresh"), matching the
+  existing text-only `MainMenu` nav-button convention — not the frequently-tapped in-combat
+  HUD actions the original 7 icons target.
+- `BattleBoardSheet`/`BoardingCommandSheet` (#39/#93): transient tactical/playback controls
+  (Hold, Confirm order, Auto-resolve, Back/Play/Next) already use unicode glyphs (◀ ▶ ⟲) and
+  change meaning by context — low icon ROI, and adding them would cut against the issue's own
+  "don't exhaustively icon-ify every button" guidance.
+- `GameOverScreen` was the one genuine gap: the match-outcome header rendered raw platform
+  emoji (🏆/💀/⚔️) instead of generated art — the single most visible "status" moment in a
+  match, and the only place still using an OS emoji glyph instead of a bounded icon lookup.
+
+**Generation**: confirmed the local SD WebUI (sd-v1.5 checkpoint active, per D-016's
+permanent boundary keeping UI icons off DreamShaper) is reachable in this environment and
+extended `~/aop-ai-tools/generate_game_art.py`'s `UI_ICONS`-style convention with a new
+`game_over_icons` category (`victory`/`defeat`/`draw`). `victory` (gold trophy) came back
+clean on the first attempt and shipped at 64×64, matching every other `ui`/`resources` icon's
+committed size. `defeat` and `draw` each failed twice — first attempt wrapped both in an
+unwanted circular badge frame (the same failure class D-016 documented for DreamShaper,
+reproduced here on sd-v1.5 for these two subjects specifically), and a second attempt with a
+strengthened anti-circle negative prompt produced a malformed/over-cropped cutout (defeat)
+and an unreadable parallel-swords composition instead of a crossed pair (draw). Per the
+one-retry-budget precedent D-016 already established, both keep their emoji fallback rather
+than burning a third attempt — `GAME_OVER_ICON` in `apps/web/src/uiIcons.ts` only maps
+`victory`.
+
+**Rejected**: generating placeholder/lower-quality art for `defeat`/`draw` just to have
+something — CLAUDE.md and this issue's own instructions are explicit that a documented gap
+beats a low-quality shipped asset.
+
+---
+
 ## D-017 — 2026-07-05 — Alliance betrayal (#138): allow with reputation cost, not a hard block
 
 **Decision**: An allied captain can be attacked via the normal `attackCaptain` action — the

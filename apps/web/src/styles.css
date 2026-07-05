@@ -369,6 +369,10 @@ button.large {
   font-size: 2rem;
   margin-bottom: 16px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .game-over-header.victory {
@@ -377,6 +381,13 @@ button.large {
 
 .game-over-header.defeat {
   color: #e74c3c;
+}
+
+/* Generated match-outcome icon art (#89 item 4), replacing the raw emoji fallback. */
+.game-over-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .winner-info {
