@@ -5,6 +5,7 @@
 // ai_takeover seat's turn inside the *prior* player's submit-action transaction, so the
 // returning human never gets a natural submit-action window to act their way back in.
 
+import { canReclaimSeat, reclaimSeatUpdate } from '@aop/shared'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import { callerSeat } from '../_shared/match.ts'
@@ -27,13 +28,13 @@ Deno.serve(async (req) => {
       .eq('seat', seat)
       .maybeSingle()
     if (seatErr) throw new AppError('INTERNAL', seatErr.message)
-    if (row?.status === 'eliminated' || row?.status === 'resigned') {
-      throw new AppError('MATCH_STATE', `Seat is ${row.status}; cannot reclaim`)
+    if (!canReclaimSeat(row?.status)) {
+      throw new AppError('MATCH_STATE', `Seat is ${row?.status}; cannot reclaim`)
     }
 
     const { error } = await db
       .from('match_players')
-      .update({ status: 'active', missed_turns: 0, last_seen_at: new Date().toISOString() })
+      .update({ ...reclaimSeatUpdate(), last_seen_at: new Date().toISOString() })
       .eq('match_id', matchId)
       .eq('seat', seat)
     if (error) throw new AppError('INTERNAL', error.message)

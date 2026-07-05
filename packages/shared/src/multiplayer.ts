@@ -62,3 +62,32 @@ export function nextMissedTurnStatus(missedTurns: number, threshold: number): Mi
   const next = missedTurns + 1
   return { missedTurns: next, aiTakeover: next >= threshold }
 }
+
+/** Terminal `match_players.status` values a seat can never return from (§8). */
+const TERMINAL_SEAT_STATUSES: readonly string[] = ['eliminated', 'resigned']
+
+/**
+ * Whether a returning human may reclaim their seat from `status` (#134, §8:
+ * "the mechanism protects the other seven players, it doesn't punish the
+ * returner" — so active/skipped/ai_takeover all reclaim; only a terminal
+ * eliminated/resigned seat cannot). Pure so the guard is unit-testable.
+ */
+export function canReclaimSeat(status: string | null | undefined): boolean {
+  return !TERMINAL_SEAT_STATUSES.includes(status ?? '')
+}
+
+/** The `match_players` columns a seat reclaim writes back (#134, §8). */
+export interface SeatReclaimUpdate {
+  status: 'active'
+  missed_turns: 0
+}
+
+/**
+ * The write-back for a reclaimed seat: flip `status` to `active` and zero
+ * `missed_turns` (#134, §8). Pure — the endpoint stamps the wall-clock
+ * `last_seen_at` around this, keeping the decision itself deterministic and
+ * testable without a database or Deno.
+ */
+export function reclaimSeatUpdate(): SeatReclaimUpdate {
+  return { status: 'active', missed_turns: 0 }
+}

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { nextMissedTurnStatus, turnBroadcastPayload } from '@aop/shared'
+import {
+  canReclaimSeat,
+  nextMissedTurnStatus,
+  reclaimSeatUpdate,
+  turnBroadcastPayload,
+} from '@aop/shared'
 import { subscribeTurnSync, type TurnPokeTransport } from './turnSync'
 
 /** A fake Realtime transport: captures the channel + handler so a test can push pokes. */
@@ -113,5 +118,27 @@ describe('nextMissedTurnStatus (§8 ACTIVE → SKIPPED → AI_TAKEOVER)', () => 
 
   it('takes over immediately when the threshold is 1', () => {
     expect(nextMissedTurnStatus(0, 1)).toEqual({ missedTurns: 1, aiTakeover: true })
+  })
+})
+
+describe('seat reclaim (#134, §8: a returning human flips back to active)', () => {
+  it('resets the seat: status flips to active and missed_turns zeroes', () => {
+    const update = reclaimSeatUpdate()
+    expect(update.status).toBe('active')
+    expect(update.missed_turns).toBe(0)
+  })
+
+  it('allows reclaim from every non-terminal status, and never from a terminal one', () => {
+    for (const status of ['active', 'skipped', 'ai_takeover']) {
+      expect(canReclaimSeat(status)).toBe(true)
+    }
+    for (const status of ['eliminated', 'resigned']) {
+      expect(canReclaimSeat(status)).toBe(false)
+    }
+  })
+
+  it('treats a missing seat status as reclaimable (guarded elsewhere, never terminal)', () => {
+    expect(canReclaimSeat(null)).toBe(true)
+    expect(canReclaimSeat(undefined)).toBe(true)
   })
 })
