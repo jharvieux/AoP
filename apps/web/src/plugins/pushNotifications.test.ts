@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { registerForPushNotifications, onTurnNotification } from './pushNotifications'
+import {
+  registerForPushNotifications,
+  onTurnNotification,
+  onPushTokenRegistered,
+} from './pushNotifications'
 
 // Mock getNativePlugin to avoid importing it (so tests run without Capacitor)
 vi.mock('./nativeBridge', () => ({
@@ -61,7 +65,8 @@ describe('pushNotifications', () => {
 
       expect(mockPlugin.requestPermissions).toHaveBeenCalled()
       expect(mockPlugin.register).toHaveBeenCalled()
-      expect(mockPlugin.addListener).toHaveBeenCalledTimes(2)
+      // registration + pushNotificationReceived + pushNotificationActionPerformed
+      expect(mockPlugin.addListener).toHaveBeenCalledTimes(3)
     })
 
     it('returns early if permissions are not granted', async () => {
@@ -98,6 +103,59 @@ describe('pushNotifications', () => {
       // which we can't easily trigger in a test without actually mocking the full
       // flow. Here we just verify the handler was registered without error.
       expect(handler).not.toHaveBeenCalled() // Not called until notification arrives
+    })
+  })
+
+  describe('onPushTokenRegistered', () => {
+    // Builds a native-plugin mock that records its event listeners so a test can
+    // fire the `registration` event the real Capacitor runtime would emit.
+    function nativePluginWithListeners() {
+      const listeners = new Map<string, (payload: unknown) => void>()
+      const plugin = {
+        requestPermissions: vi.fn().mockResolvedValue({ receive: 'granted' }),
+        register: vi.fn().mockResolvedValue(undefined),
+        addListener: vi.fn((...args: unknown[]) => {
+          listeners.set(args[0] as string, args[1] as (payload: unknown) => void)
+        }),
+      }
+      vi.mocked(nativeBridge.isNativePlatform).mockReturnValue(true)
+      vi.mocked(nativeBridge.getNativePlugin).mockReturnValue(plugin)
+      return { plugin, fire: (event: string, payload: unknown) => listeners.get(event)?.(payload) }
+    }
+
+    it('delivers the token from the registration event to the handler', async () => {
+      const { fire } = nativePluginWithListeners()
+      const handler = vi.fn()
+      onPushTokenRegistered(handler)
+
+      await registerForPushNotifications()
+      fire('registration', { value: 'device-token-xyz' })
+
+      expect(handler).toHaveBeenLastCalledWith('device-token-xyz')
+    })
+
+    it('ignores a registration event with no token value', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
+
+      const handler = vi.fn()
+      onPushTokenRegistered(handler)
+      const callsBefore = handler.mock.calls.length
+      fire('registration', {})
+
+      expect(handler.mock.calls.length).toBe(callsBefore)
+    })
+
+    it('replays the most recent token to a handler set after registration', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
+      fire('registration', { value: 'late-token-123' })
+
+      // Handler wired up only now — it should still receive the cached token.
+      const lateHandler = vi.fn()
+      onPushTokenRegistered(lateHandler)
+
+      expect(lateHandler).toHaveBeenLastCalledWith('late-token-123')
     })
   })
 })
