@@ -9,6 +9,9 @@ interface SaveScreenProps {
   onClose: () => void
   onSave: (slotId: string) => Promise<void>
   onLoad: (slotId: string) => void
+  /** Opens the #146 replay viewer over a saved slot's action log, without
+   * disturbing the game currently in progress. */
+  onWatch: (slotId: string) => void
 }
 
 function formatSlot(record: SaveRecord | undefined): string {
@@ -17,7 +20,7 @@ function formatSlot(record: SaveRecord | undefined): string {
 }
 
 /** Bottom-sheet save/load menu: one autosave slot plus three manual slots. */
-export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
+export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps) {
   const [records, setRecords] = useState<Record<string, SaveRecord>>({})
 
   function refresh() {
@@ -39,6 +42,11 @@ export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
     onLoad(slotId)
   }
 
+  function handleWatch(slotId: string) {
+    hapticTap()
+    onWatch(slotId)
+  }
+
   function slotRow(slotId: string, title: string, saveable: boolean) {
     const record = records[slotId]
     return (
@@ -49,6 +57,9 @@ export function SaveScreen({ onClose, onSave, onLoad }: SaveScreenProps) {
           {saveable && <button onClick={() => handleSave(slotId)}>Save</button>}
           <button disabled={!record} onClick={() => handleLoad(slotId)}>
             Load
+          </button>
+          <button disabled={!record} onClick={() => handleWatch(slotId)}>
+            Watch
           </button>
         </div>
       </li>

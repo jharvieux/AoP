@@ -431,6 +431,27 @@ button.large {
   width: 100%;
 }
 
+/* Replay viewer (#146/#147): the round-seek slider sits above the transport
+   buttons in the same bottom bar other screens use for primary actions. */
+.replay-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.round-seek {
+  width: 100%;
+}
+
+.speed-select {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid #2a5580;
+  background: #0b2239;
+  color: #e8dcc0;
+  padding: 0 8px;
+}
+
 @media (min-width: 600px) {
   .game-title {
     font-size: 3rem;

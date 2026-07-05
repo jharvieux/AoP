@@ -45,6 +45,8 @@ interface GameScreenProps {
   onAction: (action: Action) => void
   onSaveSlot: (slotId: string) => Promise<void>
   onLoadSlot: (slotId: string) => void
+  /** Opens the #146 replay viewer over a saved slot, without disturbing this game. */
+  onWatchSlot: (slotId: string) => void
 }
 
 export function GameScreen({
@@ -54,6 +56,7 @@ export function GameScreen({
   onAction,
   onSaveSlot,
   onLoadSlot,
+  onWatchSlot,
 }: GameScreenProps) {
   const { factionName } = useTheme()
   const player = currentPlayer(game)
@@ -487,6 +490,10 @@ export function GameScreen({
           onLoad={(slotId) => {
             setSavesOpen(false)
             onLoadSlot(slotId)
+          }}
+          onWatch={(slotId) => {
+            setSavesOpen(false)
+            onWatchSlot(slotId)
           }}
         />
       )}
