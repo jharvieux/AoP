@@ -476,6 +476,12 @@ button.large {
   white-space: nowrap;
 }
 
+.resource-hud__icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
 .resource-hud__label {
   opacity: 0.7;
   font-size: 0.7rem;
