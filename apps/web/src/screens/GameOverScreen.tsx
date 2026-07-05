@@ -5,6 +5,7 @@ import { AdSlot } from '../AdSlot'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
+import { GAME_OVER_ICON } from '../uiIcons'
 
 interface GameOverScreenProps {
   game: GameState
@@ -24,6 +25,9 @@ export function GameOverScreen({
   const winner = game.players.find((p) => p.id === game.winnerId)
   const isPlayerWinner = game.winnerId === 'player-0'
   const isDraw = game.winnerId === null
+  const outcome = isDraw ? 'draw' : isPlayerWinner ? 'victory' : 'defeat'
+  const outcomeText = isDraw ? 'Draw' : isPlayerWinner ? 'Victory!' : 'Defeat'
+  const outcomeEmoji = isDraw ? '⚔️' : isPlayerWinner ? '🏆' : '💀'
 
   // Victory narration bark (#75); only for a win, not a draw or defeat.
   useEffect(() => {
@@ -33,10 +37,13 @@ export function GameOverScreen({
   return (
     <div className="screen game-over-screen">
       <div className="game-over-content">
-        <div
-          className={`game-over-header ${isDraw ? 'draw' : isPlayerWinner ? 'victory' : 'defeat'}`}
-        >
-          {isDraw ? '⚔️ Draw' : isPlayerWinner ? '🏆 Victory!' : '💀 Defeat'}
+        <div className={`game-over-header ${outcome}`}>
+          {GAME_OVER_ICON[outcome] ? (
+            <img className="game-over-icon" src={GAME_OVER_ICON[outcome]} alt="" aria-hidden />
+          ) : (
+            <span aria-hidden>{outcomeEmoji} </span>
+          )}
+          {outcomeText}
         </div>
 
         {winner && (
