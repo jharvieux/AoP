@@ -19,6 +19,12 @@ export interface UnitDef {
   weeklyGrowth: number
   /** Battle-board speed (#39): hexes per activation, and initiative rank (faster acts first). */
   speed: number
+  /**
+   * Battle-board attack range in hexes (#94). Omitted means a melee unit
+   * (range 1). 2+ marks a ranged unit: it shoots along a clear line of sight,
+   * draws no retaliation at range, but fights at a penalty if caught in melee.
+   */
+  range?: number
 }
 
 export interface FactionDef {
@@ -63,6 +69,18 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         goldCost: 60,
         weeklyGrowth: 5,
         speed: 6,
+      },
+      {
+        id: 'swivel-gunner',
+        name: 'Swivel Gunner',
+        tier: 2,
+        attack: 4,
+        defense: 1,
+        health: 8,
+        goldCost: 70,
+        weeklyGrowth: 4,
+        speed: 4,
+        range: 3,
       },
       {
         id: 'buccaneer',
@@ -118,6 +136,18 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         speed: 4,
       },
       {
+        id: 'marksman',
+        name: 'Marksman',
+        tier: 2,
+        attack: 4,
+        defense: 2,
+        health: 9,
+        goldCost: 80,
+        weeklyGrowth: 4,
+        speed: 4,
+        range: 3,
+      },
+      {
         id: 'royal-marine',
         name: 'Royal Marine',
         tier: 3,
@@ -169,6 +199,18 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         goldCost: 65,
         weeklyGrowth: 5,
         speed: 5,
+      },
+      {
+        id: 'arcabucero',
+        name: 'Arcabucero',
+        tier: 2,
+        attack: 5,
+        defense: 2,
+        health: 9,
+        goldCost: 85,
+        weeklyGrowth: 4,
+        speed: 3,
+        range: 3,
       },
       {
         id: 'conquistador',
@@ -224,6 +266,18 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         speed: 5,
       },
       {
+        id: 'voc-musketeer',
+        name: 'VOC Musketeer',
+        tier: 2,
+        attack: 4,
+        defense: 3,
+        health: 9,
+        goldCost: 80,
+        weeklyGrowth: 4,
+        speed: 4,
+        range: 3,
+      },
+      {
         id: 'sea-beggar',
         name: 'Sea Beggar',
         tier: 3,
@@ -276,6 +330,18 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
         goldCost: 65,
         weeklyGrowth: 6,
         speed: 6,
+      },
+      {
+        id: 'fusilier',
+        name: 'Fusilier',
+        tier: 2,
+        attack: 5,
+        defense: 1,
+        health: 8,
+        goldCost: 80,
+        weeklyGrowth: 5,
+        speed: 4,
+        range: 3,
       },
       {
         id: 'grenadier',

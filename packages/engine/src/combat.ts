@@ -28,6 +28,12 @@ export interface UnitCombatStats {
    * falls back to {@link BattleTuning.defaultUnitSpeed}.
    */
   speed?: number
+  /**
+   * Attack range in hexes (#94). Absent or 1 means a melee unit (strikes only
+   * adjacent enemies). 2+ marks a ranged unit that shoots along a clear line of
+   * sight, takes no retaliation at range, and fights at a penalty in melee.
+   */
+  range?: number
 }
 
 export interface ShipCombatStats {
@@ -83,6 +89,19 @@ export interface BattleTuning {
   flankingBonus: number
   /** Fraction of damage absorbed by a target standing on cover terrain. */
   coverDamageReduction: number
+  /**
+   * Fraction of a ranged shot absorbed by a target standing on cover terrain
+   * (#94) — soft cover foils archers more than it blunts a melee blow, so this
+   * is typically higher than {@link coverDamageReduction}. Applied in place of
+   * (not on top of) the melee cover reduction for ranged shots.
+   */
+  rangedCoverDamageReduction: number
+  /**
+   * Damage multiplier for a ranged unit forced to fight an adjacent enemy in
+   * melee (#94) — the HoMM archer penalty. Below 1; such a blow also provokes
+   * the normal retaliation, unlike a shot at range.
+   */
+  rangedMeleePenalty: number
   /** Fraction of damage absorbed by a target that held (defensive posture). */
   holdDamageReduction: number
   /** Movement cost of a rough hex (open and cover hexes cost 1). */

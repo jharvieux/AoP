@@ -8,6 +8,8 @@ import {
   createCombatStats,
   createGame,
   hexDistance,
+  hexLine,
+  hexLineOfSight,
   hexNeighbors,
   initiativeOrder,
   replay,
@@ -37,6 +39,8 @@ const UNITS = [
   { id: 'grunt', attack: 5, defense: 2, health: 12, speed: 5 },
   { id: 'brute', attack: 12, defense: 8, health: 40, speed: 4 },
   { id: 'runner', attack: 3, defense: 1, health: 8, speed: 7 },
+  // A ranged unit (#94): range 3, fast enough to act before the melee closes.
+  { id: 'archer', attack: 4, defense: 1, health: 8, speed: 6, range: 3 },
 ]
 const SHIPS = [
   { id: 'sloop', hull: 40, cannons: 6, speed: 5 },
@@ -89,6 +93,38 @@ describe('hex math', () => {
     const b = { col: 9, row: 2 }
     expect(hexDistance(a, b)).toBe(hexDistance(b, a))
     expect(hexDistance(a, a)).toBe(0)
+  })
+
+  it('hexLine walks a contiguous path between the endpoints, inclusive', () => {
+    const a = { col: 1, row: 3 }
+    const b = { col: 7, row: 3 }
+    const line = hexLine(a, b)
+    expect(line[0]).toEqual(a)
+    expect(line.at(-1)).toEqual(b)
+    expect(line).toHaveLength(hexDistance(a, b) + 1)
+    // Every step is exactly one hex from the last — a true contiguous line.
+    for (let i = 1; i < line.length; i++) {
+      expect(hexDistance(line[i - 1]!, line[i]!)).toBe(1)
+    }
+  })
+
+  it('hexLine is deterministic', () => {
+    const a = { col: 2, row: 1 }
+    const b = { col: 8, row: 6 }
+    expect(hexLine(a, b)).toEqual(hexLine(a, b))
+  })
+
+  it('line of sight is clear over open ground and blocked by an obstacle between', () => {
+    const a = { col: 0, row: 2 }
+    const b = { col: 6, row: 2 }
+    expect(hexLineOfSight(a, b, () => false)).toBe(true)
+    // A wall on the middle hex of the line occludes it.
+    const mid = hexLine(a, b)[3]!
+    const blockedMid = (h: { col: number; row: number }) => h.col === mid.col && h.row === mid.row
+    expect(hexLineOfSight(a, b, blockedMid)).toBe(false)
+    // A wall on an endpoint never blocks — you can always see out of / into your own hex.
+    expect(hexLineOfSight(a, b, (h) => h.col === a.col && h.row === a.row)).toBe(true)
+    expect(hexLineOfSight(a, b, (h) => h.col === b.col && h.row === b.row)).toBe(true)
   })
 })
 
@@ -451,6 +487,183 @@ describe('board drivers: recorded plans and standing orders', () => {
   })
 })
 
+describe('ranged units and line of sight (#94)', () => {
+  const meleeEvent = (e: BoardEvent): e is Extract<BoardEvent, { targetId: number }> =>
+    e.type === 'attack' || e.type === 'retaliation'
+
+  it('a ranged stack shoots across the gap and draws no retaliation', () => {
+    // Open 3×3 arena: archer and target start two hexes apart, in range and in
+    // sight. The archer fires; the held defender never closes, so no blow is
+    // ever answered.
+    const stats = createCombatStats(statsData(openArena()))
+    const { log } = resolveBoardBattle(
+      {
+        attacker: combatant('a', [{ unitId: 'archer', count: 10 }]),
+        defender: combatant('d', [{ unitId: 'grunt', count: 10 }]),
+      },
+      stats,
+      seedRng(5),
+      { attacker: boardAiDriver('normal'), defender: boardAiDriver('easy') },
+      'boarding',
+    )
+    const shots = log.events.filter((e) => e.type === 'attack' && e.ranged)
+    expect(shots.length).toBeGreaterThan(0)
+    expect(log.events.filter((e) => e.type === 'retaliation')).toHaveLength(0)
+  })
+
+  it('a ranged unit caught in melee fights at the archer penalty', () => {
+    // Same seed, same forced advance-and-swing onto an adjacent brute: a
+    // steeper penalty lands a strictly softer blow.
+    const arena = openArena()
+    const noPenalty = createCombatStats(statsData({ ...arena, rangedMeleePenalty: 1 }))
+    const bigPenalty = createCombatStats(statsData({ ...arena, rangedMeleePenalty: 0.25 }))
+    const duel = {
+      attacker: combatant('a', [{ unitId: 'archer', count: 10 }]),
+      defender: combatant('d', [{ unitId: 'brute', count: 20 }]),
+    }
+    const firstMelee = (s: ReturnType<typeof createCombatStats>) =>
+      resolveBoardBattle(
+        duel,
+        s,
+        seedRng(9),
+        {
+          attacker: boardPlanDriver([{ stackId: 0, to: { col: 1, row: 1 }, targetId: 1 }]),
+          defender: boardAiDriver('easy'),
+        },
+        'boarding',
+      ).log.events.filter(
+        (e): e is Extract<BoardEvent, { targetId: number }> => e.type === 'attack',
+      )[0]!
+    const penalized = firstMelee(bigPenalty)
+    expect(penalized.ranged).toBeUndefined()
+    expect(penalized.damage).toBeLessThan(firstMelee(noPenalty).damage)
+  })
+
+  it('a ranged melee scuffle still draws retaliation, unlike a shot', () => {
+    const stats = createCombatStats(statsData(openArena()))
+    const { log } = resolveBoardBattle(
+      {
+        attacker: combatant('a', [{ unitId: 'archer', count: 10 }]),
+        defender: combatant('d', [{ unitId: 'brute', count: 20 }]),
+      },
+      stats,
+      seedRng(9),
+      {
+        attacker: boardPlanDriver([{ stackId: 0, to: { col: 1, row: 1 }, targetId: 1 }]),
+        defender: boardAiDriver('easy'),
+      },
+      'boarding',
+    )
+    expect(log.events[0]).toMatchObject({ type: 'move' })
+    expect(log.events[1]).toMatchObject({ type: 'attack', stackId: 0 })
+    expect(log.events[2]).toMatchObject({ type: 'retaliation', targetId: 0 })
+  })
+
+  it('the ranged AI opens fire from distance instead of charging in', () => {
+    const stats = createCombatStats(statsData(openArena({ boardWidth: 6 })))
+    const { log } = resolveBoardBattle(
+      {
+        attacker: combatant('a', [{ unitId: 'archer', count: 10 }]),
+        defender: combatant('d', [{ unitId: 'brute', count: 10 }]),
+      },
+      stats,
+      seedRng(3),
+      { attacker: boardAiDriver('normal'), defender: boardAiDriver('easy') },
+      'boarding',
+    )
+    const firstAttack = log.events.find(meleeEvent)!
+    expect(firstAttack.type === 'attack' && firstAttack.ranged).toBe(true)
+  })
+
+  it('skirmish keeps a ranged stack shooting from range', () => {
+    const stats = createCombatStats(statsData(openArena({ boardWidth: 6 })))
+    const { log } = resolveBoardBattle(
+      {
+        attacker: combatant('a', [{ unitId: 'archer', count: 10 }]),
+        defender: combatant('d', [{ unitId: 'grunt', count: 10 }]),
+      },
+      stats,
+      seedRng(4),
+      {
+        attacker: boardOrdersDriver([{ when: 'always', doctrine: 'skirmish' }]),
+        defender: boardAiDriver('easy'),
+      },
+      'boarding',
+    )
+    expect(log.events.some((e) => e.type === 'attack' && e.ranged)).toBe(true)
+  })
+
+  it('terrain blocks a shot: an archer with no line of sight cannot fire down the lane', () => {
+    // A fully-blocked interior with only the middle row reopened. Two archer
+    // stacks deploy on rows 1 and 2; the row-2 archer's line to the enemy runs
+    // through walls, so it cannot get a clear shot from its spawn, while the
+    // row-1 archer (in the open lane) shoots on round 1.
+    const walled = openArena({
+      boardWidth: 4,
+      boardHeight: 3,
+      boardingBlockedDensity: 1,
+      maxStacksPerSide: 4,
+    })
+    const stats = createCombatStats(statsData(walled))
+    const { log } = resolveBoardBattle(
+      {
+        attacker: combatant('a', [
+          { unitId: 'archer', count: 6 },
+          { unitId: 'archer', count: 6 },
+        ]),
+        defender: combatant('d', [
+          { unitId: 'grunt', count: 6 },
+          { unitId: 'grunt', count: 6 },
+        ]),
+      },
+      stats,
+      seedRng(1),
+      { attacker: boardAiDriver('easy'), defender: boardAiDriver('easy') },
+      'boarding',
+    )
+    // Confirm the precondition: the middle lane (row 1) is open, the off-lane
+    // interior (row 2) is walled.
+    const at = (col: number, row: number) => log.terrain[row * log.width + col]
+    expect(at(1, 1)).toBe('open')
+    expect(at(2, 1)).toBe('open')
+    expect(at(1, 2)).toBe('blocked')
+    // The lane archer (spawned on row 1) fires on round 1; the walled one holds.
+    const laneArcher = log.stacks.find((s) => s.side === 'attacker' && s.position.row === 1)!
+    const walledArcher = log.stacks.find((s) => s.side === 'attacker' && s.position.row === 2)!
+    const round1 = log.events.filter((e) => e.round === 1)
+    expect(round1.some((e) => e.type === 'attack' && e.ranged && e.stackId === laneArcher.id)).toBe(
+      true,
+    )
+    expect(
+      round1.some((e) => e.type === 'attack' && e.ranged && e.stackId === walledArcher.id),
+    ).toBe(false)
+  })
+
+  it('a ranged battle replays bit-identically — the determinism contract', () => {
+    const stats = createCombatStats(statsData())
+    const input = {
+      attacker: combatant('a', [{ unitId: 'archer', count: 15 }]),
+      defender: combatant('d', [{ unitId: 'grunt', count: 15 }]),
+    }
+    const r1 = resolveBoardBattle(input, stats, seedRng(11), aiBoth, 'boarding')
+    const r2 = resolveBoardBattle(input, stats, seedRng(11), aiBoth, 'boarding')
+    expect(JSON.stringify(r1)).toBe(JSON.stringify(r2))
+  })
+
+  it('a ranged boarding fight is deterministic through the tactical resolver', () => {
+    const duel = {
+      attacker: combatant('a', [{ unitId: 'archer', count: 14 }]),
+      defender: combatant('d', [{ unitId: 'grunt', count: 12 }]),
+    }
+    const run = () =>
+      resolveTacticalCombat(duel, createCombatStats(statsData()), seedRng(31), {
+        attacker: tacticPlanDriver(['board']),
+        defender: tacticPlanDriver(['broadside']),
+      })
+    expect(JSON.stringify(run())).toBe(JSON.stringify(run()))
+  })
+})
+
 describe('resolveBoardCombat — the land-combat resolver interface', () => {
   it('returns a CombatResult with a board log and per-round summaries', () => {
     const stats = createCombatStats(statsData())
@@ -560,8 +773,12 @@ function boardConfig(): GameConfig {
   }
 }
 
-function adjacentBattleState(): GameState {
-  const state = createGame(boardConfig())
+function adjacentBattleState(p1Troops = [{ unitId: 'grunt', count: 12 }]): GameState {
+  const cfg = boardConfig()
+  const state = createGame({
+    ...cfg,
+    players: cfg.players.map((p) => (p.id === 'p1' ? { ...p, startingTroops: p1Troops } : p)),
+  })
   const p1cap = captainsOf(state, 'p1')[0]!
   const p2cap = captainsOf(state, 'p2')[0]!
   const target = { x: p1cap.position.x + 1, y: p1cap.position.y }
@@ -589,6 +806,29 @@ describe('attackCaptain with the battle board', () => {
     const survivor = next.captains[0]!
     expect(survivor.ownerId).toBe(battleReport!.winnerId)
     expect(survivor.troops[0]!.count).toBeGreaterThan(0)
+  })
+
+  it('a boarding attack with ranged crews replays through the action log identically (#94)', () => {
+    const base = adjacentBattleState([{ unitId: 'archer', count: 12 }])
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [
+      {
+        type: 'attackCaptain',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCaptainId: p2cap.id,
+        attackerOrders: ['board'],
+        boardCommands: [{ stackId: 0, targetId: 1 }, { stackId: 0 }],
+      },
+    ]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    const { battleReport } = applyActionWithOutcome(base, log[0]!)
+    expect(battleReport!.board).toBeDefined()
+    // The board carried a ranged shot in the melee record.
+    expect(battleReport!.board!.events.some((e) => e.type === 'attack' && e.ranged)).toBe(true)
   })
 
   it('rejects malformed board commands instead of guessing', () => {

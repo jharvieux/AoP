@@ -22,6 +22,8 @@ export interface UnitCombatStats {
   health: number
   /** Battle-board speed (#39): hexes per activation and initiative rank. */
   speed: number
+  /** Battle-board attack range in hexes (#94); omitted/1 = melee, 2+ = ranged. */
+  range?: number
 }
 
 export interface ShipCombatStats {
@@ -47,6 +49,7 @@ export function combatStatsData(): CombatStatsData {
       defense: u.defense,
       health: u.health,
       speed: u.speed,
+      ...(u.range !== undefined ? { range: u.range } : {}),
     })),
   )
   const ships: ShipCombatStats[] = SHIP_CLASSES.map((s) => ({

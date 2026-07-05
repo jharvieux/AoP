@@ -66,6 +66,18 @@ export interface BattleTuning {
   flankingBonus: number
   /** Fraction of damage absorbed by a target standing on cover terrain. */
   coverDamageReduction: number
+  /**
+   * Fraction of a ranged shot absorbed by a target on cover (#94) — soft cover
+   * foils archers more than melee, so typically higher than
+   * {@link coverDamageReduction}. Replaces (not stacks with) the melee cover
+   * reduction for ranged shots.
+   */
+  rangedCoverDamageReduction: number
+  /**
+   * Damage multiplier for a ranged unit fighting an adjacent enemy in melee
+   * (#94) — the HoMM archer penalty. Below 1; such a blow still draws retaliation.
+   */
+  rangedMeleePenalty: number
   /** Fraction of damage absorbed by a target that held (defensive posture). */
   holdDamageReduction: number
   /** Movement cost of a rough hex (open and cover hexes cost 1). */
@@ -178,6 +190,8 @@ export const BATTLE_TUNING: BattleTuning = {
   maxDamageModifier: 2,
   flankingBonus: 1.2,
   coverDamageReduction: 0.25,
+  rangedCoverDamageReduction: 0.5,
+  rangedMeleePenalty: 0.5,
   holdDamageReduction: 0.15,
   roughMoveCost: 2,
   // A ship's deck: cluttered with masts and hatches, no soft going.

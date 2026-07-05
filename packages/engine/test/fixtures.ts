@@ -47,6 +47,8 @@ export const BATTLE_TUNING: BattleTuning = {
   maxDamageModifier: 2,
   flankingBonus: 1.2,
   coverDamageReduction: 0.25,
+  rangedCoverDamageReduction: 0.5,
+  rangedMeleePenalty: 0.5,
   holdDamageReduction: 0.15,
   roughMoveCost: 2,
   boardingBlockedDensity: 0.12,
