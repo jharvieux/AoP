@@ -239,38 +239,6 @@ export type Database = {
           },
         ]
       }
-      matchmaking_queue: {
-        Row: {
-          faction: string | null
-          map_size: string
-          match_size: number
-          queued_at: string
-          user_id: string
-        }
-        Insert: {
-          faction?: string | null
-          map_size: string
-          match_size: number
-          queued_at?: string
-          user_id: string
-        }
-        Update: {
-          faction?: string | null
-          map_size?: string
-          match_size?: number
-          queued_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'matchmaking_queue_user_id_fkey'
-            columns: ['user_id']
-            isOneToOne: true
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       match_spectators: {
         Row: {
           created_at: string
@@ -365,6 +333,38 @@ export type Database = {
             foreignKeyName: 'matches_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      matchmaking_queue: {
+        Row: {
+          faction: string | null
+          map_size: string
+          match_size: number
+          queued_at: string
+          user_id: string
+        }
+        Insert: {
+          faction?: string | null
+          map_size: string
+          match_size: number
+          queued_at?: string
+          user_id: string
+        }
+        Update: {
+          faction?: string | null
+          map_size?: string
+          match_size?: number
+          queued_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'matchmaking_queue_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
             referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
