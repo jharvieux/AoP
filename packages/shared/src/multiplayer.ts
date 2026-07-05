@@ -56,6 +56,67 @@ export function isTurnBroadcast(value: unknown): value is TurnBroadcastPayload {
   )
 }
 
+/** Longest chat message `send-chat` accepts, mirrored by the DB length check. */
+export const MAX_CHAT_LENGTH = 500
+
+/**
+ * The two chat scopes (#139/#140): `all` reaches every seat in the match;
+ * `alliance` reaches only the sender's current alliance cluster. Kept here so the
+ * `send-chat` Edge Function and the web client agree on the exact literals.
+ */
+export type ChatChannel = 'all' | 'alliance'
+
+/** Narrow an untrusted request field to a {@link ChatChannel}. */
+export function isChatChannel(value: unknown): value is ChatChannel {
+  return value === 'all' || value === 'alliance'
+}
+
+/**
+ * Trim and length-check a chat body. Pure so both `send-chat` and its tests
+ * share one definition of "valid message". Never carries channel or recipient
+ * info — that is resolved server-side from the JWT-derived seat (§11).
+ */
+export function normalizeChatBody(
+  raw: unknown,
+): { ok: true; body: string } | { ok: false; reason: string } {
+  if (typeof raw !== 'string') return { ok: false, reason: 'body must be a string' }
+  const body = raw.trim()
+  if (body.length === 0) return { ok: false, reason: 'body must not be empty' }
+  if (body.length > MAX_CHAT_LENGTH) {
+    return { ok: false, reason: `body must be at most ${MAX_CHAT_LENGTH} characters` }
+  }
+  return { ok: true, body }
+}
+
+/**
+ * The Realtime poke broadcast on `match:{id}` after a chat message lands
+ * (#139), sibling to {@link TurnBroadcastPayload}. It carries the new message's
+ * id and nothing else — never the body, never the channel: the poke is emitted
+ * to every seat regardless of fog/alliance, so leaking an alliance message's
+ * text (or even its channel) on it would violate the §7 leak-audit. Clients
+ * react by refetching the chat rows RLS lets them see; a non-member simply gets
+ * no new visible row.
+ */
+export interface ChatBroadcastPayload {
+  type: 'chat'
+  id: number
+}
+
+/** Build the chat poke — exactly `{ type, id }`, the confidentiality contract above. */
+export function chatBroadcastPayload(id: number): ChatBroadcastPayload {
+  return { type: 'chat', id }
+}
+
+/** Narrow an untrusted inbound broadcast payload to a chat poke. */
+export function isChatBroadcast(value: unknown): value is ChatBroadcastPayload {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { type?: unknown }).type === 'chat' &&
+    typeof (value as { id?: unknown }).id === 'number'
+  )
+}
+
 /**
  * The shared `{ error: { code, message } }` envelope every Edge Function
  * returns on failure (docs/MULTIPLAYER.md §5). Kept minimal — only the shape a
