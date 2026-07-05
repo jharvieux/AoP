@@ -55,9 +55,9 @@ export function unitDefinition(unitId: string) {
 }
 
 /**
- * Per-unit-tier troop icon (#26/#89): undefined for tier 1 or any faction/tier
- * that hasn't been generated yet, in which case the token keeps its plain
- * 2-letter fallback.
+ * Per-unit-tier troop icon (#26/#89): every tier 1-4 across all 5 factions has art;
+ * undefined only for a future faction/tier added without art, in which case the token
+ * keeps its plain 2-letter fallback.
  */
 export function unitTierIconUrl(unitId: string): string | undefined {
   for (const faction of Object.values(FACTIONS)) {

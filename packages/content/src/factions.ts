@@ -47,9 +47,9 @@ export interface FactionDef {
    * army/garrison list and the attack-confirmation sheet (#114). */
   captainPortraitUrl?: string
   /**
-   * Per-unit-tier troop icon (#26/#89), keyed by `UnitDef['tier']`. Tier 1 has no dedicated
-   * art yet — CityScreen and BattleBoardSheet fall back to their existing text-only rendering
-   * when a tier is missing here.
+   * Per-unit-tier troop icon (#26/#89), keyed by `UnitDef['tier']`. Every tier 1-4 across all
+   * 5 factions now has dedicated art; CityScreen and BattleBoardSheet fall back to their
+   * existing text-only rendering only if a faction/tier is ever added without art.
    */
   unitTierSpriteUrls?: Partial<Record<UnitDef['tier'], string>>
 }
@@ -67,6 +67,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     },
     captainPortraitUrl: '/art/factions/pirates/captain.png',
     unitTierSpriteUrls: {
+      1: '/art/factions/pirates/unit_tier1.png',
       2: '/art/factions/pirates/unit_tier2.png',
       3: '/art/factions/pirates/unit_tier3.png',
       4: '/art/factions/pirates/unit_tier4.png',
@@ -142,6 +143,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     },
     captainPortraitUrl: '/art/factions/british/captain.png',
     unitTierSpriteUrls: {
+      1: '/art/factions/british/unit_tier1.png',
       2: '/art/factions/british/unit_tier2.png',
       3: '/art/factions/british/unit_tier3.png',
       4: '/art/factions/british/unit_tier4.png',
@@ -217,6 +219,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     },
     captainPortraitUrl: '/art/factions/spanish/captain.png',
     unitTierSpriteUrls: {
+      1: '/art/factions/spanish/unit_tier1.png',
       2: '/art/factions/spanish/unit_tier2.png',
       3: '/art/factions/spanish/unit_tier3.png',
       4: '/art/factions/spanish/unit_tier4.png',
@@ -292,6 +295,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     },
     captainPortraitUrl: '/art/factions/dutch/captain.png',
     unitTierSpriteUrls: {
+      1: '/art/factions/dutch/unit_tier1.png',
       2: '/art/factions/dutch/unit_tier2.png',
       3: '/art/factions/dutch/unit_tier3.png',
       4: '/art/factions/dutch/unit_tier4.png',
@@ -368,6 +372,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     },
     captainPortraitUrl: '/art/factions/french/captain.png',
     unitTierSpriteUrls: {
+      1: '/art/factions/french/unit_tier1.png',
       2: '/art/factions/french/unit_tier2.png',
       3: '/art/factions/french/unit_tier3.png',
       4: '/art/factions/french/unit_tier4.png',
