@@ -14,10 +14,25 @@ import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 //
 // The load-bearing correctness property of this whole issue: a spectator's response is
 // byte-equivalent — same treasury visibility, same fog-of-war, same everything — to what
-// the chosen seat's REAL player would receive for the same match state. That property is
-// guaranteed by construction: `get-player-view` feeds a spectator through the identical
-// `playerView(state, seat)` filter a real request uses (see `_shared/match.ts` `viewerSeat`
-// -> `resolveViewSeat`), never a spectator-specific path. These tests pin that guarantee.
+// the watched seat's REAL player would receive for the same match state.
+//
+// To prove that non-vacuously we model the actual production resolution and drive two
+// genuinely DISTINCT caller identities through it: a real seat-holder (a `match_players`
+// row) and a *different* user who holds only a spectator grant (a `match_spectators` row).
+// Each identity is resolved by the same pure `resolveViewSeat` (`@aop/shared`) that
+// `get-player-view` uses, and each resolved seat is fed into the same `playerView` filter —
+// then we assert byte-identity between the spectator's view and the seat-holder's. A leak or
+// a spectator-specific branch would break it. (The pre-rewrite test resolved a single literal
+// seat and compared `playerView` against itself with identical arguments, so it could never
+// fail; see the #148 follow-up.)
+//
+// What still needs a live Supabase stack: the two DB reads inside `viewerSeat`
+// (`supabase/functions/_shared/match.ts`) that turn an `auth.uid()` into its seat / grant
+// rows. That wrapper also can't be imported here (it uses Deno `.ts` module specifiers), so
+// we mirror its composition below — the same approach `snapshotResume`/`snapshotCompaction`
+// take with `reconstructState`: two per-user lookups over constructed rows, then the real
+// `resolveViewSeat`. An end-to-end integration test against a running stack (real Postgres
+// rows + RLS) would close the remaining gap around the reads themselves.
 
 const CATALOG: ContentCatalog = {
   buildings: {
@@ -104,17 +119,72 @@ describe('resolveViewSeat — spectator seat resolution (#148, §12)', () => {
   })
 })
 
+// In-memory stand-ins for the two rows `viewerSeat` reads per caller
+// (`supabase/functions/_shared/match.ts`): a seat in `match_players` and/or a pinned
+// `viewing_seat` in `match_spectators`, both keyed by the caller's `auth.uid()`.
+interface MatchPlayerRow {
+  userId: string
+  seat: number
+}
+interface MatchSpectatorRow {
+  userId: string
+  viewingSeat: number
+}
+
+/**
+ * Mirrors `viewerSeat` (`supabase/functions/_shared/match.ts`): look up the caller's seat and
+ * spectator grant, then defer the actual decision to the real `resolveViewSeat`. Returns
+ * `null` exactly where `viewerSeat` throws FORBIDDEN. Only the two DB reads are stubbed here;
+ * the resolution under test is production's own pure function, driven by distinct identities.
+ */
+function resolveViewerSeat(
+  userId: string,
+  players: readonly MatchPlayerRow[],
+  spectators: readonly MatchSpectatorRow[],
+): number | null {
+  const player = players.find((p) => p.userId === userId) ?? null
+  const spectator = spectators.find((s) => s.userId === userId) ?? null
+  return resolveViewSeat(player?.seat ?? null, spectator?.viewingSeat ?? null)
+}
+
 describe('spectator view — byte-equivalence to the watched seat (#148, §12)', () => {
   const state = midMatchState()
-  const chosenSeat = 1
 
-  it('is byte-for-byte identical to what the chosen seat’s real player receives', () => {
-    // The spectator path: resolveViewSeat pins the seat, get-player-view feeds it to the
-    // exact same playerView filter. Reproduce that here and compare against the real player.
-    const spectatorSeat = resolveViewSeat(null, chosenSeat)
-    expect(spectatorSeat).toBe(chosenSeat)
+  // Four distinct caller identities, exactly as the two match tables would hold them.
+  const HOLDER = 'uid-seat1-holder' // holds seat 1 in match_players
+  const SPECTATOR = 'uid-spectator' // ONLY a spectator grant, pinned to seat 1
+  const WATCHER0 = 'uid-watcher0' // a spectator grant pinned to seat 0
+  const DUAL = 'uid-dual' // holds seat 0 AND self-granted a spectate on seat 1
+  const STRANGER = 'uid-stranger' // in neither table
 
-    const realPlayerView = playerView(state, seatId(chosenSeat))
+  const players: MatchPlayerRow[] = [
+    { userId: HOLDER, seat: 1 },
+    { userId: DUAL, seat: 0 },
+  ]
+  const spectators: MatchSpectatorRow[] = [
+    { userId: SPECTATOR, viewingSeat: 1 },
+    { userId: WATCHER0, viewingSeat: 0 },
+    { userId: DUAL, viewingSeat: 1 },
+  ]
+
+  // The production response for a caller: numeric seat -> `seatPlayerId` -> `playerView`,
+  // exactly as `get-player-view` builds it. Throws where `viewerSeat` would answer FORBIDDEN.
+  const viewFor = (userId: string): ReturnType<typeof playerView> => {
+    const seat = resolveViewerSeat(userId, players, spectators)
+    if (seat === null) throw new Error(`expected ${userId} to resolve to a seat`)
+    return playerView(state, seatId(seat))
+  }
+
+  it('gives a spectator byte-for-byte what the watched seat’s real player receives', () => {
+    // HOLDER (a match_players row) and SPECTATOR (a match_spectators row) are different users
+    // whose seats are resolved independently through the real resolveViewSeat — this is not a
+    // tautology: nothing forces the two seats equal except the production resolution itself.
+    const holderSeat = resolveViewerSeat(HOLDER, players, spectators)
+    const spectatorSeat = resolveViewerSeat(SPECTATOR, players, spectators)
+    expect(holderSeat).toBe(1)
+    expect(spectatorSeat).toBe(holderSeat)
+
+    const realPlayerView = playerView(state, seatId(holderSeat!))
     const spectatorView = playerView(state, seatId(spectatorSeat!))
 
     // Same treasury visibility, same fog-of-war, same everything — the whole object.
@@ -123,24 +193,39 @@ describe('spectator view — byte-equivalence to the watched seat (#148, §12)',
     expect(JSON.stringify(spectatorView)).toBe(JSON.stringify(realPlayerView))
   })
 
-  it('is fog-locked to exactly one seat — never a union or god view', () => {
-    const spectatorView = playerView(state, seatId(chosenSeat))
-    const otherSeatView = playerView(state, seatId(0))
-    // A one-seat lock means the two seats' views genuinely differ (different fog, different
-    // own-treasury owner) — a god/full-vision view would collapse this distinction.
-    expect(JSON.stringify(spectatorView)).not.toBe(JSON.stringify(otherSeatView))
+  it('is fog-locked to the granted seat — a seat-0 spectator never sees seat-1’s view', () => {
+    // SPECTATOR watches seat 1, WATCHER0 watches seat 0. Their views must genuinely differ —
+    // a union / god view would collapse the distinction — and each must equal exactly its own
+    // watched seat's real player view.
+    const seat1View = viewFor(SPECTATOR)
+    const seat0View = viewFor(WATCHER0)
+    expect(JSON.stringify(seat1View)).not.toBe(JSON.stringify(seat0View))
+    expect(JSON.stringify(seat1View)).toBe(JSON.stringify(playerView(state, seatId(1))))
+    expect(JSON.stringify(seat0View)).toBe(JSON.stringify(playerView(state, seatId(0))))
+  })
+
+  it('never widens a seat-holder’s fog via a self-granted spectate seat', () => {
+    // DUAL holds seat 0 but also granted itself a spectate on seat 1. Player precedence must
+    // pin it to its own seat 0 — never the enemy seat 1 it tried to grant itself.
+    const dualView = viewFor(DUAL)
+    expect(JSON.stringify(dualView)).toBe(JSON.stringify(playerView(state, seatId(0))))
+    expect(JSON.stringify(dualView)).not.toBe(JSON.stringify(playerView(state, seatId(1))))
+  })
+
+  it('resolves no seat for a user with neither a seat nor a grant (caller answers FORBIDDEN)', () => {
+    expect(resolveViewerSeat(STRANGER, players, spectators)).toBeNull()
   })
 
   it('never exposes a non-watched seat’s treasury to the spectator', () => {
-    const spectatorView = playerView(state, seatId(chosenSeat))
-    const watched = spectatorView.players.find((p) => p.id === seatId(chosenSeat))!
+    const spectatorView = viewFor(SPECTATOR)
+    const watched = spectatorView.players.find((p) => p.id === seatId(1))!
     const other = spectatorView.players.find((p) => p.id === seatId(0))!
     expect(watched.resources).toBeDefined() // the watched seat's own treasury, as its player sees it
     expect(other.resources).toBeUndefined() // seat-0's treasury stays hidden, exactly as for seat-1's player
   })
 
   it('carries no rngState or seed for a spectator, same as any player view', () => {
-    const spectatorView = playerView(state, seatId(chosenSeat))
+    const spectatorView = viewFor(SPECTATOR)
     expect(spectatorView.rngState).toBeNull()
     expect(JSON.stringify(spectatorView)).not.toContain('"seed"')
   })
