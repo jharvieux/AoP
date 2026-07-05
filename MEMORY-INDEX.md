@@ -1,6 +1,12 @@
 # MEMORY index
 
-One line per decision, newest first.
+One line per decision, newest first. Rebuild with:
+
+```bash
+{ printf '# MEMORY index\n\n'; \
+  printf 'One line per decision, newest first.\n\n## Entries\n\n'; \
+  grep -E '^## D-[0-9]+' MEMORY.md | sed 's/^## /- /'; } > MEMORY-INDEX.md
+```
 
 ## Entries
 
