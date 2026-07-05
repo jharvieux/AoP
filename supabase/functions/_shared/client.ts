@@ -38,6 +38,19 @@ export async function requireUserId(req: Request): Promise<string> {
   return data.user.id
 }
 
+/**
+ * Guards server-only functions (e.g. the turn-timer sweep, §8) that have no
+ * user JWT to derive a seat from. By convention such callers (cron, another
+ * trusted backend job) authenticate as the service role itself, bearing the
+ * same key `serviceClient()` uses to bypass RLS.
+ */
+export function requireServiceRole(req: Request): void {
+  const authorization = req.headers.get('Authorization')
+  if (authorization !== `Bearer ${env('SUPABASE_SERVICE_ROLE_KEY')}`) {
+    throw new AppError('FORBIDDEN', 'Service role required')
+  }
+}
+
 /** Persist (or refresh) the caller's profile row so match FKs to `profiles` resolve. */
 export async function ensureProfile(db: Db, userId: string, displayName: string): Promise<void> {
   const { error } = await db
