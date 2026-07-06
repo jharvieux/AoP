@@ -300,14 +300,16 @@ interface Side {
   combatant: Combatant
   troops: TroopStack[]
   hull: number
+  /** Running crew-health pool: total troop health minus damage taken so far (#210). */
+  troopHp: number
 }
 
 function troopHealth(troops: TroopStack[], stats: CombatStats): number {
   return troops.reduce((sum, t) => sum + t.count * stats.unit(t.unitId).health, 0)
 }
 
-function sideHp(side: Side, stats: CombatStats): number {
-  return Math.max(0, side.hull) + troopHealth(side.troops, stats)
+function sideHp(side: Side): number {
+  return Math.max(0, side.hull) + side.troopHp
 }
 
 /**
@@ -332,19 +334,33 @@ export function combatantStrength(combatant: Combatant, stats: CombatStats): num
   return shipStrength + troopStrength
 }
 
-/** Apply `damage` to a side: crew casualties first, then hull. Deterministic. */
+/**
+ * Apply `damage` to a side: crew casualties first, then hull. Casualties are
+ * drawn against the side's running crew-health pool, so damage below the pool
+ * can never annihilate the crew (#210) — the old proportional per-stack
+ * `Math.round` could wipe a small stack on sub-lethal damage, or kill nobody
+ * on repeated near-lethal hits. Stack counts are rebuilt by filling stacks in
+ * troop-list order from the pool; the partially wounded unit at the boundary
+ * survives. Deterministic.
+ */
 function applyDamage(side: Side, damage: number, stats: CombatStats): void {
-  const health = troopHealth(side.troops, stats)
   if (damage <= 0) return
-  if (damage < health) {
-    const scale = (health - damage) / health
-    side.troops = side.troops
-      .map((t) => ({ unitId: t.unitId, count: Math.round(t.count * scale) }))
-      .filter((t) => t.count > 0)
-  } else {
+  if (damage >= side.troopHp) {
+    side.hull -= damage - side.troopHp
+    side.troopHp = 0
     side.troops = []
-    side.hull -= damage - health
+    return
   }
+  side.troopHp -= damage
+  let pool = side.troopHp
+  side.troops = side.troops
+    .map((t) => {
+      const unitHp = stats.unit(t.unitId).health
+      const take = Math.min(pool, t.count * unitHp)
+      pool -= take
+      return { unitId: t.unitId, count: Math.ceil(take / unitHp) }
+    })
+    .filter((t) => t.count > 0)
 }
 
 /**
@@ -362,11 +378,13 @@ export function resolveRounds(
     combatant: input.attacker,
     troops: input.attacker.troops.map((t) => ({ ...t })),
     hull: effectiveShip(input.attacker, stats).hull,
+    troopHp: troopHealth(input.attacker.troops, stats),
   }
   const defender: Side = {
     combatant: input.defender,
     troops: input.defender.troops.map((t) => ({ ...t })),
     hull: effectiveShip(input.defender, stats).hull,
+    troopHp: troopHealth(input.defender.troops, stats),
   }
 
   const startAttacker = summarize(input.attacker, stats)
@@ -376,11 +394,7 @@ export function resolveRounds(
   let state = rng
   let round = 0
   let escapedId: string | null = null
-  while (
-    round < stats.combat.maxRounds &&
-    sideHp(attacker, stats) > 0 &&
-    sideHp(defender, stats) > 0
-  ) {
+  while (round < stats.combat.maxRounds && sideHp(attacker) > 0 && sideHp(defender) > 0) {
     round++
     const atkStrength = combatantStrength({ ...attacker.combatant, troops: attacker.troops }, stats)
     const defStrength = combatantStrength({ ...defender.combatant, troops: defender.troops }, stats)
@@ -389,8 +403,8 @@ export function resolveRounds(
       round,
       attackerStrength: atkStrength,
       defenderStrength: defStrength,
-      attackerHp: sideHp(attacker, stats),
-      defenderHp: sideHp(defender, stats),
+      attackerHp: sideHp(attacker),
+      defenderHp: sideHp(defender),
     })
 
     let atkRoll: number
@@ -412,8 +426,8 @@ export function resolveRounds(
     applyDamage(defender, attackerDamage, stats)
     applyDamage(attacker, defenderDamage, stats)
 
-    const attackerHpNow = sideHp(attacker, stats)
-    const defenderHpNow = sideHp(defender, stats)
+    const attackerHpNow = sideHp(attacker)
+    const defenderHpNow = sideHp(defender)
     rounds.push({
       round,
       attackerTactic: tactics.attackerTactic,
@@ -441,8 +455,8 @@ export function resolveRounds(
     }
   }
 
-  const attackerHp = sideHp(attacker, stats)
-  const defenderHp = sideHp(defender, stats)
+  const attackerHp = sideHp(attacker)
+  const defenderHp = sideHp(defender)
   const attackerSurvived = attackerHp > 0
   // On escape both sides survive and the side that held the field is the winner.
   // Otherwise the defender wins ties (attacker failed to break them).

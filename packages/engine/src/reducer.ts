@@ -248,10 +248,18 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
   }
 }
 
+/**
+ * Mark a seat dead and sweep its pieces off the board (#208). A resigned seat's
+ * captains would otherwise sit as ghost fleets — free combat-XP farms that also
+ * squat resource nodes — and its cities would keep replenishing recruit pools
+ * and drawing AI aggression forever.
+ */
 function eliminatePlayer(state: GameState, playerId: string): GameState {
   return {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? { ...p, eliminated: true } : p)),
+    captains: state.captains.filter((c) => c.ownerId !== playerId),
+    cities: state.cities.filter((c) => c.ownerId !== playerId),
     // A dead seat leaves every alliance and drops its pending proposals (#136).
     alliances: pruneAlliancesForSeats(state.alliances, new Set([playerId])),
   }
@@ -384,7 +392,11 @@ function attackCaptain(
   )
   const { report } = result
   const winnerCaptainId = report.winnerId === attacker.ownerId ? attacker.id : target.id
-  const combatWinXp = state.config.setup.combatWinXp
+  // combatWinXp is the prize for a decisive naval victory. An escape ends the
+  // battle with both fleets afloat — awarding it then let an attacker farm XP
+  // off a defender whose standing orders evade, one risk-free attack per turn
+  // (#209).
+  const combatWinXp = report.escapedId ? 0 : state.config.setup.combatWinXp
 
   // Write back survivors: sink defeated captains, update troops, award the winner
   // combat XP (#21), and spend the attacker's movement for the turn.
@@ -916,11 +928,14 @@ function settleEliminations(state: GameState): GameState {
       ? { ...p, eliminated: true }
       : p,
   )
-  // Every seat that just died leaves its alliances and drops its proposals (#136).
+  // Every seat that just died leaves its alliances and drops its proposals
+  // (#136), and its cities come off the board with it (#208) — a battle
+  // elimination already removed its last captain.
   const eliminatedIds = new Set(players.filter((p) => p.eliminated).map((p) => p.id))
   const withElims: GameState = {
     ...state,
     players,
+    cities: state.cities.filter((c) => !eliminatedIds.has(c.ownerId)),
     alliances: pruneAlliancesForSeats(state.alliances, eliminatedIds),
   }
 

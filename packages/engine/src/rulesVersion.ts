@@ -21,8 +21,11 @@
  * mismatch is a hard stop, the same "refuse to replay" policy as the
  * cross-tier `ENGINE_VERSION` guard (docs/MULTIPLAYER.md §10, `@aop/shared`'s
  * `ENGINE_VERSION`) applies at the deploy-version level.
+ *
+ * History: v2 — elimination sweeps the dead seat's captains and cities (#208),
+ * no combat XP on an escape (#209), pool-based crew casualties (#210).
  */
-export const RULES_VERSION = 1
+export const RULES_VERSION = 2
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

@@ -99,6 +99,58 @@ describe('resolveCombat', () => {
   })
 })
 
+describe('crew casualty pool (#210)', () => {
+  // Casualties draw on a running crew-health pool: sub-lethal damage can never
+  // annihilate a crew (the old proportional Math.round could), and repeated
+  // sub-lethal hits accumulate until they are lethal (the old rounding could
+  // also kill nobody forever).
+  const statsWithMaxRounds = (maxRounds: number) =>
+    createCombatStats({ ...STATS, combat: { ...COMBAT_TUNING, maxRounds } })
+
+  it('a single sub-lethal blow never wipes a one-unit crew', () => {
+    // Attacker strength 22 deals 6.5–8.9 damage per round — always below the
+    // lone grunt's 12 health. Pre-#210, Math.round(1 * ~0.4) = 0 wiped him.
+    const oneRound = statsWithMaxRounds(1)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'grunt', count: 1 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 1 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, oneRound, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([{ unitId: 'grunt', count: 1 }])
+    }
+  })
+
+  it('half-lethal damage on three units leaves two survivors, not one', () => {
+    // 14.3–19.3 damage against 3 grunts (36 total health) kills exactly one:
+    // the partially wounded unit at the pool boundary survives.
+    const oneRound = statsWithMaxRounds(1)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'elite', count: 2 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 3 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, oneRound, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([{ unitId: 'grunt', count: 2 }])
+    }
+  })
+
+  it('sub-lethal hits accumulate: two rounds finish what one could not', () => {
+    // Two rounds of 6.5–8.9 damage total at least 13.1 — past the grunt's 12
+    // health — so the crew is gone and the overkill reaches the hull.
+    const twoRounds = statsWithMaxRounds(2)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'grunt', count: 1 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 1 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, twoRounds, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([])
+      expect(report.defenderSurvived).toBe(true)
+    }
+  })
+})
+
 // --- Integration through the reducer / attackCaptain action ---
 
 function combatConfig(): GameConfig {
@@ -201,6 +253,48 @@ describe('attackCaptain action', () => {
     expect(battleReport!.escapedId).toBe('p2')
     expect(next.captains.some((c) => c.id === p2cap.id)).toBe(true)
     expect(next.status).toBe('active')
+  })
+
+  it('awards combat XP only for a decisive win, never for an escape (#209)', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+
+    // Decisive: p1 sinks p2 and banks combatWinXp.
+    const sunk = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    expect(sunk.battleReport!.escapedId).toBeNull()
+    expect(sunk.state.captains.find((c) => c.id === p1cap.id)!.xp).toBe(
+      p1cap.xp + GAME_SETUP.combatWinXp,
+    )
+
+    // Escape: p2's standing orders evade, so p1 "wins" the field but the
+    // battle was not decisive — no XP for either side, or attacking a
+    // retreat-on-sight defender once per turn becomes a risk-free XP farm.
+    let evading = state
+    evading = applyActionWithOutcome(evading, { type: 'endTurn', playerId: 'p1' }).state
+    evading = applyActionWithOutcome(evading, {
+      type: 'setStandingOrders',
+      playerId: 'p2',
+      captainId: p2cap.id,
+      orders: [{ when: 'always', tactic: 'evade' }],
+    }).state
+    evading = applyActionWithOutcome(evading, { type: 'endTurn', playerId: 'p2' }).state
+    const { state: next, battleReport } = applyActionWithOutcome(evading, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+      attackerOrders: ['broadside'],
+    })
+    expect(battleReport!.escapedId).toBe('p2')
+    expect(battleReport!.winnerId).toBe('p1')
+    expect(next.captains.find((c) => c.id === p1cap.id)!.xp).toBe(p1cap.xp)
+    expect(next.captains.find((c) => c.id === p2cap.id)!.xp).toBe(p2cap.xp)
   })
 
   it('replays an attackCaptain log — combat RNG and standing orders — to an identical state', () => {
