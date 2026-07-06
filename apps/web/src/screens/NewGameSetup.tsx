@@ -9,7 +9,7 @@ import {
 import type { FactionId, MapSize } from '@aop/shared'
 import type { AiDifficulty, AiPersonality, AiProfile, PlayerConfig } from '@aop/engine'
 import { buildCatalog } from '../catalog'
-import { createDefaultPlayer, DEFAULT_AI_PROFILE, FACTIONS_ARRAY, starterTroops } from '../players'
+import { createDefaultPlayer, FACTIONS_ARRAY, starterTroops } from '../players'
 import { useTheme } from '../theme/ThemeContext'
 import type { GameSetupConfig } from '../types'
 
@@ -62,21 +62,6 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
     const current = updated[index]
     if (current) {
       updated[index] = { ...current, faction }
-      setPlayers(updated)
-    }
-  }
-
-  function handlePlayerTypeToggle(index: number) {
-    if (index === 0) return // Can't toggle player 0
-    const updated = [...players]
-    const current = updated[index]
-    if (current) {
-      const isAI = !current.isAI
-      const { aiProfile, ...rest } = current
-      // An AI seat carries a profile; a human seat drops it.
-      updated[index] = isAI
-        ? { ...rest, isAI, aiProfile: aiProfile ?? { ...DEFAULT_AI_PROFILE } }
-        : { ...rest, isAI }
       setPlayers(updated)
     }
   }
@@ -185,18 +170,10 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
             {players.map((player, index) => (
               <div key={index} className="player-row">
                 <div className="player-info">
-                  <span className="player-name">
-                    {index === 0 ? 'You' : player.isAI ? 'AI' : 'Human'}
-                  </span>
-                  {index !== 0 && (
-                    <button
-                      className="toggle-ai"
-                      onClick={() => handlePlayerTypeToggle(index)}
-                      title={player.isAI ? 'Make human' : 'Make AI'}
-                    >
-                      {player.isAI ? '🤖' : '👤'}
-                    </button>
-                  )}
+                  {/* #235: seats 1+ are always AI — GameScreen anchors the
+                      viewer/fog to the first human seat, so a second human
+                      seat has no working turn (no hotseat support yet). */}
+                  <span className="player-name">{index === 0 ? 'You' : 'AI'}</span>
                 </div>
                 <select
                   className="faction-select"
