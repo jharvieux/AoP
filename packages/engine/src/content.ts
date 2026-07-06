@@ -61,6 +61,16 @@ export type EncounterKind = 'merchant' | 'natives' | 'settlers'
  */
 export type EncounterChoice = 'trade' | 'rob' | 'fight' | 'quest' | 'recruit' | 'escort' | 'raid'
 
+export const ENCOUNTER_CHOICES: readonly EncounterChoice[] = [
+  'trade',
+  'rob',
+  'fight',
+  'quest',
+  'recruit',
+  'escort',
+  'raid',
+]
+
 /** The seeded outcome parameters for one choice at one encounter kind. */
 export interface EncounterChoiceLike {
   /** Probability in [0,1] the choice succeeds; 1 = deterministic success. */

@@ -1,13 +1,21 @@
 import {
   allianceComponents,
   applyAction,
+  BOARD_DOCTRINES,
+  BOARD_ORDER_CONDITIONS,
   createGame,
+  ENCOUNTER_CHOICES,
   nextAiAction,
+  ORDER_CONDITIONS,
   replay,
+  TACTICS,
   InvalidActionError,
   type Action,
+  type BoardCommand,
+  type BoardOrder,
   type GameConfig,
   type GameState,
+  type StandingOrder,
 } from '@aop/engine'
 import {
   computeMatchRatingUpdates,
@@ -15,6 +23,7 @@ import {
   nextMissedTurnStatus,
   resolveViewSeat,
   turnBroadcastPayload,
+  type Coord,
   type Database,
   type FactionId,
   type Json,
@@ -152,115 +161,208 @@ export async function reconstructState(
   return state
 }
 
+// --- sanitizeAction field validators (#206). Every value below comes straight
+// from the client's JSON body, so nothing may be copied through unchecked:
+// numbers must be finite safe integers (NaN/Infinity/fractional all reject —
+// the engine's own guards like `count <= 0` are blind to NaN), enums must be a
+// known member, and nested objects are rebuilt key-by-key so junk can't ride
+// inside them. Violations reject the whole submission as BAD_REQUEST.
+
+function badField(field: string, want: string): AppError {
+  return new AppError('BAD_REQUEST', `action.${field} must be ${want}`)
+}
+
+function reqString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.length === 0) throw badField(field, 'a non-empty string')
+  return value
+}
+
+function reqInt(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+    throw badField(field, 'an integer')
+  }
+  return value
+}
+
+function reqEnum<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw badField(field, `one of: ${allowed.join(', ')}`)
+  }
+  return value as T
+}
+
+function reqObject(value: unknown, field: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw badField(field, 'an object')
+  }
+  return value as Record<string, unknown>
+}
+
+function reqArray<T>(value: unknown, field: string, item: (v: unknown, f: string) => T): T[] {
+  if (!Array.isArray(value)) throw badField(field, 'an array')
+  return value.map((v, i) => item(v, `${field}[${i}]`))
+}
+
+function reqCoord(value: unknown, field: string): Coord {
+  const v = reqObject(value, field)
+  return { x: reqInt(v.x, `${field}.x`), y: reqInt(v.y, `${field}.y`) }
+}
+
+function reqStandingOrder(value: unknown, field: string): StandingOrder {
+  const v = reqObject(value, field)
+  return {
+    when: reqEnum(v.when, ORDER_CONDITIONS, `${field}.when`),
+    tactic: reqEnum(v.tactic, TACTICS, `${field}.tactic`),
+  }
+}
+
+function reqBoardOrder(value: unknown, field: string): BoardOrder {
+  const v = reqObject(value, field)
+  return {
+    when: reqEnum(v.when, BOARD_ORDER_CONDITIONS, `${field}.when`),
+    doctrine: reqEnum(v.doctrine, BOARD_DOCTRINES, `${field}.doctrine`),
+  }
+}
+
+function reqBoardCommand(value: unknown, field: string): BoardCommand {
+  const v = reqObject(value, field)
+  const out: BoardCommand = { stackId: reqInt(v.stackId, `${field}.stackId`) }
+  if (v.to !== undefined) {
+    const to = reqObject(v.to, `${field}.to`)
+    out.to = { col: reqInt(to.col, `${field}.to.col`), row: reqInt(to.row, `${field}.to.row`) }
+  }
+  if (v.targetId !== undefined) out.targetId = reqInt(v.targetId, `${field}.targetId`)
+  return out
+}
+
 /**
  * Rebuilds the persisted representation of an action from a per-type whitelist
- * of known fields (#223) — `appendAction` used to insert the caller's action
- * verbatim (spread straight from the client's JSON body), so a hostile client
- * could ride arbitrary extra top-level keys into `match_actions` forever: read
- * by nobody, but stored, replayed through `reconstructState` on every later
- * request for the rest of the match, and served to every viewer via replay.
- * The `octet_length` CHECK on `match_actions.action` is the actual byte-size
- * backstop (a legitimate nested field can still be made large); this only
- * strips unknown top-level junk. Keep this switch in sync with the `Action`
- * union in `packages/engine/src/actions.ts` — the `never` default makes an
- * unhandled new action type a compile error, not a silent pass-through.
+ * of known fields (#223), validating every field structurally as it copies
+ * (#206) — `appendAction` used to insert the caller's action verbatim (spread
+ * straight from the client's JSON body), so a hostile client could ride
+ * arbitrary extra top-level keys into `match_actions` forever, or plant
+ * NaN/Infinity/fractional numbers and unknown enum strings that the engine's
+ * semantic guards never check for. Runs at the submit-action boundary (before
+ * the engine sees the payload) and again in `appendAction` — the single choke
+ * point every action (human or AI) passes through on its way into the log.
+ * The `octet_length` CHECK on `match_actions.action` remains the byte-size
+ * backstop. Keep this switch in sync with the `Action` union in
+ * `packages/engine/src/actions.ts` — the `never` default makes an unhandled
+ * new action type a compile error, not a silent pass-through.
  */
 export function sanitizeAction(action: Action): Action {
+  const playerId = reqString(action.playerId, 'playerId')
   switch (action.type) {
     case 'endTurn':
-      return { type: action.type, playerId: action.playerId }
+      return { type: action.type, playerId }
     case 'resign':
-      return { type: action.type, playerId: action.playerId }
+      return { type: action.type, playerId }
     case 'moveCaptain':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        to: action.to,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        to: reqCoord(action.to, 'to'),
       }
     case 'attackCaptain':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        targetCaptainId: action.targetCaptainId,
-        ...(action.attackerOrders !== undefined ? { attackerOrders: action.attackerOrders } : {}),
-        ...(action.boardCommands !== undefined ? { boardCommands: action.boardCommands } : {}),
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        targetCaptainId: reqString(action.targetCaptainId, 'targetCaptainId'),
+        ...(action.attackerOrders !== undefined
+          ? {
+              attackerOrders: reqArray(action.attackerOrders, 'attackerOrders', (v, f) =>
+                reqEnum(v, TACTICS, f),
+              ),
+            }
+          : {}),
+        ...(action.boardCommands !== undefined
+          ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
+          : {}),
       }
     case 'setStandingOrders':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        orders: action.orders,
-        ...(action.boardOrders !== undefined ? { boardOrders: action.boardOrders } : {}),
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        orders: reqArray(action.orders, 'orders', reqStandingOrder),
+        ...(action.boardOrders !== undefined
+          ? { boardOrders: reqArray(action.boardOrders, 'boardOrders', reqBoardOrder) }
+          : {}),
       }
     case 'construct':
       return {
         type: action.type,
-        playerId: action.playerId,
-        cityId: action.cityId,
-        buildingId: action.buildingId,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+        buildingId: reqString(action.buildingId, 'buildingId'),
       }
     case 'recruit':
       return {
         type: action.type,
-        playerId: action.playerId,
-        cityId: action.cityId,
-        unitId: action.unitId,
-        count: action.count,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+        unitId: reqString(action.unitId, 'unitId'),
+        count: reqInt(action.count, 'count'),
       }
     case 'transferTroops':
       return {
         type: action.type,
-        playerId: action.playerId,
-        cityId: action.cityId,
-        captainId: action.captainId,
-        direction: action.direction,
-        unitId: action.unitId,
-        count: action.count,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+        captainId: reqString(action.captainId, 'captainId'),
+        direction: reqEnum(action.direction, ['toShip', 'toGarrison'] as const, 'direction'),
+        unitId: reqString(action.unitId, 'unitId'),
+        count: reqInt(action.count, 'count'),
       }
     case 'gainCaptainXp':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        amount: action.amount,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        amount: reqInt(action.amount, 'amount'),
       }
     case 'chooseCaptainSkill':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        skillId: action.skillId,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        skillId: reqString(action.skillId, 'skillId'),
       }
     case 'upgradeShip':
       return {
         type: action.type,
-        playerId: action.playerId,
-        cityId: action.cityId,
-        captainId: action.captainId,
-        track: action.track,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+        captainId: reqString(action.captainId, 'captainId'),
+        track: reqString(action.track, 'track'),
       }
     case 'resolveEncounter':
       return {
         type: action.type,
-        playerId: action.playerId,
-        captainId: action.captainId,
-        encounterId: action.encounterId,
-        choice: action.choice,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        encounterId: reqString(action.encounterId, 'encounterId'),
+        choice: reqEnum(action.choice, ENCOUNTER_CHOICES, 'choice'),
       }
     case 'proposeAlliance':
-      return { type: action.type, playerId: action.playerId, targetId: action.targetId }
+      return { type: action.type, playerId, targetId: reqString(action.targetId, 'targetId') }
     case 'acceptAlliance':
-      return { type: action.type, playerId: action.playerId, proposerId: action.proposerId }
+      return {
+        type: action.type,
+        playerId,
+        proposerId: reqString(action.proposerId, 'proposerId'),
+      }
     case 'leaveAlliance':
-      return { type: action.type, playerId: action.playerId, otherId: action.otherId }
+      return { type: action.type, playerId, otherId: reqString(action.otherId, 'otherId') }
     default: {
+      // Compile-time exhaustiveness guard; at runtime this is a hostile
+      // client's unknown type string, so reject the request, not the server.
       const exhaustive: never = action
       throw new AppError(
-        'INTERNAL',
-        `sanitizeAction: unhandled action type ${(exhaustive as Action).type}`,
+        'BAD_REQUEST',
+        `Unknown action type ${JSON.stringify((exhaustive as Action).type)}`,
       )
     }
   }

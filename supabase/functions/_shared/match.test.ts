@@ -472,3 +472,116 @@ Deno.test('assertClientSubmittable: allows every other Action variant', () => {
     assertClientSubmittable(action)
   }
 })
+
+// --- sanitizeAction structural validation (#206) ---
+
+/** Assert sanitizeAction rejects `action` as BAD_REQUEST mentioning `field`. */
+function assertActionRejects(action: unknown, field: string) {
+  const err = assertThrows(() => sanitizeAction(action as Action), AppError, field)
+  assertEquals(err.code, 'BAD_REQUEST')
+}
+
+Deno.test('sanitizeAction: rejects NaN, Infinity, and fractional numeric fields', () => {
+  const recruit = (count: unknown) => ({
+    type: 'recruit',
+    playerId: 'seat-0',
+    cityId: 'city',
+    unitId: 'u',
+    count,
+  })
+  assertActionRejects(recruit(Number.NaN), 'action.count')
+  assertActionRejects(recruit(Number.POSITIVE_INFINITY), 'action.count')
+  assertActionRejects(recruit(3.14), 'action.count')
+  assertActionRejects(recruit('3'), 'action.count')
+  assertActionRejects(recruit(undefined), 'action.count')
+  assertActionRejects(
+    { type: 'gainCaptainXp', playerId: 'seat-0', captainId: 'c', amount: Number.NaN },
+    'action.amount',
+  )
+})
+
+Deno.test('sanitizeAction: rejects malformed moveCaptain coordinates', () => {
+  const move = (to: unknown) => ({ type: 'moveCaptain', playerId: 'seat-0', captainId: 'c', to })
+  assertActionRejects(move({ x: 1.5, y: 2 }), 'action.to.x')
+  assertActionRejects(move({ x: 1, y: Number.NaN }), 'action.to.y')
+  assertActionRejects(move({ x: 1 }), 'action.to.y')
+  assertActionRejects(move('1,2'), 'action.to')
+  assertActionRejects(move(undefined), 'action.to')
+})
+
+Deno.test('sanitizeAction: rejects unknown enum values', () => {
+  assertActionRejects(
+    {
+      type: 'transferTroops',
+      playerId: 'seat-0',
+      cityId: 'city',
+      captainId: 'c',
+      direction: 'sideways',
+      unitId: 'u',
+      count: 1,
+    },
+    'action.direction',
+  )
+  assertActionRejects(
+    {
+      type: 'resolveEncounter',
+      playerId: 'seat-0',
+      captainId: 'c',
+      encounterId: 'e',
+      choice: 'plunder',
+    },
+    'action.choice',
+  )
+})
+
+Deno.test('sanitizeAction: validates nested order and board-command arrays item by item', () => {
+  const standing = (orders: unknown, boardOrders?: unknown) => ({
+    type: 'setStandingOrders',
+    playerId: 'seat-0',
+    captainId: 'c',
+    orders,
+    ...(boardOrders !== undefined ? { boardOrders } : {}),
+  })
+  assertActionRejects(standing([{ when: 'always', tactic: 'nuke' }]), 'action.orders[0].tactic')
+  assertActionRejects(standing([{ when: 'whenever', tactic: 'ram' }]), 'action.orders[0].when')
+  assertActionRejects(standing('not-an-array'), 'action.orders')
+  assertActionRejects(
+    standing([], [{ when: 'always', doctrine: 'banzai' }]),
+    'action.boardOrders[0].doctrine',
+  )
+
+  const attack = (over: Record<string, unknown>) => ({
+    type: 'attackCaptain',
+    playerId: 'seat-0',
+    captainId: 'c',
+    targetCaptainId: 't',
+    ...over,
+  })
+  assertActionRejects(attack({ attackerOrders: ['broadside', 'nuke'] }), 'action.attackerOrders[1]')
+  assertActionRejects(
+    attack({ boardCommands: [{ stackId: 0.5 }] }),
+    'action.boardCommands[0].stackId',
+  )
+  assertActionRejects(
+    attack({ boardCommands: [{ stackId: 0, to: { col: 1, row: Number.NaN } }] }),
+    'action.boardCommands[0].to.row',
+  )
+})
+
+Deno.test('sanitizeAction: rejects an unknown action type as BAD_REQUEST, not INTERNAL', () => {
+  const err = assertThrows(
+    () => sanitizeAction({ type: 'grantMeGold', playerId: 'seat-0' } as unknown as Action),
+    AppError,
+    'Unknown action type',
+  )
+  assertEquals(err.code, 'BAD_REQUEST')
+})
+
+Deno.test('sanitizeAction: rejects missing or non-string id fields', () => {
+  assertActionRejects({ type: 'endTurn' }, 'action.playerId')
+  assertActionRejects({ type: 'endTurn', playerId: 7 }, 'action.playerId')
+  assertActionRejects(
+    { type: 'construct', playerId: 'seat-0', cityId: 'city' },
+    'action.buildingId',
+  )
+})
