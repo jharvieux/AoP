@@ -10,7 +10,7 @@ import { DiplomacyPanel } from '../components/DiplomacyPanel'
 import { MatchChatPanel } from '../components/MatchChatPanel'
 import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
-import type { ChatPokeTransport } from '../multiplayer/chatSync'
+import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
   captainFromView,
   cityFromView,
@@ -20,9 +20,15 @@ import {
 } from '../multiplayer/matchActions'
 import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
+import {
+  createMatchRealtimeTransport,
+  supabaseRealtimeClient,
+  type MatchRealtimeTransport,
+} from '../multiplayer/realtimeTransport'
 import { subscribeReconnectSync } from '../multiplayer/reconnectSync'
 import { SpectateClient, SpectateError } from '../multiplayer/spectateClient'
 import { subscribeSpectatePoll } from '../multiplayer/spectatePoll'
+import { subscribeTurnSync } from '../multiplayer/turnSync'
 import {
   detectTurnTransition,
   formatCountdown,
@@ -32,10 +38,13 @@ import {
 import { ResourceHud } from '../ResourceHud'
 import { UI_ICON } from '../uiIcons'
 
-/** Poll cadence for `get-player-view` — the stand-in for a Realtime turn poke
- * (#243's transport decision is still with the operator; see spectatePoll.ts). */
-const POLL_INTERVAL_MS = 4000
-const CHAT_POLL_INTERVAL_MS = 5000
+/** Slow safety-net poll behind the Realtime turn pokes (#260): catches a match
+ * whose channel never connects (e.g. Realtime unavailable) at a cadence too
+ * lazy to matter when pokes are flowing. */
+const POLL_INTERVAL_MS = 30_000
+/** Trailing debounce collapsing a burst of turn pokes into one refetch (#228's
+ * refetch-storm note); any refetch resyncs wholesale, so only the last matters. */
+const POKE_DEBOUNCE_MS = 250
 const BASE_TITLE = document.title
 
 interface MatchScreenProps {
@@ -48,22 +57,6 @@ interface LiveMatch {
   seat: number
   view: PlayerView
   turnDeadline: string | null
-}
-
-/**
- * Poll-driven stand-in for the Realtime chat poke: fires a synthetic,
- * strictly-increasing chat poke on an interval so `useMatchChat`'s existing
- * poke-driven refetch runs without a Realtime transport. Swap for the real
- * `match:{id}` channel when #243's transport lands — nothing else changes.
- */
-function pollingChatTransport(intervalMs: number): ChatPokeTransport {
-  return {
-    subscribe(_channel, onPoke) {
-      let tick = 0
-      const id = setInterval(() => onPoke({ type: 'chat', id: ++tick }), intervalMs)
-      return () => clearInterval(id)
-    },
-  }
 }
 
 /**
@@ -90,7 +83,11 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [confirmingResign, setConfirmingResign] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  // The live `match:{id}` Realtime transport (#260) — also handed to the chat
+  // panel so incoming-message pokes arrive without polling.
+  const [transport, setTransport] = useState<MatchRealtimeTransport | null>(null)
 
+  const pokeTimerRef = useRef<number | null>(null)
   const prevViewRef = useRef<PlayerView | null>(null)
   // Whether any view has ever loaded — ref, not state, because `refetch` is
   // captured once by the mount effect and must not read a stale `live`.
@@ -123,46 +120,52 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     }
   }
 
-  // Initial load + steady-state poll + reconnect resync (§9): network return
-  // and tab-visibility return both force a refetch through the same
-  // subscribeReconnectSync module a Realtime transport would use.
+  // Initial load + Realtime turn pokes (#260) + reconnect resync (§9) + the
+  // slow safety-net poll. Turn pokes are debounced (a burst collapses into one
+  // refetch); channel reconnect, network return, and tab-visibility return all
+  // force an immediate refetch through subscribeReconnectSync.
   useEffect(() => {
     if (!session || !config) return
     void refetch()
+
+    const rt = createMatchRealtimeTransport(supabaseRealtimeClient(config), session.accessToken)
+    setTransport(rt)
+    const debouncedRefetch = () => {
+      if (pokeTimerRef.current !== null) return
+      pokeTimerRef.current = window.setTimeout(() => {
+        pokeTimerRef.current = null
+        void refetch()
+      }, POKE_DEBOUNCE_MS)
+    }
+    const stopTurnSync = subscribeTurnSync({ matchId, transport: rt, onTurn: debouncedRefetch })
     const stopPoll = subscribeSpectatePoll({ intervalMs: POLL_INTERVAL_MS, onTick: refetch })
     const stopResync = subscribeReconnectSync({
       transport: {
-        onChannelStatusChange: () => () => undefined, // no Realtime channel yet (#243)
-        onNetworkStatusChange: (handler) => {
-          const online = () => handler(true)
-          const offline = () => handler(false)
-          window.addEventListener('online', online)
-          window.addEventListener('offline', offline)
-          return () => {
-            window.removeEventListener('online', online)
-            window.removeEventListener('offline', offline)
-          }
-        },
-        onVisibilityReturn: (handler) => {
-          const onVisibility = () => {
-            if (document.visibilityState === 'visible') handler()
-          }
-          document.addEventListener('visibilitychange', onVisibility)
-          window.addEventListener('focus', handler)
-          return () => {
-            document.removeEventListener('visibilitychange', onVisibility)
-            window.removeEventListener('focus', handler)
-          }
-        },
+        ...browserResyncTransport(),
+        onChannelStatusChange: (handler) => rt.onChannelStatusChange(handler),
       },
       onResync: refetch,
     })
     return () => {
+      stopTurnSync()
       stopPoll()
       stopResync()
+      if (pokeTimerRef.current !== null) {
+        window.clearTimeout(pokeTimerRef.current)
+        pokeTimerRef.current = null
+      }
+      setTransport(null)
+      rt.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, auth.state.status])
+
+  // A session refresh mid-match must reach the transport: private-channel
+  // rejoins are RLS-checked against this JWT (#228).
+  useEffect(() => {
+    if (transport && session) transport.setAuth(session.accessToken)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.accessToken])
 
   // 1 Hz countdown tick — drives only the timer readout.
   useEffect(() => {
@@ -189,7 +192,6 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   )
 
   const board = useMemo(() => (live ? boardFromPlayerView(live.view) : null), [live?.view])
-  const chatTransport = useMemo(() => pollingChatTransport(CHAT_POLL_INTERVAL_MS), [])
 
   async function submit(action: Action) {
     if (!session || !config || !live || submitting) return
@@ -609,12 +611,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         />
       )}
 
-      {chatOpen && (
+      {chatOpen && transport && (
         <MatchChatPanel
           config={config}
           session={session}
           matchId={matchId}
-          transport={chatTransport}
+          transport={transport}
           hasAlliance={hasAlliance}
           viewerSeat={live.seat}
           seatName={seatName}
