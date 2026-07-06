@@ -152,6 +152,120 @@ export async function reconstructState(
   return state
 }
 
+/**
+ * Rebuilds the persisted representation of an action from a per-type whitelist
+ * of known fields (#223) — `appendAction` used to insert the caller's action
+ * verbatim (spread straight from the client's JSON body), so a hostile client
+ * could ride arbitrary extra top-level keys into `match_actions` forever: read
+ * by nobody, but stored, replayed through `reconstructState` on every later
+ * request for the rest of the match, and served to every viewer via replay.
+ * The `octet_length` CHECK on `match_actions.action` is the actual byte-size
+ * backstop (a legitimate nested field can still be made large); this only
+ * strips unknown top-level junk. Keep this switch in sync with the `Action`
+ * union in `packages/engine/src/actions.ts` — the `never` default makes an
+ * unhandled new action type a compile error, not a silent pass-through.
+ */
+export function sanitizeAction(action: Action): Action {
+  switch (action.type) {
+    case 'endTurn':
+      return { type: action.type, playerId: action.playerId }
+    case 'resign':
+      return { type: action.type, playerId: action.playerId }
+    case 'moveCaptain':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        to: action.to,
+      }
+    case 'attackCaptain':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        targetCaptainId: action.targetCaptainId,
+        ...(action.attackerOrders !== undefined ? { attackerOrders: action.attackerOrders } : {}),
+        ...(action.boardCommands !== undefined ? { boardCommands: action.boardCommands } : {}),
+      }
+    case 'setStandingOrders':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        orders: action.orders,
+        ...(action.boardOrders !== undefined ? { boardOrders: action.boardOrders } : {}),
+      }
+    case 'construct':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        cityId: action.cityId,
+        buildingId: action.buildingId,
+      }
+    case 'recruit':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        cityId: action.cityId,
+        unitId: action.unitId,
+        count: action.count,
+      }
+    case 'transferTroops':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        cityId: action.cityId,
+        captainId: action.captainId,
+        direction: action.direction,
+        unitId: action.unitId,
+        count: action.count,
+      }
+    case 'gainCaptainXp':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        amount: action.amount,
+      }
+    case 'chooseCaptainSkill':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        skillId: action.skillId,
+      }
+    case 'upgradeShip':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        cityId: action.cityId,
+        captainId: action.captainId,
+        track: action.track,
+      }
+    case 'resolveEncounter':
+      return {
+        type: action.type,
+        playerId: action.playerId,
+        captainId: action.captainId,
+        encounterId: action.encounterId,
+        choice: action.choice,
+      }
+    case 'proposeAlliance':
+      return { type: action.type, playerId: action.playerId, targetId: action.targetId }
+    case 'acceptAlliance':
+      return { type: action.type, playerId: action.playerId, proposerId: action.proposerId }
+    case 'leaveAlliance':
+      return { type: action.type, playerId: action.playerId, otherId: action.otherId }
+    default: {
+      const exhaustive: never = action
+      throw new AppError(
+        'INTERNAL',
+        `sanitizeAction: unhandled action type ${(exhaustive as Action).type}`,
+      )
+    }
+  }
+}
+
 function turnDeadline(settings: MatchSettings): string | null {
   return settings.turnTimerSeconds
     ? new Date(Date.now() + settings.turnTimerSeconds * 1000).toISOString()
@@ -257,6 +371,10 @@ export async function startMatch(
  * `(match_id, seq)` primary key rejects a duplicate append (23505), and the
  * `action_count = priorCount` guard on the matches UPDATE rejects a racer who
  * slipped past the read. Either failure surfaces as `SEQ_CONFLICT`.
+ *
+ * The action is persisted through {@link sanitizeAction} (#223), not spread
+ * verbatim — this is the single choke point every action (human-submitted or
+ * AI-generated) passes through on its way into the log.
  */
 async function appendAction(
   db: Db,
@@ -267,9 +385,12 @@ async function appendAction(
   deadline: string | null | undefined,
 ): Promise<number> {
   const seq = priorCount + 1
-  const insert = await db
-    .from('match_actions')
-    .insert({ match_id: matchId, seq, seat, action: action as unknown as Json })
+  const insert = await db.from('match_actions').insert({
+    match_id: matchId,
+    seq,
+    seat,
+    action: sanitizeAction(action) as unknown as Json,
+  })
   if (insert.error) {
     if (insert.error.code === '23505') throw new AppError('SEQ_CONFLICT', 'Sequence already taken')
     throw new AppError('INTERNAL', insert.error.message)
