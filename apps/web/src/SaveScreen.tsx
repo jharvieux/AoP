@@ -8,7 +8,8 @@ const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
 interface SaveScreenProps {
   onClose: () => void
   onSave: (slotId: string) => Promise<void>
-  onLoad: (slotId: string) => void
+  /** Throws on failure (#237) — caught here so the sheet stays open with a message. */
+  onLoad: (slotId: string) => Promise<void>
   /** Opens the #146 replay viewer over a saved slot's action log, without
    * disturbing the game currently in progress. */
   onWatch: (slotId: string) => void
@@ -19,9 +20,18 @@ function formatSlot(record: SaveRecord | undefined): string {
   return `Round ${record.round} — ${new Date(record.savedAt).toLocaleString()}`
 }
 
+function describeError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
 /** Bottom-sheet save/load menu: one autosave slot plus three manual slots. */
 export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps) {
   const [records, setRecords] = useState<Record<string, SaveRecord>>({})
+  // #237: save/load failures used to be silently swallowed (a failed manual
+  // save showed nothing; a failed load just closed the sheet with no
+  // message). Cleared on the next attempt, not auto-dismissed — the player
+  // should see it until they act on it.
+  const [status, setStatus] = useState<string | null>(null)
 
   function refresh() {
     listSaves().then((saves) => {
@@ -33,13 +43,25 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
 
   async function handleSave(slotId: string) {
     tapFeedback()
-    await onSave(slotId)
-    refresh()
+    setStatus(null)
+    try {
+      await onSave(slotId)
+      refresh()
+    } catch (err) {
+      console.error(`Save to "${slotId}" failed`, err)
+      setStatus(`Save failed: ${describeError(err)}`)
+    }
   }
 
-  function handleLoad(slotId: string) {
+  async function handleLoad(slotId: string) {
     tapFeedback()
-    onLoad(slotId)
+    setStatus(null)
+    try {
+      await onLoad(slotId)
+    } catch (err) {
+      console.error(`Load from "${slotId}" failed`, err)
+      setStatus(`Load failed: ${describeError(err)}`)
+    }
   }
 
   function handleWatch(slotId: string) {
@@ -68,6 +90,11 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
 
   return (
     <BottomSheet title="Save & Load" onClose={onClose}>
+      {status && (
+        <p className="save-screen__status" role="status">
+          {status}
+        </p>
+      )}
       <section>
         <ul className="building-list">
           {slotRow('autosave', 'Autosave (end of every turn)', false)}

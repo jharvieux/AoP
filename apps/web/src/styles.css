@@ -1167,6 +1167,24 @@ button.primary.secondary {
   opacity: 0.7;
 }
 
+/* Save/load failure feedback (#237). */
+.save-screen__status {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #5c1616;
+  border: 1px solid #e23b3b;
+  font-size: 0.85rem;
+}
+
+.autosave-failing-banner {
+  padding: 6px 14px;
+  background: #5c1616;
+  border-bottom: 2px solid #e23b3b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 /* Brief, self-dismissing rejection notice for a human-dispatched invalid
    action (#240) — never blocks play, unlike a stuck AI seat's forced endTurn. */
 .action-toast {
