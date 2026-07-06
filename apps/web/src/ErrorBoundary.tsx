@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { reportError } from './reporting'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -26,6 +27,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Unhandled render error', error, info.componentStack)
+    // React re-throws render errors it hands to a boundary as *handled*, so
+    // Sentry's global handlers never see this crash — report it here (#252).
+    reportError(error, { componentStack: info.componentStack ?? undefined })
   }
 
   override render(): ReactNode {

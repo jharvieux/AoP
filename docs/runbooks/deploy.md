@@ -40,11 +40,29 @@ added there gates every production deploy on a human approval without any workfl
 | `VERCEL_PROJECT_ID`     | Same file as above                                                              |
 
 Edge-function-scoped secrets (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-`STRIPE_REMOVE_ADS_PRICE_ID`, `CHECKOUT_ALLOWED_ORIGINS`, `CRON_SECRET`) are **not** in
-this table — they're configured directly on the Supabase project (dashboard → Edge
-Functions → Secrets, or `supabase secrets set`), not passed through the deploy workflow,
-same as `SUPABASE_SERVICE_ROLE_KEY` which the platform injects into every function at
-runtime automatically.
+`STRIPE_REMOVE_ADS_PRICE_ID`, `CHECKOUT_ALLOWED_ORIGINS`, `CRON_SECRET`, and `SENTRY_DSN`
+— see below) are **not** in this table — they're configured directly on the Supabase
+project (dashboard → Edge Functions → Secrets, or `supabase secrets set`), not passed
+through the deploy workflow, same as `SUPABASE_SERVICE_ROLE_KEY` which the platform
+injects into every function at runtime automatically.
+
+## Error reporting + synthetic monitor (#252) — operator setup
+
+Both are dormant until configured; nothing fails or nags in their absence.
+
+- **Sentry** (one free-tier project per tier, or one shared project):
+  - Web client: set `VITE_SENTRY_DSN` as a Vercel project env var (it's a build-time
+    Vite var). Without it the SDK chunk is never even downloaded by players.
+  - Edge functions: `supabase secrets set SENTRY_DSN=<dsn>`. Every unexpected throw
+    that reaches the shared `errorResponse` envelope is captured.
+- **Synthetic monitor** (`.github/workflows/synthetic-monitor.yml`, every 15 min):
+  needs `SUPABASE_URL` + `SUPABASE_ANON_KEY` as **repo-level** secrets — the
+  environment-scoped copies above are invisible to it, deliberately, so a
+  required-reviewers rule on `production` can't wedge a scheduled run. Optionally add
+  `SUPABASE_DB_URL` (full Postgres connection string, Project Settings → Database →
+  Connection string) to also alert on failing maintenance crons via
+  `extensions.maintenance_heartbeats` (#224). A failing run emails repo watchers —
+  that is the alert channel.
 
 ## Manual deploy order (until `deploy.yml` is enabled, or as a fallback if it fails partway)
 
