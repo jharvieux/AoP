@@ -6,7 +6,13 @@
 import { playerView, type Action } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { assertExpectedSeq, callerSeat, seatPlayerId, submitAction } from '../_shared/match.ts'
+import {
+  assertExpectedSeq,
+  callerSeat,
+  sanitizeAction,
+  seatPlayerId,
+  submitAction,
+} from '../_shared/match.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -31,7 +37,13 @@ Deno.serve(async (req) => {
 
     await assertExpectedSeq(db, body.matchId, body.expectedSeq!)
 
-    const { seq, state } = await submitAction(db, body.matchId, seat, body.action)
+    // Structural validation (#206) before the engine sees the payload: whitelist
+    // fields per action type, reject NaN/Infinity/fractional numbers and unknown
+    // enum values. playerId is overwritten from the caller's seat first (§11),
+    // so a missing or forged playerId never reaches validation or the log.
+    const action = sanitizeAction({ ...body.action, playerId: seatPlayerId(seat) })
+
+    const { seq, state } = await submitAction(db, body.matchId, seat, action)
     return jsonResponse({ seq, view: playerView(state, seatPlayerId(seat)) })
   } catch (err) {
     return errorResponse(err)
