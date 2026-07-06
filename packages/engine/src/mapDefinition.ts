@@ -208,6 +208,25 @@ export function validateMapDefinition(
     }
   }
 
+  // Capital placement (#207): createGame assigns each seat's capital via
+  // portForIsland, which finds the port on home island i (same 0..N-1 id
+  // convention as above) and throws if there is none. Exactly one port per
+  // home island keeps that lookup safe and the capital unambiguous.
+  def.startPositions.forEach((_, i) => {
+    const portCount = def.tiles.filter((t) => t.type === 'port' && t.island === i).length
+    if (portCount === 0) {
+      errors.push({
+        code: 'home-island-no-port',
+        message: `home island ${i} has no port tile; each home island needs exactly one for its capital`,
+      })
+    } else if (portCount > 1) {
+      errors.push({
+        code: 'home-island-multiple-ports',
+        message: `home island ${i} has ${portCount} port tiles, must have exactly one for its capital`,
+      })
+    }
+  })
+
   // Connectivity: every start position must be reachable by sea from every other.
   const allStartsAreWater = def.startPositions.every((s) => isWaterTile(tileAt(def, s)))
   if (allStartsAreWater && def.startPositions.length > 1) {

@@ -134,6 +134,45 @@ describe('validateMapDefinition', () => {
     expect(result.errors.map((e) => e.code)).toContain('home-island-imbalance')
   })
 
+  it('flags a home island with no port (#207: createGame would throw placing the capital)', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 4, y: 5 }, 'land', 0)
+    map.startPositions = [{ x: 5, y: 5 }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('home-island-no-port')
+  })
+
+  it('flags a home island with more than one port (#207: capital would be ambiguous)', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 4, y: 5 }, 'port', 0)
+    setTile(map, { x: 4, y: 6 }, 'port', 0)
+    map.startPositions = [{ x: 5, y: 5 }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('home-island-multiple-ports')
+  })
+
+  it('accepts a home island with exactly one port', () => {
+    const map = blankMap(24, 24)
+    setTile(map, { x: 4, y: 5 }, 'port', 0)
+    map.startPositions = [{ x: 5, y: 5 }]
+    const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).not.toContain('home-island-no-port')
+    expect(result.errors.map((e) => e.code)).not.toContain('home-island-multiple-ports')
+  })
+
+  it('a map failing the port check is exactly one createGame would crash on (#207)', () => {
+    const config = testConfig(2)
+    const map = generateMap(7, 'small', 2, GAME_SETUP.homeIslandRadius)
+    const def = mapToDefinition(map)
+    // Demote island 1's port to plain land: validation now rejects the map...
+    const portIdx = def.tiles.findIndex((t) => t.type === 'port' && t.island === 1)
+    def.tiles[portIdx]! = { type: 'land', island: 1 }
+    const result = validateMapDefinition(def, MAP_VALIDATION_LIMITS)
+    expect(result.errors.map((e) => e.code)).toContain('home-island-no-port')
+    // ...which is precisely the map createGame cannot start a game on.
+    expect(() => createGame({ ...config, mapDefinition: def })).toThrow(/No port found/)
+  })
+
   it('flags start positions that cannot reach each other by sea', () => {
     const map = blankMap(10, 10)
     // A solid land row splits the map into two disconnected water bodies —
