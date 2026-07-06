@@ -18,6 +18,7 @@ import {
   type QuickMatchBucket,
 } from '@aop/shared'
 import { AppError } from './http.ts'
+import { reportUnexpectedError } from './reporting.ts'
 import { randomSeed, startMatch, type MatchSettings, type StartMatchSeat } from './match.ts'
 import type { Db } from './client.ts'
 
@@ -123,6 +124,45 @@ async function createQuickMatch(
   return matchId
 }
 
+/**
+ * Compensation for a `createQuickMatch` failure (#219): `claim_matchmaking_group`
+ * already deleted the group's queue rows in its own committed transaction, so
+ * without this the players would be silently stranded — out of the queue with no
+ * match. Re-insert their rows (fresh `queued_at`; they lose FIFO position, which
+ * beats losing the queue entirely). `ignoreDuplicates` covers a waiter who
+ * already re-queued by hand. A failure here is logged loudly but never thrown:
+ * aborting the drain would starve every remaining bucket, the very failure mode
+ * this compensation exists to end.
+ */
+async function restoreQueueGroup(
+  db: Db,
+  bucket: QuickMatchBucket,
+  group: QueueEntry[],
+  cause: unknown,
+): Promise<void> {
+  const reason = cause instanceof Error ? cause.message : String(cause)
+  console.error(
+    `drain-matchmaking: createQuickMatch failed for ${group.length} waiters ` +
+      `(size ${bucket.matchSize}, ${bucket.mapSize}); re-queueing them: ${reason}`,
+  )
+  reportUnexpectedError(cause)
+  const rows = group.map((e) => ({
+    user_id: e.userId,
+    match_size: bucket.matchSize,
+    map_size: bucket.mapSize,
+    faction: e.faction,
+  }))
+  const { error } = await db
+    .from('matchmaking_queue')
+    .upsert(rows, { onConflict: 'user_id', ignoreDuplicates: true })
+  if (error) {
+    console.error(
+      `drain-matchmaking: re-queue FAILED — ${group.length} waiters stranded ` +
+        `(${group.map((e) => e.userId).join(', ')}): ${error.message}`,
+    )
+  }
+}
+
 /** Drain the quick-match queue once, wiring the real database effects into the shared
  * `drainQueue` orchestration. */
 export function drainMatchmaking(db: Db): Promise<DrainSummary> {
@@ -130,5 +170,6 @@ export function drainMatchmaking(db: Db): Promise<DrainSummary> {
     listBuckets: () => listQueueBuckets(db),
     claimGroup: (bucket) => claimQuickMatchGroup(db, bucket),
     createMatch: (bucket, group) => createQuickMatch(db, bucket, group),
+    restoreGroup: (bucket, group, cause) => restoreQueueGroup(db, bucket, group, cause),
   })
 }

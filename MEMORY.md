@@ -1,5 +1,32 @@
 # MEMORY.md — Age of Plunder Decision Log
 
+## D-022 — 2026-07-05 — Match size capped at 5 (faction-pool bound), amending D-006's 2–8 range
+
+**Decision**: Maximum players per match is now `MAX_MATCH_PLAYERS = FACTION_IDS.length`
+(5), enforced in `parseSettings` (create-match), the `matchmaking_queue.match_size` DB
+constraint (2..5), and the Quick Match UI. This amends D-006's "2–8 players" — with
+factions unique per match and exactly 5 factions, every 6–8 player lobby or queue bucket
+was unfillable by construction (the 6th joiner always failed on faction exhaustion), and
+6–8 player quick-match groups crashed the drain and stranded queued players (#219).
+
+**Why this branch**: #219 offered two fixes — cap at the faction pool, or allow duplicate
+factions (a product decision). The approved issue-sweep Batch 2 plan selected the cap.
+6–8 player matches remain possible in the future by either adding factions to
+`@aop/content`/`FACTION_IDS` (the cap follows the pool automatically) or deciding to
+allow duplicate factions; either path should revisit this entry. D-006's AI-takeover
+requirement is unaffected (it applies to any multi-human match and is shipped, #133/#134).
+
+**Rejected**: allowing duplicate factions silently — visual/identity collisions and
+balance questions deserve an explicit product call, not a sweep-batch side effect.
+
+**Note**: originally authored for PR AoP#262, whose squash-merge stranded it (AoP#280);
+relanded via PR AoP#289.
+
+Related: AoP#219, PR AoP#289, `packages/shared/src/index.ts` (`MAX_MATCH_PLAYERS`),
+`supabase/migrations/20260707091000_matchmaking_match_size_cap.sql`.
+
+---
+
 ## D-021 — 2026-07-05 — Audio: local music generation (MusicGen) + procedural SFX, wired into gameplay
 
 **Decision**: Stood up local background-music generation via MusicGen
