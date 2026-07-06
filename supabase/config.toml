@@ -372,6 +372,18 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# stripe-webhook is called by Stripe itself (Stripe-Signature header, no Supabase JWT)
+# and compact-snapshots is called by the daily cron (Bearer CRON_SECRET, not a JWT) —
+# both would 401 at the gateway under the platform's default verify_jwt = true before
+# their own signature/secret checks ever run (#218). Each function authenticates
+# itself: stripe-webhook via verifyStripeSignature (_shared/stripe.ts), compact-snapshots
+# via requireCronSecret (functions/compact-snapshots/index.ts).
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.compact-snapshots]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

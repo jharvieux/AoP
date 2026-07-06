@@ -104,18 +104,39 @@ export function isAllowedRedirectUrl(candidate: string, allowedOrigins: string[]
   return allowedOrigins.includes(url.origin)
 }
 
+/**
+ * The only product `create-checkout-session` currently sells. Stamped into
+ * `metadata.product` on the Stripe session (see `createCheckoutSession` in
+ * `supabase/functions/_shared/stripe.ts`) so the webhook can confirm a completed
+ * checkout was actually for remove-ads before granting it — protecting against a
+ * future second product's checkout accidentally granting this entitlement (#222).
+ */
+export const REMOVE_ADS_PRODUCT = 'remove_ads'
+
+/**
+ * A stable per-user Stripe `Idempotency-Key` for the remove-ads checkout session
+ * (#222): a double-click or duplicate request (e.g. two tabs) reuses the same
+ * key within Stripe's idempotency window, so Stripe returns the original session
+ * instead of creating a second live one that could be paid twice.
+ */
+export function checkoutIdempotencyKey(userId: string): string {
+  return `remove-ads-${userId}`
+}
+
 interface CheckoutSessionCompletedEvent {
   type?: string
   data?: {
     object?: {
+      payment_status?: string
       client_reference_id?: string
-      metadata?: { user_id?: string }
+      metadata?: { user_id?: string; product?: string }
     }
   }
 }
 
 /** Outcome of processing a webhook request. `ok: false` means the signature was rejected. */
-export type StripeWebhookOutcome = { ok: false } | { ok: true; granted: boolean; userId?: string }
+export type StripeWebhookOutcome =
+  { ok: false } | { ok: true; granted: boolean; userId?: string; reason?: string }
 
 /**
  * Verifies the signature, then, for a `checkout.session.completed` event, grants
@@ -123,6 +144,13 @@ export type StripeWebhookOutcome = { ok: false } | { ok: true; granted: boolean;
  * (`create-checkout-session` sets both `client_reference_id` and
  * `metadata.user_id` to their Supabase auth user id). `grantRemoveAds` is injected
  * so the entitlement write is exercised in tests without a live database.
+ *
+ * Grants only when the session actually paid (`payment_status === 'paid'` — async
+ * payment methods complete checkout before money moves) and was for the
+ * remove-ads product (`metadata.product`, #222). Any other completed session
+ * (wrong product, unpaid, no user id) is logged and acknowledged rather than
+ * failing the webhook — Stripe would otherwise retry and eventually disable the
+ * endpoint over an event we deliberately don't want to act on.
  */
 export async function processStripeWebhook(params: {
   rawBody: string
@@ -145,7 +173,26 @@ export async function processStripeWebhook(params: {
 
   const object = event.data?.object
   const userId = object?.client_reference_id ?? object?.metadata?.user_id
-  if (!userId) return { ok: true, granted: false }
+  if (!userId) {
+    console.warn('Stripe webhook: checkout.session.completed with no user id, ignoring')
+    return { ok: true, granted: false, reason: 'no_user_id' }
+  }
+
+  if (object?.payment_status !== 'paid') {
+    console.warn(
+      `Stripe webhook: session for user ${userId} completed with payment_status ` +
+        `"${object?.payment_status}", not granting`,
+    )
+    return { ok: true, granted: false, userId, reason: 'not_paid' }
+  }
+
+  if (object?.metadata?.product !== REMOVE_ADS_PRODUCT) {
+    console.warn(
+      `Stripe webhook: session for user ${userId} has product metadata ` +
+        `"${object?.metadata?.product}", expected "${REMOVE_ADS_PRODUCT}", not granting`,
+    )
+    return { ok: true, granted: false, userId, reason: 'unknown_product' }
+  }
 
   await params.grantRemoveAds(userId)
   return { ok: true, granted: true, userId }

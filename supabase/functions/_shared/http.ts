@@ -16,6 +16,7 @@ export type ErrorCode =
   | 'FORBIDDEN'
   | 'BAD_REQUEST'
   | 'RATE_LIMITED'
+  | 'ALREADY_OWNED'
   | 'INTERNAL'
 
 const STATUS: Record<ErrorCode, number> = {
@@ -27,6 +28,7 @@ const STATUS: Record<ErrorCode, number> = {
   FORBIDDEN: 403,
   BAD_REQUEST: 400,
   RATE_LIMITED: 429,
+  ALREADY_OWNED: 409,
   INTERNAL: 500,
 }
 
