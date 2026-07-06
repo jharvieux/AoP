@@ -1,3 +1,53 @@
+/* Self-hosted (public/fonts) so the PWA works offline and no request leaves
+   the origin. Cabin ships as a variable font — one file covers 400-700. */
+@font-face {
+  font-family: 'Pirata One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pirata-one-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: Cabin;
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/cabin-latin.woff2') format('woff2');
+}
+
+:root {
+  /* Weathered Parchment & Rope design tokens
+     (docs/design_handoff_start_screen). Canonical palette for the app-wide
+     theme migration (#301); today only the launch screens consume them. */
+  --parchment-bg: radial-gradient(
+    120% 100% at 50% -10%,
+    #cbb17a 0%,
+    #a9855a 40%,
+    #7d5f3d 75%,
+    #5c4429 100%
+  );
+  --parchment-grain: repeating-linear-gradient(
+    115deg,
+    rgb(60 40 20 / 6%) 0,
+    rgb(60 40 20 / 6%) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  --panel-bg: rgb(48 32 17 / 85%);
+  --accent: #c8962c;
+  --accent-2: #7a2e1a;
+  --accent-glow: rgb(200 150 44 / 35%);
+  --text-primary: #f3e6c8;
+  --text-secondary: #e7d4ac;
+  --text-on-accent: #2c1810;
+  --title-color: #2c1810;
+  --skull-bone: #ece0c0;
+  --skull-socket: #1a1006;
+  --font-display: 'Pirata One', 'Times New Roman', serif;
+  --font-body: Cabin, system-ui, -apple-system, sans-serif;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -11,10 +61,7 @@ body,
 }
 
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-body);
   background: #0b2239;
   color: #e8dcc0;
   -webkit-tap-highlight-color: transparent;
@@ -166,6 +213,8 @@ button.large {
 }
 
 .game-title {
+  font-family: var(--font-display);
+  font-weight: 400;
   font-size: 2.5rem;
   margin-bottom: 8px;
   letter-spacing: 0.1em;
@@ -1193,6 +1242,288 @@ button.primary.secondary {
   border-bottom: 2px solid #e23b3b;
   font-size: 0.85rem;
   text-align: center;
+}
+
+/* --- Launch experience: title splash + main menu ---------------------------
+   Weathered Parchment & Rope (docs/design_handoff_start_screen, #302). */
+
+.parchment-screen {
+  position: relative;
+  background: var(--parchment-bg);
+  color: var(--text-primary);
+}
+
+.parchment-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--parchment-grain);
+  pointer-events: none;
+}
+
+.title-screen {
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  animation: title-enter 900ms ease-out;
+}
+
+.title-screen__stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.title-screen__emblem {
+  width: 120px;
+  height: 118px;
+  filter: drop-shadow(0 6px 16px rgb(0 0 0 / 35%));
+}
+
+.title-screen__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 10vw, 3.625rem);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--title-color);
+  text-shadow:
+    0 2px 0 var(--accent-2),
+    0 4px 14px var(--accent-glow);
+}
+
+.title-screen__subtitle {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.title-screen__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(320px, 80vw);
+}
+
+.title-screen__loading-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgb(0 0 0 / 30%);
+}
+
+.title-screen__loading-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: loading-fill 2.8s ease-in forwards;
+}
+
+.title-screen__loading-caption {
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+@keyframes loading-fill {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes title-enter {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.main-menu {
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.main-menu__panel {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 30px clamp(0px, 4vw, 44px) 26px;
+  animation: menu-enter 700ms ease-out;
+}
+
+.main-menu__header {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.875rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--title-color);
+}
+
+.main-menu__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.main-menu__primary-row {
+  display: flex;
+  gap: 10px;
+}
+
+.main-menu__new-game {
+  height: 52px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--accent-glow);
+}
+
+.main-menu__new-game:active {
+  filter: brightness(0.85);
+}
+
+.main-menu__outlined {
+  flex: 1;
+  height: 44px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.main-menu__outlined:active {
+  filter: brightness(1.2);
+}
+
+.main-menu__more-toggle {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.main-menu__chevron {
+  transition: transform 200ms;
+}
+
+.main-menu__chevron--open {
+  transform: rotate(180deg);
+}
+
+.main-menu__secondary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.main-menu__secondary {
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.main-menu__secondary:active {
+  filter: brightness(1.15);
+}
+
+.main-menu__secondary--wide {
+  grid-column: 1 / -1;
+}
+
+.main-menu__divider {
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+.main-menu__audio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.main-menu__audio-mute {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.main-menu__audio-grid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  row-gap: 4px;
+  align-items: center;
+}
+
+.main-menu__audio input[type='checkbox'],
+.main-menu__audio input[type='range'] {
+  accent-color: var(--accent);
 }
 
 /* Brief, self-dismissing rejection notice for a human-dispatched invalid

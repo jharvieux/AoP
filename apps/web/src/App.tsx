@@ -10,6 +10,7 @@ import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
 import { MainMenu } from './screens/MainMenu'
+import { TitleScreen } from './screens/TitleScreen'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
@@ -34,6 +35,7 @@ import { DIALOGUE } from './audio/dialogueClips'
 import { registerBackButtonHandler } from './plugins/androidBackButton'
 
 type Screen =
+  | 'title'
   | 'menu'
   | 'setup'
   | 'game'
@@ -56,7 +58,9 @@ interface ReplayData {
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>('menu')
+  // Launch splash (docs/design_handoff_start_screen): shown once per app
+  // start, then hands off to the menu.
+  const [screen, setScreen] = useState<Screen>('title')
   const [game, setGame] = useState<GameState | null>(null)
   const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
@@ -229,7 +233,7 @@ export function App() {
   // the app) — see plugins/androidBackButton.ts. No-op on web/no native shell.
   useEffect(() => {
     return registerBackButtonHandler(() => {
-      if (screen === 'menu') return false
+      if (screen === 'menu' || screen === 'title') return false
       setScreen('menu')
       return true
     })
@@ -244,6 +248,7 @@ export function App() {
         </div>
       )}
       <CheckoutPendingBanner />
+      {screen === 'title' && <TitleScreen onDone={() => setScreen('menu')} />}
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}
