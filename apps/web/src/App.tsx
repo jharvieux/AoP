@@ -20,6 +20,7 @@ import { WatchReplayScreen } from './screens/WatchReplayScreen'
 import { SpectateScreen } from './screens/SpectateScreen'
 import { DesignateSpectatorScreen } from './screens/DesignateSpectatorScreen'
 import { MatchBrowserScreen } from './screens/MatchBrowserScreen'
+import { MatchScreen } from './screens/MatchScreen'
 import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { ReplayScreen } from './replay/ReplayScreen'
@@ -45,6 +46,7 @@ type Screen =
   | 'designate-spectator'
   | 'match-browser'
   | 'quick-match'
+  | 'match'
   | 'leaderboard'
 
 interface ReplayData {
@@ -74,6 +76,8 @@ export function App() {
   // this is not self-dismissing: it should stay visible for as long as saves
   // are actually failing (e.g. storage quota exhausted).
   const [autosaveFailing, setAutosaveFailing] = useState(false)
+  // The multiplayer match currently open in MatchScreen (#261).
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!actionError) return
@@ -262,8 +266,33 @@ export function App() {
       {screen === 'designate-spectator' && (
         <DesignateSpectatorScreen onBack={() => setScreen('menu')} />
       )}
-      {screen === 'match-browser' && <MatchBrowserScreen onBack={() => setScreen('menu')} />}
-      {screen === 'quick-match' && <QuickMatchScreen onBack={() => setScreen('menu')} />}
+      {screen === 'match-browser' && (
+        <MatchBrowserScreen
+          onBack={() => setScreen('menu')}
+          onPlayMatch={(matchId) => {
+            setActiveMatchId(matchId)
+            setScreen('match')
+          }}
+        />
+      )}
+      {screen === 'quick-match' && (
+        <QuickMatchScreen
+          onBack={() => setScreen('menu')}
+          onPlayMatch={(matchId) => {
+            setActiveMatchId(matchId)
+            setScreen('match')
+          }}
+        />
+      )}
+      {screen === 'match' && activeMatchId && (
+        <MatchScreen
+          matchId={activeMatchId}
+          onBack={() => {
+            setActiveMatchId(null)
+            setScreen('menu')
+          }}
+        />
+      )}
       {screen === 'leaderboard' && <LeaderboardScreen onBack={() => setScreen('menu')} />}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
       {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}

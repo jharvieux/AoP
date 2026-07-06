@@ -6,6 +6,8 @@ import { OpenMatchesClient, OpenMatchesError } from '../multiplayer/openMatchesC
 
 interface MatchBrowserScreenProps {
   onBack: () => void
+  /** Open the live match screen (#261) for a match the caller just joined. */
+  onPlayMatch: (matchId: string) => void
 }
 
 /** A rough, no-dependency "time ago" label — good enough for a lobby list refreshed on demand. */
@@ -37,7 +39,7 @@ function turnTimerLabel(seconds: number | null): string {
  * not a stable feed to page backwards through); "Refresh" just restarts from
  * the newest page.
  */
-export function MatchBrowserScreen({ onBack }: MatchBrowserScreenProps) {
+export function MatchBrowserScreen({ onBack, onPlayMatch }: MatchBrowserScreenProps) {
   const auth = useAuth()
   const [matches, setMatches] = useState<OpenMatchSummary[]>([])
   const [nextBefore, setNextBefore] = useState<string | null>(null)
@@ -45,6 +47,9 @@ export function MatchBrowserScreen({ onBack }: MatchBrowserScreenProps) {
   const [joiningId, setJoiningId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // The match just joined, so the notice can offer opening it (#261 — a join
+  // used to be a dead end here).
+  const [joinedMatchId, setJoinedMatchId] = useState<string | null>(null)
 
   const config = resolveSupabaseConfig()
   const authed = auth.state.status === 'authenticated'
@@ -96,6 +101,7 @@ export function MatchBrowserScreen({ onBack }: MatchBrowserScreenProps) {
       const client = new OpenMatchesClient(config)
       const result = await client.joinMatch(auth.state.session, matchId)
       setNotice(`Joined match ${result.matchId} as seat ${result.seat}.`)
+      setJoinedMatchId(result.matchId)
       setMatches((prev) => prev.filter((m) => m.matchId !== matchId))
     } catch (err) {
       if (err instanceof OpenMatchesError && err.code === 'MATCH_STATE') {
@@ -127,6 +133,11 @@ export function MatchBrowserScreen({ onBack }: MatchBrowserScreenProps) {
 
             {error && <p className="theme-error">{error}</p>}
             {notice && <p className="section-label">{notice}</p>}
+            {joinedMatchId && (
+              <button className="primary" onClick={() => onPlayMatch(joinedMatchId)}>
+                Open Match
+              </button>
+            )}
 
             {matches.length === 0 && !loading && (
               <p className="game-subtitle">No open lobbies right now.</p>
