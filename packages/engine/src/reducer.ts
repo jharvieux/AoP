@@ -379,12 +379,19 @@ function attackCaptain(
       defender: target.standingOrders?.length
         ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
         : aiTacticDriverForOwner(state, target.ownerId, stats.tactics),
-      // Board melee (#39): the attacker plays its recorded commands; the
-      // defender fights by the board orders its own owner saved in state.
-      // Either side without a plan is driven by the board AI.
+      // Board melee (#39): the attacker plays its recorded commands if it
+      // submitted any (the single-player interactive picker, #93 — it can
+      // probe the live RNG state to build one). Lacking that, it falls back
+      // to its own saved board doctrine, exactly like the defender always
+      // does (#285): a multiplayer attacker has no RNG access to probe with,
+      // so pre-committing a doctrine via standing orders is its only way to
+      // have a say in the melee instead of ceding it outright to the board
+      // AI. Either side with neither is driven by the board AI.
       ...(action.boardCommands?.length
         ? { attackerBoard: boardPlanDriver(action.boardCommands) }
-        : {}),
+        : attacker.boardOrders?.length
+          ? { attackerBoard: boardOrdersDriver(attacker.boardOrders) }
+          : {}),
       ...(target.boardOrders?.length
         ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
         : {}),

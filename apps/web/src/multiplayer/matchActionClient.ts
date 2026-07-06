@@ -1,4 +1,4 @@
-import type { Action, PlayerView } from '@aop/engine'
+import type { Action, BattleReport, PlayerView } from '@aop/engine'
 import { isSeqConflict } from '@aop/shared'
 import type { SupabaseConfig } from '../auth/supabaseAuth'
 import type { AuthSession } from '../auth/types'
@@ -31,10 +31,12 @@ export class MatchActionError extends Error {
 }
 
 /** One accepted `submit-action` response: the new authoritative sequence and
- * the caller's refreshed fog-locked view (docs/MULTIPLAYER.md §5.4). */
+ * the caller's refreshed fog-locked view (docs/MULTIPLAYER.md §5.4).
+ * `battleReport` is present only when the action was an attack (#285). */
 export interface SubmitActionResult {
   seq: number
   view: PlayerView
+  battleReport?: BattleReport
 }
 
 /**
