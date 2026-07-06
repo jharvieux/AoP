@@ -58,7 +58,12 @@ export function isTurnBroadcast(value: unknown): value is TurnBroadcastPayload {
   )
 }
 
-/** Longest chat message `send-chat` accepts, mirrored by the DB length check. */
+/**
+ * Longest chat message `send-chat` accepts, mirrored by the DB length check
+ * (`match_chat.sql`, `char_length(body) between 1 and 500`). Changing this
+ * REQUIRES a companion migration — never edit an applied migration.
+ * Verified by `constants-parity.test.ts`.
+ */
 export const MAX_CHAT_LENGTH = 500
 
 /**

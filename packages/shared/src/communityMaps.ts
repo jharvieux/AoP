@@ -28,8 +28,30 @@
 
 import { utf8ByteLength } from './mapCodes'
 
+/**
+ * Largest legal map code size in bytes. The largest legal map (40x40) with
+ * zero RLE compression encodes to ~30 KiB, so 64 KiB is ~2x headroom for any
+ * real map while rejecting megabyte spam payloads outright. Mirrored by
+ * `community_maps.sql` (`octet_length(map_code) <= 65536`). Changing this
+ * REQUIRES a companion migration — never edit an applied migration.
+ * Verified by `constants-parity.test.ts`.
+ */
 export const MAP_CODE_MAX_BYTES = 64 * 1024
+
+/**
+ * Maximum length of a community map's published name. Mirrored by
+ * `community_maps.sql` (`char_length(name) between 1 and 60`). Changing this
+ * REQUIRES a companion migration — never edit an applied migration.
+ * Verified by `constants-parity.test.ts`.
+ */
 export const MAP_NAME_MAX_LENGTH = 60
+
+/**
+ * Maximum length of a map report reason. Mirrored by `community_maps.sql`
+ * (`char_length(reason) <= 500`). Changing this REQUIRES a companion
+ * migration — never edit an applied migration. Verified by
+ * `constants-parity.test.ts`.
+ */
 export const REPORT_REASON_MAX_LENGTH = 500
 export const REPORT_AUTO_HIDE_THRESHOLD = 3
 export const PUBLISH_MAX_PER_WINDOW = 5
