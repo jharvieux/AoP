@@ -2,11 +2,9 @@
 // Runs createGame from the stored seed/settings, writes the seq-0 snapshot, flips the
 // match to `active`, and arms the first turn deadline.
 
-import { createGame } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { buildMatchConfig, type SeatConfig } from '../_shared/catalog.ts'
-import type { MatchSettings } from '../_shared/match.ts'
+import { startMatch, type MatchSettings, type StartMatchSeat } from '../_shared/match.ts'
 import type { FactionId } from '@aop/shared'
 
 Deno.serve(async (req) => {
@@ -43,52 +41,12 @@ Deno.serve(async (req) => {
       if (s.seat !== i) throw new AppError('MATCH_STATE', 'Seats must be contiguous before start')
     })
 
-    const humanIds = seats.map((s) => s.user_id).filter((id): id is string => id !== null)
-    const names = new Map<string, string>()
-    if (humanIds.length > 0) {
-      const { data: profiles } = await db
-        .from('profiles')
-        .select('id, display_name')
-        .in('id', humanIds)
-      for (const p of profiles ?? []) names.set(p.id, p.display_name)
-    }
-
-    const seatConfigs: SeatConfig[] = seats.map((s) => ({
+    const seatList: StartMatchSeat[] = seats.map((s) => ({
       seat: s.seat,
+      userId: s.user_id,
       faction: s.faction as FactionId,
-      isAI: s.user_id === null,
-      displayName: s.user_id ? (names.get(s.user_id) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
     }))
-
-    const config = buildMatchConfig(Number(match.seed), settings.mapSize, seatConfigs, {
-      betrayalReputationPenalty: settings.betrayalReputationPenalty,
-      betrayalTruceRounds: settings.betrayalTruceRounds,
-    })
-    const state = createGame(config)
-
-    const snap = await db
-      .from('match_snapshots')
-      .insert({ match_id: matchId, seq: 0, state: state as unknown as Record<string, unknown> })
-    if (snap.error) throw new AppError('INTERNAL', snap.error.message)
-
-    const deadline = settings.turnTimerSeconds
-      ? new Date(Date.now() + settings.turnTimerSeconds * 1000).toISOString()
-      : null
-    const activate = await db
-      .from('matches')
-      .update({
-        status: 'active',
-        action_count: 0,
-        turn_deadline: deadline,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', matchId)
-      .eq('status', 'lobby')
-      .select('id')
-    if (activate.error) throw new AppError('INTERNAL', activate.error.message)
-    if (!activate.data || activate.data.length === 0) {
-      throw new AppError('MATCH_STATE', 'Match was already started')
-    }
+    await startMatch(db, matchId, Number(match.seed), settings, seatList)
 
     return jsonResponse({ seq: 0 })
   } catch (err) {

@@ -20,6 +20,7 @@
 
 import { serviceClient, requireUserId, type Db } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
+import { displayNames } from '../_shared/match.ts'
 import { buildLeaderboard, clampLeaderboardLimit, type LeaderboardCandidate } from '@aop/shared'
 
 Deno.serve(async (req) => {
@@ -57,16 +58,10 @@ async function topRatedCandidates(db: Db, take: number): Promise<LeaderboardCand
     .limit(take)
   if (error) throw new AppError('INTERNAL', error.message)
 
-  const userIds = (rows ?? []).map((r) => r.user_id)
-  const names = new Map<string, string>()
-  if (userIds.length > 0) {
-    const { data: profiles, error: profErr } = await db
-      .from('profiles')
-      .select('id, display_name')
-      .in('id', userIds)
-    if (profErr) throw new AppError('INTERNAL', profErr.message)
-    for (const p of profiles ?? []) names.set(p.id, p.display_name)
-  }
+  const names = await displayNames(
+    db,
+    (rows ?? []).map((r) => r.user_id),
+  )
 
   return (rows ?? []).map((r) => ({
     userId: r.user_id,

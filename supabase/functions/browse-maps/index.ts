@@ -22,8 +22,9 @@ import {
   selectCommunityMaps,
   type CommunityMapSummary,
 } from '@aop/shared'
-import { requireUserId, serviceClient, type Db } from '../_shared/client.ts'
+import { requireUserId, serviceClient } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
+import { displayNames } from '../_shared/match.ts'
 
 // Over-fetch factor: the only post-SQL drop is same-timestamp cursor ties, so a
 // small multiple keeps pages full without pulling the whole table.
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
     if (error) throw new AppError('INTERNAL', error.message)
 
     const candidates = rows ?? []
-    const names = await authorNames(
+    const names = await displayNames(
       db,
       candidates.map((r) => r.author_id),
     )
@@ -88,16 +89,3 @@ Deno.serve(async (req) => {
     return errorResponse(err)
   }
 })
-
-/** Author display names in one query — same two-query join get-leaderboard uses. */
-async function authorNames(db: Db, authorIds: string[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>()
-  if (authorIds.length === 0) return names
-  const { data, error } = await db
-    .from('profiles')
-    .select('id, display_name')
-    .in('id', [...new Set(authorIds)])
-  if (error) throw new AppError('INTERNAL', error.message)
-  for (const p of data ?? []) names.set(p.id, p.display_name)
-  return names
-}
