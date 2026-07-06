@@ -15,6 +15,24 @@ export interface CheckoutParams {
   cancelUrl: string
 }
 
+/** Query param + value stamped onto `successUrl` (#244) so the app can tell a
+ * successful checkout return apart from any other visit to the origin — the
+ * cancel URL carries no marker, so cancel and success are no longer identical. */
+export const CHECKOUT_RETURN_PARAM = 'checkout'
+export const REMOVE_ADS_SUCCESS_VALUE = 'remove-ads-success'
+
+/** The `successUrl` for a remove-ads purchase: `origin` plus the success marker. */
+export function removeAdsSuccessUrl(origin: string): string {
+  const url = new URL(origin)
+  url.searchParams.set(CHECKOUT_RETURN_PARAM, REMOVE_ADS_SUCCESS_VALUE)
+  return url.toString()
+}
+
+/** Whether a location `search` string carries the remove-ads success marker. */
+export function isRemoveAdsSuccessReturn(search: string): boolean {
+  return new URLSearchParams(search).get(CHECKOUT_RETURN_PARAM) === REMOVE_ADS_SUCCESS_VALUE
+}
+
 /**
  * Starts the web remove-ads purchase: asks the `create-checkout-session` Edge
  * Function for a Stripe-hosted Checkout URL and returns it. No `@stripe/stripe-js`

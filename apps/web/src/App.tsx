@@ -25,6 +25,7 @@ import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
+import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
 import { isTestPlayAfterLoadSlot, isTestPlayAfterRematch, shouldAutosave } from './gameSession'
@@ -242,6 +243,7 @@ export function App() {
           {actionError}
         </div>
       )}
+      <CheckoutPendingBanner />
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}

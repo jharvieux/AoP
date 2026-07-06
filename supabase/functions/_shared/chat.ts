@@ -57,10 +57,11 @@ async function enforceRateLimit(db: Db, matchId: string, seat: number): Promise<
  * like {@link broadcastTurn}: a dropped poke just means a client waits for its
  * next chat refetch. Carries only the new message's id — never the body or
  * channel (§7 leak-audit), so it is safe to emit to every seat regardless of
- * whether the message was an alliance-private one.
+ * whether the message was an alliance-private one. The channel is private
+ * (#228) — see {@link broadcastTurn}'s doc for the authorization model.
  */
-async function broadcastChat(db: Db, matchId: string, id: number): Promise<void> {
-  const status = await db.channel(`match:${matchId}`).send({
+export async function broadcastChat(db: Db, matchId: string, id: number): Promise<void> {
+  const status = await db.channel(`match:${matchId}`, { config: { private: true } }).send({
     type: 'broadcast',
     event: 'chat',
     payload: chatBroadcastPayload(id),

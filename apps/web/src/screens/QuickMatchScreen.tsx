@@ -142,7 +142,8 @@ export function QuickMatchScreen({ onBack, onPlayMatch }: QuickMatchScreenProps)
             <button
               className="primary large"
               onClick={() => {
-                const matchId = search.matchId!
+                const matchId = search.matchId
+                if (!matchId) return
                 setSearch({ phase: 'idle' })
                 onPlayMatch(matchId)
               }}

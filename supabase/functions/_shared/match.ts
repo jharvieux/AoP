@@ -581,10 +581,12 @@ async function writeSnapshot(
  * Post-commit Realtime poke (§6, §7 leak audit) on channel `match:{id}`. Best
  * effort: a dropped broadcast just means a client waits for its next
  * `get-player-view` refetch instead of an instant nudge (§9), so it must never
- * fail the turn that already committed.
+ * fail the turn that already committed. The channel is private (#228): RLS on
+ * realtime.messages admits only match participants/spectators as listeners, and
+ * grants no client INSERT — only this service-role path may broadcast.
  */
-async function broadcastTurn(db: Db, matchId: string, seq: number): Promise<void> {
-  const status = await db.channel(`match:${matchId}`).send({
+export async function broadcastTurn(db: Db, matchId: string, seq: number): Promise<void> {
+  const status = await db.channel(`match:${matchId}`, { config: { private: true } }).send({
     type: 'broadcast',
     event: 'turn',
     payload: turnBroadcastPayload(seq),
@@ -1036,6 +1038,37 @@ export function isExpectedSweepRace(err: unknown): boolean {
     err instanceof AppError &&
     (err.code === 'NOT_YOUR_TURN' || err.code === 'SEQ_CONFLICT' || err.code === 'MATCH_STATE')
   )
+}
+
+/**
+ * Post-activation late-join sweep (#221): delete any `match_players` row whose
+ * seat is not part of the just-frozen GameState config. The freeze reads a
+ * dense 0..N-1 seat block, so any row at seat >= N was inserted by a joiner who
+ * raced the lobby->active flip — a seat that exists in the DB but not in the
+ * game, which would wedge its holder (NOT_YOUR_TURN forever). Returns the
+ * seats removed so callers can log them. Runs after the activation already
+ * committed, so a failure here is reported loudly but never fails the start.
+ */
+export async function sweepLateJoinSeats(
+  db: Db,
+  matchId: string,
+  frozenSeatCount: number,
+): Promise<number[]> {
+  const { data, error } = await db
+    .from('match_players')
+    .delete()
+    .eq('match_id', matchId)
+    .gte('seat', frozenSeatCount)
+    .select('seat')
+  if (error) {
+    console.error(`Late-join sweep failed for match ${matchId}: ${error.message}`)
+    return []
+  }
+  const seats = (data ?? []).map((r) => r.seat)
+  if (seats.length > 0) {
+    console.warn(`Removed late-join seats [${seats.join(', ')}] from match ${matchId} (#221)`)
+  }
+  return seats
 }
 
 /** The seat this user occupies in a match, or `FORBIDDEN` if they hold none. */
