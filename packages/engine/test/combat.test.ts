@@ -99,6 +99,58 @@ describe('resolveCombat', () => {
   })
 })
 
+describe('crew casualty pool (#210)', () => {
+  // Casualties draw on a running crew-health pool: sub-lethal damage can never
+  // annihilate a crew (the old proportional Math.round could), and repeated
+  // sub-lethal hits accumulate until they are lethal (the old rounding could
+  // also kill nobody forever).
+  const statsWithMaxRounds = (maxRounds: number) =>
+    createCombatStats({ ...STATS, combat: { ...COMBAT_TUNING, maxRounds } })
+
+  it('a single sub-lethal blow never wipes a one-unit crew', () => {
+    // Attacker strength 22 deals 6.5–8.9 damage per round — always below the
+    // lone grunt's 12 health. Pre-#210, Math.round(1 * ~0.4) = 0 wiped him.
+    const oneRound = statsWithMaxRounds(1)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'grunt', count: 1 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 1 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, oneRound, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([{ unitId: 'grunt', count: 1 }])
+    }
+  })
+
+  it('half-lethal damage on three units leaves two survivors, not one', () => {
+    // 14.3–19.3 damage against 3 grunts (36 total health) kills exactly one:
+    // the partially wounded unit at the pool boundary survives.
+    const oneRound = statsWithMaxRounds(1)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'elite', count: 2 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 3 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, oneRound, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([{ unitId: 'grunt', count: 2 }])
+    }
+  })
+
+  it('sub-lethal hits accumulate: two rounds finish what one could not', () => {
+    // Two rounds of 6.5–8.9 damage total at least 13.1 — past the grunt's 12
+    // health — so the crew is gone and the overkill reaches the hull.
+    const twoRounds = statsWithMaxRounds(2)
+    const input = {
+      attacker: combatant('a', [{ unitId: 'grunt', count: 1 }], 'sloop'),
+      defender: combatant('d', [{ unitId: 'grunt', count: 1 }], 'galleon'),
+    }
+    for (const seed of [1, 2, 3, 7, 99]) {
+      const { report } = resolveCombat(input, twoRounds, seedRng(seed))
+      expect(report.survivingTroops.defender).toEqual([])
+      expect(report.defenderSurvived).toBe(true)
+    }
+  })
+})
+
 // --- Integration through the reducer / attackCaptain action ---
 
 function combatConfig(): GameConfig {
