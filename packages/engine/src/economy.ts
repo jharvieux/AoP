@@ -11,13 +11,21 @@ export function cityIncome(city: CityState, catalog: ContentCatalog): ResourcePo
 }
 
 /**
- * Per-round production from authored resource nodes (#101): a node's tile is
- * "controlled" by whichever player has a captain currently standing on it —
- * an ongoing, passive yield (not a one-time pickup, and not tied to city
- * proximity), lost the moment no captain of that player occupies the tile. A
- * node with no catalog entry for its kind, or with no captain on it, yields
- * nothing. Determined entirely from `GameState.captains`' positions (already
- * part of the deterministic, replayable state) — no RNG involved.
+ * Per-round production from authored resource nodes (#101, #211): an ongoing,
+ * passive yield (not a one-time pickup, and not tied to city proximity) to
+ * whichever player controls the node's tile. Control resolves as:
+ *
+ * 1. Captains standing on the tile take control. If several co-occupy it, the
+ *    node's authored `ownerSeat` player wins when among them; otherwise the
+ *    occupant earliest in `GameState.captains` order (deterministic — array
+ *    order is part of replayable state).
+ * 2. With no occupant, control falls back to the `ownerSeat` player. This is
+ *    the only way a land node yields: captains are water-bound, so a land
+ *    tile can never be occupied.
+ * 3. A node with no occupant and no `ownerSeat` is neutral and yields nothing,
+ *    as does one whose kind has no catalog entry.
+ *
+ * Determined entirely from replayable state — no RNG involved.
  */
 export function resourceNodeIncome(
   state: GameState,
@@ -27,8 +35,15 @@ export function resourceNodeIncome(
   return state.resourceNodes.reduce((total, node) => {
     const def = catalog.resourceNodes?.[node.kind]
     if (!def) return total
-    const controller = state.captains.find((c) => coordsEqual(c.position, node.position))
-    if (!controller || controller.ownerId !== playerId) return total
+    const ownerId = node.ownerSeat !== undefined ? state.players[node.ownerSeat]?.id : undefined
+    const occupants = state.captains.filter((c) => coordsEqual(c.position, node.position))
+    const controllerId =
+      occupants.length > 0
+        ? ownerId !== undefined && occupants.some((c) => c.ownerId === ownerId)
+          ? ownerId
+          : occupants[0]!.ownerId
+        : ownerId
+    if (controllerId !== playerId) return total
     return addResources(total, def.yield)
   }, EMPTY_RESOURCES)
 }

@@ -272,6 +272,21 @@ describe('createGame with an authored map', () => {
     expect(state.resourceNodes).toEqual([{ id: 'res-0', kind: 'gold', position: water }])
   })
 
+  it('carries an authored ownerSeat into GameState.resourceNodes (#211)', () => {
+    const config = authoredConfig(2)
+    const water = config.mapDefinition!.startPositions[0]!
+    const state = createGame({
+      ...config,
+      mapDefinition: {
+        ...config.mapDefinition!,
+        resourceNodes: [{ kind: 'gold', position: water, ownerSeat: 1 }],
+      },
+    })
+    expect(state.resourceNodes).toEqual([
+      { id: 'res-0', kind: 'gold', position: water, ownerSeat: 1 },
+    ])
+  })
+
   it('authored resource nodes do not consume any RNG draws (rngState untouched)', () => {
     const config = authoredConfig(2)
     const water = config.mapDefinition!.startPositions[0]!
@@ -342,10 +357,26 @@ describe('validateMapDefinition with authored resource nodes', () => {
     const map = blankMap(24, 24)
     setTile(map, { x: 2, y: 2 }, 'land', 0)
     map.startPositions = [{ x: 5, y: 5 }]
+    // No ownerSeat: legal, but neutral — a land node only ever yields via an
+    // authored ownerSeat (#211), since captains cannot occupy land tiles.
     map.resourceNodes = [{ kind: 'iron', position: { x: 2, y: 2 } }]
     const result = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
     expect(result.errors.map((e) => e.code)).not.toContain('resource-node-out-of-bounds')
     expect(result.errors.map((e) => e.code)).not.toContain('resource-node-invalid-kind')
+  })
+
+  it('accepts a valid ownerSeat and flags one that is not a seat index (#211)', () => {
+    const map = blankMap(24, 24)
+    map.startPositions = [{ x: 5, y: 5 }]
+    map.resourceNodes = [{ kind: 'gold', position: { x: 10, y: 10 }, ownerSeat: 0 }]
+    const ok = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+    expect(ok.errors.map((e) => e.code)).not.toContain('resource-node-owner-seat-out-of-bounds')
+
+    for (const ownerSeat of [1, -1, 0.5]) {
+      map.resourceNodes = [{ kind: 'gold', position: { x: 10, y: 10 }, ownerSeat }]
+      const bad = validateMapDefinition(map, MAP_VALIDATION_LIMITS)
+      expect(bad.errors.map((e) => e.code)).toContain('resource-node-owner-seat-out-of-bounds')
+    }
   })
 
   it('flags an unrecognized resource-node kind instead of letting it through to the reducer', () => {

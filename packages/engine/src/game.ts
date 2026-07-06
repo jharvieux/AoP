@@ -112,6 +112,9 @@ export function createGame(config: GameConfig): GameState {
       id: `res-${i}`,
       kind: n.kind,
       position: { ...n.position },
+      // Author-assigned default controller (#211); omit when unset so
+      // GameState holds no stray optional keys.
+      ...(n.ownerSeat !== undefined ? { ownerSeat: n.ownerSeat } : {}),
     }),
   )
 

@@ -26,6 +26,16 @@ export interface EncounterPlacement {
 export interface ResourceNodePlacement {
   kind: ResourceNodeKind
   position: Coord
+  /**
+   * Seat index (into `startPositions`/`GameConfig.players`) that controls this
+   * node by default (#211). Captains are water-bound, so a node on a land or
+   * port tile can never be occupied — without an `ownerSeat` such a node is
+   * neutral and never yields. When set, that seat's player collects the yield
+   * whenever no rival captain occupies the tile, and wins the co-occupation
+   * tie-break (see economy.ts's `resourceNodeIncome`). Omit for a neutral
+   * node that yields only while a captain stands on it.
+   */
+  ownerSeat?: number
 }
 
 const VALID_ENCOUNTER_KINDS: ReadonlySet<string> = new Set<EncounterKind>([
@@ -273,6 +283,8 @@ export function validateMapDefinition(
   // Unlike encounters, the editor lets authors drop these on any tile type
   // (land mines, coastal distilleries, ...), so there's no tile-type check —
   // just the same untrusted-input guard against a corrupted/hand-edited kind.
+  // A land node without an `ownerSeat` is legal but neutral (#211): captains
+  // can never occupy it, so it yields nothing.
   def.resourceNodes?.forEach((node, i) => {
     if (!VALID_RESOURCE_NODE_KINDS.has(node.kind)) {
       errors.push({
@@ -285,6 +297,17 @@ export function validateMapDefinition(
       errors.push({
         code: 'resource-node-out-of-bounds',
         message: `resource node ${i} (${node.position.x},${node.position.y}) is outside the map`,
+      })
+    }
+    if (
+      node.ownerSeat !== undefined &&
+      (!Number.isInteger(node.ownerSeat) ||
+        node.ownerSeat < 0 ||
+        node.ownerSeat >= def.startPositions.length)
+    ) {
+      errors.push({
+        code: 'resource-node-owner-seat-out-of-bounds',
+        message: `resource node ${i} has ownerSeat ${String(node.ownerSeat)}, must be a seat index between 0 and ${def.startPositions.length - 1}`,
       })
     }
   })

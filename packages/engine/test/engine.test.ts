@@ -332,6 +332,59 @@ describe('economy & cities', () => {
     expect(p2.resources.timber).toBe(3)
   })
 
+  it('yields to the authored ownerSeat player when no captain occupies the node (#211)', () => {
+    const base = createGame(econConfig())
+    // (0,0) is unoccupied — the same situation as a land node, which
+    // water-bound captains can never stand on.
+    expect(base.captains.some((c) => c.position.x === 0 && c.position.y === 0)).toBe(false)
+    let state: GameState = {
+      ...base,
+      resourceNodes: [{ id: 'res-0', kind: 'timber', position: { x: 0, y: 0 }, ownerSeat: 1 }],
+    }
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    expect(state.players.find((p) => p.id === 'p2')!.resources.timber).toBe(3)
+    expect(state.players[0]!.resources.timber).toBe(0)
+  })
+
+  it('lets an occupying rival override ownerSeat while standing on the node (#211)', () => {
+    const base = createGame(econConfig())
+    const p1Captain = captainsOf(base, 'p1')[0]!
+    let state: GameState = {
+      ...base,
+      resourceNodes: [
+        { id: 'res-0', kind: 'timber', position: { ...p1Captain.position }, ownerSeat: 1 },
+      ],
+    }
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    expect(state.players[0]!.resources.timber).toBe(3)
+    expect(state.players.find((p) => p.id === 'p2')!.resources.timber).toBe(0)
+  })
+
+  it('breaks a co-occupation tie in favor of ownerSeat, else captains-array order (#211)', () => {
+    const base = createGame(econConfig())
+    const p1Captain = captainsOf(base, 'p1')[0]!
+    // Park p2's captain on the same tile as p1's — GameState permits
+    // co-occupation even though normal movement contests it via combat.
+    const captains = base.captains.map((c) =>
+      c.ownerId === 'p2' ? { ...c, position: { ...p1Captain.position } } : c,
+    )
+    const node = { id: 'res-0', kind: 'timber', position: { ...p1Captain.position } } as const
+
+    let contested: GameState = { ...base, captains, resourceNodes: [{ ...node, ownerSeat: 1 }] }
+    contested = applyAction(contested, { type: 'endTurn', playerId: 'p1' })
+    contested = applyAction(contested, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    expect(contested.players.find((p) => p.id === 'p2')!.resources.timber).toBe(3)
+    expect(contested.players[0]!.resources.timber).toBe(0)
+
+    let neutral: GameState = { ...base, captains, resourceNodes: [{ ...node }] }
+    neutral = applyAction(neutral, { type: 'endTurn', playerId: 'p1' })
+    neutral = applyAction(neutral, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    expect(neutral.players[0]!.resources.timber).toBe(3)
+    expect(neutral.players.find((p) => p.id === 'p2')!.resources.timber).toBe(0)
+  })
+
   it('constructs a building, spends its cost, and enforces one build per turn', () => {
     let state = createGame(econConfig())
     const city = homeCity(state, 'p1')

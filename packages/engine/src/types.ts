@@ -299,13 +299,22 @@ export interface EncounterState {
  * tile that grants its `kind`'s resource each round to whichever player
  * currently controls it. Placed only by authored maps (never scattered by
  * mapgen); plain data so it serializes and replays like everything else. See
- * economy.ts's `resourceNodeIncome` for the control rule (a captain of
- * theirs standing on the tile) and the per-round grant.
+ * economy.ts's `resourceNodeIncome` for the control rule (occupation by a
+ * captain, falling back to {@link ResourceNodeState.ownerSeat}) and the
+ * per-round grant.
  */
 export interface ResourceNodeState {
   id: string
   kind: ResourceNodeKind
   position: Coord
+  /**
+   * Author-assigned default controller (#211): seat index into
+   * {@link GameState.players}. That player collects the yield whenever no
+   * rival captain occupies the tile — the only way a land node (unreachable
+   * by water-bound captains) ever yields — and wins the co-occupation
+   * tie-break. Absent: the node is neutral, yielding only to an occupant.
+   */
+  ownerSeat?: number
 }
 
 export type GameStatus = 'active' | 'finished'

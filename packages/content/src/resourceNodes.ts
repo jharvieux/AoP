@@ -2,11 +2,13 @@ import type { ResourcePool } from '@aop/shared'
 
 /**
  * Balance data for author-placed map resource nodes (#41 map editor, #101).
- * Unlike a `BuildingDef`, a node has no construction cost and no owner until a
- * captain claims its tile by standing on it — the yield is deliberately more
- * modest than an equivalent-tier building's `produces` (see buildings.ts):
- * the "cost" here is the opportunity cost of parking a captain to hold it,
- * and the yield disappears the instant a rival captain takes the tile.
+ * Unlike a `BuildingDef`, a node has no construction cost and no owner until
+ * a captain claims its tile by standing on it (or the map author assigns a
+ * default `ownerSeat` on the placement, #211) — the yield is deliberately
+ * more modest than an equivalent-tier building's `produces` (see
+ * buildings.ts): the "cost" here is the opportunity cost of parking a
+ * captain to hold it, and the yield disappears the instant a rival captain
+ * takes the tile.
  */
 export type ResourceNodeKind = 'gold' | 'timber' | 'iron' | 'rum'
 
