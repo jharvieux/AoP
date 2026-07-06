@@ -23,6 +23,23 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const { seat, role } = await viewerSeat(db, matchId, userId)
 
+    // Presence heartbeat (#132, §6): every real seat-holder read bumps
+    // last_seen_at, so "offline 15+ minutes" (the email-notification gate in
+    // _shared/email.ts) reflects actually looking at the match — not just the
+    // last time the seat acted. Spectators are excluded: a granted watcher
+    // being online says nothing about the seat's own player. Best-effort — a
+    // failed bump must never fail the read it rode in on.
+    if (role === 'player') {
+      const bump = await db
+        .from('match_players')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('match_id', matchId)
+        .eq('seat', seat)
+      if (bump.error) {
+        console.error(`get-player-view: last_seen_at bump failed: ${bump.error.message}`)
+      }
+    }
+
     const { data: match, error } = await db
       .from('matches')
       .select('status, action_count, turn_deadline')
