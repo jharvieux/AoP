@@ -6,7 +6,7 @@
 import { playerView, type Action } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { callerSeat, seatPlayerId, submitAction } from '../_shared/match.ts'
+import { assertExpectedSeq, callerSeat, seatPlayerId, submitAction } from '../_shared/match.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -29,16 +29,7 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
 
-    // expectedSeq is the optimistic-concurrency token: submitAction re-reads the
-    // authoritative action_count and rejects a mismatch as SEQ_CONFLICT.
-    const { data: match } = await db
-      .from('matches')
-      .select('action_count')
-      .eq('id', body.matchId)
-      .maybeSingle()
-    if (match && match.action_count !== body.expectedSeq) {
-      throw new AppError('SEQ_CONFLICT', 'Your view is stale; refetch and retry')
-    }
+    await assertExpectedSeq(db, body.matchId, body.expectedSeq!)
 
     const { seq, state } = await submitAction(db, body.matchId, seat, body.action)
     return jsonResponse({ seq, view: playerView(state, seatPlayerId(seat)) })
