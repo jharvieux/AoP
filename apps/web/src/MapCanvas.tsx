@@ -12,6 +12,7 @@ import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
 import { useEffect, useRef } from 'react'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
+import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
 
 /**
@@ -76,33 +77,6 @@ const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
   brigantine: 0.75,
   frigate: 0.85,
   galleon: 0.95,
-}
-
-/**
- * Loads and caches pixi.js Textures by URL, kicking off `Assets.load` at most
- * once per URL and marking the given dirty flag so the next tick redraws once
- * a texture lands. Missing/broken assets resolve to no texture forever — the
- * caller's flat-color Graphics fallback keeps rendering instead (#115).
- */
-function createTextureLoader(dirtyRef: { current: boolean }) {
-  const cache = new Map<string, Texture>()
-  const pending = new Set<string>()
-  return function getTexture(url: string): Texture | undefined {
-    const cached = cache.get(url)
-    if (cached) return cached
-    if (!pending.has(url)) {
-      pending.add(url)
-      Assets.load(url)
-        .then((texture: Texture) => {
-          cache.set(url, texture)
-          dirtyRef.current = true
-        })
-        .catch(() => {
-          // Leave unresolved; the flat-color fallback keeps rendering this asset's slot.
-        })
-    }
-    return undefined
-  }
 }
 
 /** Get-or-create a pooled Sprite by a stable key, and drop any pool entries not
@@ -170,7 +144,7 @@ export interface MapCanvasProps {
 
 export function MapCanvas(props: MapCanvasProps) {
   const { containerRef, app } = usePixiApp({ background: TILE_COLOR.deep })
-  const { spriteUrl: themeSpriteUrl } = useTheme()
+  const { spriteUrl: themeSpriteUrl, pack: themePack } = useTheme()
 
   // Latest props + view are read by the render loop via refs, so per-action
   // re-renders never tear down the Pixi scene or reset the camera.
@@ -186,6 +160,18 @@ export function MapCanvas(props: MapCanvasProps) {
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
   const dirtyRef = useRef(true)
   dirtyRef.current = true
+  // Shared with the pack-switch effect below so it can release the previous
+  // pack's decoded textures without tearing down the whole Pixi scene (#245).
+  const textureLoaderRef = useRef<TextureLoader<Texture> | null>(null)
+
+  // Theme-pack sprite overrides are data: URLs loaded into the same
+  // process-global Assets cache as static art; nothing unloads them on its
+  // own. Release the previous pack's textures whenever the active pack
+  // changes, and on unmount — React runs this cleanup before re-running the
+  // effect body, so "previous pack's textures" is exactly what's stale here.
+  useEffect(() => {
+    return () => textureLoaderRef.current?.unloadThemeTextures()
+  }, [themePack?.id])
 
   useEffect(() => {
     if (!app) return
@@ -212,7 +198,11 @@ export function MapCanvas(props: MapCanvasProps) {
     )
     pixiApp.stage.addChild(world)
 
-    const getTexture = createTextureLoader(dirtyRef)
+    const textureLoader = createTextureLoader<Texture>(Assets, () => {
+      dirtyRef.current = true
+    })
+    textureLoaderRef.current = textureLoader
+    const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const cityPool = new SpritePool(citySprites)
     const encounterPool = new SpritePool(encounterSprites)
