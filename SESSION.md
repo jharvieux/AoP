@@ -1,83 +1,66 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-05 (principal-architect review of the whole app; 52 issues filed,
-no code changed)._
+_Last updated: 2026-07-06 (design handoff implemented: title splash + parchment main
+menu, PR #310 merged)._
 
 ## Just completed
 
-**Principal-architect audit of the entire app** (operator-requested): four parallel review
-agents (engine / server tier / web client / cross-cutting) + supervisor verification of the
-highest-stakes claims against source. 58 raw findings consolidated into **52 new issues,
-#205–#256**, labeled bug/enhancement/security + P0–P3. No code changed this session.
+**Launch-experience redesign from the Claude Design handoff** (operator-delivered,
+`docs/design_handoff_start_screen/`, chosen direction 1a "Weathered Parchment & Rope" —
+see D-023):
 
-Highest-priority findings (all verified against source unless noted):
-
-- **#216 (P0)**: `appendAction` is two non-transactional statements — a crash between the
-  `match_actions` insert and the `action_count` update permanently wedges the match
-  (every later append SEQ_CONFLICTs forever). Fix is an RPC like
-  `finalize_match_with_ratings`.
-- **#205/#206 (P1, anti-cheat)**: client-submittable `gainCaptainXp` grants arbitrary XP;
-  numeric action fields accept fractional values (and NaN via non-JSON paths) — the
-  reducer-as-validation-layer has holes plus no structural Action validation at the
-  submit-action boundary.
-- **#217 (P1)**: self-referencing RLS policy on `match_players` likely makes every client
-  PostgREST read of the game tables fail with infinite-recursion (needs local repro —
-  service role masks it server-side).
-- **#218 (P1)**: no `verify_jwt = false` config anywhere → default JWT verification will
-  401 the Stripe webhook (paid but never granted) and the compaction cron.
-- **#219 (P1)**: quick-match accepts 6–8 players but only 5 factions exist — the drain
-  claims (deletes) the queue rows then crashes, silently stranding players.
-- **#233/#234/#235 (P1, client)**: OAuth sign-in is a dead end (redirect tokens never
-  parsed); access token never refreshed after mount (everything 401s after ~1h); setup
-  offers hotseat seats GameScreen can't play.
-- **#248/#249/#250 (P1, cross-cutting)**: edge functions have zero CI coverage (no deno
-  check/test ever runs); no deploy pipeline or smoke test for any tier;
-  buildMatchConfig/buildCatalog client/server twins have already drifted (resourceNodes —
-  #169 was closed but the drift persists).
-
-Several issues need **operator decisions/actions** (flagged in their bodies): #218
-(config.toml, supervised), #248/#249/#252 (workflow changes, supervised), #243 +
-#252 (runtime deps @supabase/realtime-js and Sentry need explicit approval), #219
-(product call: cap matches at 5 players vs allow duplicate factions), #253 (git-LFS /
-asset history).
+- **PR #310 (merged, closes #302)**: new `TitleScreen` splash (skull-and-crossbones SVG
+  emblem, Pirata One engraved title, 2.8s loading bar, 3.2s auto-advance) + `MainMenu`
+  restructured per spec (New Game primary → Quick Match/Map Editor row → 7 secondary
+  actions behind "More Options" → audio-settings grid). Parchment palette landed as
+  `:root` design tokens in `apps/web/src/styles.css`; Pirata One + Cabin self-hosted in
+  `apps/web/public/fonts/` (OFL, no runtime deps); PWA theme/manifest colors updated.
+  Handoff docs checked in verbatim (`.prettierignore`d). Verified via `pnpm verify` +
+  headless-Chrome screenshots; pre-pr-reviewer found no blockers (its stale-closure nit
+  fixed pre-merge; its "no component tests" warning accepted — repo has no DOM-test
+  setup and the code is presentation-only).
+- **Issue updates**: #301 re-scoped (tokens now exist; remaining work = migrate the ~23
+  hardcoded hexes / 8 satellite screens onto them; open operator call on whether
+  MapCanvas/battleBoard palettes are diegetic art or UI chrome). #296 warned that
+  Account moved behind "More Options" (sign-in discoverability got worse — its fix is
+  now more urgent). #311 filed for real art assets (illustrated skull + parchment
+  texture); operator approved the Stable Diffusion approach (existing `~/aop-ai-tools`
+  pipeline, DreamShaper 8, contact-sheet curation gate per D-016).
+- Other open UI issues compared against the handoff: #297–#300, #303–#305 are map/battle
+  rendering work, orthogonal to the theme — unchanged.
 
 ## Next steps
 
-1. Operator triage of #205–#256 (P0 #216 first; then the P1 batch). A normal
-   `/issue-sweep` can pick up the rest — model-tier labels were deliberately left to
-   sweep triage.
-2. **#132**: email notifications — still needs a `RESEND_API_KEY` secret provisioned.
-3. **Capacitor native track** (#98, #100, #156, #159, #160, #161): still blocked on
-   physical device access.
-4. **#203**: sweep process gap (CI silently blocked on conflict) — still unactioned.
+1. **#311**: run the SD generation (skull emblem + parchment texture), contact-sheet for
+   operator curation, swap in (`SkullEmblem.tsx` → `<img>`; `--parchment-grain` →
+   texture url).
+2. **#301**: app-wide token migration (satellite screens, buttons, sheets, HUD) — now
+   fully specced in the issue thread; sweepable.
+3. Operator triage of the 2026-07-05 audit issues #205–#256 (P0 #216 was fixed via
+   PR #288; the P1 batch remains) — carried over.
+4. Carried over: #132 (needs RESEND_API_KEY), Capacitor native track (blocked on
+   device), #203 (sweep process gap).
 
 ## Blocked on user
 
-- Decisions embedded in the new issues listed above (supervised paths + two runtime-dep
-  approvals + the 5-faction/8-player product call in #219).
+- #301 boundary call (map/battle palettes: diegetic vs UI chrome) — non-urgent, embedded
+  in the issue.
+- Carried over: decisions embedded in audit issues #205–#256 (supervised paths, runtime
+  dep approvals).
 
 ## Open questions
 
-- None beyond the issue-embedded decisions above.
+- None new.
+
+## Prior session summary (2026-07-05 principal-architect audit, unchanged)
+
+Four parallel review agents audited engine/server/web/cross-cutting; 52 issues filed
+(#205–#256), no code changed. Highest: #216 (P0, fixed since via PR #288), #205/#206
+anti-cheat, #217 RLS recursion, #218 verify_jwt, #219 (fixed via cap, D-022),
+#233–#235 auth flows, #248–#250 CI/deploy gaps.
 
 ## Prior session summary (2026-07-06 follow-up round, unchanged)
 
 #93/#177/#189 finalized (PRs #193–195); #63 fully closed (PRs #197, #199); visuals/audio
-gaps fixed (PRs #200–202: tier-1 unit art, deep/port tiles, local music/SFX generation);
-filed #203 (CI-silently-blocked-on-conflict process gap); closed #81 as stale.
-
-## Prior session summary (2026-07-05, migration-unblocked sweep round, unchanged)
-
-Operator approved migrations + #138 betrayal policy; full sweep round (3 waves, 15 issues,
-PRs #174-176, #178-188, #190-191); fixed local Supabase/colima (PR #187); closed epics
-#36-38, #40. Filed #189.
-
-## Prior session summary (2026-07-05, DreamShaper art re-pass + multiplayer sweep, unchanged)
-
-`/issue-sweep` against 34 epic sub-issues; 11-issue unsupervised plan (PRs #164-168), then
-the full #89 DreamShaper re-pass (PR #172, #173).
-
-## Prior session summary (2026-07-04 full issue-sweep, unchanged)
-
-Triaged 27 open issues, executed 9 batches (16 issues, PRs #117-#125), all merged clean.
+gaps fixed (PRs #200–202); filed #203; closed #81 as stale.
