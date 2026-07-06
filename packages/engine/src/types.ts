@@ -189,6 +189,15 @@ export interface GameConfig {
    * ≤`normal`). Without it every AI plays at full skill with no resource bonus.
    */
   aiDifficulties?: Record<AiDifficulty, AiDifficultyModifier>
+  /**
+   * Schema/behavior version (#213), stamped by `createGame` with the current
+   * {@link RULES_VERSION} regardless of what a caller supplies here — never
+   * set this yourself. `applyAction` refuses to run against a state whose
+   * stamped value doesn't match the running engine build's `RULES_VERSION`,
+   * including a state with none at all (a pre-#213 snapshot). See
+   * `rulesVersion.ts`.
+   */
+  rulesVersion?: number
 }
 
 export interface PlayerState {
