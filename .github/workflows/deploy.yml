@@ -1,0 +1,117 @@
+name: Deploy
+
+# Manual-dispatch only, deliberately: no production Supabase project exists yet (see
+# supabase/README.md § Environments) and none of the secrets below are configured, so
+# triggering this on every push to `main` would just fail forever until an operator sets
+# both up. Once a production project + secrets exist, an operator can add a `push: tags:
+# ['v*']` trigger here for release-tag deploys — see docs/runbooks/deploy.md.
+#
+# Runs all three tiers (db, functions, web) from the one commit this workflow checks out,
+# so client and server always ship from the same source — the desync scenario #249 flags
+# (a forgotten `functions deploy` leaving the client bundle talking to an older engine)
+# can't happen when they're one workflow instead of three separately-run manual steps.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # --- 1. Database: apply any pending migrations (supabase/README.md § Adding a
+      # migration). `supabase db push` only ever applies migrations not yet recorded on
+      # the linked project — safe to run on a deploy where nothing changed.
+      - name: Link Supabase project
+        run: pnpm exec supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      - name: Push database migrations
+        run: pnpm exec supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      # --- 2. Edge functions: deploy every function in supabase/functions (README.md
+      # § Deploy & run). Function-scoped secrets (STRIPE_SECRET_KEY, CRON_SECRET, etc.)
+      # are configured on the Supabase project directly, not passed through this workflow.
+      - name: Deploy edge functions
+        run: pnpm exec supabase functions deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      # --- 3. Web client: build + deploy to Vercel production. No vercel.json/.vercel
+      # dir is committed (gitignored, per Vercel's own convention), so `vercel pull`
+      # fetches the project's build settings and env vars fresh every run.
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Build for Vercel
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy to Vercel (production)
+        id: vercel_deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # --- 4. Smoke tests: confirm both the function stack and the web bundle actually
+      # came up before calling the deploy done.
+      #
+      # list-open-matches requires a real user JWT (`requireUserId` in
+      # supabase/functions/_shared/client.ts calls `auth.getUser()` on the bearer token,
+      # not just the anon key), so an unauthenticated call can't reach a literal 200 here
+      # without also provisioning and rotating a dedicated smoke-test account's
+      # credentials as a secret — a persistent-test-account decision left to the operator
+      # (see docs/runbooks/deploy.md). What this DOES prove without that: the function is
+      # deployed, reachable, and its auth boundary is executing (a structured 403, not a
+      # crash/5xx/timeout). Treat anything else as a failed deploy.
+      - name: Smoke test — list-open-matches is deployed and enforcing auth
+        run: |
+          status=$(curl -s -o /tmp/smoke.json -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/functions/v1/list-open-matches" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "HTTP $status"
+          cat /tmp/smoke.json
+          echo
+          if [ "$status" != "403" ]; then
+            echo "::error::expected 403 FORBIDDEN (no Authorization header supplied), got $status"
+            exit 1
+          fi
+          if ! grep -q '"code"' /tmp/smoke.json; then
+            echo "::error::response body is not the { error: { code, message } } envelope"
+            exit 1
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      - name: Smoke test — web app is live
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.vercel_deploy.outputs.url }}")
+          echo "HTTP $status"
+          if [ "$status" -ge 400 ]; then
+            echo "::error::web app root returned $status"
+            exit 1
+          fi

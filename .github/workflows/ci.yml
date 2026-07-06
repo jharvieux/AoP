@@ -20,3 +20,41 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  # supabase/functions is not a pnpm workspace — it runs on Deno, not Node (see
+  # supabase/functions/README.md) — so the `ci` job above never typechecks or tests it.
+  # This job is the Deno-side equivalent of `pnpm typecheck` / `pnpm test` (#248).
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      # --node-modules-dir=none: this job never runs `pnpm install`, and without it Deno
+      # detects the repo's pnpm-workspace.yaml and tries to rewrite the root package.json
+      # into an npm "workspaces" field before resolving npm: specifiers — package.json is
+      # a sensitive/supervised path (CLAUDE.md), so CI must never let a tool touch it.
+      # Forcing Deno's own npm cache instead of a local node_modules dir avoids that.
+      #
+      # --unstable-sloppy-imports: the @aop/* workspace sources use extensionless
+      # relative imports (e.g. `export * from './multiplayer'`), the TS convention this
+      # repo's own tsc `moduleResolution` already tolerates. Deno's default ESM resolver
+      # requires explicit extensions on relative specifiers; sloppy-imports matches it to
+      # the existing source convention instead of rewriting every import in three
+      # packages just to satisfy Deno.
+      #
+      # Typechecks every function entrypoint against the workspace @aop/* sources via
+      # the import map in supabase/functions/deno.json (same invocation pattern as the
+      # comment atop supabase/functions/_shared/match.test.ts).
+      - name: deno check (every function entrypoint)
+        run: |
+          deno check --node-modules-dir=none --unstable-sloppy-imports \
+            --import-map=supabase/functions/deno.json supabase/functions/*/index.ts
+      # Runs every *.test.ts under supabase/functions (currently just _shared/match.test.ts).
+      # --no-check: `deno check` above already typechecks the full module graph: running
+      # it again here would only duplicate that failure, not add coverage.
+      - name: deno test
+        run: |
+          deno test --no-check --node-modules-dir=none --unstable-sloppy-imports \
+            --import-map=supabase/functions/deno.json supabase/functions/
