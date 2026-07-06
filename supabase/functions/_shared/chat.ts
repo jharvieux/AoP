@@ -60,7 +60,7 @@ async function enforceRateLimit(db: Db, matchId: string, seat: number): Promise<
  * whether the message was an alliance-private one. The channel is private
  * (#228) — see {@link broadcastTurn}'s doc for the authorization model.
  */
-async function broadcastChat(db: Db, matchId: string, id: number): Promise<void> {
+export async function broadcastChat(db: Db, matchId: string, id: number): Promise<void> {
   const status = await db.channel(`match:${matchId}`, { config: { private: true } }).send({
     type: 'broadcast',
     event: 'chat',

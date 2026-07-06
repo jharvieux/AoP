@@ -585,7 +585,7 @@ async function writeSnapshot(
  * realtime.messages admits only match participants/spectators as listeners, and
  * grants no client INSERT — only this service-role path may broadcast.
  */
-async function broadcastTurn(db: Db, matchId: string, seq: number): Promise<void> {
+export async function broadcastTurn(db: Db, matchId: string, seq: number): Promise<void> {
   const status = await db.channel(`match:${matchId}`, { config: { private: true } }).send({
     type: 'broadcast',
     event: 'turn',
