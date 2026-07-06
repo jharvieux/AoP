@@ -5,7 +5,6 @@
 // match for each claimed group. Mirrors the split compaction.ts uses (policy in @aop/shared,
 // I/O here).
 
-import { createGame } from '@aop/engine'
 import { GAME_SETUP } from '@aop/content'
 import {
   assignQuickMatchSeats,
@@ -17,9 +16,8 @@ import {
   type QueueEntry,
   type QuickMatchBucket,
 } from '@aop/shared'
-import { buildMatchConfig, type SeatConfig } from './catalog.ts'
 import { AppError } from './http.ts'
-import { randomSeed, type MatchSettings } from './match.ts'
+import { randomSeed, startMatch, type MatchSettings, type StartMatchSeat } from './match.ts'
 import type { Db } from './client.ts'
 
 // Quick-match defaults (§8): 24h/turn async cadence and the standard 3-missed-turn AI
@@ -115,50 +113,12 @@ async function createQuickMatch(
   const insertSeats = await db.from('match_players').insert(seatRows)
   if (insertSeats.error) throw new AppError('INTERNAL', insertSeats.error.message)
 
-  const names = new Map<string, string>()
-  const { data: profiles } = await db
-    .from('profiles')
-    .select('id, display_name')
-    .in(
-      'id',
-      seats.map((s) => s.userId),
-    )
-  for (const p of profiles ?? []) names.set(p.id, p.display_name)
-
-  const seatConfigs: SeatConfig[] = seats.map((s) => ({
+  const seatList: StartMatchSeat[] = seats.map((s) => ({
     seat: s.seat,
+    userId: s.userId,
     faction: s.faction,
-    isAI: false,
-    displayName: names.get(s.userId) ?? `Seat ${s.seat}`,
   }))
-  const state = createGame(
-    buildMatchConfig(seed, bucket.mapSize, seatConfigs, {
-      betrayalReputationPenalty: settings.betrayalReputationPenalty,
-      betrayalTruceRounds: settings.betrayalTruceRounds,
-    }),
-  )
-
-  const snap = await db
-    .from('match_snapshots')
-    .insert({ match_id: matchId, seq: 0, state: state as unknown as Record<string, unknown> })
-  if (snap.error) throw new AppError('INTERNAL', snap.error.message)
-
-  const deadline = new Date(Date.now() + QUICK_MATCH_TURN_TIMER_SECONDS * 1000).toISOString()
-  const activate = await db
-    .from('matches')
-    .update({
-      status: 'active',
-      action_count: 0,
-      turn_deadline: deadline,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', matchId)
-    .eq('status', 'lobby')
-    .select('id')
-  if (activate.error) throw new AppError('INTERNAL', activate.error.message)
-  if (!activate.data || activate.data.length === 0) {
-    throw new AppError('MATCH_STATE', 'Quick match was already started')
-  }
+  await startMatch(db, matchId, seed, settings, seatList)
   return matchId
 }
 

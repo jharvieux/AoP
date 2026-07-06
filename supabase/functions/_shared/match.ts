@@ -1,10 +1,12 @@
 import {
   allianceComponents,
   applyAction,
+  createGame,
   nextAiAction,
   replay,
   InvalidActionError,
   type Action,
+  type GameConfig,
   type GameState,
 } from '@aop/engine'
 import {
@@ -18,6 +20,7 @@ import {
   type PlayerRating,
   type RatedSeat,
 } from '@aop/shared'
+import { buildMatchConfig, type SeatConfig } from './catalog.ts'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
 import { dispatchTurnPush } from './push.ts'
@@ -143,6 +146,99 @@ function turnDeadline(settings: MatchSettings): string | null {
   return settings.turnTimerSeconds
     ? new Date(Date.now() + settings.turnTimerSeconds * 1000).toISOString()
     : null
+}
+
+/**
+ * Look up display names for a set of user ids in one query (#231). Replaces four
+ * near-identical inline copies (start-match, the quick-match drain,
+ * get-leaderboard, browse-maps); a missing profile is simply absent from the
+ * returned map, so each caller keeps its own fallback (`Seat N`, `Unknown
+ * Pirate`, ...).
+ */
+export async function displayNames(
+  db: Db,
+  userIds: readonly string[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>()
+  const ids = [...new Set(userIds)]
+  if (ids.length === 0) return names
+  const { data, error } = await db.from('profiles').select('id, display_name').in('id', ids)
+  if (error) throw new AppError('INTERNAL', error.message)
+  for (const p of data ?? []) names.set(p.id, p.display_name)
+  return names
+}
+
+/** A seat's engine-relevant identity, independent of which DB row shape supplied it. */
+export interface StartMatchSeat {
+  seat: number
+  /** `null` marks an AI seat. */
+  userId: string | null
+  faction: FactionId
+}
+
+/**
+ * Pure half of {@link startMatch} (#231): builds the frozen engine config a match
+ * starts from, given each seat's already-resolved display name. Split out from
+ * the I/O so quick-match's and start-match's seat data — read from two different
+ * DB row shapes but normalized to the same {@link StartMatchSeat} — can be proven
+ * to build byte-identical `GameConfig`/`GameState` without faking a database.
+ */
+export function buildStartMatchConfig(
+  seed: number,
+  settings: MatchSettings,
+  seats: readonly StartMatchSeat[],
+  names: ReadonlyMap<string, string>,
+): GameConfig {
+  const seatConfigs: SeatConfig[] = seats.map((s) => ({
+    seat: s.seat,
+    faction: s.faction,
+    isAI: s.userId === null,
+    displayName: s.userId ? (names.get(s.userId) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
+  }))
+  return buildMatchConfig(seed, settings.mapSize, seatConfigs, {
+    betrayalReputationPenalty: settings.betrayalReputationPenalty,
+    betrayalTruceRounds: settings.betrayalTruceRounds,
+  })
+}
+
+/**
+ * Shared match-start sequence (#231): resolve display names, build the frozen
+ * engine config, run `createGame`, write the seq-0 snapshot, then guard-flip the
+ * match `lobby` -> `active` and arm the first turn deadline. Used by both
+ * start-match (an existing lobby match its creator starts) and the quick-match
+ * drain (a match created and seated in the same request) — the
+ * snapshot-before-activate ordering and the status-guarded flip are the
+ * load-bearing invariants neither caller may reimplement differently (a match is
+ * never visible to the turn sweep or submit-action without its seq-0 snapshot).
+ * Throws `MATCH_STATE` if the match was somehow already started.
+ */
+export async function startMatch(
+  db: Db,
+  matchId: string,
+  seed: number,
+  settings: MatchSettings,
+  seats: readonly StartMatchSeat[],
+): Promise<void> {
+  const humanIds = seats.map((s) => s.userId).filter((id): id is string => id !== null)
+  const names = await displayNames(db, humanIds)
+  const state = createGame(buildStartMatchConfig(seed, settings, seats, names))
+  await writeSnapshot(db, matchId, 0, state)
+
+  const activate = await db
+    .from('matches')
+    .update({
+      status: 'active',
+      action_count: 0,
+      turn_deadline: turnDeadline(settings),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', matchId)
+    .eq('status', 'lobby')
+    .select('id')
+  if (activate.error) throw new AppError('INTERNAL', activate.error.message)
+  if (!activate.data || activate.data.length === 0) {
+    throw new AppError('MATCH_STATE', 'Match was already started')
+  }
 }
 
 /**

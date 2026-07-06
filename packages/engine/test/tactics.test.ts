@@ -34,6 +34,9 @@ const STATS: CombatStatsData = {
   tactics: TACTICS_TUNING,
 }
 const stats = createCombatStats(STATS)
+const defaultAiDriver = aiTacticDriver(TACTICS_TUNING)
+const aggressiveDriver = aggressiveTacticDriver(TACTICS_TUNING)
+const cautiousDriver = cautiousTacticDriver(TACTICS_TUNING)
 
 function combatant(ownerId: string, troops: Combatant['troops'], shipClassId = 'sloop'): Combatant {
   return { captainId: `cap-${ownerId}`, ownerId, shipClassId, troops }
@@ -134,7 +137,7 @@ describe('standingOrdersDriver (offline defence)', () => {
 
 describe('aiTacticDriver', () => {
   it('flees when clearly losing and able', () => {
-    const pick = aiTacticDriver.choose(
+    const pick = defaultAiDriver.choose(
       ctx({
         round: 3,
         ownStrength: 10,
@@ -154,13 +157,13 @@ describe('aiTacticDriver', () => {
       enemyLastTactic: 'evade',
       available: ['broadside', 'evade', 'board'],
     })
-    expect(aiTacticDriver.choose({ ...chase, ownSpeed: 5, enemySpeed: 5 })).toBe('board')
+    expect(defaultAiDriver.choose({ ...chase, ownSpeed: 5, enemySpeed: 5 })).toBe('board')
     // A slower ship can't hold the runner, so boarding is a wasted round.
-    expect(aiTacticDriver.choose({ ...chase, ownSpeed: 2, enemySpeed: 5 })).toBe('broadside')
+    expect(defaultAiDriver.choose({ ...chase, ownSpeed: 2, enemySpeed: 5 })).toBe('broadside')
   })
 
   it('rams its way out when cornered by a grappling chaser instead of a doomed evade', () => {
-    const pick = aiTacticDriver.choose(
+    const pick = defaultAiDriver.choose(
       ctx({
         ownHp: 10,
         enemyHp: 40,
@@ -177,18 +180,18 @@ describe('aiTacticDriver', () => {
 describe('personality combat drivers (#25)', () => {
   it('aggressive presses close-quarters instead of holding the gun line', () => {
     // Even fight the default driver would broadside — the aggressor forces a board.
-    expect(aggressiveTacticDriver.choose(ctx())).toBe('board')
+    expect(aggressiveDriver.choose(ctx())).toBe('board')
     // Only a near-sinking ship breaks off.
-    expect(aggressiveTacticDriver.choose(ctx({ ownHp: 2, enemyHp: 40 }))).toBe('evade')
+    expect(aggressiveDriver.choose(ctx({ ownHp: 2, enemyHp: 40 }))).toBe('evade')
   })
 
   it('cautious breaks off as soon as the fight turns against it', () => {
     // The default driver only flees when *clearly* losing; the cautious one leaves earlier.
     const slightlyBehind = ctx({ ownHp: 9, enemyHp: 10 })
-    expect(aiTacticDriver.choose(slightlyBehind)).not.toBe('evade')
-    expect(cautiousTacticDriver.choose(slightlyBehind)).toBe('evade')
+    expect(defaultAiDriver.choose(slightlyBehind)).not.toBe('evade')
+    expect(cautiousDriver.choose(slightlyBehind)).toBe('evade')
     // From a commanding lead it commits to a board.
-    expect(cautiousTacticDriver.choose(ctx({ ownStrength: 20, enemyStrength: 10 }))).toBe('board')
+    expect(cautiousDriver.choose(ctx({ ownStrength: 20, enemyStrength: 10 }))).toBe('board')
   })
 
   it('the unskilled driver always holds the gun line', () => {
@@ -199,8 +202,53 @@ describe('personality combat drivers (#25)', () => {
   })
 })
 
+describe('AI tactic thresholds are injected balance data (#212)', () => {
+  // Every knob these drivers key on comes from TacticsTuning — proven here by
+  // showing the same context flips its decision when only the injected tuning
+  // changes, never a hardcoded constant in the engine.
+  it('aiTacticDriver flees at a tuned HP ratio, not a fixed 0.5', () => {
+    const situation = ctx({ ownHp: 6, enemyHp: 10, available: ['broadside', 'evade'] })
+    const strict = aiTacticDriver({ ...TACTICS_TUNING, aiLosingHpRatio: 0.5 })
+    const lenient = aiTacticDriver({ ...TACTICS_TUNING, aiLosingHpRatio: 0.7 })
+    expect(strict.choose(situation)).not.toBe('evade') // 6 >= 10*0.5: not losing badly yet
+    expect(lenient.choose(situation)).toBe('evade') // 6 < 10*0.7: now it is
+  })
+
+  it('aiTacticDriver boards at a tuned strength ratio, not a fixed 1.15', () => {
+    const situation = ctx({ ownStrength: 11, enemyStrength: 10, available: ['broadside', 'board'] })
+    const cautious = aiTacticDriver({ ...TACTICS_TUNING, aiBoardStrengthRatio: 1.15 })
+    const eager = aiTacticDriver({ ...TACTICS_TUNING, aiBoardStrengthRatio: 1.05 })
+    expect(cautious.choose(situation)).not.toBe('board') // 11 <= 10*1.15
+    expect(eager.choose(situation)).toBe('board') // 11 > 10*1.05
+  })
+
+  it('aggressiveTacticDriver breaks off at a tuned HP ratio, not a fixed 0.25', () => {
+    const situation = ctx({ ownHp: 3, enemyHp: 10, available: ['broadside', 'evade'] })
+    const bold = aggressiveTacticDriver({ ...TACTICS_TUNING, aggressiveEvadeHpRatio: 0.25 })
+    const skittish = aggressiveTacticDriver({ ...TACTICS_TUNING, aggressiveEvadeHpRatio: 0.35 })
+    expect(bold.choose(situation)).not.toBe('evade') // 3 >= 10*0.25
+    expect(skittish.choose(situation)).toBe('evade') // 3 < 10*0.35
+  })
+
+  it('cautiousTacticDriver boards at a tuned strength ratio, not a fixed 1.4', () => {
+    const situation = ctx({ ownStrength: 13, enemyStrength: 10, available: ['broadside', 'board'] })
+    const patient = cautiousTacticDriver({ ...TACTICS_TUNING, cautiousBoardStrengthRatio: 1.4 })
+    const rash = cautiousTacticDriver({ ...TACTICS_TUNING, cautiousBoardStrengthRatio: 1.2 })
+    expect(patient.choose(situation)).not.toBe('board') // 13 <= 10*1.4
+    expect(rash.choose(situation)).toBe('board') // 13 > 10*1.2
+  })
+
+  it('is a deterministic pure function of its tuning object — same tuning, same driver instance', () => {
+    expect(aiTacticDriver(TACTICS_TUNING)).toBe(aiTacticDriver(TACTICS_TUNING))
+    expect(aggressiveTacticDriver(TACTICS_TUNING)).toBe(aggressiveTacticDriver(TACTICS_TUNING))
+    expect(cautiousTacticDriver(TACTICS_TUNING)).toBe(cautiousTacticDriver(TACTICS_TUNING))
+    // Distinct tuning objects (as every match's frozen config snapshot is) get distinct drivers.
+    expect(aiTacticDriver({ ...TACTICS_TUNING })).not.toBe(aiTacticDriver(TACTICS_TUNING))
+  })
+})
+
 describe('resolveTacticalCombat', () => {
-  const drivers = { attacker: aiTacticDriver, defender: aiTacticDriver }
+  const drivers = { attacker: defaultAiDriver, defender: defaultAiDriver }
 
   it('is deterministic', () => {
     const input = {

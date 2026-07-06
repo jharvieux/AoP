@@ -236,6 +236,47 @@ describe('attackCaptain action', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.actionCount).toBe(log.length)
   })
+
+  it('is unaffected by which faction each seat plays (#215)', () => {
+    // captainToCombatant no longer takes a faction — combat stats come solely
+    // from ship class, upgrades, and skills. Swapping the two seats' factions
+    // must reproduce a byte-identical battle report.
+    const swappedConfig: GameConfig = {
+      ...combatConfig(),
+      players: combatConfig().players.map((p) => ({
+        ...p,
+        faction: p.id === 'p1' ? 'french' : 'dutch',
+      })),
+    }
+    const base = adjacentBattleState()
+    const swapped = createGame(swappedConfig)
+    const p1cap = captainsOf(swapped, 'p1')[0]!
+    const p2cap = captainsOf(swapped, 'p2')[0]!
+    const target = { x: p1cap.position.x + 1, y: p1cap.position.y }
+    const swappedAdjacent: GameState = {
+      ...swapped,
+      captains: swapped.captains.map((c) => (c.id === p2cap.id ? { ...c, position: target } : c)),
+    }
+
+    const action: Action = {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: captainsOf(base, 'p1')[0]!.id,
+      targetCaptainId: captainsOf(base, 'p2')[0]!.id,
+    }
+    const swappedAction: Action = {
+      ...action,
+      captainId: captainsOf(swappedAdjacent, 'p1')[0]!.id,
+      targetCaptainId: captainsOf(swappedAdjacent, 'p2')[0]!.id,
+    }
+
+    const { battleReport: reportA } = applyActionWithOutcome(base, action)
+    const { battleReport: reportB } = applyActionWithOutcome(swappedAdjacent, swappedAction)
+    expect(reportB!.winnerId === 'p1').toBe(reportA!.winnerId === 'p1')
+    expect(reportB!.attackerSurvived).toBe(reportA!.attackerSurvived)
+    expect(reportB!.defenderSurvived).toBe(reportA!.defenderSurvived)
+    expect(reportB!.rounds.length).toBe(reportA!.rounds.length)
+  })
 })
 
 describe('setStandingOrders action', () => {

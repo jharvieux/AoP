@@ -32,6 +32,10 @@ export const TACTICS_TUNING: TacticsTuning = {
   disadvantage: 0.8,
   ramHullMin: 50,
   outgunnedRatio: 1.5,
+  aiLosingHpRatio: 0.5,
+  aiBoardStrengthRatio: 1.15,
+  aggressiveEvadeHpRatio: 0.25,
+  cautiousBoardStrengthRatio: 1.4,
 }
 
 export const BATTLE_TUNING: BattleTuning = {

@@ -196,65 +196,114 @@ export function tacticPlanDriver(plan: readonly TacticId[]): TacticDriver {
  * who has us grappled — evading a held ship is a doomed play), pin a fleeing
  * enemy when fast enough to hold it, board when holding a crew-strength edge,
  * otherwise trade broadsides.
+ *
+ * The losing/boarding thresholds are balance data (`aiLosingHpRatio`,
+ * `aiBoardStrengthRatio` in {@link TacticsTuning}, #212) injected from
+ * @aop/content rather than hardcoded here. The driver is cached per tuning
+ * object (frozen once into a match's config, so it's stable for the match's
+ * lifetime) so repeated calls with the same tuning return the identical
+ * instance — the client's naval-AI mirror in `boardingPlanner.ts` relies on
+ * this to prove parity with the reducer's driver selection.
  */
-export const aiTacticDriver: TacticDriver = {
-  choose(ctx) {
-    const losingBadly = ctx.ownHp < ctx.enemyHp * 0.5
-    if (losingBadly && ctx.available.includes('evade')) {
-      const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
-      if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
-        return 'ram'
-      }
-      return 'evade'
+const aiTacticDriverCache = new WeakMap<TacticsTuning, TacticDriver>()
+export function aiTacticDriver(tactics: TacticsTuning): TacticDriver {
+  let driver = aiTacticDriverCache.get(tactics)
+  if (!driver) {
+    driver = {
+      choose(ctx) {
+        const losingBadly = ctx.ownHp < ctx.enemyHp * tactics.aiLosingHpRatio
+        if (losingBadly && ctx.available.includes('evade')) {
+          const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
+          if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
+            return 'ram'
+          }
+          return 'evade'
+        }
+        if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
+          if (ctx.available.includes('board')) return 'board'
+          if (ctx.available.includes('ram')) return 'ram'
+        }
+        if (
+          ctx.ownStrength > ctx.enemyStrength * tactics.aiBoardStrengthRatio &&
+          ctx.available.includes('board')
+        ) {
+          return 'board'
+        }
+        if (ctx.available.includes('ram') && ctx.ownStrength >= ctx.enemyStrength) return 'ram'
+        return 'broadside'
+      },
     }
-    if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
-      if (ctx.available.includes('board')) return 'board'
-      if (ctx.available.includes('ram')) return 'ram'
-    }
-    if (ctx.ownStrength > ctx.enemyStrength * 1.15 && ctx.available.includes('board')) {
-      return 'board'
-    }
-    if (ctx.available.includes('ram') && ctx.ownStrength >= ctx.enemyStrength) return 'ram'
-    return 'broadside'
-  },
+    aiTacticDriverCache.set(tactics, driver)
+  }
+  return driver
 }
 
 /**
  * Aggressive combat AI (#25): press the attack. Pin a fleeing enemy, otherwise
  * force close-quarters (board, then ram) to end the fight fast; only break off
- * when nearly sunk. Suits the `aggressive` personality.
+ * when nearly sunk. Suits the `aggressive` personality. The break-off threshold
+ * is `aggressiveEvadeHpRatio` in {@link TacticsTuning} (#212); see
+ * {@link aiTacticDriver} for the caching rationale.
  */
-export const aggressiveTacticDriver: TacticDriver = {
-  choose(ctx) {
-    if (ctx.ownHp < ctx.enemyHp * 0.25 && ctx.available.includes('evade')) return 'evade'
-    if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
-      if (ctx.available.includes('board')) return 'board'
-      if (ctx.available.includes('ram')) return 'ram'
+const aggressiveTacticDriverCache = new WeakMap<TacticsTuning, TacticDriver>()
+export function aggressiveTacticDriver(tactics: TacticsTuning): TacticDriver {
+  let driver = aggressiveTacticDriverCache.get(tactics)
+  if (!driver) {
+    driver = {
+      choose(ctx) {
+        if (
+          ctx.ownHp < ctx.enemyHp * tactics.aggressiveEvadeHpRatio &&
+          ctx.available.includes('evade')
+        ) {
+          return 'evade'
+        }
+        if (ctx.enemyLastTactic === 'evade' && ctx.ownSpeed >= ctx.enemySpeed) {
+          if (ctx.available.includes('board')) return 'board'
+          if (ctx.available.includes('ram')) return 'ram'
+        }
+        if (ctx.available.includes('board')) return 'board'
+        if (ctx.available.includes('ram')) return 'ram'
+        return 'broadside'
+      },
     }
-    if (ctx.available.includes('board')) return 'board'
-    if (ctx.available.includes('ram')) return 'ram'
-    return 'broadside'
-  },
+    aggressiveTacticDriverCache.set(tactics, driver)
+  }
+  return driver
 }
 
 /**
  * Cautious combat AI (#25): preserve the fleet. Break off the moment the fight
  * turns against you (ramming a chaser who has grappled you, since evading a held
  * ship is doomed), and only commit to boarding from a commanding lead. Suits the
- * `economic` personality, which would rather keep its ships than trade them.
+ * `economic` personality, which would rather keep its ships than trade them. The
+ * boarding threshold is `cautiousBoardStrengthRatio` in {@link TacticsTuning}
+ * (#212); see {@link aiTacticDriver} for the caching rationale.
  */
-export const cautiousTacticDriver: TacticDriver = {
-  choose(ctx) {
-    if (ctx.ownHp < ctx.enemyHp && ctx.available.includes('evade')) {
-      const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
-      if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
-        return 'ram'
-      }
-      return 'evade'
+const cautiousTacticDriverCache = new WeakMap<TacticsTuning, TacticDriver>()
+export function cautiousTacticDriver(tactics: TacticsTuning): TacticDriver {
+  let driver = cautiousTacticDriverCache.get(tactics)
+  if (!driver) {
+    driver = {
+      choose(ctx) {
+        if (ctx.ownHp < ctx.enemyHp && ctx.available.includes('evade')) {
+          const enemyCanPin = ctx.enemySpeed >= ctx.ownSpeed
+          if (enemyCanPin && ctx.enemyLastTactic === 'board' && ctx.available.includes('ram')) {
+            return 'ram'
+          }
+          return 'evade'
+        }
+        if (
+          ctx.ownStrength > ctx.enemyStrength * tactics.cautiousBoardStrengthRatio &&
+          ctx.available.includes('board')
+        ) {
+          return 'board'
+        }
+        return 'broadside'
+      },
     }
-    if (ctx.ownStrength > ctx.enemyStrength * 1.4 && ctx.available.includes('board')) return 'board'
-    return 'broadside'
-  },
+    cautiousTacticDriverCache.set(tactics, driver)
+  }
+  return driver
 }
 
 /**
@@ -425,9 +474,10 @@ export function resolveAutoTactical(
   stats: CombatStats,
   rng: RngState,
 ): CombatResult {
+  const driver = aiTacticDriver(stats.tactics)
   return resolveTacticalCombat(input, stats, rng, {
-    attacker: aiTacticDriver,
-    defender: aiTacticDriver,
+    attacker: driver,
+    defender: driver,
   })
 }
 
@@ -456,8 +506,8 @@ export function estimateOdds(
   attackerPlan?: readonly TacticId[],
 ): CombatOdds {
   const drivers: TacticalDrivers = {
-    attacker: attackerPlan?.length ? tacticPlanDriver(attackerPlan) : aiTacticDriver,
-    defender: aiTacticDriver,
+    attacker: attackerPlan?.length ? tacticPlanDriver(attackerPlan) : aiTacticDriver(stats.tactics),
+    defender: aiTacticDriver(stats.tactics),
   }
   let attackerWins = 0
   let defenderWins = 0

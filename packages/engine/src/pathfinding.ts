@@ -12,7 +12,10 @@ import { isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } from './map'
  *
  * Determinism is load-bearing (replay + multiplayer authority): ties in the open
  * set are broken by a fixed key — lower f, then lower h, then lower tile index —
- * so the same query always yields the byte-identical path on every machine.
+ * so the same query always yields the byte-identical path on every machine. The
+ * open set is a binary heap ordered by that exact same tuple (see {@link MinHeap}),
+ * so it returns byte-identical paths to the old O(n)-scan implementation while
+ * scaling to O(log n) per pop instead of O(n) (#214).
  */
 
 interface Node {
@@ -23,6 +26,109 @@ interface Node {
   parent: number | null
 }
 
+interface HeapEntry {
+  idx: number
+  f: number
+  h: number
+}
+
+/**
+ * Binary min-heap ordered by the same deterministic tie-break the old linear scan
+ * used: lower f, then lower h, then lower tile index. Stale entries (superseded by
+ * a cheaper update to the same tile) are left in place and skipped lazily at pop
+ * time via the caller's `closed` set, which is standard for A-star/Dijkstra with
+ * decrease-key and keeps the total ordering identical to a fresh scan.
+ */
+class MinHeap {
+  private items: HeapEntry[] = []
+
+  get size(): number {
+    return this.items.length
+  }
+
+  push(entry: HeapEntry): void {
+    const items = this.items
+    items.push(entry)
+    let i = items.length - 1
+    while (i > 0) {
+      const parent = (i - 1) >> 1
+      if (!before(items[i]!, items[parent]!)) break
+      ;[items[i], items[parent]] = [items[parent]!, items[i]!]
+      i = parent
+    }
+  }
+
+  pop(): HeapEntry | undefined {
+    const items = this.items
+    const top = items[0]
+    if (top === undefined) return undefined
+    const last = items.pop()!
+    if (items.length > 0) {
+      items[0] = last
+      let i = 0
+      for (;;) {
+        const left = i * 2 + 1
+        const right = i * 2 + 2
+        let smallest = i
+        if (left < items.length && before(items[left]!, items[smallest]!)) smallest = left
+        if (right < items.length && before(items[right]!, items[smallest]!)) smallest = right
+        if (smallest === i) break
+        ;[items[i], items[smallest]] = [items[smallest]!, items[i]!]
+        i = smallest
+      }
+    }
+    return top
+  }
+}
+
+function before(a: HeapEntry, b: HeapEntry): boolean {
+  if (a.f !== b.f) return a.f < b.f
+  if (a.h !== b.h) return a.h < b.h
+  return a.idx < b.idx
+}
+
+/**
+ * Per-map cache of water connected-components (8-directional), so a query between
+ * two tiles in different sea basins returns `null` in O(1) instead of flooding the
+ * whole ocean first (#214). Terrain is immutable for the lifetime of a `GameMap`,
+ * so the cache is keyed by object identity and never invalidated.
+ */
+const waterComponentCache = new WeakMap<GameMap, Int32Array>()
+
+function waterComponents(map: GameMap): Int32Array {
+  const cached = waterComponentCache.get(map)
+  if (cached) return cached
+
+  const components = new Int32Array(map.width * map.height).fill(-1)
+  let nextComponent = 0
+  const stack: number[] = []
+
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      const startIdx = tileIndex(map, x, y)
+      if (components[startIdx] !== -1 || !isWaterTile(map.tiles[startIdx])) continue
+
+      components[startIdx] = nextComponent
+      stack.push(startIdx)
+      while (stack.length > 0) {
+        const curIdx = stack.pop()!
+        const cx = curIdx % map.width
+        const cy = Math.floor(curIdx / map.width)
+        for (const n of neighbors8(map, { x: cx, y: cy })) {
+          const nIdx = tileIndex(map, n.x, n.y)
+          if (components[nIdx] !== -1 || !isWaterTile(tileAt(map, n))) continue
+          components[nIdx] = nextComponent
+          stack.push(nIdx)
+        }
+      }
+      nextComponent++
+    }
+  }
+
+  waterComponentCache.set(map, components)
+  return components
+}
+
 /**
  * Shortest water path from `from` to `to` inclusive of both endpoints, or `null`
  * if unreachable. Path length minus one is the movement-point cost.
@@ -31,31 +137,25 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
   if (!isWaterTile(tileAt(map, from)) || !isWaterTile(tileAt(map, to))) return null
   if (coordsEqual(from, to)) return [from]
 
-  const nodes = new Map<number, Node>()
-  const closed = new Set<number>()
-  const open: number[] = []
-
   const startIdx = tileIndex(map, from.x, from.y)
-  nodes.set(startIdx, {
-    coord: from,
-    g: 0,
-    h: chebyshevDistance(from, to),
-    f: chebyshevDistance(from, to),
-    parent: null,
-  })
-  open.push(startIdx)
-
   const goalIdx = tileIndex(map, to.x, to.y)
 
-  while (open.length > 0) {
-    // Pick the open node with the best (deterministic) priority.
-    let bestPos = 0
-    for (let i = 1; i < open.length; i++) {
-      if (betterThan(nodes.get(open[i]!)!, nodes.get(open[bestPos]!)!, open[i]!, open[bestPos]!)) {
-        bestPos = i
-      }
-    }
-    const currentIdx = open.splice(bestPos, 1)[0]!
+  // Different sea basins can never connect; skip the search entirely (#214).
+  const components = waterComponents(map)
+  if (components[startIdx] !== components[goalIdx]) return null
+
+  const nodes = new Map<number, Node>()
+  const closed = new Set<number>()
+  const heap = new MinHeap()
+
+  const startH = chebyshevDistance(from, to)
+  nodes.set(startIdx, { coord: from, g: 0, h: startH, f: startH, parent: null })
+  heap.push({ idx: startIdx, f: startH, h: startH })
+
+  while (heap.size > 0) {
+    const entry = heap.pop()!
+    const currentIdx = entry.idx
+    if (closed.has(currentIdx)) continue // stale entry superseded by a cheaper update
     if (currentIdx === goalIdx) return reconstruct(nodes, currentIdx)
     closed.add(currentIdx)
 
@@ -72,7 +172,7 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
       const h = chebyshevDistance(n, to)
       const node: Node = { coord: n, g: tentativeG, h, f: tentativeG + h, parent: currentIdx }
       nodes.set(nIdx, node)
-      if (!existing) open.push(nIdx)
+      heap.push({ idx: nIdx, f: node.f, h: node.h })
     }
   }
 
@@ -83,12 +183,6 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
 export function pathCost(map: GameMap, from: Coord, to: Coord): number | null {
   const path = findPath(map, from, to)
   return path ? path.length - 1 : null
-}
-
-function betterThan(a: Node, b: Node, aIdx: number, bIdx: number): boolean {
-  if (a.f !== b.f) return a.f < b.f
-  if (a.h !== b.h) return a.h < b.h
-  return aIdx < bIdx
 }
 
 function reconstruct(nodes: Map<number, Node>, goalIdx: number): Coord[] {
