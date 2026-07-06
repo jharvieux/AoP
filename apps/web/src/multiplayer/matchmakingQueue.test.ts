@@ -3,6 +3,7 @@ import {
   assignQuickMatchSeats,
   drainQueue,
   FACTION_IDS,
+  MAX_PLAYERS_PER_DRAIN,
   type DrainDeps,
   type QueueEntry,
   type QuickMatchBucket,
@@ -252,6 +253,30 @@ describe('drainQueue concurrency safety (#153)', () => {
         },
       }),
     ).rejects.toThrow('boom')
+  })
+
+  it('caps players seated per invocation and leaves the remainder queued (#219)', async () => {
+    // More waiters than one invocation may seat: the drain stops at the cap and
+    // the every-minute cron picks up the rest — it must not spin unboundedly.
+    const total = MAX_PLAYERS_PER_DRAIN + 10
+    const waiters: Waiter[] = Array.from({ length: total }, (_, i) => ({
+      userId: `u${i}`,
+      faction: null,
+      matchSize: 2,
+      mapSize: 'small' as const,
+      queuedAt: i,
+    }))
+    const q = sharedQueue(waiters)
+    const created: { matchId: string; userIds: string[] }[] = []
+    const summary = await drainQueue(deps(q, created))
+
+    expect(summary.playersMatched).toBe(MAX_PLAYERS_PER_DRAIN)
+    expect(summary.matchesCreated).toBe(MAX_PLAYERS_PER_DRAIN / 2)
+    expect(q.remaining()).toHaveLength(10)
+    // A second invocation drains the remainder — nobody is stuck.
+    const second = await drainQueue(deps(q, created))
+    expect(second.playersMatched).toBe(10)
+    expect(q.remaining()).toHaveLength(0)
   })
 
   it('leaves the odd waiter queued (not partially matched) under concurrent drains', async () => {

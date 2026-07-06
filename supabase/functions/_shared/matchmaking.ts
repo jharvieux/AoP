@@ -18,6 +18,7 @@ import {
   type QuickMatchBucket,
 } from '@aop/shared'
 import { AppError } from './http.ts'
+import { reportUnexpectedError } from './reporting.ts'
 import { randomSeed, startMatch, type MatchSettings, type StartMatchSeat } from './match.ts'
 import type { Db } from './client.ts'
 
@@ -144,6 +145,7 @@ async function restoreQueueGroup(
     `drain-matchmaking: createQuickMatch failed for ${group.length} waiters ` +
       `(size ${bucket.matchSize}, ${bucket.mapSize}); re-queueing them: ${reason}`,
   )
+  reportUnexpectedError(cause)
   const rows = group.map((e) => ({
     user_id: e.userId,
     match_size: bucket.matchSize,

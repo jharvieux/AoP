@@ -103,30 +103,35 @@ export interface DrainDeps {
   restoreGroup?: (bucket: QuickMatchBucket, group: QueueEntry[], cause: unknown) => Promise<void>
 }
 
-/** Cap on groups formed per bucket per invocation: a safety valve so a single
- * drain run can't spin unboundedly on a huge queue; the next scheduled run picks
- * up any remainder. */
-const MAX_GROUPS_PER_BUCKET = 100
+/** Cap on players seated per drain invocation (#219): a safety valve so a single
+ * run can't spin unboundedly on a huge queue — each match creation is several
+ * database round-trips inside an Edge Function with a hard wall-clock budget.
+ * The every-minute cron picks up any remainder. Exported for the batch-limit
+ * tests. */
+export const MAX_PLAYERS_PER_DRAIN = 50
 
 /**
  * Drain the quick-match queue: for each bucket, repeatedly claim a full group
- * and start a match for it until no full group remains. Concurrency-safety rests
- * entirely on `claimGroup` being atomic — this loop never re-groups waiters
- * itself, so two overlapping drains simply claim disjoint groups (or one gets a
- * null claim and moves on). Idempotent when the queue is empty: every claim
- * returns null and nothing is created.
+ * and start a match for it until no full group remains (or the per-invocation
+ * player cap is hit). Concurrency-safety rests entirely on `claimGroup` being
+ * atomic — this loop never re-groups waiters itself, so two overlapping drains
+ * simply claim disjoint groups (or one gets a null claim and moves on).
+ * Idempotent when the queue is empty: every claim returns null and nothing is
+ * created.
  */
 export async function drainQueue(deps: DrainDeps): Promise<DrainSummary> {
   const matches: DrainedMatch[] = []
+  let playersMatched = 0
   let groupsFailed = 0
   const buckets = await deps.listBuckets()
   for (const bucket of buckets) {
-    for (let i = 0; i < MAX_GROUPS_PER_BUCKET; i++) {
+    while (playersMatched < MAX_PLAYERS_PER_DRAIN) {
       const group = await deps.claimGroup(bucket)
       if (!group || group.length === 0) break
       try {
         const matchId = await deps.createMatch(bucket, group)
         matches.push({ matchId, userIds: group.map((e) => e.userId) })
+        playersMatched += group.length
       } catch (err) {
         // #219: without compensation the claim's committed delete has already
         // stranded this group. Restore it, then move on to the NEXT bucket —
@@ -141,7 +146,7 @@ export async function drainQueue(deps: DrainDeps): Promise<DrainSummary> {
   }
   return {
     matchesCreated: matches.length,
-    playersMatched: matches.reduce((sum, m) => sum + m.userIds.length, 0),
+    playersMatched,
     groupsFailed,
     matches,
   }
