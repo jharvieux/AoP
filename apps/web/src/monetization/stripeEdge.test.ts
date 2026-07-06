@@ -6,9 +6,11 @@ import { describe, expect, it, vi } from 'vitest'
 // Imported by explicit path because they are intentionally not re-exported from
 // @aop/shared's barrel (engine/content typecheck without DOM lib).
 import {
+  checkoutIdempotencyKey,
   isAllowedRedirectUrl,
   parseAllowedOrigins,
   processStripeWebhook,
+  REMOVE_ADS_PRODUCT,
   verifyStripeSignature,
 } from '../../../../packages/shared/src/stripe'
 
@@ -136,6 +138,10 @@ describe('isAllowedRedirectUrl', () => {
 })
 
 describe('processStripeWebhook', () => {
+  // A fully valid, paid, correctly-tagged session — the baseline every negative
+  // test below mutates one field of.
+  const PAID_REMOVE_ADS = { payment_status: 'paid', metadata: { product: REMOVE_ADS_PRODUCT } }
+
   function completedEvent(object: Record<string, unknown>): string {
     return JSON.stringify({ type: 'checkout.session.completed', data: { object } })
   }
@@ -153,8 +159,8 @@ describe('processStripeWebhook', () => {
     return { outcome, grantRemoveAds }
   }
 
-  it('grants the entitlement to client_reference_id on a valid completed event', async () => {
-    const body = completedEvent({ client_reference_id: 'user-1' })
+  it('grants the entitlement to client_reference_id on a valid, paid, remove_ads event', async () => {
+    const body = completedEvent({ ...PAID_REMOVE_ADS, client_reference_id: 'user-1' })
     const { outcome, grantRemoveAds } = await signedRequest(body)
     expect(outcome).toEqual({ ok: true, granted: true, userId: 'user-1' })
     expect(grantRemoveAds).toHaveBeenCalledTimes(1)
@@ -162,7 +168,10 @@ describe('processStripeWebhook', () => {
   })
 
   it('falls back to metadata.user_id when client_reference_id is absent', async () => {
-    const body = completedEvent({ metadata: { user_id: 'user-2' } })
+    const body = completedEvent({
+      payment_status: 'paid',
+      metadata: { product: REMOVE_ADS_PRODUCT, user_id: 'user-2' },
+    })
     const { outcome, grantRemoveAds } = await signedRequest(body)
     expect(outcome).toEqual({ ok: true, granted: true, userId: 'user-2' })
     expect(grantRemoveAds).toHaveBeenCalledTimes(1)
@@ -177,14 +186,41 @@ describe('processStripeWebhook', () => {
   })
 
   it('does not grant when a completed event carries no user id', async () => {
-    const body = completedEvent({})
+    const body = completedEvent({ ...PAID_REMOVE_ADS })
     const { outcome, grantRemoveAds } = await signedRequest(body)
-    expect(outcome).toEqual({ ok: true, granted: false })
+    expect(outcome).toEqual({ ok: true, granted: false, reason: 'no_user_id' })
+    expect(grantRemoveAds).not.toHaveBeenCalled()
+  })
+
+  it('#222: does not grant a completed session that has not actually been paid', async () => {
+    const body = completedEvent({
+      client_reference_id: 'user-1',
+      payment_status: 'unpaid',
+      metadata: { product: REMOVE_ADS_PRODUCT },
+    })
+    const { outcome, grantRemoveAds } = await signedRequest(body)
+    expect(outcome).toEqual({ ok: true, granted: false, userId: 'user-1', reason: 'not_paid' })
+    expect(grantRemoveAds).not.toHaveBeenCalled()
+  })
+
+  it('#222: does not grant a paid session for a different (or missing) product', async () => {
+    const body = completedEvent({
+      client_reference_id: 'user-1',
+      payment_status: 'paid',
+      metadata: { product: 'some_other_product' },
+    })
+    const { outcome, grantRemoveAds } = await signedRequest(body)
+    expect(outcome).toEqual({
+      ok: true,
+      granted: false,
+      userId: 'user-1',
+      reason: 'unknown_product',
+    })
     expect(grantRemoveAds).not.toHaveBeenCalled()
   })
 
   it('rejects an invalid signature without touching the entitlement write', async () => {
-    const body = completedEvent({ client_reference_id: 'user-1' })
+    const body = completedEvent({ ...PAID_REMOVE_ADS, client_reference_id: 'user-1' })
     const grantRemoveAds = vi.fn(async () => {})
     const outcome = await processStripeWebhook({
       rawBody: body,
@@ -195,5 +231,12 @@ describe('processStripeWebhook', () => {
     })
     expect(outcome).toEqual({ ok: false })
     expect(grantRemoveAds).not.toHaveBeenCalled()
+  })
+})
+
+describe('checkoutIdempotencyKey', () => {
+  it('is deterministic and namespaced per user (#222: dedupes a double-click checkout)', () => {
+    expect(checkoutIdempotencyKey('user-1')).toBe(checkoutIdempotencyKey('user-1'))
+    expect(checkoutIdempotencyKey('user-1')).not.toBe(checkoutIdempotencyKey('user-2'))
   })
 })

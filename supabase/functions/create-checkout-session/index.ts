@@ -5,12 +5,13 @@
 // Stripe.js needed. `stripe-webhook` grants the entitlement once Stripe
 // confirms the payment.
 
-import { requireUserId } from '../_shared/client.ts'
+import { requireUserId, serviceClient } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import {
   createCheckoutSession,
   isAllowedRedirectUrl,
   parseAllowedOrigins,
+  REMOVE_ADS_PRODUCT,
 } from '../_shared/stripe.ts'
 
 Deno.serve(async (req) => {
@@ -24,6 +25,23 @@ Deno.serve(async (req) => {
     }
     if (!body.successUrl || !body.cancelUrl) {
       throw new AppError('BAD_REQUEST', 'successUrl and cancelUrl are required')
+    }
+
+    // #222: a double-click or duplicate request shouldn't spin up (and risk
+    // paying for) a second checkout session once the user already owns
+    // remove_ads. Checked with the service role — this is a server-authoritative
+    // gate, not a client-facing read (that's `entitlements_select_own`, §4).
+    const { data: existing, error: entitlementError } = await serviceClient()
+      .from('entitlements')
+      .select('user_id')
+      .eq('user_id', userId)
+      .eq('key', REMOVE_ADS_PRODUCT)
+      .maybeSingle()
+    if (entitlementError) {
+      throw new AppError('INTERNAL', `Could not check entitlements: ${entitlementError.message}`)
+    }
+    if (existing) {
+      throw new AppError('ALREADY_OWNED', 'You already own remove_ads')
     }
 
     // Open-redirect guard (#105): only hand Stripe redirect targets on our own
