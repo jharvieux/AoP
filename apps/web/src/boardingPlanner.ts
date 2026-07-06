@@ -23,6 +23,7 @@ import {
   type GameState,
   type HexCoord,
   type TacticDriver,
+  type TacticsTuning,
 } from '@aop/engine'
 
 /**
@@ -62,13 +63,17 @@ class AwaitingCommand {
  * board AI). The parity test in boardingPlanner.test.ts is the tripwire;
  * this is exported only so that test can compare the two directly.
  */
-export function navalAiDriverFor(game: GameState, ownerId: string): TacticDriver {
+export function navalAiDriverFor(
+  game: GameState,
+  ownerId: string,
+  tactics: TacticsTuning,
+): TacticDriver {
   const profile = game.players.find((p) => p.id === ownerId)?.aiProfile
-  if (!profile) return aiTacticDriver
+  if (!profile) return aiTacticDriver(tactics)
   if (profile.difficulty === 'easy') return plainTacticDriver
-  if (profile.personality === 'aggressive') return aggressiveTacticDriver
-  if (profile.personality === 'economic') return cautiousTacticDriver
-  return aiTacticDriver
+  if (profile.personality === 'aggressive') return aggressiveTacticDriver(tactics)
+  if (profile.personality === 'economic') return cautiousTacticDriver(tactics)
+  return aiTacticDriver(tactics)
 }
 
 /**
@@ -110,10 +115,10 @@ export function probeBoardingBattle(
       {
         attacker: action.attackerOrders?.length
           ? tacticPlanDriver(action.attackerOrders)
-          : navalAiDriverFor(game, attacker.ownerId),
+          : navalAiDriverFor(game, attacker.ownerId, stats.tactics),
         defender: target.standingOrders?.length
           ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-          : navalAiDriverFor(game, target.ownerId),
+          : navalAiDriverFor(game, target.ownerId, stats.tactics),
         attackerBoard: recorder,
         ...(target.boardOrders?.length
           ? { defenderBoard: boardOrdersDriver(target.boardOrders) }

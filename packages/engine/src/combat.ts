@@ -64,6 +64,14 @@ export interface TacticsTuning {
   disadvantage: number
   ramHullMin: number
   outgunnedRatio: number
+  /** HP ratio below which the default AI driver treats the fight as clearly lost (#212). */
+  aiLosingHpRatio: number
+  /** Strength ratio the default AI driver needs before it commits to a board (#212). */
+  aiBoardStrengthRatio: number
+  /** HP ratio below which the aggressive personality breaks off instead of pressing (#212). */
+  aggressiveEvadeHpRatio: number
+  /** Strength ratio the cautious personality needs before it commits to a board (#212). */
+  cautiousBoardStrengthRatio: number
 }
 
 /**

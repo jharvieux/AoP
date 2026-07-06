@@ -40,6 +40,14 @@ export interface TacticsTuning {
   ramHullMin: number
   /** How badly outweighed a fleet must be before the 'outgunned' order fires. */
   outgunnedRatio: number
+  /** HP ratio below which the default AI driver treats the fight as clearly lost (#212). */
+  aiLosingHpRatio: number
+  /** Strength ratio the default AI driver needs before it commits to a board (#212). */
+  aiBoardStrengthRatio: number
+  /** HP ratio below which the aggressive personality breaks off instead of pressing (#212). */
+  aggressiveEvadeHpRatio: number
+  /** Strength ratio the cautious personality needs before it commits to a board (#212). */
+  cautiousBoardStrengthRatio: number
 }
 
 /**
@@ -198,6 +206,10 @@ export const TACTICS_TUNING: TacticsTuning = {
   disadvantage: 0.8,
   ramHullMin: 50,
   outgunnedRatio: 1.5,
+  aiLosingHpRatio: 0.5,
+  aiBoardStrengthRatio: 1.15,
+  aggressiveEvadeHpRatio: 0.25,
+  cautiousBoardStrengthRatio: 1.4,
 }
 
 export const BATTLE_TUNING: BattleTuning = {

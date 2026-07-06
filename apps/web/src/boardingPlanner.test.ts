@@ -83,7 +83,16 @@ function statsData(battle: BattleTuning | null): CombatStatsData {
       troopDefenseWeight: 0.5,
       damageScale: 0.35,
     },
-    tactics: { advantage: 1.25, disadvantage: 0.8, ramHullMin: 50, outgunnedRatio: 1.5 },
+    tactics: {
+      advantage: 1.25,
+      disadvantage: 0.8,
+      ramHullMin: 50,
+      outgunnedRatio: 1.5,
+      aiLosingHpRatio: 0.5,
+      aiBoardStrengthRatio: 1.15,
+      aggressiveEvadeHpRatio: 0.25,
+      cautiousBoardStrengthRatio: 1.4,
+    },
     ...(battle ? { battle } : {}),
   }
 }
@@ -254,6 +263,11 @@ describe('probeBoardingBattle', () => {
   })
 })
 
+/** The frozen tactics tuning off a test state's combat-stats snapshot. */
+function tacticsOf(state: GameState) {
+  return state.config.combatStats!.tactics
+}
+
 /** The same state with the AI seat (p2) given a personality/difficulty profile. */
 function withAiProfile(state: GameState, profile: AiProfile): GameState {
   return {
@@ -273,25 +287,34 @@ describe('navalAiDriverFor parity with the reducer', () => {
 
   it('selects the identical driver for an unprofiled seat (human or AI)', () => {
     const state = adjacentBattleState()
-    expect(navalAiDriverFor(state, 'p1')).toBe(aiTacticDriverForOwner(state, 'p1'))
-    expect(navalAiDriverFor(state, 'p2')).toBe(aiTacticDriverForOwner(state, 'p2'))
+    const tactics = tacticsOf(state)
+    expect(navalAiDriverFor(state, 'p1', tactics)).toBe(
+      aiTacticDriverForOwner(state, 'p1', tactics),
+    )
+    expect(navalAiDriverFor(state, 'p2', tactics)).toBe(
+      aiTacticDriverForOwner(state, 'p2', tactics),
+    )
   })
 
   for (const personality of personalities) {
     for (const difficulty of difficulties) {
       it(`selects the identical driver for ${personality}/${difficulty}`, () => {
         const state = withAiProfile(adjacentBattleState(), { personality, difficulty })
-        expect(navalAiDriverFor(state, 'p2')).toBe(aiTacticDriverForOwner(state, 'p2'))
+        const tactics = tacticsOf(state)
+        expect(navalAiDriverFor(state, 'p2', tactics)).toBe(
+          aiTacticDriverForOwner(state, 'p2', tactics),
+        )
       })
     }
   }
 
   it('the profile branches select distinct drivers — the matrix is not vacuous', () => {
     const state = adjacentBattleState()
+    const tactics = tacticsOf(state)
     const driverFor = (personality: AiPersonality, difficulty: AiDifficulty) =>
-      navalAiDriverFor(withAiProfile(state, { personality, difficulty }), 'p2')
+      navalAiDriverFor(withAiProfile(state, { personality, difficulty }), 'p2', tactics)
     const distinct = new Set([
-      navalAiDriverFor(state, 'p2'),
+      navalAiDriverFor(state, 'p2', tactics),
       driverFor('opportunist', 'easy'),
       driverFor('aggressive', 'normal'),
       driverFor('economic', 'normal'),

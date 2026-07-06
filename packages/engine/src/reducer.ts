@@ -45,6 +45,7 @@ import {
   type BattleReport,
   type Combatant,
   type CombatResult,
+  type TacticsTuning,
 } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
@@ -280,16 +281,22 @@ export function captainToCombatant(
  * The combat AI driver a seat fights with when it has no player-supplied orders
  * (#25). Human seats and unprofiled AIs use the default; profiled AIs get a
  * personality-flavored driver, with `easy` deliberately playing the weak line.
- * Exported so the client boarding probe's parity test (#93) can compare its
- * mirror against this function directly.
+ * `tactics` is the match's frozen tuning (#212) — the thresholds these drivers
+ * key on are balance data, never hardcoded in the engine. Exported so the
+ * client boarding probe's parity test (#93) can compare its mirror against
+ * this function directly.
  */
-export function aiTacticDriverForOwner(state: GameState, ownerId: string): TacticDriver {
+export function aiTacticDriverForOwner(
+  state: GameState,
+  ownerId: string,
+  tactics: TacticsTuning,
+): TacticDriver {
   const profile = state.players.find((p) => p.id === ownerId)?.aiProfile
-  if (!profile) return aiTacticDriver
+  if (!profile) return aiTacticDriver(tactics)
   if (profile.difficulty === 'easy') return plainTacticDriver
-  if (profile.personality === 'aggressive') return aggressiveTacticDriver
-  if (profile.personality === 'economic') return cautiousTacticDriver
-  return aiTacticDriver
+  if (profile.personality === 'aggressive') return aggressiveTacticDriver(tactics)
+  if (profile.personality === 'economic') return cautiousTacticDriver(tactics)
+  return aiTacticDriver(tactics)
 }
 
 function attackCaptain(
@@ -355,10 +362,10 @@ function attackCaptain(
     {
       attacker: action.attackerOrders?.length
         ? tacticPlanDriver(action.attackerOrders)
-        : aiTacticDriverForOwner(state, attacker.ownerId),
+        : aiTacticDriverForOwner(state, attacker.ownerId, stats.tactics),
       defender: target.standingOrders?.length
         ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-        : aiTacticDriverForOwner(state, target.ownerId),
+        : aiTacticDriverForOwner(state, target.ownerId, stats.tactics),
       // Board melee (#39): the attacker plays its recorded commands; the
       // defender fights by the board orders its own owner saved in state.
       // Either side without a plan is driven by the board AI.
