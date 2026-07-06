@@ -2,8 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth'
 import { AuthError, OAUTH_PROVIDERS, type AuthSession, type OAuthProvider } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
-import { CheckoutError, createRemoveAdsCheckoutUrl } from '../monetization/checkout'
-import { useRemoveAds } from '../monetization/useRemoveAds'
+import {
+  CheckoutError,
+  createRemoveAdsCheckoutUrl,
+  removeAdsSuccessUrl,
+} from '../monetization/checkout'
+import { useRemoveAdsStatus } from '../monetization/useRemoveAds'
 
 interface AccountScreenProps {
   onBack: () => void
@@ -28,12 +32,18 @@ function messageFor(err: unknown): string {
  * entitlement is keyed by user id and needs an account to persist.
  */
 function RemoveAdsSection({ session }: { session: AuthSession }) {
-  const removeAds = useRemoveAds()
+  const { removeAds, purchasePending } = useRemoveAdsStatus()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (removeAds) {
     return <p className="section-label">Ads removed — thank you!</p>
+  }
+
+  // #244: just back from Stripe, waiting on the webhook grant — never show the
+  // buy button mid-fulfillment (it invites a confused double purchase).
+  if (purchasePending) {
+    return <p className="section-label">Finishing your purchase…</p>
   }
 
   async function handleClick() {
@@ -44,7 +54,8 @@ function RemoveAdsSection({ session }: { session: AuthSession }) {
       if (!config) throw new CheckoutError('Checkout is unavailable in this build.')
       const origin = window.location.origin
       const url = await createRemoveAdsCheckoutUrl(config, session, {
-        successUrl: origin,
+        // The success marker lets boot tell a paid return from a cancel (#244).
+        successUrl: removeAdsSuccessUrl(origin),
         cancelUrl: origin,
       })
       window.location.assign(url)
