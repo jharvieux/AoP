@@ -11,11 +11,14 @@
 //   calls) is left untouched and falls through to the network, so it degrades
 //   the normal way (a failed fetch) rather than silently serving stale data.
 //
-// Bump CACHE_VERSION on any deploy where cached assets should be invalidated for
-// existing installs. Changing this file's bytes is what makes the browser notice
-// an update, install the new worker, and hold it in "waiting" until the page
-// accepts the prompt wired up in src/registerServiceWorker.ts.
-const CACHE_VERSION = 'v1'
+// CACHE_VERSION is stamped at build time by vite-plugins/swVersion.ts with a hash of the
+// build output, so every deploy gets a new cache name automatically: old caches are pruned
+// by the activate handler below, and changing this file's bytes on every deploy is what
+// makes the browser notice an update, install the new worker, and hold it in "waiting"
+// until the page accepts the prompt wired up in src/registerServiceWorker.ts. In dev
+// (`vite`/`vite preview` without a build) this placeholder is served as-is, which is a
+// valid (if unversioned) cache name.
+const CACHE_VERSION = '__AOP_BUILD_HASH__'
 const CACHE_NAME = `aop-cache-${CACHE_VERSION}`
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-maskable.svg']
 

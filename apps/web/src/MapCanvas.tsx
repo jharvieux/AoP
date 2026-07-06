@@ -7,11 +7,13 @@ import {
   type GameMap,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import type { FactionId } from '@aop/shared'
+import type { Coord, FactionId } from '@aop/shared'
 import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
+import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
 
 /**
@@ -76,33 +78,6 @@ const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
   brigantine: 0.75,
   frigate: 0.85,
   galleon: 0.95,
-}
-
-/**
- * Loads and caches pixi.js Textures by URL, kicking off `Assets.load` at most
- * once per URL and marking the given dirty flag so the next tick redraws once
- * a texture lands. Missing/broken assets resolve to no texture forever — the
- * caller's flat-color Graphics fallback keeps rendering instead (#115).
- */
-function createTextureLoader(dirtyRef: { current: boolean }) {
-  const cache = new Map<string, Texture>()
-  const pending = new Set<string>()
-  return function getTexture(url: string): Texture | undefined {
-    const cached = cache.get(url)
-    if (cached) return cached
-    if (!pending.has(url)) {
-      pending.add(url)
-      Assets.load(url)
-        .then((texture: Texture) => {
-          cache.set(url, texture)
-          dirtyRef.current = true
-        })
-        .catch(() => {
-          // Leave unresolved; the flat-color fallback keeps rendering this asset's slot.
-        })
-    }
-    return undefined
-  }
 }
 
 /** Get-or-create a pooled Sprite by a stable key, and drop any pool entries not
@@ -170,7 +145,7 @@ export interface MapCanvasProps {
 
 export function MapCanvas(props: MapCanvasProps) {
   const { containerRef, app } = usePixiApp({ background: TILE_COLOR.deep })
-  const { spriteUrl: themeSpriteUrl } = useTheme()
+  const { spriteUrl: themeSpriteUrl, pack: themePack, factionName } = useTheme()
 
   // Latest props + view are read by the render loop via refs, so per-action
   // re-renders never tear down the Pixi scene or reset the camera.
@@ -186,6 +161,73 @@ export function MapCanvas(props: MapCanvasProps) {
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
   const dirtyRef = useRef(true)
   dirtyRef.current = true
+  // Shared with the pack-switch effect below so it can release the previous
+  // pack's decoded textures without tearing down the whole Pixi scene (#245).
+  const textureLoaderRef = useRef<TextureLoader<Texture> | null>(null)
+
+  // Keyboard-only path onto the map (#247): the arrow-key tile cursor and its
+  // offscreen announcement live in React state (driven by a plain onKeyDown
+  // on the wrapper div, not the pointer-event listeners in the effect below),
+  // and are mirrored into a ref so the imperative draw loop can read the
+  // latest position without depending on it and re-running the whole effect.
+  const [cursor, setCursor] = useState<Coord>({ x: 0, y: 0 })
+  const cursorRef = useRef(cursor)
+  cursorRef.current = cursor
+  const [announcement, setAnnouncement] = useState('')
+  // Only draw the cursor highlight while the map actually has keyboard focus
+  // (see draw()'s use of this below), so mouse/touch play isn't cluttered.
+  const hasFocusRef = useRef(false)
+
+  function announceTile(tile: Coord) {
+    const { map, captains, cities, encounters, viewerId } = props
+    setAnnouncement(
+      describeMapTile({
+        tile,
+        terrain: map.tiles[tileIndex(map, tile.x, tile.y)]!.type,
+        captains,
+        cities,
+        encounters,
+        viewerId,
+        factionNameOf: (ownerId) => {
+          const id = props.factionOf(ownerId)
+          return factionName(id, FACTIONS[id].name)
+        },
+      }),
+    )
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const { map } = props
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      props.onTileClick(cursor.x, cursor.y)
+      announceTile(cursor)
+      return
+    }
+    const next = moveCursor(cursor, e.key, map.width, map.height)
+    if (!next) return
+    e.preventDefault()
+    setCursor(next)
+    dirtyRef.current = true
+    const view = viewRef.current
+    const container = containerRef.current
+    if (container) {
+      Object.assign(
+        view,
+        panToKeepTileVisible(view, next, TILE, container.clientWidth, container.clientHeight),
+      )
+    }
+    announceTile(next)
+  }
+
+  // Theme-pack sprite overrides are data: URLs loaded into the same
+  // process-global Assets cache as static art; nothing unloads them on its
+  // own. Release the previous pack's textures whenever the active pack
+  // changes, and on unmount — React runs this cleanup before re-running the
+  // effect body, so "previous pack's textures" is exactly what's stale here.
+  useEffect(() => {
+    return () => textureLoaderRef.current?.unloadThemeTextures()
+  }, [themePack?.id])
 
   useEffect(() => {
     if (!app) return
@@ -212,7 +254,11 @@ export function MapCanvas(props: MapCanvasProps) {
     )
     pixiApp.stage.addChild(world)
 
-    const getTexture = createTextureLoader(dirtyRef)
+    const textureLoader = createTextureLoader<Texture>(Assets, () => {
+      dirtyRef.current = true
+    })
+    textureLoaderRef.current = textureLoader
+    const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const cityPool = new SpritePool(citySprites)
     const encounterPool = new SpritePool(encounterSprites)
@@ -389,6 +435,13 @@ export function MapCanvas(props: MapCanvasProps) {
         highlight.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
         highlight.stroke({ width: 3, color: '#ffffff' })
       }
+      // Keyboard tile cursor (#247) — only drawn while the map has keyboard
+      // focus, so pointer-only play isn't cluttered with a cursor no one asked for.
+      if (hasFocusRef.current) {
+        const c = cursorRef.current
+        highlight.rect(c.x * TILE, c.y * TILE, TILE, TILE)
+        highlight.stroke({ width: 2, color: '#ffe66d' })
+      }
     }
 
     const canvas = pixiApp.canvas
@@ -498,5 +551,33 @@ export function MapCanvas(props: MapCanvasProps) {
     }
   }, [app])
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+  // containerRef's div is Pixi's exclusive mount point (it appends the
+  // <canvas> into it outside React's tracking — see usePixiApp) — the a11y
+  // wiring and live region below live on/in a wrapper div instead, so
+  // React's reconciliation of its own children never has to contend with
+  // the canvas Pixi appended.
+  return (
+    <div
+      className="map-canvas-root"
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+      role="application"
+      aria-label="World map. Use arrow keys to move the tile cursor and Enter to act on it."
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      onFocus={() => {
+        hasFocusRef.current = true
+        dirtyRef.current = true
+        announceTile(cursor)
+      }}
+      onBlur={() => {
+        hasFocusRef.current = false
+        dirtyRef.current = true
+      }}
+    >
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </div>
+    </div>
+  )
 }

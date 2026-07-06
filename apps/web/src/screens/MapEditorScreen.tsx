@@ -3,6 +3,7 @@ import { validateMapDefinition, type EncounterKind, type TileType } from '@aop/e
 import type { Coord, MapSize } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildCatalog } from '../catalog'
+import { createAutosaveScheduler } from '../mapEditor/autosaveScheduler'
 import { CommunityLibraryPanel } from '../mapEditor/CommunityLibraryPanel'
 import { MapEditorCanvas } from '../mapEditor/MapEditorCanvas'
 import {
@@ -21,9 +22,11 @@ import {
 import { decodeMapCode, encodeMapCode, MAP_FILE_EXTENSION } from '../mapEditor/encode'
 import {
   deleteDraft,
+  getActiveDraftId,
   listDrafts,
   loadDraft,
   saveDraft,
+  setActiveDraftId,
   type MapDraftRecord,
 } from '../mapEditor/storage'
 import {
@@ -67,6 +70,15 @@ function randomSeed(): number {
   return Math.floor(Math.random() * 2 ** 31)
 }
 
+// Debounce window for the working-draft autosave (#238) — long enough that a
+// continuous paint stroke doesn't hammer IndexedDB, short enough that Test
+// Play / Back / an accidental tab close rarely loses more than a couple of
+// strokes' worth of sculpting.
+const AUTOSAVE_DELAY_MS = 1500
+
+const CONFIRM_REPLACE_MESSAGE =
+  "This replaces the current map. Your work is autosaved under its own name in Save/Load if you'd rather come back to it — continue?"
+
 /**
  * In-browser map editor (#41): paint tiles, place start positions/encounters/
  * resource markers, get live engine validation, test-play, and save/export.
@@ -88,6 +100,42 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
+  // Stable across renders so its debounce window survives re-renders; `schedule`
+  // always takes the latest draft as an argument, so this never reads stale state.
+  const autosave = useRef(
+    createAutosaveScheduler<EditorDraft>({
+      delayMs: AUTOSAVE_DELAY_MS,
+      save: async (d) => {
+        await saveDraft(d)
+        await setActiveDraftId(d.id)
+        refreshSavedDrafts()
+      },
+    }),
+  ).current
+
+  // Rehydrate whichever draft the autosave scheduler last wrote, so reopening
+  // the editor (including after Test Play or Back) resumes the working draft
+  // instead of a fresh blank one (#238). A brand-new session with nothing
+  // autosaved yet just keeps the initial blank draft from useState above.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const activeId = await getActiveDraftId()
+      if (!activeId) return
+      const record = await loadDraft(activeId)
+      if (!cancelled && record) setDraft(record.draft)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Deliberately not cancelled on unmount: the whole point is that the draft
+  // survives Test Play / Back, so a pending autosave must still land even
+  // after this screen goes away.
+  useEffect(() => {
+    autosave.schedule(draft)
+  }, [draft, autosave])
 
   useEffect(() => {
     refreshSavedDrafts()
@@ -95,6 +143,14 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
 
   function refreshSavedDrafts() {
     void listDrafts().then(setSavedDrafts)
+  }
+
+  /** Confirms before running a draft-replacing action (New/Generate/Import/Download)
+   * — autosave means nothing is truly lost, but silently swapping out a map the
+   * author was mid-sculpt on is still a nasty surprise (#238). */
+  function guardedReplace(action: () => void) {
+    if (!confirm(CONFIRM_REPLACE_MESSAGE)) return
+    action()
   }
 
   const validation = useMemo(
@@ -118,26 +174,29 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
   }
 
   function handleNewBlank() {
-    if (!confirm('Start a new blank map? Unsaved changes will be lost.')) return
-    setDraft(blankDraft(genSize, 'Untitled map'))
-    setExportCode(null)
-    setStatus(null)
+    guardedReplace(() => {
+      setDraft(blankDraft(genSize, 'Untitled map'))
+      setExportCode(null)
+      setStatus(null)
+    })
   }
 
   function handleGenerateRandom() {
-    const nextSeed = randomSeed()
-    setSeed(nextSeed)
-    setDraft(
-      draftFromGenerated(
-        nextSeed,
-        genSize,
-        genPlayerCount,
-        GAME_SETUP.homeIslandRadius,
-        draft.name,
-      ),
-    )
-    setExportCode(null)
-    setStatus(null)
+    guardedReplace(() => {
+      const nextSeed = randomSeed()
+      setSeed(nextSeed)
+      setDraft(
+        draftFromGenerated(
+          nextSeed,
+          genSize,
+          genPlayerCount,
+          GAME_SETUP.homeIslandRadius,
+          draft.name,
+        ),
+      )
+      setExportCode(null)
+      setStatus(null)
+    })
   }
 
   async function handleSave() {
@@ -196,10 +255,12 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
         )
         return
       }
-      setDraft(imported)
-      setImportError(null)
-      setImportText('')
-      setStatus(`Imported "${imported.name}"`)
+      guardedReplace(() => {
+        setDraft(imported)
+        setImportError(null)
+        setImportText('')
+        setStatus(`Imported "${imported.name}"`)
+      })
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Could not import map code')
     }
@@ -457,11 +518,13 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
           <CommunityLibraryPanel
             draft={draft}
             draftValid={validation.valid}
-            onImport={(imported) => {
-              setDraft(imported)
-              setExportCode(null)
-              setStatus(`Imported "${imported.name}" from the community library`)
-            }}
+            onImport={(imported) =>
+              guardedReplace(() => {
+                setDraft(imported)
+                setExportCode(null)
+                setStatus(`Imported "${imported.name}" from the community library`)
+              })
+            }
           />
 
           <button className="primary large" onClick={handleTestPlay} disabled={!validation.valid}>
