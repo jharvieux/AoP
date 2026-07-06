@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { AuthProvider } from './auth'
 import { ThemeProvider } from './theme/ThemeContext'
+import { ErrorBoundary } from './ErrorBoundary'
 import { registerForPushNotifications } from './plugins/pushNotifications'
 import './styles.css'
 
@@ -12,10 +13,12 @@ void registerForPushNotifications()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

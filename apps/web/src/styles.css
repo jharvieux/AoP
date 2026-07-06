@@ -1129,3 +1129,35 @@ button.primary.secondary {
   outline: 2px solid #3be2a1;
   outline-offset: -2px;
 }
+
+/* Top-level crash guard (#240) — full-viewport, since anything below it in the
+   tree may be the thing that broke. */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100vh;
+  padding: 24px;
+  text-align: center;
+  background: #0b1a26;
+  color: #eee;
+}
+
+/* Brief, self-dismissing rejection notice for a human-dispatched invalid
+   action (#240) — never blocks play, unlike a stuck AI seat's forced endTurn. */
+.action-toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: #5c1616;
+  border: 1px solid #e23b3b;
+  color: #fff;
+  font-size: 0.85rem;
+}
