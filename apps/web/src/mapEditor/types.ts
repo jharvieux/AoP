@@ -27,6 +27,9 @@ export const TILE_TYPES: readonly TileType[] = ['deep', 'shallows', 'land', 'por
 export interface ResourceMarker {
   kind: ResourceMarkerKind
   position: Coord
+  /** Optional seat index (into `startPositions`) that owns this node by default.
+   * Land/port nodes without an ownerSeat are neutral and never yield. (#211, #283) */
+  ownerSeat?: number
 }
 
 export interface EncounterDraftPlacement {
