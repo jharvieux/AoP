@@ -204,6 +204,56 @@ describe('drainQueue concurrency safety (#153)', () => {
     for (const m of created) expect(m.userIds).toHaveLength(2)
   })
 
+  it('restores a claimed group and drains other buckets when createMatch fails (#219)', async () => {
+    // Two buckets. The 2-small bucket's createMatch blows up (the faction-exhaustion
+    // shape); the 3-large bucket must still drain, and the failed group must be
+    // handed back to restoreGroup instead of being silently stranded.
+    const q = sharedQueue([
+      { userId: 'f0', faction: null, matchSize: 2, mapSize: 'small', queuedAt: 0 },
+      { userId: 'f1', faction: null, matchSize: 2, mapSize: 'small', queuedAt: 1 },
+      { userId: 'g0', faction: null, matchSize: 3, mapSize: 'large', queuedAt: 2 },
+      { userId: 'g1', faction: null, matchSize: 3, mapSize: 'large', queuedAt: 3 },
+      { userId: 'g2', faction: null, matchSize: 3, mapSize: 'large', queuedAt: 4 },
+    ])
+    const created: { matchId: string; userIds: string[] }[] = []
+    const restored: { bucket: QuickMatchBucket; userIds: string[]; cause: unknown }[] = []
+    const base = deps(q, created)
+    const summary = await drainQueue({
+      ...base,
+      createMatch: async (bucket, group) => {
+        if (bucket.matchSize === 2) throw new Error('boom')
+        return base.createMatch(bucket, group)
+      },
+      restoreGroup: async (bucket, group, cause) => {
+        restored.push({ bucket, userIds: group.map((e) => e.userId), cause })
+      },
+    })
+
+    expect(summary.groupsFailed).toBe(1)
+    expect(summary.matchesCreated).toBe(1)
+    expect(created[0]!.userIds).toEqual(['g0', 'g1', 'g2'])
+    expect(restored).toHaveLength(1)
+    expect(restored[0]!.userIds).toEqual(['f0', 'f1'])
+    expect(restored[0]!.bucket.matchSize).toBe(2)
+    expect((restored[0]!.cause as Error).message).toBe('boom')
+  })
+
+  it('propagates a createMatch failure unchanged when no restoreGroup is provided', async () => {
+    const q = sharedQueue([
+      { userId: 'u0', faction: null, matchSize: 2, mapSize: 'small', queuedAt: 0 },
+      { userId: 'u1', faction: null, matchSize: 2, mapSize: 'small', queuedAt: 1 },
+    ])
+    const base = deps(q, [])
+    await expect(
+      drainQueue({
+        ...base,
+        createMatch: async () => {
+          throw new Error('boom')
+        },
+      }),
+    ).rejects.toThrow('boom')
+  })
+
   it('leaves the odd waiter queued (not partially matched) under concurrent drains', async () => {
     const waiters: Waiter[] = Array.from({ length: 7 }, (_, i) => ({
       userId: `u${i}`,

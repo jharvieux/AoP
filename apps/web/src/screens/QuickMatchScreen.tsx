@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FACTIONS } from '@aop/content'
-import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
+import { FACTION_IDS, MAX_MATCH_PLAYERS, type FactionId, type MapSize } from '@aop/shared'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
 import {
@@ -16,7 +16,9 @@ interface QuickMatchScreenProps {
 }
 
 const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
-const MATCH_SIZES = [2, 3, 4, 5, 6, 7, 8]
+// 2..MAX_MATCH_PLAYERS (#219): factions are unique per match, so a bigger group
+// could never be seated — the DB constraint rejects such queue rows outright.
+const MATCH_SIZES = Array.from({ length: MAX_MATCH_PLAYERS - 1 }, (_, i) => i + 2)
 const STATUS_POLL_MS = 3000
 
 type SearchState =

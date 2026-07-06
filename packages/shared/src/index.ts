@@ -101,6 +101,15 @@ export const FACTION_IDS: readonly FactionId[] = [
   'french',
 ]
 
+/**
+ * Hard cap on seats per match (#219): factions are unique per match and there
+ * are exactly `FACTION_IDS.length` of them, so a 6th+ seat can never be
+ * assigned a faction — every 6-8 player lobby or queue bucket was unfillable
+ * by construction. Enforced by `parseSettings` (create-match), the
+ * `matchmaking_queue.match_size` DB constraint, and the quick-match UI.
+ */
+export const MAX_MATCH_PLAYERS = FACTION_IDS.length
+
 export type MapSize = 'small' | 'medium' | 'large'
 
 /** A grid coordinate. Origin is top-left; +x is east, +y is south. */

@@ -56,6 +56,14 @@ Deno.test('parseSettings: accepts the inclusive bounds (0 and 100 / 0 and 10)', 
   assertEquals(parseSettings({ ...base, betrayalTruceRounds: 10 }).betrayalTruceRounds, 10)
 })
 
+Deno.test('parseSettings: rejects maxPlayers beyond the faction pool (#219)', () => {
+  // Factions are unique per match and there are 5 of them, so 6-8 player
+  // lobbies could never fill — the 6th joiner always failed on faction
+  // exhaustion. 5 stays accepted; 6 is now rejected up front.
+  assertEquals(parseSettings({ ...base, maxPlayers: 5 }).maxPlayers, 5)
+  assertThrows(() => parseSettings({ ...base, maxPlayers: 6 }), AppError)
+})
+
 Deno.test('parseSettings: rejects out-of-range or non-integer betrayal knobs', () => {
   const bad = [
     { betrayalReputationPenalty: -1 },

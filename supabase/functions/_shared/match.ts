@@ -20,6 +20,7 @@ import {
 import {
   computeMatchRatingUpdates,
   FACTION_IDS,
+  MAX_MATCH_PLAYERS,
   nextMissedTurnStatus,
   resolveViewSeat,
   turnBroadcastPayload,
@@ -1081,9 +1082,15 @@ export function parseSettings(raw: unknown): MatchSettings {
   if (mapSize !== 'small' && mapSize !== 'medium' && mapSize !== 'large') {
     throw new AppError('BAD_REQUEST', 'settings.mapSize must be small | medium | large')
   }
+  // Upper bound is the faction pool (#219): factions are unique per match, so a
+  // lobby bigger than FACTION_IDS.length can never fill — the 6th joiner always
+  // dies on faction exhaustion.
   const maxPlayers = Number(s.maxPlayers)
-  if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 8) {
-    throw new AppError('BAD_REQUEST', 'settings.maxPlayers must be an integer 2..8')
+  if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > MAX_MATCH_PLAYERS) {
+    throw new AppError(
+      'BAD_REQUEST',
+      `settings.maxPlayers must be an integer 2..${MAX_MATCH_PLAYERS}`,
+    )
   }
   const aiSeats = s.aiSeats === undefined ? 0 : Number(s.aiSeats)
   if (!Number.isInteger(aiSeats) || aiSeats < 0 || aiSeats > maxPlayers - 1) {
