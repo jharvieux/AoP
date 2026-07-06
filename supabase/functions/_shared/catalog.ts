@@ -5,6 +5,7 @@ import {
   ENCOUNTERS,
   FACTIONS,
   GAME_SETUP,
+  RESOURCE_NODES,
   SHIP_CLASSES,
   SKILLS,
   combatStatsData,
@@ -62,6 +63,15 @@ export function buildCatalog(): ContentCatalog {
     ),
     captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
     encounters: ENCOUNTERS,
+    // #250: this used to be omitted here while the client twin
+    // (apps/web/src/catalog.ts) included it — a real drift, not the "known,
+    // currently-inert" divergence #169 claimed (community/editor maps already
+    // set `mapDefinition.resourceNodes`, and the server is the one that runs
+    // multiplayer authority). Kept in sync with the client twin by the golden
+    // test in catalog.test.ts.
+    resourceNodes: Object.fromEntries(
+      Object.values(RESOURCE_NODES).map((node) => [node.id, { yield: node.yield }]),
+    ),
   }
 }
 

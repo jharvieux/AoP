@@ -7,17 +7,16 @@ import { buildCatalog } from '../catalog'
  * Client-side twin of `buildMatchConfig` in
  * `supabase/functions/_shared/catalog.ts` — must stay byte-for-byte identical,
  * or a client-rebuilt replay (#147) would start from a different `GameConfig`
- * than the one the server actually ran and diverge from the real match.
- *
- * One known, currently-inert divergence (#169): this client's `buildCatalog()`
- * (`apps/web/src/catalog.ts`) includes a `resourceNodes` field that the
- * server's twin (`supabase/functions/_shared/catalog.ts`) omits. That field
- * only feeds `GameState.resourceNodes`, which the engine seeds exclusively
- * from `GameConfig.mapDefinition` (`packages/engine/src/game.ts`) — and
- * multiplayer matches never set `mapDefinition`, so `state.resourceNodes`
- * stays `[]` on both sides regardless of the catalog difference. Reconcile
- * the two `buildCatalog()`s (or start setting `mapDefinition` here) before
- * relying on this field for anything multiplayer-sourced.
+ * than the one the server actually ran and diverge from the real match. The
+ * two `buildCatalog()`s (this client's `apps/web/src/catalog.ts` and the
+ * server's `supabase/functions/_shared/catalog.ts`) had drifted on
+ * `resourceNodes` (#250, previously mislabeled "known, currently-inert" by
+ * #169 — untrue the moment community/editor maps set
+ * `mapDefinition.resourceNodes` in a multiplayer match); both now include it,
+ * pinned equal by the golden test in `catalog.test.ts`. Still currently inert
+ * for multiplayer specifically because `buildMatchConfig` never sets
+ * `mapDefinition` here (see the test in `matchConfig.test.ts`), but no longer
+ * a divergence between the two builders themselves.
  */
 function starterTroops(faction: FactionId): TroopStack[] {
   const unit = FACTIONS[faction].units[0]
