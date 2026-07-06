@@ -155,8 +155,11 @@ supabase functions deploy   # deploys every function in this directory
 ```
 
 Injected at runtime by the platform: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`. Optional: `ENGINE_VERSION` (pinned into new matches; defaults
-to the value in `_shared/match.ts`).
+`SUPABASE_SERVICE_ROLE_KEY`. There is no `ENGINE_VERSION` environment override — the value
+pinned into new matches' `engine_version` column is `engineVersionStamp()`
+(`packages/content/src/version.ts`, #251), computed from the deployed `@aop/engine` build
+tag plus a hash of the deployed `@aop/content` data, so it always reflects exactly what's
+running.
 
 > Note: local invocation and CI coverage are gated on a running Supabase stack; the pure
 > logic these functions call is covered by the workspace Vitest suites instead. Fog/view

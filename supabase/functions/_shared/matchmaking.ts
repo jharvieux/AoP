@@ -5,11 +5,15 @@
 // match for each claimed group. Mirrors the split compaction.ts uses (policy in @aop/shared,
 // I/O here).
 
+<<<<<<< HEAD
 import { GAME_SETUP } from '@aop/content'
+=======
+import { createGame } from '@aop/engine'
+import { GAME_SETUP, engineVersionStamp } from '@aop/content'
+>>>>>>> 6098938 (fix(#251): cover @aop/content in the replay engine-version guard)
 import {
   assignQuickMatchSeats,
   drainQueue,
-  ENGINE_VERSION,
   FACTION_IDS,
   type DrainSummary,
   type MapSize,
@@ -92,7 +96,7 @@ async function createQuickMatch(
       status: 'lobby',
       settings: settings as unknown as Record<string, unknown>,
       seed,
-      engine_version: ENGINE_VERSION,
+      engine_version: engineVersionStamp(),
       invite_code: null,
       created_by: seats[0]!.userId, // quick matches have no human creator; the first waiter stands in
     })

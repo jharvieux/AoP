@@ -11,13 +11,19 @@
 import type { MapSize } from './index'
 
 /**
- * The `@aop/engine` version pinned into `matches.engine_version` when a match
- * is created (`supabase/functions/create-match/index.ts`) and compared
- * against by the replay viewer's version guard
- * (`apps/web/src/multiplayer/matchReplay.ts`, docs/MULTIPLAYER.md §10). Kept
- * here as the single source of truth so the server and client sides can never
- * drift apart on a future engine version bump — bump this alongside any
- * breaking `@aop/engine` change.
+ * The `@aop/engine` build tag — bump this by hand alongside any breaking
+ * `@aop/engine` change (a change to `GameState`/`GameConfig` meaning or an
+ * existing action's RNG draw order; see `RULES_VERSION` in `@aop/engine` for
+ * the in-state half of that guard).
+ *
+ * This alone does NOT cover `@aop/content` (#251): a pure balance change
+ * (unit stats, building costs, AI tuning) never touches this constant. The
+ * value actually pinned into `matches.engine_version` and compared by the
+ * replay viewer's version guard (`apps/web/src/multiplayer/matchReplay.ts`,
+ * docs/MULTIPLAYER.md §10) is `@aop/content`'s `engineVersionStamp()`, which
+ * combines this constant with an automatic hash of the content data — see
+ * `packages/content/src/version.ts` for why that composition can't live here
+ * (`@aop/shared` must stay dependency-free and cannot import `@aop/content`).
  */
 export const ENGINE_VERSION = '0.0.1'
 
