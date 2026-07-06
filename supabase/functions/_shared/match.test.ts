@@ -1,12 +1,13 @@
 // Deno tests for `_shared/match.ts`'s pure/DB-mockable helpers (parseSettings,
 // buildStartMatchConfig, findExpiredTurns, isExpectedSweepRace, sanitizeAction,
-// assertExpectedSeq). Run with
+// assertExpectedSeq, assertClientSubmittable). Run with
 //   deno test --import-map supabase/functions/deno.json supabase/functions/_shared/match.test.ts
 // These edge functions are not part of the pnpm/vitest CI gate (they run on
 // Deno, not Node), so this file is exercised by `deno test`, not `pnpm test`.
 import { createGame, type Action } from '@aop/engine'
 import { assertEquals, assertNotEquals, assertRejects, assertThrows } from 'jsr:@std/assert@1'
 import {
+  assertClientSubmittable,
   assertExpectedSeq,
   buildStartMatchConfig,
   finalizeRpcArgs,
@@ -384,44 +385,90 @@ Deno.test('sanitizeAction: drops junk attached inside an omitted-optional-field 
   })
 })
 
+/** One well-formed sample of every Action variant. */
+const actionSamples: Action[] = [
+  { type: 'endTurn', playerId: 'seat-0' },
+  { type: 'resign', playerId: 'seat-0' },
+  { type: 'moveCaptain', playerId: 'seat-0', captainId: 'c', to: { x: 0, y: 0 } },
+  {
+    type: 'attackCaptain',
+    playerId: 'seat-0',
+    captainId: 'c',
+    targetCaptainId: 't',
+  },
+  { type: 'setStandingOrders', playerId: 'seat-0', captainId: 'c', orders: [] },
+  { type: 'construct', playerId: 'seat-0', cityId: 'city', buildingId: 'b' },
+  { type: 'recruit', playerId: 'seat-0', cityId: 'city', unitId: 'u', count: 1 },
+  {
+    type: 'transferTroops',
+    playerId: 'seat-0',
+    cityId: 'city',
+    captainId: 'c',
+    direction: 'toShip',
+    unitId: 'u',
+    count: 1,
+  },
+  { type: 'gainCaptainXp', playerId: 'seat-0', captainId: 'c', amount: 10 },
+  { type: 'chooseCaptainSkill', playerId: 'seat-0', captainId: 'c', skillId: 's' },
+  { type: 'upgradeShip', playerId: 'seat-0', cityId: 'city', captainId: 'c', track: 't' },
+  {
+    type: 'resolveEncounter',
+    playerId: 'seat-0',
+    captainId: 'c',
+    encounterId: 'e',
+    choice: 'trade',
+  },
+  { type: 'proposeAlliance', playerId: 'seat-0', targetId: 'seat-1' },
+  { type: 'acceptAlliance', playerId: 'seat-0', proposerId: 'seat-1' },
+  { type: 'leaveAlliance', playerId: 'seat-0', otherId: 'seat-1' },
+]
+
 Deno.test('sanitizeAction: covers every Action variant without throwing', () => {
-  const samples: Action[] = [
-    { type: 'endTurn', playerId: 'seat-0' },
-    { type: 'resign', playerId: 'seat-0' },
-    { type: 'moveCaptain', playerId: 'seat-0', captainId: 'c', to: { x: 0, y: 0 } },
-    {
-      type: 'attackCaptain',
-      playerId: 'seat-0',
-      captainId: 'c',
-      targetCaptainId: 't',
-    },
-    { type: 'setStandingOrders', playerId: 'seat-0', captainId: 'c', orders: [] },
-    { type: 'construct', playerId: 'seat-0', cityId: 'city', buildingId: 'b' },
-    { type: 'recruit', playerId: 'seat-0', cityId: 'city', unitId: 'u', count: 1 },
-    {
-      type: 'transferTroops',
-      playerId: 'seat-0',
-      cityId: 'city',
-      captainId: 'c',
-      direction: 'toShip',
-      unitId: 'u',
-      count: 1,
-    },
-    { type: 'gainCaptainXp', playerId: 'seat-0', captainId: 'c', amount: 10 },
-    { type: 'chooseCaptainSkill', playerId: 'seat-0', captainId: 'c', skillId: 's' },
-    { type: 'upgradeShip', playerId: 'seat-0', cityId: 'city', captainId: 'c', track: 't' },
-    {
-      type: 'resolveEncounter',
-      playerId: 'seat-0',
-      captainId: 'c',
-      encounterId: 'e',
-      choice: 'trade',
-    },
-    { type: 'proposeAlliance', playerId: 'seat-0', targetId: 'seat-1' },
-    { type: 'acceptAlliance', playerId: 'seat-0', proposerId: 'seat-1' },
-    { type: 'leaveAlliance', playerId: 'seat-0', otherId: 'seat-1' },
-  ]
-  for (const action of samples) {
+  for (const action of actionSamples) {
     assertEquals(sanitizeAction(action), action)
+  }
+})
+
+// assertClientSubmittable (#205): the anti-cheat guard on client-proposed actions.
+// gainCaptainXp is only ever a server/engine-internal grant (combat, encounters);
+// a client submitting it directly would mint arbitrary XP.
+
+Deno.test('assertClientSubmittable: rejects gainCaptainXp at any amount', () => {
+  for (const amount of [1, 10, 99999]) {
+    assertThrows(
+      () => {
+        assertClientSubmittable({
+          type: 'gainCaptainXp',
+          playerId: 'seat-0',
+          captainId: 'c',
+          amount,
+        })
+      },
+      AppError,
+      'gainCaptainXp',
+      `expected amount ${amount} to be rejected`,
+    )
+  }
+})
+
+Deno.test('assertClientSubmittable: rejects gainCaptainXp with INVALID_ACTION', () => {
+  try {
+    assertClientSubmittable({
+      type: 'gainCaptainXp',
+      playerId: 'seat-0',
+      captainId: 'c',
+      amount: 1,
+    })
+    throw new Error('expected assertClientSubmittable to throw')
+  } catch (err) {
+    if (!(err instanceof AppError)) throw err
+    assertEquals(err.code, 'INVALID_ACTION')
+  }
+})
+
+Deno.test('assertClientSubmittable: allows every other Action variant', () => {
+  for (const action of actionSamples) {
+    if (action.type === 'gainCaptainXp') continue
+    assertClientSubmittable(action)
   }
 })

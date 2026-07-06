@@ -266,6 +266,26 @@ export function sanitizeAction(action: Action): Action {
   }
 }
 
+/**
+ * Rejects engine actions a client may never submit (#205). `gainCaptainXp`
+ * exists in the `Action` union so the engine can model XP as replayable data,
+ * but every legitimate grant happens INSIDE the engine while it resolves
+ * another action (combat's `wonXp`, an encounter's `xpGained`) — no client,
+ * AI, or server code ever proposes it as a standalone action. Accepting it
+ * from a request body would let a hostile client award itself arbitrary XP
+ * (`applyAction` applies the amount verbatim), so the only valid expected
+ * value is "never". Enforced in {@link submitAction}, the single entry point
+ * for client-proposed actions.
+ */
+export function assertClientSubmittable(action: Action): void {
+  if (action.type === 'gainCaptainXp') {
+    throw new AppError(
+      'INVALID_ACTION',
+      'gainCaptainXp cannot be submitted directly; XP is awarded by the server',
+    )
+  }
+}
+
 function turnDeadline(settings: MatchSettings): string | null {
   return settings.turnTimerSeconds
     ? new Date(Date.now() + settings.turnTimerSeconds * 1000).toISOString()
@@ -627,6 +647,7 @@ export async function submitAction(
   callerSeat: number,
   action: Action,
 ): Promise<SubmitResult> {
+  assertClientSubmittable(action)
   return submitActionInternal(db, matchId, callerSeat, action, { skip: false })
 }
 
