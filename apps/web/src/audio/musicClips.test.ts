@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { selectGameplayMusicContext } from './musicClips'
+import { pickMusicSource, selectGameplayMusicContext, type MusicSources } from './musicClips'
+
+const sources: MusicSources = {
+  ogg: '/audio/music/menu_theme.ogg',
+  m4a: '/audio/music/menu_theme.m4a',
+}
+
+describe('pickMusicSource', () => {
+  it('picks the OGG/Opus source when the browser reports support', () => {
+    const canPlayType = (mimeType: string) => (mimeType.includes('opus') ? 'probably' : '')
+    expect(pickMusicSource(sources, canPlayType)).toBe(sources.ogg)
+  })
+
+  it('falls back to M4A/AAC when Opus is unsupported (Safari)', () => {
+    const canPlayType = () => ''
+    expect(pickMusicSource(sources, canPlayType)).toBe(sources.m4a)
+  })
+
+  it('treats "maybe" the same as "probably" — any non-empty answer counts as support', () => {
+    const canPlayType = (mimeType: string) => (mimeType.includes('opus') ? 'maybe' : '')
+    expect(pickMusicSource(sources, canPlayType)).toBe(sources.ogg)
+  })
+})
 
 describe('selectGameplayMusicContext', () => {
   it('picks exploration ambience by default (no battle sheet open)', () => {

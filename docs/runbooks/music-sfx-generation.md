@@ -31,6 +31,7 @@ runs on the operator's machine and writes output directly into
   checked at runtime and used automatically; falls back to CPU otherwise.
 - First run of the music script downloads `facebook/musicgen-small` from Hugging Face
   (~1.5GB) — needs network access once, then it's cached under `~/.cache/huggingface/`.
+- `ffmpeg` on PATH (`brew install ffmpeg`) for the OGG/M4A post-processing step (#253).
 
 ## Quick start — music
 
@@ -52,6 +53,26 @@ apps/web/public/audio/music/battle_theme.wav
 To change mood/instrumentation, edit the `TRACKS` prompt list at the top of the script.
 To change track length, edit `DURATION_SEC` (28s by default — see performance notes before
 going much higher).
+
+### Post-processing: encode to OGG/M4A before committing (#253)
+
+The raw WAV is a ~1.75 MB/track PCM master — 10x larger than it needs to be and never
+referenced by the client. After curating (see below), encode it to the two compressed
+formats the loader actually plays:
+
+```bash
+node apps/web/scripts/encode-music.mjs
+```
+
+Requires `ffmpeg` on PATH (`brew install ffmpeg`). For each track this writes
+`<name>.ogg` (Opus, ~230-260 KB — Chrome/Firefox/Edge) and `<name>.m4a` (AAC, ~250-260 KB
+— Safari, which has no native Ogg/Opus decoder) next to the `.wav` master in
+`apps/web/public/audio/music/`. `apps/web/src/audio/musicClips.ts`'s `pickMusicSource()`
+picks between them at playback time via `canPlayType`. Commit the `.ogg`/`.m4a` outputs;
+the `.wav` master is listed in `apps/web/asset-size-allowlist.json` (it's over the 300 KB
+static-asset budget the build enforces — see "CI size guard" below) and stays in the repo
+pending an operator decision on git-LFS / an external asset bucket for large binaries
+(#253) — it is not shipped to players.
 
 ### How looping works
 
@@ -97,6 +118,20 @@ last `CROSSFADE_SEC` seconds are wildly different in character from the first �
 different prompt/seed, or increase `CROSSFADE_SEC` for a longer blend). MusicGen's
 `do_sample=True` means every run is a different take; there's no seed pinning in the
 script today, so "regenerate" means rerunning the whole batch (cheap — a few minutes).
+
+Curate on the WAV master (it's the lossless take), then run `encode-music.mjs` (above) and
+`git add` all three files per track (`.wav`, `.ogg`, `.m4a`) — the loader only plays the
+last two, but the master stays curatable for future re-encodes.
+
+## CI size guard (#253)
+
+`apps/web/vite-plugins/assetBudget.ts` runs at the end of every `vite build` (so it's
+already part of `pnpm build`/CI, with no `.github/workflows/**` change needed) and fails
+the build if any `public/`-sourced static asset exceeds 300 KB, or any built JS/CSS/`sw.js`
+chunk exceeds ~850 KB raw / ~260 KB gzip. A new music/SFX/art asset that lands over budget
+needs either a smaller re-encode or a reasoned entry in
+`apps/web/asset-size-allowlist.json` — don't add an entry just to make the build pass
+without asking whether the asset should be that big in the first place.
 
 ## Performance notes (Apple Silicon, no CUDA)
 
