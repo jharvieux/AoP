@@ -331,7 +331,7 @@ Deno.test(
       captainId: 'captain-a',
       targetCaptainId: 'captain-b',
       attackerOrders: ['broadside', 'ram'],
-      boardCommands: [{ stackId: 0, to: { q: 1, r: -1 }, targetId: 2 }],
+      boardCommands: [{ stackId: 0, to: { col: 1, row: -1 }, targetId: 2 }],
     }
     assertEquals(sanitizeAction(action), action)
   },
@@ -359,7 +359,7 @@ Deno.test('sanitizeAction: covers every Action variant without throwing', () => 
   const samples: Action[] = [
     { type: 'endTurn', playerId: 'seat-0' },
     { type: 'resign', playerId: 'seat-0' },
-    { type: 'moveCaptain', playerId: 'seat-0', captainId: 'c', to: { q: 0, r: 0 } },
+    { type: 'moveCaptain', playerId: 'seat-0', captainId: 'c', to: { x: 0, y: 0 } },
     {
       type: 'attackCaptain',
       playerId: 'seat-0',
