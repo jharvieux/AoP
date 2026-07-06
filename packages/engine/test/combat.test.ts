@@ -203,6 +203,48 @@ describe('attackCaptain action', () => {
     expect(next.status).toBe('active')
   })
 
+  it('awards combat XP only for a decisive win, never for an escape (#209)', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+
+    // Decisive: p1 sinks p2 and banks combatWinXp.
+    const sunk = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    expect(sunk.battleReport!.escapedId).toBeNull()
+    expect(sunk.state.captains.find((c) => c.id === p1cap.id)!.xp).toBe(
+      p1cap.xp + GAME_SETUP.combatWinXp,
+    )
+
+    // Escape: p2's standing orders evade, so p1 "wins" the field but the
+    // battle was not decisive — no XP for either side, or attacking a
+    // retreat-on-sight defender once per turn becomes a risk-free XP farm.
+    let evading = state
+    evading = applyActionWithOutcome(evading, { type: 'endTurn', playerId: 'p1' }).state
+    evading = applyActionWithOutcome(evading, {
+      type: 'setStandingOrders',
+      playerId: 'p2',
+      captainId: p2cap.id,
+      orders: [{ when: 'always', tactic: 'evade' }],
+    }).state
+    evading = applyActionWithOutcome(evading, { type: 'endTurn', playerId: 'p2' }).state
+    const { state: next, battleReport } = applyActionWithOutcome(evading, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+      attackerOrders: ['broadside'],
+    })
+    expect(battleReport!.escapedId).toBe('p2')
+    expect(battleReport!.winnerId).toBe('p1')
+    expect(next.captains.find((c) => c.id === p1cap.id)!.xp).toBe(p1cap.xp)
+    expect(next.captains.find((c) => c.id === p2cap.id)!.xp).toBe(p2cap.xp)
+  })
+
   it('replays an attackCaptain log — combat RNG and standing orders — to an identical state', () => {
     // The replay contract for combat: the same initial state and log (a defender
     // setting standing orders, then an attack resolved through the seeded combat

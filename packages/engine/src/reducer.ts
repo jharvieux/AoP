@@ -392,7 +392,11 @@ function attackCaptain(
   )
   const { report } = result
   const winnerCaptainId = report.winnerId === attacker.ownerId ? attacker.id : target.id
-  const combatWinXp = state.config.setup.combatWinXp
+  // combatWinXp is the prize for a decisive naval victory. An escape ends the
+  // battle with both fleets afloat — awarding it then let an attacker farm XP
+  // off a defender whose standing orders evade, one risk-free attack per turn
+  // (#209).
+  const combatWinXp = report.escapedId ? 0 : state.config.setup.combatWinXp
 
   // Write back survivors: sink defeated captains, update troops, award the winner
   // combat XP (#21), and spend the attacker's movement for the turn.
