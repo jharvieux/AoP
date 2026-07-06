@@ -1,74 +1,86 @@
+import { CHECKOUT_RETURN_PARAM, isRemoveAdsSuccessReturn } from './checkout'
+import { hasRemoveAds } from './entitlements'
+
 /**
- * Fulfillment-state helpers for the Stripe Checkout return trip (#244).
- * `createRemoveAdsCheckoutUrl` previously sent an indistinguishable
- * `successUrl`/`cancelUrl` (both just `origin`), so a client landing back
- * from Checkout had no way to tell "just paid" from an ordinary app open, and
- * the `remove_ads` entitlement only ever appeared once `useRemoveAds`
- * happened to re-fetch on the next auth-state change — racing the
- * `stripe-webhook` that actually grants it. A paying customer could land back
- * on the Account screen still seeing the "Remove Ads" buy button.
+ * Checkout-return fulfillment handling (#244). Stripe redirects a successful
+ * remove-ads buyer back to the origin with the `?checkout=remove-ads-success`
+ * marker (see `removeAdsSuccessUrl`), racing the `stripe-webhook` that actually
+ * grants the entitlement. Without this module the buyer landed on a screen that
+ * still sold them the purchase (useRemoveAds fetches once and fails open) —
+ * inviting a confused double purchase.
  *
- * The fix: tag the success URL with a marker (`withCheckoutSuccessMarker`),
- * detect it on return (`hasCheckoutSuccessMarker`), and poll the entitlement
- * with backoff (`pollForEntitlement`) instead of checking once. Plain,
- * DOM-free functions so the flow is unit-testable without React — see
- * `AccountScreen.tsx`'s `RemoveAdsSection` for the wiring.
+ * On boot the marker is consumed into sessionStorage (surviving an immediate
+ * reload, never a new tab/session) and stripped from the URL; while pending,
+ * `useRemoveAdsStatus` polls the entitlement with backoff for ~30s, the UI
+ * shows "Finishing your purchase…", and the buy button stays hidden. If the
+ * webhook still hasn't landed after the last attempt, the pending state clears
+ * and the UI falls back to the old fail-open behavior. Server-side hardening
+ * (webhook retries etc.) is #222.
  */
 
-export const CHECKOUT_SUCCESS_PARAM = 'checkout'
-export const CHECKOUT_SUCCESS_VALUE = 'remove-ads-success'
-
-/** Appends the fulfillment marker to a checkout success URL. */
-export function withCheckoutSuccessMarker(url: string): string {
-  const u = new URL(url)
-  u.searchParams.set(CHECKOUT_SUCCESS_PARAM, CHECKOUT_SUCCESS_VALUE)
-  return u.toString()
-}
-
-/** True if `search` (e.g. `window.location.search`) carries the marker. */
-export function hasCheckoutSuccessMarker(search: string): boolean {
-  return new URLSearchParams(search).get(CHECKOUT_SUCCESS_PARAM) === CHECKOUT_SUCCESS_VALUE
-}
-
-export interface PollForEntitlementOptions {
-  /** Total time to keep polling before giving up. Default 30s. */
-  timeoutMs?: number
-  /** Delay before the first check — the webhook needs a beat to land. Default 1500ms. */
-  initialDelayMs?: number
-  /** Backoff multiplier applied to the delay after each miss. Default 1.6. */
-  backoffFactor?: number
-  /** Injectable sleep, so tests run with fake timers instead of real ones. */
-  sleep?: (ms: number) => Promise<void>
-  /** Injectable clock, for the same reason. */
-  now?: () => number
-}
-
-const defaultSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
+/** Backoff delays between entitlement re-checks, ~30s total (2+3+5+8+12). */
+export const ENTITLEMENT_POLL_DELAYS_MS: readonly number[] = [2000, 3000, 5000, 8000, 12000]
 
 /**
- * Polls `checkFn` with exponential backoff until it resolves `true` or
- * `timeoutMs` elapses. The `stripe-webhook` that grants `remove_ads` runs
- * asynchronously after Checkout redirects back, so a client can't just check
- * the entitlement once and call it done.
+ * Poll `fetchKeys` until it reports the remove-ads entitlement or the delays
+ * run out: one immediate check, then one after each backoff delay. A fetch
+ * failure counts as "not granted yet" (the next attempt retries) rather than
+ * aborting the poll. Pure in its dependencies (injected fetch + sleep) so the
+ * schedule is unit-testable without real time.
  */
-export async function pollForEntitlement(
-  checkFn: () => Promise<boolean>,
-  opts: PollForEntitlementOptions = {},
+export async function pollForRemoveAds(
+  fetchKeys: () => Promise<string[]>,
+  sleep: (ms: number) => Promise<void>,
+  delays: readonly number[] = ENTITLEMENT_POLL_DELAYS_MS,
 ): Promise<boolean> {
-  const {
-    timeoutMs = 30_000,
-    initialDelayMs = 1500,
-    backoffFactor = 1.6,
-    sleep = defaultSleep,
-    now = Date.now,
-  } = opts
-  const deadline = now() + timeoutMs
-  let delay = initialDelayMs
-  for (;;) {
-    await sleep(delay)
-    if (await checkFn()) return true
-    if (now() + delay >= deadline) return false
-    delay *= backoffFactor
+  const granted = () => fetchKeys().then(hasRemoveAds, () => false)
+  if (await granted()) return true
+  for (const ms of delays) {
+    await sleep(ms)
+    if (await granted()) return true
   }
+  return false
+}
+
+const PENDING_KEY = 'aop-checkout-pending'
+
+/**
+ * Whether a checkout return is pending fulfillment. Consumes the URL marker on
+ * first sight: stores the pending flag in sessionStorage and strips the query
+ * param via `history.replaceState` so a reload or copied URL never re-triggers
+ * a stale "finishing purchase" state after it resolved.
+ */
+export function detectCheckoutReturn(): boolean {
+  if (typeof window === 'undefined') return false
+  if (isRemoveAdsSuccessReturn(window.location.search)) {
+    window.sessionStorage.setItem(PENDING_KEY, '1')
+    const url = new URL(window.location.href)
+    url.searchParams.delete(CHECKOUT_RETURN_PARAM)
+    window.history.replaceState(null, '', url.toString())
+  }
+  return window.sessionStorage.getItem(PENDING_KEY) === '1'
+}
+
+/** Clear the pending flag once the poll resolved (granted or timed out). */
+export function clearCheckoutPending(): void {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(PENDING_KEY)
+}
+
+const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+let activePoll: Promise<boolean> | null = null
+
+/**
+ * The app-wide poll for a pending checkout return. Module-level memoized so
+ * every hook instance (the account screen and the global banner) awaits the
+ * SAME poll instead of each firing its own request train; cleared when it
+ * settles so a later purchase in the same session starts fresh.
+ */
+export function sharedRemoveAdsPoll(fetchKeys: () => Promise<string[]>): Promise<boolean> {
+  activePoll ??= pollForRemoveAds(fetchKeys, realSleep).finally(() => {
+    activePoll = null
+    clearCheckoutPending()
+  })
+  return activePoll
 }

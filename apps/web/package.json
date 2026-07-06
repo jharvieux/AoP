@@ -15,6 +15,7 @@
     "@aop/engine": "workspace:*",
     "@aop/shared": "workspace:*",
     "@sentry/browser": "^10.63.0",
+    "@supabase/realtime-js": "^2.110.0",
     "pixi.js": "^8.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

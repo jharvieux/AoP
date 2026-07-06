@@ -11,6 +11,7 @@ import {
   appendActionRpcArgs,
   assertClientSubmittable,
   assertExpectedSeq,
+  broadcastTurn,
   buildStartMatchConfig,
   finalizeRpcArgs,
   findExpiredTurns,
@@ -56,6 +57,14 @@ Deno.test('parseSettings: accepts the inclusive bounds (0 and 100 / 0 and 10)', 
   )
   assertEquals(parseSettings({ ...base, betrayalTruceRounds: 0 }).betrayalTruceRounds, 0)
   assertEquals(parseSettings({ ...base, betrayalTruceRounds: 10 }).betrayalTruceRounds, 10)
+})
+
+Deno.test('parseSettings: rejects maxPlayers beyond the faction pool (#219)', () => {
+  // Factions are unique per match and there are 5 of them, so 6-8 player
+  // lobbies could never fill — the 6th joiner always failed on faction
+  // exhaustion. 5 stays accepted; 6 is now rejected up front.
+  assertEquals(parseSettings({ ...base, maxPlayers: 5 }).maxPlayers, 5)
+  assertThrows(() => parseSettings({ ...base, maxPlayers: 6 }), AppError)
 })
 
 Deno.test('parseSettings: rejects out-of-range or non-integer betrayal knobs', () => {
@@ -669,4 +678,38 @@ Deno.test('sanitizeAction: rejects missing or non-string id fields', () => {
     { type: 'construct', playerId: 'seat-0', cityId: 'city' },
     'action.buildingId',
   )
+})
+
+// --- broadcastTurn (#228: the poke path's authorization + leak-audit contract) ---
+// Whether RLS actually refuses a non-participant subscriber lives in Postgres
+// (supabase/migrations/20260707090000_realtime_private_match_channels.sql) and
+// needs a live database; what IS pinned here is this side of that contract —
+// the server only ever pokes the *private* channel (a public send would bypass
+// the policy) and the payload carries the seq alone, never state (§7).
+
+/** A Db whose channel() records topic/options and acks the send. */
+function channelDb(sent: { topic: string; options: unknown; message: unknown }[]): Db {
+  return {
+    channel(topic: string, options: unknown) {
+      return {
+        send(message: unknown) {
+          sent.push({ topic, options, message })
+          return Promise.resolve('ok')
+        },
+      }
+    },
+  } as unknown as Db
+}
+
+Deno.test('broadcastTurn: pokes the private match channel with the seq only', async () => {
+  const sent: { topic: string; options: unknown; message: unknown }[] = []
+  await broadcastTurn(channelDb(sent), 'm1', 5)
+  assertEquals(sent.length, 1)
+  assertEquals(sent[0]!.topic, 'match:m1')
+  assertEquals(sent[0]!.options, { config: { private: true } })
+  assertEquals(sent[0]!.message, {
+    type: 'broadcast',
+    event: 'turn',
+    payload: { type: 'turn', seq: 5 },
+  })
 })

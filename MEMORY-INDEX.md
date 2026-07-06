@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-022 — 2026-07-05 — Match size capped at 5 (faction-pool bound), amending D-006's 2–8 range
 - D-021 — 2026-07-05 — Audio: local music generation (MusicGen) + procedural SFX, wired into gameplay
 - D-020 — 2026-07-05 — Art (#108 retry): shipped `deep`/`port` map tiles, closing the gap
 - D-019 — 2026-07-05 — Art: generated the missing tier-1 unit sprites (5 factions)

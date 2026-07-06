@@ -1,16 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth'
 import { AuthError, OAUTH_PROVIDERS, type AuthSession, type OAuthProvider } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
 import {
-  CHECKOUT_SUCCESS_PARAM,
-  hasCheckoutSuccessMarker,
-  pollForEntitlement,
-  withCheckoutSuccessMarker,
-} from '../monetization/checkoutReturn'
-import { CheckoutError, createRemoveAdsCheckoutUrl } from '../monetization/checkout'
-import { EntitlementsClient, hasRemoveAds } from '../monetization/entitlements'
-import { useRemoveAds } from '../monetization/useRemoveAds'
+  CheckoutError,
+  createRemoveAdsCheckoutUrl,
+  removeAdsSuccessUrl,
+} from '../monetization/checkout'
+import { useRemoveAdsStatus } from '../monetization/useRemoveAds'
 
 interface AccountScreenProps {
   onBack: () => void
@@ -33,80 +30,19 @@ function messageFor(err: unknown): string {
  * a Stripe-hosted Checkout page — no Stripe.js needed client-side, see
  * monetization/checkout.ts. Only reachable once signed in, since the
  * entitlement is keyed by user id and needs an account to persist.
- *
- * Fulfillment state on return (#244): `useRemoveAds` only ever fetches once
- * per auth-state change, racing the `stripe-webhook` that actually grants the
- * entitlement — a buyer landing back from Checkout could see the buy button
- * still active. The success URL carries a marker (`checkoutReturn.ts`); on
- * seeing it, this component hides the buy button and polls the entitlement
- * with backoff instead of trusting a single check.
  */
 function RemoveAdsSection({ session }: { session: AuthSession }) {
-  const removeAds = useRemoveAds()
+  const { removeAds, purchasePending } = useRemoveAdsStatus()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState(() => hasCheckoutSuccessMarker(window.location.search))
-  // Sticky for the rest of this mount once the poll confirms — `useRemoveAds`
-  // itself only ever re-fetches on an auth-state change, so nothing else
-  // would flip `removeAds` true this session and bring the buy button back.
-  const [justConfirmed, setJustConfirmed] = useState(false)
-  // Separate from `justConfirmed`: only the toast bubble self-dismisses: the
-  // "Ads removed" label above it must stay for as long as `justConfirmed` does.
-  const [showToast, setShowToast] = useState(false)
 
-  useEffect(() => {
-    if (!pending) return
-    // Strip the marker immediately so a mid-poll refresh doesn't restart the
-    // whole flow (or re-show the toast) on every subsequent visit.
-    const url = new URL(window.location.href)
-    url.searchParams.delete(CHECKOUT_SUCCESS_PARAM)
-    window.history.replaceState(null, '', url.toString())
-
-    const config = resolveSupabaseConfig()
-    if (!config) {
-      setPending(false)
-      return
-    }
-    let cancelled = false
-    const client = new EntitlementsClient(config)
-    void pollForEntitlement(async () => hasRemoveAds(await client.fetchKeys(session))).then(
-      (confirmed) => {
-        if (cancelled) return
-        setPending(false)
-        if (confirmed) {
-          setJustConfirmed(true)
-          setShowToast(true)
-        }
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-    // Runs once on mount only — re-checking `pending` here would restart the
-    // poll on every render once it flips false.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    if (!showToast) return
-    const id = setTimeout(() => setShowToast(false), 4000)
-    return () => clearTimeout(id)
-  }, [showToast])
-
-  if (removeAds || justConfirmed) {
-    return (
-      <>
-        <p className="section-label">Ads removed — thank you!</p>
-        {showToast && (
-          <div className="action-toast" role="status">
-            Purchase confirmed — ads removed!
-          </div>
-        )}
-      </>
-    )
+  if (removeAds) {
+    return <p className="section-label">Ads removed — thank you!</p>
   }
 
-  if (pending) {
+  // #244: just back from Stripe, waiting on the webhook grant — never show the
+  // buy button mid-fulfillment (it invites a confused double purchase).
+  if (purchasePending) {
     return <p className="section-label">Finishing your purchase…</p>
   }
 
@@ -118,7 +54,8 @@ function RemoveAdsSection({ session }: { session: AuthSession }) {
       if (!config) throw new CheckoutError('Checkout is unavailable in this build.')
       const origin = window.location.origin
       const url = await createRemoveAdsCheckoutUrl(config, session, {
-        successUrl: withCheckoutSuccessMarker(origin),
+        // The success marker lets boot tell a paid return from a cancel (#244).
+        successUrl: removeAdsSuccessUrl(origin),
         cancelUrl: origin,
       })
       window.location.assign(url)

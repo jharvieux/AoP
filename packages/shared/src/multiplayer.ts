@@ -218,6 +218,35 @@ export function resolveViewSeat(
   return spectatorSeat
 }
 
+/** Whether a just-inserted seat survives a lobby that closed mid-join (#221). */
+export type LateJoinResolution = 'seated' | 'evicted'
+
+/**
+ * Resolve the join-match race against start-match (#221). `join-match` checks
+ * `status = 'lobby'` and inserts the seat in two separate round-trips, so
+ * `start-match` can freeze the `GameState` config in between. After the insert,
+ * the joiner re-reads the match status and (when the lobby has closed) the
+ * frozen seq-0 snapshot's player count, then applies this rule:
+ *
+ *  - still `'lobby'` — the seat is fine; if a start races in *after* this
+ *    point, start-match's own post-activation sweep removes it instead.
+ *  - closed with `seat < frozenPlayerCount` — the freeze read the seats after
+ *    the insert, so the seat IS in the `GameState`: the joiner made it in.
+ *  - closed with `seat >= frozenPlayerCount` — the seat exists only in the DB,
+ *    not in the game. Keeping it would wedge the user in a match where
+ *    `submitAction` always answers NOT_YOUR_TURN, so it must be evicted.
+ *
+ * Pure so the race's decision table is unit-testable without a database.
+ */
+export function resolveLateJoin(
+  statusAfterInsert: string,
+  seat: number,
+  frozenPlayerCount: number,
+): LateJoinResolution {
+  if (statusAfterInsert === 'lobby') return 'seated'
+  return seat < frozenPlayerCount ? 'seated' : 'evicted'
+}
+
 /** The `match_players` columns a seat reclaim writes back (#134, §8). */
 export interface SeatReclaimUpdate {
   status: 'active'

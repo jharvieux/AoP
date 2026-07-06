@@ -74,6 +74,8 @@ export interface DrainedMatch {
 export interface DrainSummary {
   matchesCreated: number
   playersMatched: number
+  /** Groups whose match creation failed and were handed to `restoreGroup` (#219). */
+  groupsFailed: number
   matches: DrainedMatch[]
 }
 
@@ -90,35 +92,62 @@ export interface DrainDeps {
   claimGroup: (bucket: QuickMatchBucket) => Promise<QueueEntry[] | null>
   /** Create + start a match for an already-claimed group; returns the match id. */
   createMatch: (bucket: QuickMatchBucket, group: QueueEntry[]) => Promise<string>
+  /**
+   * Compensation for a failed `createMatch` (#219): the claim already deleted
+   * the group's queue rows in its own committed transaction, so a throw from
+   * `createMatch` would otherwise strand those players — silently dropped from
+   * the queue with no match and no notification. Restore them (re-insert their
+   * queue rows) so the next drain retries. When omitted, a `createMatch` failure
+   * propagates out of `drainQueue` unchanged.
+   */
+  restoreGroup?: (bucket: QuickMatchBucket, group: QueueEntry[], cause: unknown) => Promise<void>
 }
 
-/** Cap on groups formed per bucket per invocation: a safety valve so a single
- * drain run can't spin unboundedly on a huge queue; the next scheduled run picks
- * up any remainder. */
-const MAX_GROUPS_PER_BUCKET = 100
+/** Cap on players seated per drain invocation (#219): a safety valve so a single
+ * run can't spin unboundedly on a huge queue — each match creation is several
+ * database round-trips inside an Edge Function with a hard wall-clock budget.
+ * The every-minute cron picks up any remainder. Exported for the batch-limit
+ * tests. */
+export const MAX_PLAYERS_PER_DRAIN = 50
 
 /**
  * Drain the quick-match queue: for each bucket, repeatedly claim a full group
- * and start a match for it until no full group remains. Concurrency-safety rests
- * entirely on `claimGroup` being atomic — this loop never re-groups waiters
- * itself, so two overlapping drains simply claim disjoint groups (or one gets a
- * null claim and moves on). Idempotent when the queue is empty: every claim
- * returns null and nothing is created.
+ * and start a match for it until no full group remains (or the per-invocation
+ * player cap is hit). Concurrency-safety rests entirely on `claimGroup` being
+ * atomic — this loop never re-groups waiters itself, so two overlapping drains
+ * simply claim disjoint groups (or one gets a null claim and moves on).
+ * Idempotent when the queue is empty: every claim returns null and nothing is
+ * created.
  */
 export async function drainQueue(deps: DrainDeps): Promise<DrainSummary> {
   const matches: DrainedMatch[] = []
+  let playersMatched = 0
+  let groupsFailed = 0
   const buckets = await deps.listBuckets()
   for (const bucket of buckets) {
-    for (let i = 0; i < MAX_GROUPS_PER_BUCKET; i++) {
+    while (playersMatched < MAX_PLAYERS_PER_DRAIN) {
       const group = await deps.claimGroup(bucket)
       if (!group || group.length === 0) break
-      const matchId = await deps.createMatch(bucket, group)
-      matches.push({ matchId, userIds: group.map((e) => e.userId) })
+      try {
+        const matchId = await deps.createMatch(bucket, group)
+        matches.push({ matchId, userIds: group.map((e) => e.userId) })
+        playersMatched += group.length
+      } catch (err) {
+        // #219: without compensation the claim's committed delete has already
+        // stranded this group. Restore it, then move on to the NEXT bucket —
+        // retrying this one would spin on the same failure — so one poisoned
+        // bucket can no longer starve every bucket after it.
+        if (!deps.restoreGroup) throw err
+        groupsFailed++
+        await deps.restoreGroup(bucket, group, err)
+        break
+      }
     }
   }
   return {
     matchesCreated: matches.length,
-    playersMatched: matches.reduce((sum, m) => sum + m.userIds.length, 0),
+    playersMatched,
+    groupsFailed,
     matches,
   }
 }
