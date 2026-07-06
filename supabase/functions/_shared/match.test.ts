@@ -7,6 +7,7 @@ import { createGame } from '@aop/engine'
 import { assertEquals, assertNotEquals, assertThrows } from 'jsr:@std/assert@1'
 import {
   buildStartMatchConfig,
+  finalizeRpcArgs,
   parseSettings,
   type MatchSettings,
   type StartMatchSeat,
@@ -148,3 +149,25 @@ Deno.test(
     assertNotEquals(JSON.stringify(a), JSON.stringify(b))
   },
 )
+
+// finalizeRpcArgs (#265): the generated `finalize_match_with_ratings` RPC Args type
+// declares `p_winner_seat: number` with no `| null`, even though a draw / mutual-
+// elimination win is a genuine null both in the SQL function and the `winner_seat`
+// column. These tests lock in that the cast preserves null rather than a future edit
+// swapping it for a sentinel fallback that would misattribute a draw to seat 0.
+Deno.test('finalizeRpcArgs: preserves a draw winnerSeat as null, not a sentinel', () => {
+  const args = finalizeRpcArgs('match-1', null, [])
+  assertEquals(args.p_winner_seat, null)
+})
+
+Deno.test('finalizeRpcArgs: passes through a real winning seat unchanged', () => {
+  const args = finalizeRpcArgs('match-1', 2, [])
+  assertEquals(args.p_winner_seat, 2)
+})
+
+Deno.test('finalizeRpcArgs: carries match id and rating rows through unchanged', () => {
+  const ratings = [{ user_id: 'user-a', rating: 1050, matches_played: 3 }]
+  const args = finalizeRpcArgs('match-1', 0, ratings)
+  assertEquals(args.p_match_id, 'match-1')
+  assertEquals(args.p_ratings, ratings)
+})

@@ -15,7 +15,9 @@ import {
   nextMissedTurnStatus,
   resolveViewSeat,
   turnBroadcastPayload,
+  type Database,
   type FactionId,
+  type Json,
   type MapSize,
   type PlayerRating,
   type RatedSeat,
@@ -259,14 +261,20 @@ async function appendAction(
   const seq = priorCount + 1
   const insert = await db
     .from('match_actions')
-    .insert({ match_id: matchId, seq, seat, action: action as unknown as Record<string, unknown> })
+    .insert({ match_id: matchId, seq, seat, action: action as unknown as Json })
   if (insert.error) {
     if (insert.error.code === '23505') throw new AppError('SEQ_CONFLICT', 'Sequence already taken')
     throw new AppError('INTERNAL', insert.error.message)
   }
   // `undefined` deadline means the turn did not advance — leave the running
-  // deadline untouched rather than clearing it.
-  const patch: Record<string, unknown> = { action_count: seq, updated_at: new Date().toISOString() }
+  // deadline untouched rather than clearing it. Typed as the generated `Update`
+  // row (not `Record<string, unknown>`, #265) — supabase-js rejects a plain
+  // index-signature object for `.update()` since it can't verify it has no
+  // excess properties against the known column set.
+  const patch: Database['public']['Tables']['matches']['Update'] = {
+    action_count: seq,
+    updated_at: new Date().toISOString(),
+  }
   if (deadline !== undefined) patch.turn_deadline = deadline
   const update = await db
     .from('matches')
@@ -290,7 +298,7 @@ async function writeSnapshot(
   const { error } = await db
     .from('match_snapshots')
     .upsert(
-      { match_id: matchId, seq, state: state as unknown as Record<string, unknown> },
+      { match_id: matchId, seq, state: state as unknown as Json },
       { onConflict: 'match_id,seq' },
     )
   if (error) throw new AppError('INTERNAL', error.message)
@@ -334,7 +342,9 @@ async function recordMissedTurn(
     .maybeSingle()
   if (error) throw new AppError('INTERNAL', error.message)
   const { missedTurns, aiTakeover } = nextMissedTurnStatus(data?.missed_turns ?? 0, threshold)
-  const patch: Record<string, unknown> = { missed_turns: missedTurns }
+  const patch: Database['public']['Tables']['match_players']['Update'] = {
+    missed_turns: missedTurns,
+  }
   if (aiTakeover) patch.status = 'ai_takeover'
   const update = await db
     .from('match_players')
@@ -360,21 +370,43 @@ async function finalize(db: Db, matchId: string, state: GameState): Promise<void
   // guard lives inside the RPC and matches a row exactly once, so a retry or a
   // concurrent finalize that loses the race applies nothing — rating updates can
   // never be double-applied, the same guarantee as before, now atomic.
-  const { data: applied, error } = await db.rpc('finalize_match_with_ratings', {
-    p_match_id: matchId,
-    p_winner_seat: winnerSeat,
-    p_ratings: ratings,
-  })
+  const { data: applied, error } = await db.rpc(
+    'finalize_match_with_ratings',
+    finalizeRpcArgs(matchId, winnerSeat, ratings),
+  )
   if (error) throw new AppError('INTERNAL', error.message)
   if (!applied) {
     console.log(`finalize: match ${matchId} already finished, ratings not re-applied`)
   }
 }
 
-interface RatingUpsertRow {
+export interface RatingUpsertRow {
   user_id: string
   rating: number
   matches_played: number
+}
+
+/**
+ * Shapes the atomic RPC's arguments for a match finalize (#189, #265). `winnerSeat` is
+ * `null` for a draw / mutual-elimination win — genuinely supported both by the SQL
+ * function's `p_winner_seat int` parameter (no `NOT NULL`) and by the nullable
+ * `matches.winner_seat` column (see
+ * supabase/migrations/20260706000002_finalize_match_with_ratings.sql) — but the
+ * generated `finalize_match_with_ratings` RPC `Args` type omits `| null` for it: Supabase's
+ * function-arg codegen doesn't derive nullability for plpgsql scalar parameters, so
+ * regenerating `database.types.ts` will never add it. Cast rather than substitute a
+ * sentinel fallback (e.g. `0`), which would misattribute a draw to seat 0.
+ */
+export function finalizeRpcArgs(
+  matchId: string,
+  winnerSeat: number | null,
+  ratings: readonly RatingUpsertRow[],
+): { p_match_id: string; p_winner_seat: number; p_ratings: Json } {
+  return {
+    p_match_id: matchId,
+    p_winner_seat: winnerSeat as number,
+    p_ratings: ratings as unknown as Json,
+  }
 }
 
 /**

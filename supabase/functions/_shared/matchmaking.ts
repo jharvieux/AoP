@@ -12,6 +12,7 @@ import {
   ENGINE_VERSION,
   FACTION_IDS,
   type DrainSummary,
+  type Json,
   type MapSize,
   type QueueEntry,
   type QuickMatchBucket,
@@ -90,7 +91,7 @@ async function createQuickMatch(
     .from('matches')
     .insert({
       status: 'lobby',
-      settings: settings as unknown as Record<string, unknown>,
+      settings: settings as unknown as Json,
       seed,
       engine_version: ENGINE_VERSION,
       invite_code: null,

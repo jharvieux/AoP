@@ -5,7 +5,7 @@
 import { serviceClient, requireUserId, ensureProfile } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import { assertFaction, firstFreeFaction, parseSettings, randomSeed } from '../_shared/match.ts'
-import { ENGINE_VERSION, openLobbyLimitReached, type FactionId } from '@aop/shared'
+import { ENGINE_VERSION, openLobbyLimitReached, type FactionId, type Json } from '@aop/shared'
 
 function inviteCode(): string {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       .from('matches')
       .insert({
         status: 'lobby',
-        settings: settings as unknown as Record<string, unknown>,
+        settings: settings as unknown as Json,
         seed: randomSeed(),
         engine_version: ENGINE_VERSION,
         invite_code: code,
