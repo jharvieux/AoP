@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { FACTIONS } from '@aop/content'
 import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
@@ -242,7 +243,7 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
                     className={`size-button ${faction === f ? 'active' : ''}`}
                     onClick={() => setFaction(f)}
                   >
-                    {f}
+                    {FACTIONS[f].name}
                   </button>
                 ))}
               </div>
