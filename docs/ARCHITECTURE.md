@@ -8,7 +8,7 @@ _Pirate-themed strategy game loosely based on Heroes of Might and Magic._
   flagship, a skill tree, and troops aboard.
 - **Cities** replace castles: build structures, recruit troops, generate resources (gold,
   timber, iron, rum, etc.).
-- **Four factions** with distinct troop rosters: Pirates, British, Spanish, Dutch.
+- **Five factions** with distinct troop rosters: Pirates, British, Spanish, Dutch, French.
 - **Combat**: ship-vs-ship and city assault. Outcome driven by ship strength (hull, cannons,
   upgrades), captain skills, and troop composition. **Hybrid model**: combat resolves in
   rounds, and each round the player picks a tactic (broadside, board, ram, flee, …) that
@@ -47,12 +47,13 @@ snapshots. RNG is seeded per match so combat rolls and encounter spawns replay i
   engine/      # pure game logic: state, actions, reducers, combat, pathfinding, AI
   content/     # data-driven game content: factions, units, ships, buildings,
                # skill trees, encounter tables (typed JSON/TS, no logic)
-  shared/      # types + zod schemas for actions/state, shared utils
+  shared/      # transport contracts, validation guards, shared utilities
+  tools/       # development tooling: replay viewer, match inspector, etc.
 /apps
   web/         # React + Vite + PixiJS client
 /supabase
   migrations/  # Postgres schema
-  functions/   # Edge Functions: submit-action, advance-turn, ai-turn, get-player-view
+  functions/   # Edge Functions (see supabase/functions/README.md)
 ```
 
 ## 4. Client (apps/web)
@@ -62,7 +63,9 @@ snapshots. RNG is seeded per match so combat rolls and encounter spawns replay i
   UI chrome (city screens, skill trees, menus) is plain React DOM layered over the canvas;
   far faster to iterate than in-canvas UI and naturally responsive.
 - Mobile-first layout: touch pan/zoom on the map, bottom-sheet panels, 44px touch targets.
-- State: Zustand (or similar light store) wrapping the engine state + UI state.
+- State: hand-rolled context + reducers wrapping the deterministic engine state and UI state.
+  Validation is guard functions (no schema library — the engine and shared packages stay
+  dependency-free). See `packages/shared/src/` for the wire contracts and validation logic.
 - **Native ports later via Capacitor** — wraps the same web app; push notifications become
   native notifications. No rewrite.
 
@@ -78,11 +81,16 @@ _Full multiplayer spec — schema, RLS, edge function contracts, threat model �
   - `match_players` — seat, faction, user or AI, alliance id
   - `match_actions` — append-only action log (`match_id, seq, player, action jsonb`)
   - `match_snapshots` — periodic full-state snapshots for fast loads
-- **Edge Functions** (run the engine server-side):
+- **Edge Functions** (20+ functions, all run the engine server-side as the authority):
+  See the full inventory, contracts, and design notes in
+  [`supabase/functions/README.md`](../supabase/functions/README.md).
+  Highlights:
   - `submit-action` — validate + apply a player action, append to log
   - `end-turn` — advance turn order, trigger notifications, run AI seats
   - `get-player-view` — return state filtered by **fog of war** (clients never receive the
     full state in multiplayer; this is the anti-cheat boundary)
+  - `list-open-matches`, `get-leaderboard` — read-only lobbies and rankings
+  - `publish-map`, `browse-maps`, `download-map`, `report-map`, `remove-map` — community map library
 - **Realtime**: Supabase Realtime channels push "it's your turn" / "match updated" to online
   clients; email (and later native push) for offline players. Turn timers with auto-skip so
   one absent player can't freeze a match.
