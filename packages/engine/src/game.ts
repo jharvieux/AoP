@@ -5,6 +5,7 @@ import { spawnEncounters } from './encounters'
 import { generateMap, tileIndex, type GameMap } from './map'
 import { mapToDefinition } from './mapDefinition'
 import { seedRng, type RngState } from './rng'
+import { RULES_VERSION } from './rulesVersion'
 import type {
   Captain,
   CityState,
@@ -115,7 +116,9 @@ export function createGame(config: GameConfig): GameState {
   )
 
   const withoutVision: GameState = {
-    config,
+    // Stamp the current RULES_VERSION regardless of what the caller passed
+    // (#213) — it is not caller-settable, only asserted against.
+    config: { ...config, rulesVersion: RULES_VERSION },
     map,
     round: 1,
     currentPlayerIndex: 0,
