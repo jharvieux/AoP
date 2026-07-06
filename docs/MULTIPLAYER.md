@@ -204,6 +204,9 @@ sides). Contract:
 - Battle reports involving your seat, redacted to what a participant would learn (enemy
   stack sizes engaged, not reserves elsewhere).
 - Public scoreboard aggregates if enabled in match settings (city counts, rough score).
+- A captain's own standing/board orders, on its own row only (#285) — hidden information
+  to an opponent, but not to the owner who saved it; the CityScreen preset picker reads
+  this back instead of always starting blank.
 
 **Leak audit checklist for #34** (each is a test): action log not readable while active
 (§4); `SEQ_CONFLICT` responses carry no action content; encounter outcomes visible only to

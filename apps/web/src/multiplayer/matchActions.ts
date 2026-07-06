@@ -1,6 +1,7 @@
 import {
   pathCost,
   type Action,
+  type BoardCommand,
   type BoardOrder,
   type Captain,
   type CityState,
@@ -8,6 +9,7 @@ import {
   type GameMap,
   type PlayerView,
   type StandingOrder,
+  type TacticId,
   type ViewCaptain,
   type ViewCity,
 } from '@aop/engine'
@@ -31,11 +33,12 @@ export function ownCaptains(view: PlayerView): ViewCaptain[] {
 
 /**
  * Widen an own-seat `ViewCaptain` to the engine `Captain` shape UI components
- * (`CityScreen`, `MapCanvas`) expect. Own rows carry the full manifest;
- * anything the view legitimately omits even for the owner — standing/board
- * orders are write-only from a client (§7 keeps them out of every view) — is
- * defaulted inert. Returns null for an enemy hull (no own-detail fields):
- * those must never be dressed up as a full Captain.
+ * (`CityScreen`, `MapCanvas`) expect. Own rows carry the full manifest,
+ * including the captain's own standing/board orders (#285 — the view now
+ * discloses a captain's own current orders, so `CityScreen`'s preset picker
+ * can read them back instead of always starting blank). Returns null for an
+ * enemy hull (no own-detail fields): those must never be dressed up as a
+ * full Captain.
  */
 export function captainFromView(cap: ViewCaptain): Captain | null {
   if (cap.troops === undefined || cap.movementPoints === undefined) return null
@@ -51,6 +54,8 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
     xp: cap.xp ?? 0,
     skills: cap.skills ?? [],
     shipUpgrades: cap.shipUpgrades ?? {},
+    standingOrders: cap.standingOrders ?? [],
+    boardOrders: cap.boardOrders ?? [],
   }
 }
 
@@ -151,8 +156,27 @@ export const matchAction = {
   move(view: PlayerView, captainId: string, to: { x: number; y: number }): Action {
     return { type: 'moveCaptain', playerId: view.viewerId, captainId, to }
   },
-  attack(view: PlayerView, captainId: string, targetCaptainId: string): Action {
-    return { type: 'attackCaptain', playerId: view.viewerId, captainId, targetCaptainId }
+  /**
+   * `attackerOrders`/`boardCommands` are only ever set once the interactive
+   * boarding probe (#285, `boardingProbeClient.ts`) has resolved or the
+   * player let the crew fight on — never guessed client-side, since the
+   * multiplayer client holds no RNG state to preview a plan against (§7).
+   */
+  attack(
+    view: PlayerView,
+    captainId: string,
+    targetCaptainId: string,
+    attackerOrders?: TacticId[],
+    boardCommands?: BoardCommand[],
+  ): Action {
+    return {
+      type: 'attackCaptain',
+      playerId: view.viewerId,
+      captainId,
+      targetCaptainId,
+      ...(attackerOrders?.length ? { attackerOrders } : {}),
+      ...(boardCommands?.length ? { boardCommands } : {}),
+    }
   },
   endTurn(view: PlayerView): Action {
     return { type: 'endTurn', playerId: view.viewerId }

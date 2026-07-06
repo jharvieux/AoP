@@ -200,6 +200,20 @@ describe('captainFromView / cityFromView (own-detail widening)', () => {
       xp: 10,
       skills: ['navigator'],
       shipUpgrades: { hull: 1 },
+      standingOrders: [],
+      boardOrders: [],
+    })
+  })
+
+  it('carries a disclosed own captain’s standing/board orders through (#285)', () => {
+    const own: ViewCaptain = {
+      ...view().captains[0]!,
+      standingOrders: [{ when: 'always', tactic: 'evade' }],
+      boardOrders: [{ when: 'always', doctrine: 'holdLine' }],
+    }
+    expect(captainFromView(own)).toMatchObject({
+      standingOrders: [{ when: 'always', tactic: 'evade' }],
+      boardOrders: [{ when: 'always', doctrine: 'holdLine' }],
     })
   })
 
@@ -242,6 +256,25 @@ describe('matchAction builders (playerId always the viewer seat)', () => {
     expect(
       matchAction.transferTroops(v, 'city-own', 'cap-own', 'toShip', 'swashbuckler'),
     ).toMatchObject({ direction: 'toShip', count: 1 })
+  })
+
+  it('attaches attackerOrders/boardCommands to attackCaptain only when given (#285)', () => {
+    expect(matchAction.attack(v, 'cap-own', 'cap-near')).toEqual({
+      type: 'attackCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-own',
+      targetCaptainId: 'cap-near',
+    })
+    expect(
+      matchAction.attack(v, 'cap-own', 'cap-near', ['board'], [{ stackId: 0, targetId: 1 }]),
+    ).toEqual({
+      type: 'attackCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-own',
+      targetCaptainId: 'cap-near',
+      attackerOrders: ['board'],
+      boardCommands: [{ stackId: 0, targetId: 1 }],
+    })
   })
 
   it('attaches boardOrders to setStandingOrders only when given', () => {

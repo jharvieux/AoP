@@ -158,6 +158,34 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     expect(mine.shipUpgrades).toBeDefined()
   })
 
+  it('discloses a captain’s own standing/board orders on its own row (#285)', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    const withOrders: GameState = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === mine.id
+          ? {
+              ...c,
+              standingOrders: [{ when: 'always' as const, tactic: 'broadside' as const }],
+              boardOrders: [{ when: 'always' as const, doctrine: 'advance' as const }],
+            }
+          : c,
+      ),
+    }
+    const view = playerView(withOrders, 'seat-0')
+    const seen = view.captains.find((c) => c.id === mine.id)!
+    expect(seen.standingOrders).toEqual([{ when: 'always', tactic: 'broadside' }])
+    expect(seen.boardOrders).toEqual([{ when: 'always', doctrine: 'advance' }])
+  })
+
+  it('omits standingOrders/boardOrders on an own captain that never set any', () => {
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    const mine = view.captains.find((c) => c.ownerId === 'seat-0')!
+    expect(mine.standingOrders).toBeUndefined()
+    expect(mine.boardOrders).toBeUndefined()
+  })
+
   it('emits only explored tiles, flagging which are currently visible', () => {
     const state = createGame(matchConfig())
     const view = playerView(state, 'seat-0')

@@ -1,21 +1,27 @@
 import {
   allianceComponents,
   applyAction,
+  applyActionWithOutcome,
+  assertAttackLegal,
   BOARD_DOCTRINES,
   BOARD_ORDER_CONDITIONS,
   createGame,
   ENCOUNTER_CHOICES,
   nextAiAction,
   ORDER_CONDITIONS,
+  probeBoardingBattle,
   replay,
   TACTICS,
   InvalidActionError,
   type Action,
+  type BattleReport,
   type BoardCommand,
   type BoardOrder,
+  type BoardingProbeOutcome,
   type GameConfig,
   type GameState,
   type StandingOrder,
+  type TacticId,
 } from '@aop/engine'
 import {
   computeMatchRatingUpdates,
@@ -732,6 +738,14 @@ const turnAdvanced = (before: GameState, after: GameState): boolean =>
 export interface SubmitResult {
   seq: number
   state: GameState
+  /**
+   * The combat report the caller's OWN action produced, if it was an
+   * `attackCaptain` that reached combat (#285). Never surfaced for an AI
+   * seat's auto-played turn that follows in the same call — a caller only
+   * ever sees the report their own submission caused, exactly what the
+   * single-player `GameScreen` shows its human after an attack.
+   */
+  battleReport?: BattleReport
 }
 
 /**
@@ -777,6 +791,78 @@ export async function submitAction(
   return submitActionInternal(db, matchId, callerSeat, action, { skip: false })
 }
 
+/** Structural validation for `probe-boarding`'s body (#285), mirroring `sanitizeAction`'s
+ * per-field whitelist for `attackCaptain` (#206) — every value comes straight off the
+ * wire, so it's rebuilt field-by-field rather than trusted. */
+export interface ProbeBoardingParams {
+  captainId: string
+  targetCaptainId: string
+  attackerOrders?: TacticId[]
+  commands: BoardCommand[]
+}
+
+export function sanitizeProbeBoardingParams(body: unknown): ProbeBoardingParams {
+  const b = (body ?? {}) as Record<string, unknown>
+  return {
+    captainId: reqString(b.captainId, 'captainId'),
+    targetCaptainId: reqString(b.targetCaptainId, 'targetCaptainId'),
+    ...(b.attackerOrders !== undefined
+      ? {
+          attackerOrders: reqArray(b.attackerOrders, 'attackerOrders', (v, f) =>
+            reqEnum(v, TACTICS, f),
+          ),
+        }
+      : {}),
+    commands: reqArray(b.commands ?? [], 'commands', reqBoardCommand),
+  }
+}
+
+/**
+ * Server-side boarding-melee probe (#285): re-simulates a not-yet-committed
+ * attack from the current authoritative state so an interactive multiplayer
+ * client can drive `BoardingCommandSheet` the same way single-player does —
+ * a multiplayer client has no `GameState`/`rngState` to probe locally (§7).
+ * Read-only: never appends to the action log or advances the match. The
+ * caller submits the recorded plan for real afterward, as
+ * `attackCaptain.boardCommands`, through the normal `submitAction` path,
+ * which re-validates everything from scratch.
+ *
+ * Must be gated by {@link assertAttackLegal} before simulating anything —
+ * this never applies state, so that guard is the only thing standing between
+ * a forged captain/target pair and a free look at a battle (enemy manifest,
+ * RNG-derived rolls) the caller was never entitled to start.
+ */
+export async function probeBoarding(
+  db: Db,
+  matchId: string,
+  callerSeat: number,
+  params: ProbeBoardingParams,
+): Promise<BoardingProbeOutcome> {
+  const match = await loadMatch(db, matchId)
+  if (match.status !== 'active') throw new AppError('MATCH_STATE', `Match is ${match.status}`)
+
+  const state = await reconstructState(db, matchId, match.action_count)
+  const currentId = state.players[state.currentPlayerIndex]?.id
+  if (currentId !== seatPlayerId(callerSeat)) {
+    throw new AppError('NOT_YOUR_TURN', `It is ${currentId ?? 'nobody'}'s turn`)
+  }
+
+  const attackParams = {
+    playerId: seatPlayerId(callerSeat),
+    captainId: params.captainId,
+    targetCaptainId: params.targetCaptainId,
+    ...(params.attackerOrders ? { attackerOrders: params.attackerOrders } : {}),
+  }
+  try {
+    assertAttackLegal(state, attackParams)
+  } catch (err) {
+    if (err instanceof InvalidActionError) throw new AppError('INVALID_ACTION', err.message)
+    throw err
+  }
+
+  return probeBoardingBattle(state, attackParams, params.commands)
+}
+
 /**
  * Server-forced turn skip (#129, §8 timer sweep): submits `endTurn` on behalf of
  * the seat whose `turn_deadline` has passed. Goes through the same authoritative
@@ -818,8 +904,11 @@ async function submitActionInternal(
 
   const owned: Action = { ...action, playerId: seatPlayerId(callerSeat) }
   let next: GameState
+  let battleReport: BattleReport | undefined
   try {
-    next = applyAction(state, owned)
+    const outcome = applyActionWithOutcome(state, owned)
+    next = outcome.state
+    battleReport = outcome.battleReport
   } catch (err) {
     if (err instanceof InvalidActionError) throw new AppError('INVALID_ACTION', err.message)
     throw err
@@ -875,7 +964,7 @@ async function submitActionInternal(
 
   await finalize(db, matchId, state)
   await mirrorAllianceIds(db, matchId, state)
-  return { seq: count, state }
+  return { seq: count, state, ...(battleReport ? { battleReport } : {}) }
 }
 
 /**

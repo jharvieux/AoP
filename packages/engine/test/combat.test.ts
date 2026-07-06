@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyActionWithOutcome,
+  assertAttackLegal,
   captainsOf,
   combatantStrength,
   createCombatStats,
   createGame,
+  probeBoardingBattle,
   replay,
   resolveCombat,
   seedRng,
@@ -370,6 +372,91 @@ describe('attackCaptain action', () => {
     expect(reportB!.attackerSurvived).toBe(reportA!.attackerSurvived)
     expect(reportB!.defenderSurvived).toBe(reportA!.defenderSurvived)
     expect(reportB!.rounds.length).toBe(reportA!.rounds.length)
+  })
+})
+
+describe('assertAttackLegal (#285 multiplayer boarding probe)', () => {
+  // The multiplayer boarding probe (`_shared/match.ts`'s `probeBoarding`) never
+  // applies state, so this guard is the only thing standing between a forged
+  // captain/target pair and a free look at a battle that was never legal to
+  // start — it must reject exactly what `attackCaptain` itself would.
+  it('accepts a legal attack and resolves the same attacker/target attackCaptain would', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const { attacker, target } = assertAttackLegal(state, {
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    expect(attacker.id).toBe(p1cap.id)
+    expect(target.id).toBe(p2cap.id)
+  })
+
+  it('rejects a captain the caller does not own', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    expect(() =>
+      assertAttackLegal(state, { playerId: 'p2', captainId: p1cap.id, targetCaptainId: p2cap.id }),
+    ).toThrow(/not yours/)
+  })
+
+  it('rejects attacking your own captain', () => {
+    const state = createGame(combatConfig())
+    const p1cap = captainsOf(state, 'p1')[0]!
+    expect(() =>
+      assertAttackLegal(state, { playerId: 'p1', captainId: p1cap.id, targetCaptainId: p1cap.id }),
+    ).toThrow(/own captain/)
+  })
+
+  it('rejects a target out of range', () => {
+    const state = createGame(combatConfig())
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    expect(() =>
+      assertAttackLegal(state, { playerId: 'p1', captainId: p1cap.id, targetCaptainId: p2cap.id }),
+    ).toThrow(/range/)
+  })
+
+  it('rejects a captain with no movement left', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const spent = {
+      ...state,
+      captains: state.captains.map((c) => (c.id === p1cap.id ? { ...c, movementPoints: 0 } : c)),
+    }
+    expect(() =>
+      assertAttackLegal(spent, {
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCaptainId: p2cap.id,
+      }),
+    ).toThrow(/movement/)
+  })
+
+  it('probeBoardingBattle on an assertAttackLegal-approved pair replays identically to attackCaptain', () => {
+    // The load-bearing contract for the multiplayer probe: legality-checked
+    // then probed, the recorded plan must reproduce byte-identical results to
+    // submitting the same attack straight through the reducer (the
+    // single-player boardingPlanner.test.ts asserts this exhaustively; this is
+    // the smoke test that the engine-exported function still holds once
+    // called from outside the reducer, e.g. from an edge function).
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    assertAttackLegal(state, { playerId: 'p1', captainId: p1cap.id, targetCaptainId: p2cap.id })
+    const probe = probeBoardingBattle(state, { captainId: p1cap.id, targetCaptainId: p2cap.id }, [])
+    expect(probe.kind).toBe('resolved')
+    if (probe.kind !== 'resolved') return
+    const { battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    expect(JSON.stringify(battleReport)).toBe(JSON.stringify(probe.report))
   })
 })
 

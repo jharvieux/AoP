@@ -1,7 +1,10 @@
 // submit-action (docs/MULTIPLAYER.md §5.4): POST { matchId, expectedSeq, action } ->
-// { seq, view }. The single choke point where a proposed Action is validated through
-// the engine and appended to the log. The caller's seat comes from their JWT; the
-// action's playerId is overwritten from it (§11 forged-action mitigation).
+// { seq, view, battleReport? }. The single choke point where a proposed Action is
+// validated through the engine and appended to the log. The caller's seat comes from
+// their JWT; the action's playerId is overwritten from it (§11 forged-action
+// mitigation). `battleReport` is present only when this action was an attackCaptain
+// that reached combat (#285) — the reducer's own combat log, fog-filtered by nothing
+// further since it only concerns the two captains the caller's own attack engaged.
 
 import { playerView, type Action } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
@@ -43,8 +46,12 @@ Deno.serve(async (req) => {
     // so a missing or forged playerId never reaches validation or the log.
     const action = sanitizeAction({ ...body.action, playerId: seatPlayerId(seat) })
 
-    const { seq, state } = await submitAction(db, body.matchId, seat, action)
-    return jsonResponse({ seq, view: playerView(state, seatPlayerId(seat)) })
+    const { seq, state, battleReport } = await submitAction(db, body.matchId, seat, action)
+    return jsonResponse({
+      seq,
+      view: playerView(state, seatPlayerId(seat)),
+      ...(battleReport ? { battleReport } : {}),
+    })
   } catch (err) {
     return errorResponse(err)
   }

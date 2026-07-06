@@ -1,8 +1,10 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiTuning } from './ai'
+import type { BoardOrder } from './battleBoard'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { TileType } from './map'
+import type { StandingOrder } from './tactics'
 import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
 
@@ -25,6 +27,11 @@ import { tileKey, visibleTilesWithAllies } from './visibility'
  * - Enemy city interiors (buildings/garrison/recruit pools) and treasuries.
  * - Enemy captains' standing orders, movement, XP, skills and ship upgrades —
  *   knowing a defender's standing orders would break interactive attacks (§7).
+ *   A captain's OWN standing/board orders are not hidden information to its
+ *   own owner, though — they are write-only *from the client* only because
+ *   the view never echoed them back (#285); this filter now discloses a
+ *   captain's current orders on its own row, so a client can seed its order
+ *   presets from what is actually saved instead of always starting blank.
  *
  * Allied seats (#137) extend only the viewer's *current vision*: their live
  * sightlines are unioned in, so the viewer sees the tiles and units (as bare
@@ -137,6 +144,15 @@ export interface ViewCaptain {
   xp?: number
   skills?: string[]
   shipUpgrades?: Record<string, number>
+  /**
+   * The owner's own saved defence plan (#285) — never present on an enemy
+   * row (see the class doc). Absent, not `[]`, when the captain has never
+   * set any, so a client can tell "no orders saved" apart from "saved an
+   * empty plan" if that distinction ever matters.
+   */
+  standingOrders?: StandingOrder[]
+  /** The owner's own saved board doctrine (#285); same absent-vs-empty rule as {@link standingOrders}. */
+  boardOrders?: BoardOrder[]
 }
 
 export interface ViewEncounter {
@@ -225,6 +241,8 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         xp: cap.xp,
         skills: cap.skills,
         shipUpgrades: cap.shipUpgrades,
+        ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
+        ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
       })
     } else if (visibleKeys.has(tileKey(cap.position))) {
       // Enemy captain in current vision: you see a hull of a known class at a

@@ -17,7 +17,9 @@ import {
   findExpiredTurns,
   isExpectedSweepRace,
   parseSettings,
+  probeBoarding,
   sanitizeAction,
+  sanitizeProbeBoardingParams,
   type MatchSettings,
   type StartMatchSeat,
 } from './match.ts'
@@ -240,7 +242,11 @@ Deno.test(
   () => {
     const withJunk = { ...END_TURN, junk: 'x'.repeat(1000) } as unknown as Action
     const args = appendActionRpcArgs('m1', 4, 2, withJunk, undefined)
-    assertEquals(args.p_action, END_TURN)
+    // p_action is typed Json (the RPC arg shape); END_TURN is a plain Action —
+    // structurally identical once junk is stripped, just not nominally the
+    // same type, hence the cast (pre-existing type-only mismatch, unrelated
+    // to #285, noticed while `deno check`-ing this file for the new tests below).
+    assertEquals(args.p_action, END_TURN as unknown as typeof args.p_action)
     assertEquals(args.p_match_id, 'm1')
     assertEquals(args.p_prior_count, 4)
     assertEquals(args.p_seat, 2)
@@ -713,3 +719,144 @@ Deno.test('broadcastTurn: pokes the private match channel with the seq only', as
     payload: { type: 'turn', seq: 5 },
   })
 })
+
+// --- probeBoarding (#285: the multiplayer interactive-boarding-melee probe) ---
+// Read-only: never appends to match_actions or writes a snapshot. The load-bearing
+// property under test is that an illegal attack is rejected by the same
+// `assertAttackLegal` gate `attackCaptain` itself uses, BEFORE anything is
+// simulated — a probe never applies state, so that gate is the only thing
+// standing between a forged captain/target pair and a free look at a battle.
+
+const PROBE_SEATS: StartMatchSeat[] = [
+  { seat: 0, userId: 'user-a', faction: 'pirates' },
+  { seat: 1, userId: 'user-b', faction: 'british' },
+]
+const PROBE_NAMES = new Map([
+  ['user-a', 'Alice'],
+  ['user-b', 'Bob'],
+])
+
+/** A real two-seat GameState (genuine content + combat stats via buildStartMatchConfig),
+ * with the two starting captains dragged adjacent so an attack between them is legal. */
+function probeGameState() {
+  const state = createGame(buildStartMatchConfig(7, START_MATCH_SETTINGS, PROBE_SEATS, PROBE_NAMES))
+  const p0cap = state.captains.find((c) => c.ownerId === 'seat-0')!
+  const p1cap = state.captains.find((c) => c.ownerId === 'seat-1')!
+  const target = { x: p0cap.position.x + 1, y: p0cap.position.y }
+  return {
+    state: {
+      ...state,
+      captains: state.captains.map((c) => (c.id === p1cap.id ? { ...c, position: target } : c)),
+    },
+    p0cap,
+    p1cap,
+  }
+}
+
+/** A fakeDb seeded with a single seq-0 snapshot — `reconstructState` needs no replay. */
+function probeDb(matchId: string, state: unknown) {
+  return fakeDb({
+    matches: [{ id: matchId, status: 'active', action_count: 0 }],
+    match_snapshots: [{ match_id: matchId, seq: 0, state }],
+    match_actions: [],
+  })
+}
+
+Deno.test('sanitizeProbeBoardingParams: rejects a non-array commands field', () => {
+  assertThrows(
+    () => sanitizeProbeBoardingParams({ captainId: 'c', targetCaptainId: 't', commands: 'nope' }),
+    AppError,
+    'commands',
+  )
+})
+
+Deno.test(
+  'sanitizeProbeBoardingParams: defaults commands to [] and validates attackerOrders',
+  () => {
+    const params = sanitizeProbeBoardingParams({ captainId: 'c', targetCaptainId: 't' })
+    assertEquals(params, { captainId: 'c', targetCaptainId: 't', commands: [] })
+    assertThrows(
+      () =>
+        sanitizeProbeBoardingParams({
+          captainId: 'c',
+          targetCaptainId: 't',
+          attackerOrders: ['nuke'],
+        }),
+      AppError,
+      'attackerOrders',
+    )
+  },
+)
+
+Deno.test('probeBoarding: a legal attack from the current seat awaits or resolves', async () => {
+  const { state, p0cap, p1cap } = probeGameState()
+  const db = probeDb('m1', state)
+  const outcome = await probeBoarding(db, 'm1', 0, {
+    captainId: p0cap.id,
+    targetCaptainId: p1cap.id,
+    commands: [],
+  })
+  assertEquals(['awaitingCommand', 'resolved'].includes(outcome.kind), true)
+})
+
+Deno.test(
+  'probeBoarding: rejects a captain the caller does not own as INVALID_ACTION',
+  async () => {
+    const { state, p0cap, p1cap } = probeGameState()
+    const db = probeDb('m1', state)
+    // seat 0 attempts to drive seat 1's own captain into the probe.
+    const err = await assertRejects(
+      () =>
+        probeBoarding(db, 'm1', 0, {
+          captainId: p1cap.id,
+          targetCaptainId: p0cap.id,
+          commands: [],
+        }),
+      AppError,
+    )
+    assertEquals(err.code, 'INVALID_ACTION')
+  },
+)
+
+Deno.test(
+  'probeBoarding: rejects an out-of-range target as INVALID_ACTION, never simulating it',
+  async () => {
+    // Fresh createGame positions (no adjacency hack): the two home islands start
+    // far apart, so this attack was never legal.
+    const state = createGame(
+      buildStartMatchConfig(7, START_MATCH_SETTINGS, PROBE_SEATS, PROBE_NAMES),
+    )
+    const p0cap = state.captains.find((c) => c.ownerId === 'seat-0')!
+    const p1cap = state.captains.find((c) => c.ownerId === 'seat-1')!
+    const db = probeDb('m1', state)
+    const err = await assertRejects(
+      () =>
+        probeBoarding(db, 'm1', 0, {
+          captainId: p0cap.id,
+          targetCaptainId: p1cap.id,
+          commands: [],
+        }),
+      AppError,
+    )
+    assertEquals(err.code, 'INVALID_ACTION')
+  },
+)
+
+Deno.test(
+  'probeBoarding: rejects a probe from a seat that is not currently on the clock',
+  async () => {
+    const { state, p0cap, p1cap } = probeGameState()
+    const db = probeDb('m1', state)
+    // It's seat 0's turn (createGame's currentPlayerIndex 0); seat 1 tries to probe anyway.
+    const err = await assertRejects(
+      () =>
+        probeBoarding(db, 'm1', 1, {
+          captainId: p1cap.id,
+          targetCaptainId: p0cap.id,
+          commands: [],
+        }),
+      AppError,
+    )
+    assertEquals(err.code, 'NOT_YOUR_TURN')
+  },
+)

@@ -1,15 +1,27 @@
-import type { Action, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
+import type {
+  Action,
+  BattleReport,
+  BoardActivationView,
+  BoardCommand,
+  EncounterChoice,
+  EncounterKind,
+  PlayerView,
+} from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { impactFeedback, shipMoveFeedback, tapFeedback } from '../audio/feedback'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
+import { BattleBoardSheet } from '../BattleBoardSheet'
+import { BoardingCommandSheet } from '../BoardingCommandSheet'
+import { stackLosses, type StackLoss } from '../boardingPlanner'
 import { BottomSheet } from '../components/BottomSheet'
 import { DiplomacyPanel } from '../components/DiplomacyPanel'
 import { MatchChatPanel } from '../components/MatchChatPanel'
 import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
+import { BoardingProbeClient } from '../multiplayer/boardingProbeClient'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
   captainFromView,
@@ -19,6 +31,7 @@ import {
   ownCaptains,
 } from '../multiplayer/matchActions'
 import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
+import { applyOptimisticAction } from '../multiplayer/optimisticView'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
 import {
   createMatchRealtimeTransport,
@@ -60,6 +73,21 @@ interface LiveMatch {
 }
 
 /**
+ * An attack that reached the boarding melee, mid-command (#93, #285's
+ * multiplayer analog of GameScreen's `BoardingState`). The action has not
+ * been dispatched yet: the fight is simulated server-side via
+ * `probe-boarding`, one recorded command per attacker activation, and
+ * dispatched with the full plan once it resolves.
+ */
+interface BoardingState {
+  captainId: string
+  targetCaptainId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
  * The live multiplayer match screen (#261, building on #243's modules): the
  * fog-locked `PlayerView` board with the full action surface — captain
  * select/move, attack, encounters, city build/recruit, diplomacy, chat, end
@@ -86,6 +114,15 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // The live `match:{id}` Realtime transport (#260) — also handed to the chat
   // panel so incoming-message pokes arrive without polling.
   const [transport, setTransport] = useState<MatchRealtimeTransport | null>(null)
+  // Optimistic local application (#285, §9 step 2): a `moveCaptain` patch applied
+  // ahead of the server round trip, discarded the moment a fresh `live.view`
+  // arrives — whether that's the server's own confirmation or a resync.
+  const [optimisticView, setOptimisticView] = useState<PlayerView | null>(null)
+  // In-progress interactive boarding melee (#285) — see `BoardingState`.
+  const [boarding, setBoarding] = useState<BoardingState | null>(null)
+  // The last attack's combat report, fog-filtered server-side to what this
+  // seat's own action revealed (#285); null once dismissed.
+  const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
 
   const pokeTimerRef = useRef<number | null>(null)
   const prevViewRef = useRef<PlayerView | null>(null)
@@ -191,12 +228,32 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     [],
   )
 
-  const board = useMemo(() => (live ? boardFromPlayerView(live.view) : null), [live?.view])
+  // A fresh `live.view` — the server's own confirmation or any resync — always
+  // supersedes an optimistic patch (#285): never hold one past one round trip.
+  useEffect(() => {
+    setOptimisticView(null)
+  }, [live?.view])
+
+  const board = useMemo(
+    () =>
+      optimisticView
+        ? boardFromPlayerView(optimisticView)
+        : live
+          ? boardFromPlayerView(live.view)
+          : null,
+    [optimisticView, live?.view],
+  )
 
   async function submit(action: Action) {
     if (!session || !config || !live || submitting) return
     setActionError(null)
     setSubmitting(true)
+    // Optimistic local application (§9 step 2, #285): a moveCaptain patch is
+    // fully knowable from the view alone, so it renders immediately instead of
+    // waiting out the round trip. Discarded by the `live.view` effect above
+    // the moment a fresh view arrives — success or resync alike.
+    const optimistic = applyOptimisticAction(live.view, board!.map, action)
+    if (optimistic) setOptimisticView(optimistic)
     try {
       const client = new MatchActionClient(config)
       const result = await client.submitAction(session, {
@@ -205,6 +262,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         action,
       })
       setLive({ ...live, seq: result.seq, view: result.view })
+      // Present only when this action was an attackCaptain that reached
+      // combat (#285) — the caller's own attack, fog-filtered to nothing
+      // further since it only concerns the two engaged captains.
+      if (result.battleReport) setBattleReport(result.battleReport)
       // The response carries no turn_deadline; pick the fresh one up now
       // rather than waiting out the poll interval.
       void refetch()
@@ -316,14 +377,81 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     }
   }
 
+  /**
+   * Dispatch the boarding attack with every command recorded so far (#285,
+   * mirroring GameScreen's single-player `dispatchBoarding`); the board AI
+   * finishes any remainder the reducer can't resolve from the recorded plan.
+   */
+  function dispatchBoarding(captainId: string, targetCaptainId: string, commands: BoardCommand[]) {
+    setBoarding(null)
+    void submit(matchAction.attack(view, captainId, targetCaptainId, undefined, commands))
+  }
+
+  /**
+   * Launch the attack (#93, #285's multiplayer analog). A multiplayer client
+   * has no `GameState`/`rngState` to probe locally (§7), so the not-yet-
+   * committed attack is probed server-side via `probe-boarding`: if it reaches
+   * a boarding melee, the command sheet opens and the player drives their
+   * stacks by hand, one server round trip per confirmed order; a battle
+   * decided at sea (or a probe that fails outright) dispatches immediately —
+   * a broken probe must never block the attack, so it falls back to the
+   * board AI exactly like a legitimate no-melee result would.
+   */
   function confirmAttack() {
-    if (!selectedCaptain || !attackTarget) return
+    if (!selectedCaptain || !attackTarget || !session || !config) return
     impactFeedback()
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
     setAttackTargetId(null)
     setSelectedCaptainId(null)
-    void submit(matchAction.attack(view, captainId, targetCaptainId))
+
+    void (async () => {
+      try {
+        const probe = await new BoardingProbeClient(config).probe(session, {
+          matchId,
+          captainId,
+          targetCaptainId,
+          commands: [],
+        })
+        if (probe.kind === 'awaitingCommand') {
+          setBoarding({ captainId, targetCaptainId, commands: [], view: probe.view, losses: [] })
+          return
+        }
+      } catch (err) {
+        console.error('Boarding probe failed; falling back to auto-resolve', err)
+      }
+      dispatchBoarding(captainId, targetCaptainId, [])
+    })()
+  }
+
+  /** One confirmed activation order: extend the plan and re-probe for the next activation. */
+  function orderBoardingCommand(command: BoardCommand) {
+    if (!boarding || !session || !config) return
+    const commands = [...boarding.commands, command]
+    void (async () => {
+      try {
+        const probe = await new BoardingProbeClient(config).probe(session, {
+          matchId,
+          captainId: boarding.captainId,
+          targetCaptainId: boarding.targetCaptainId,
+          commands,
+        })
+        if (probe.kind === 'awaitingCommand') {
+          setBoarding({
+            ...boarding,
+            commands,
+            view: probe.view,
+            losses: stackLosses(boarding.view, probe.view),
+          })
+          return
+        }
+      } catch (err) {
+        console.error('Boarding probe failed mid-melee; auto-resolving the rest', err)
+      }
+      // Resolved (or the probe failed): submit the recorded plan — the engine
+      // re-derives the identical fight from the action log.
+      dispatchBoarding(boarding.captainId, boarding.targetCaptainId, commands)
+    })()
   }
 
   function resolveEncounter(choice: string) {
@@ -473,7 +601,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         !encounter &&
         !openCity &&
         !diplomacyOpen &&
-        !chatOpen && <AdSlot placement="between-turns" />}
+        !chatOpen &&
+        !boarding &&
+        !battleReport && <AdSlot placement="between-turns" />}
 
       {attackTarget && selectedCaptain && (
         <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
@@ -572,10 +702,19 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           }}
           onSetBoardOrders={(boardOrders) => {
             if (!captainAtOpenCity) return
-            // A view never discloses current orders (write-only from a client,
-            // §7), so board doctrine rides an empty naval-order slate rather
-            // than re-sending unknown existing orders.
-            void submit(matchAction.setStandingOrders(view, captainAtOpenCity.id, [], boardOrders))
+            // setStandingOrders always replaces `orders` wholesale (only
+            // `boardOrders` has an absent-means-untouched escape hatch), so
+            // setting board doctrine must resend the captain's own current
+            // naval standing orders — now disclosed by the view (#285) —
+            // rather than clobber them with an empty slate.
+            void submit(
+              matchAction.setStandingOrders(
+                view,
+                captainAtOpenCity.id,
+                captainAtOpenCity.standingOrders ?? [],
+                boardOrders,
+              ),
+            )
           }}
           onChooseCaptainSkill={(skillId) => {
             if (!captainAtOpenCity) return
@@ -621,6 +760,26 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           viewerSeat={live.seat}
           seatName={seatName}
           onClose={() => setChatOpen(false)}
+        />
+      )}
+
+      {boarding && (
+        <BoardingCommandSheet
+          key={boarding.commands.length}
+          view={boarding.view}
+          losses={boarding.losses}
+          onCommand={orderBoardingCommand}
+          onAutoResolve={() =>
+            dispatchBoarding(boarding.captainId, boarding.targetCaptainId, boarding.commands)
+          }
+        />
+      )}
+
+      {battleReport && (
+        <BattleBoardSheet
+          report={battleReport}
+          playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
+          onClose={() => setBattleReport(null)}
         />
       )}
     </div>

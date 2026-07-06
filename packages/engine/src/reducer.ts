@@ -45,6 +45,7 @@ import {
   type BattleReport,
   type Combatant,
   type CombatResult,
+  type CombatStatsData,
   type TacticsTuning,
 } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
@@ -314,34 +315,58 @@ export function aiTacticDriverForOwner(
   return aiTacticDriver(tactics)
 }
 
+/**
+ * Legality checks shared by {@link attackCaptain} and the multiplayer boarding
+ * probe (#285, `_shared/match.ts`'s `probeBoarding`): ownership, adjacency,
+ * remaining movement, configured combat stats, and well-formed tactic enums.
+ * A probe never applies state — it only simulates a melee to hand the client
+ * an interactive command sheet — so this guard is the ONLY gate standing
+ * between a forged captain/target pair and a free look at a battle (enemy
+ * manifest, RNG-derived rolls) that was never legal to start. Exported so the
+ * edge function can call the identical check before revealing anything.
+ */
+export function assertAttackLegal(
+  state: GameState,
+  action: Pick<
+    AttackCaptainAction,
+    'captainId' | 'targetCaptainId' | 'playerId' | 'attackerOrders'
+  >,
+): { attacker: Captain; target: Captain; combatStats: CombatStatsData } {
+  const fail = (message: string) =>
+    new InvalidActionError(message, { type: 'attackCaptain', ...action })
+
+  const attacker = state.captains.find((c) => c.id === action.captainId)
+  if (!attacker) throw fail(`No captain ${action.captainId}`)
+  if (attacker.ownerId !== action.playerId) {
+    throw fail(`Captain ${action.captainId} is not yours`)
+  }
+  const target = state.captains.find((c) => c.id === action.targetCaptainId)
+  if (!target) throw fail(`No captain ${action.targetCaptainId}`)
+  if (target.ownerId === action.playerId) {
+    throw fail('Cannot attack your own captain')
+  }
+  if (chebyshevDistance(attacker.position, target.position) > 1) {
+    throw fail('Target is not within attack range')
+  }
+  if (attacker.movementPoints < 1) {
+    throw fail('Captain has no movement left to attack')
+  }
+  if (!state.config.combatStats) {
+    throw fail('No combat stats configured for this match')
+  }
+  for (const tactic of action.attackerOrders ?? []) {
+    if (!TACTICS.includes(tactic)) {
+      throw fail(`Unknown tactic '${tactic}' in attacker orders`)
+    }
+  }
+  return { attacker, target, combatStats: state.config.combatStats }
+}
+
 function attackCaptain(
   state: GameState,
   action: AttackCaptainAction,
 ): { state: GameState; battleReport: BattleReport } {
-  const attacker = state.captains.find((c) => c.id === action.captainId)
-  if (!attacker) throw new InvalidActionError(`No captain ${action.captainId}`, action)
-  if (attacker.ownerId !== action.playerId) {
-    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
-  }
-  const target = state.captains.find((c) => c.id === action.targetCaptainId)
-  if (!target) throw new InvalidActionError(`No captain ${action.targetCaptainId}`, action)
-  if (target.ownerId === action.playerId) {
-    throw new InvalidActionError('Cannot attack your own captain', action)
-  }
-  if (chebyshevDistance(attacker.position, target.position) > 1) {
-    throw new InvalidActionError('Target is not within attack range', action)
-  }
-  if (attacker.movementPoints < 1) {
-    throw new InvalidActionError('Captain has no movement left to attack', action)
-  }
-  if (!state.config.combatStats) {
-    throw new InvalidActionError('No combat stats configured for this match', action)
-  }
-  for (const tactic of action.attackerOrders ?? []) {
-    if (!TACTICS.includes(tactic)) {
-      throw new InvalidActionError(`Unknown tactic '${tactic}' in attacker orders`, action)
-    }
-  }
+  const { attacker, target, combatStats } = assertAttackLegal(state, action)
   for (const command of action.boardCommands ?? []) {
     if (!isValidBoardCommand(command)) {
       throw new InvalidActionError('Malformed board command in attacker plan', action)
@@ -359,7 +384,7 @@ function attackCaptain(
     areAllied(state, attacker.ownerId, target.ownerId) ||
     wasAllyWithinTruce(state.alliances, attacker.ownerId, target.ownerId, state.round, truceRounds)
 
-  const stats = createCombatStats(state.config.combatStats)
+  const stats = createCombatStats(combatStats)
   const content = state.config.content
 
   // The attacker plays its submitted plan; the defender fights by the standing
