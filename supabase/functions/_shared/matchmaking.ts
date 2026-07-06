@@ -19,7 +19,13 @@ import {
 } from '@aop/shared'
 import { AppError } from './http.ts'
 import { reportUnexpectedError } from './reporting.ts'
-import { randomSeed, startMatch, type MatchSettings, type StartMatchSeat } from './match.ts'
+import {
+  randomSeed,
+  startMatch,
+  sweepLateJoinSeats,
+  type MatchSettings,
+  type StartMatchSeat,
+} from './match.ts'
 import type { Db } from './client.ts'
 
 // Quick-match defaults (§8): 24h/turn async cadence and the standard 3-missed-turn AI
@@ -121,6 +127,10 @@ async function createQuickMatch(
     faction: s.faction,
   }))
   await startMatch(db, matchId, seed, settings, seatList)
+
+  // #221: quick matches are public lobbies for a moment, so the same join/start
+  // race applies — drop any seat a joiner slipped in past the frozen group.
+  await sweepLateJoinSeats(db, matchId, seats.length)
   return matchId
 }
 

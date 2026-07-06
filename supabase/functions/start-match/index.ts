@@ -4,7 +4,12 @@
 
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { startMatch, type MatchSettings, type StartMatchSeat } from '../_shared/match.ts'
+import {
+  startMatch,
+  sweepLateJoinSeats,
+  type MatchSettings,
+  type StartMatchSeat,
+} from '../_shared/match.ts'
 import type { FactionId } from '@aop/shared'
 
 Deno.serve(async (req) => {
@@ -47,6 +52,10 @@ Deno.serve(async (req) => {
       faction: s.faction as FactionId,
     }))
     await startMatch(db, matchId, Number(match.seed), settings, seatList)
+
+    // #221: a joiner whose insert landed between the seat read above and the
+    // activation holds a row absent from the frozen GameState — remove it.
+    await sweepLateJoinSeats(db, matchId, seats.length)
 
     return jsonResponse({ seq: 0 })
   } catch (err) {
