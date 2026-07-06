@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAudioSettings } from '../audio/useAudioSettings'
 import { useBackgroundMusic } from '../audio/useBackgroundMusic'
 import { tapFeedback } from '../audio/feedback'
@@ -21,6 +22,12 @@ interface MainMenuProps {
   onLeaderboard: () => void
 }
 
+/**
+ * Main menu per the design handoff (docs/design_handoff_start_screen, #302):
+ * New Game / Quick Match / Map Editor stay prominent; everything else lives
+ * under a collapsed "More Options" group so the first impression is three
+ * choices, not ten identical buttons.
+ */
 export function MainMenu({
   onStart,
   onThemePacks,
@@ -43,6 +50,7 @@ export function MainMenu({
     setMusicVolume,
     setSfxVolume,
   } = useAudioSettings()
+  const [moreOpen, setMoreOpen] = useState(false)
 
   useBackgroundMusic('menu')
 
@@ -53,49 +61,69 @@ export function MainMenu({
     }
   }
 
+  const secondaryActions: Array<{ label: string; onClick: () => void; wide?: boolean }> = [
+    { label: 'Theme Packs', onClick: onThemePacks },
+    { label: 'Account', onClick: onAccount },
+    { label: 'Watch Replay', onClick: onWatchReplay },
+    { label: 'Spectate', onClick: onSpectate },
+    { label: 'Grant Spectator Access', onClick: onDesignateSpectator },
+    { label: 'Match Browser', onClick: onMatchBrowser },
+    { label: 'Leaderboard', onClick: onLeaderboard, wide: true },
+  ]
+
   return (
-    <div className="screen menu-screen">
-      <div className="menu-content">
-        <h1 className="game-title">Age of Plunder</h1>
-        <p className="game-subtitle">A pirate strategy game</p>
-        <button className="primary large" onClick={withTap(onStart)}>
-          New Game
-        </button>
-        <button className="secondary large" onClick={withTap(onMapEditor)}>
-          Map Editor
-        </button>
-        <button className="secondary large" onClick={withTap(onThemePacks)}>
-          Theme Packs
-        </button>
-        <button className="secondary large" onClick={withTap(onAccount)}>
-          Account
-        </button>
-        <button className="secondary large" onClick={withTap(onWatchReplay)}>
-          Watch Replay
-        </button>
-        <button className="secondary large" onClick={withTap(onSpectate)}>
-          Spectate
-        </button>
-        <button className="secondary large" onClick={withTap(onDesignateSpectator)}>
-          Grant Spectator Access
-        </button>
-        <button className="secondary large" onClick={withTap(onMatchBrowser)}>
-          Match Browser
-        </button>
-        <button className="secondary large" onClick={withTap(onQuickMatch)}>
-          Quick Match
-        </button>
-        <button className="secondary large" onClick={withTap(onLeaderboard)}>
-          Leaderboard
+    <div className="screen parchment-screen main-menu">
+      <div className="main-menu__panel">
+        <h1 className="main-menu__header">Age of Plunder</h1>
+
+        <div className="main-menu__primary">
+          <button className="main-menu__new-game" onClick={withTap(onStart)}>
+            New Game
+          </button>
+          <div className="main-menu__primary-row">
+            <button className="main-menu__outlined" onClick={withTap(onQuickMatch)}>
+              Quick Match
+            </button>
+            <button className="main-menu__outlined" onClick={withTap(onMapEditor)}>
+              Map Editor
+            </button>
+          </div>
+        </div>
+
+        <button
+          className="main-menu__more-toggle"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          <span>{moreOpen ? 'Fewer Options' : 'More Options'}</span>
+          <span className={`main-menu__chevron${moreOpen ? ' main-menu__chevron--open' : ''}`}>
+            ▾
+          </span>
         </button>
 
-        <div className="menu-audio-settings">
-          <label className="menu-audio-settings__row">
+        {moreOpen && (
+          <div className="main-menu__secondary-grid">
+            {secondaryActions.map(({ label, onClick, wide }) => (
+              <button
+                key={label}
+                className={`main-menu__secondary${wide ? ' main-menu__secondary--wide' : ''}`}
+                onClick={withTap(onClick)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="main-menu__divider" />
+
+        <div className="main-menu__audio">
+          <label className="main-menu__audio-mute">
             <input type="checkbox" checked={muted} onChange={(e) => setMuted(e.target.checked)} />
             Mute audio
           </label>
-          <label className="menu-audio-settings__row">
-            Dialogue volume
+          <div className="main-menu__audio-grid">
+            <span>Dialogue</span>
             <input
               type="range"
               min={0}
@@ -106,9 +134,7 @@ export function MainMenu({
               onChange={(e) => setVolume(Number(e.target.value))}
               aria-label="Dialogue volume"
             />
-          </label>
-          <label className="menu-audio-settings__row">
-            Music volume
+            <span>Music</span>
             <input
               type="range"
               min={0}
@@ -119,9 +145,7 @@ export function MainMenu({
               onChange={(e) => setMusicVolume(Number(e.target.value))}
               aria-label="Music volume"
             />
-          </label>
-          <label className="menu-audio-settings__row">
-            SFX volume
+            <span>SFX</span>
             <input
               type="range"
               min={0}
@@ -132,7 +156,7 @@ export function MainMenu({
               onChange={(e) => setSfxVolume(Number(e.target.value))}
               aria-label="SFX volume"
             />
-          </label>
+          </div>
         </div>
       </div>
     </div>

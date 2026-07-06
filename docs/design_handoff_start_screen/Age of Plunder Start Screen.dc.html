@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Cabin:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #1b1b1b; font-family: 'Cabin', sans-serif; }
+    @keyframes loadingFill { from { width: 0%; } to { width: 100%; } }
+    @keyframes menuEnter { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes titleEnter { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
+    @keyframes waveDrift { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+    @keyframes fogDrift { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+    input[type="range"] { accent-color: #c8962c; }
+    input[type="checkbox"] { accent-color: #c8962c; }
+  </style>
+</helmet>
+<div style="min-height: 100vh; background: #1b1b1b; padding: 60px 48px; box-sizing: border-box;">
+  <div style="color: #999; font-family: 'Cabin', sans-serif; font-size: 14px; margin-bottom: 28px; max-width: 900px; line-height: 1.5;">
+    Three visual directions for the title screen &amp; main menu. Each frame plays its intro automatically — wait ~3s to see the transition, or hit "Replay intro". Menu groups primary actions up top; the rest live under "More Options".
+  </div>
+  <section style="display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start;">
+    <sc-for list="{{ styles }}" as="s" hint-placeholder-count="3">
+      <div id="{{ s.badge }}" style="display: flex; flex-direction: column; gap: 14px; align-items: flex-start;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #2b2b2b; color: #d8d8d8; font-family: 'Cabin', sans-serif; font-weight: 700; font-size: 13px;">{{ s.badge }}</span>
+          <span style="color: #d8d8d8; font-family: 'Cabin', sans-serif; font-weight: 600; font-size: 15px;">{{ s.label }}</span>
+        </div>
+
+        <div style="position: relative; width: 860px; min-height: 538px; height: auto; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); background: {{ s.bg }};">
+          <div style="position: absolute; inset: 0; background-image: {{ s.texture }}; pointer-events: none;"></div>
+
+          <sc-if value="{{ s.isShip }}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;">
+              <div style="position: absolute; top: 40px; right: 90px; width: 90px; height: 90px; border-radius: 50%; background: radial-gradient(circle, rgba(232,238,242,0.85), rgba(232,238,242,0.1) 70%);"></div>
+              <div style="position: absolute; top: 10%; left: -10%; width: 60%; height: 40%; background: radial-gradient(circle, rgba(255,255,255,0.07), transparent 70%); animation: fogDrift 10s ease-in-out infinite alternate;"></div>
+              <div style="position: absolute; top: 30%; right: -10%; width: 50%; height: 35%; background: radial-gradient(circle, rgba(255,255,255,0.05), transparent 70%); animation: fogDrift 14s ease-in-out infinite alternate-reverse;"></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s.showTitle }}" hint-placeholder-val="{{ true }}">
+            <div style="position: relative; height: 538px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; animation: titleEnter 900ms ease-out;">
+
+              <sc-if value="{{ s.isSkull }}" hint-placeholder-val="{{ false }}">
+                <div style="position: relative; width: 120px; height: 118px;">
+                  <div style="position: absolute; left: 50%; top: 58%; width: 108px; height: 16px; transform: translate(-50%,-50%) rotate(45deg); z-index: 0;">
+                    <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: {{ s.boneColor }}; border-radius: 8px; box-shadow: inset 0 -4px 6px rgba(0,0,0,0.3);"></div>
+                    <div style="position: absolute; left: -6px; top: -5px; width: 26px; height: 26px; border-radius: 50%; background: {{ s.boneColor }}; box-shadow: inset -4px -4px 6px rgba(0,0,0,0.25);"></div>
+                    <div style="position: absolute; right: -6px; top: -5px; width: 26px; height: 26px; border-radius: 50%; background: {{ s.boneColor }}; box-shadow: inset -4px -4px 6px rgba(0,0,0,0.25);"></div>
+                  </div>
+                  <div style="position: absolute; left: 50%; top: 58%; width: 108px; height: 16px; transform: translate(-50%,-50%) rotate(-45deg); z-index: 0;">
+                    <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: {{ s.boneColor }}; border-radius: 8px; box-shadow: inset 0 -4px 6px rgba(0,0,0,0.3);"></div>
+                    <div style="position: absolute; left: -6px; top: -5px; width: 26px; height: 26px; border-radius: 50%; background: {{ s.boneColor }}; box-shadow: inset -4px -4px 6px rgba(0,0,0,0.25);"></div>
+                    <div style="position: absolute; right: -6px; top: -5px; width: 26px; height: 26px; border-radius: 50%; background: {{ s.boneColor }}; box-shadow: inset -4px -4px 6px rgba(0,0,0,0.25);"></div>
+                  </div>
+                  <div style="position: absolute; left: 50%; top: 6px; width: 84px; height: 76px; transform: translateX(-50%); border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: {{ s.boneColor }}; box-shadow: inset -12px -14px 18px rgba(0,0,0,0.22), inset 10px 10px 14px rgba(255,255,255,0.35), 0 6px 16px rgba(0,0,0,0.35); z-index: 1;">
+                    <div style="position: absolute; left: 14px; top: 26px; width: 22px; height: 26px; border-radius: 50%; background: {{ s.socketColor }}; transform: rotate(6deg); box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);"></div>
+                    <div style="position: absolute; right: 14px; top: 26px; width: 22px; height: 26px; border-radius: 50%; background: {{ s.socketColor }}; transform: rotate(-6deg); box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);"></div>
+                    <div style="position: absolute; left: 50%; top: 46px; width: 0; height: 0; transform: translateX(-50%); border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 12px solid {{ s.socketColor }};"></div>
+                    <div style="position: absolute; left: 18px; top: 8px; width: 40px; height: 3px; background: rgba(0,0,0,0.12); border-radius: 2px; transform: rotate(-8deg);"></div>
+                  </div>
+                  <div style="position: absolute; left: 50%; top: 66px; width: 54px; height: 30px; transform: translateX(-50%); border-radius: 0 0 18px 18px; background: {{ s.boneColor }}; box-shadow: inset 0 -8px 10px rgba(0,0,0,0.22); z-index: 1;">
+                    <div style="position: absolute; left: 3px; right: 3px; bottom: 2px; height: 9px; background: repeating-linear-gradient(90deg, {{ s.boneColor }} 0px, {{ s.boneColor }} 6px, {{ s.socketColor }} 6px, {{ s.socketColor }} 8px); border-radius: 0 0 6px 6px;"></div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ s.isShip }}" hint-placeholder-val="{{ false }}">
+                <div style="position: relative; width: 160px; height: 96px;">
+                  <div style="position: absolute; bottom: 86px; left: 80px; width: 16px; height: 10px; background: {{ s.accent2 }}; clip-path: polygon(0 0, 100% 50%, 0 100%);"></div>
+                  <div style="position: absolute; bottom: 60px; left: 80px; width: 40px; height: 34px; background: {{ s.textPrimary }}; opacity: 0.92; clip-path: polygon(0 0, 100% 20%, 0 100%);"></div>
+                  <div style="position: absolute; bottom: 38px; left: 78px; width: 4px; height: 50px; background: #3a281a;"></div>
+                  <div style="position: absolute; bottom: 14px; left: 30px; width: 100px; height: 26px; background: #0e1a12; clip-path: polygon(8% 0, 92% 0, 100% 100%, 0% 100%);"></div>
+                  <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 20px; background: {{ s.accent }}; opacity: 0.3; border-radius: 50% 50% 0 0 / 100% 100% 0 0; animation: waveDrift 4s ease-in-out infinite alternate;"></div>
+                </div>
+              </sc-if>
+
+              <div style="text-align: center;">
+                <div style="font-family: 'Pirata One', serif; font-size: 58px; letter-spacing: 4px; color: {{ s.titleColor }}; text-shadow: 0 2px 0 {{ s.accent2 }}, 0 4px 14px {{ s.glow }};">AGE OF PLUNDER</div>
+                <div style="font-family: 'Cabin', sans-serif; font-size: 15px; letter-spacing: 3px; text-transform: uppercase; color: {{ s.textSecondary }}; margin-top: 6px;">A Pirate Strategy Game</div>
+              </div>
+
+              <div style="width: 320px; display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                <div style="width: 100%; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); overflow: hidden; border: 1px solid {{ s.panelBorder }};">
+                  <div style="height: 100%; background: {{ s.accent }}; width: 0%; animation: loadingFill 2.8s ease-in forwards; box-shadow: 0 0 10px {{ s.glow }};"></div>
+                </div>
+                <div style="font-family: 'Cabin', sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: {{ s.textSecondary }};">Charting the seas&hellip;</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s.transitioned }}" hint-placeholder-val="{{ false }}">
+            <div style="position: relative; padding: 30px 44px 26px; display: flex; flex-direction: column; gap: 18px; animation: menuEnter 700ms ease-out;">
+
+              <div style="text-align: center;">
+                <div style="font-family: 'Pirata One', serif; font-size: 30px; letter-spacing: 2px; color: {{ s.titleColor }};">AGE OF PLUNDER</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button style="height: 52px; border-radius: 10px; border: none; background: {{ s.accent }}; color: {{ s.textOnAccent }}; font-family: 'Cabin', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; cursor: pointer; box-shadow: 0 6px 18px {{ s.glow }};">New Game</button>
+                <div style="display: flex; gap: 10px;">
+                  <button style="flex: 1; height: 44px; border-radius: 10px; border: 2px solid {{ s.accent }}; background: transparent; color: {{ s.textPrimary }}; font-family: 'Cabin', sans-serif; font-weight: 600; font-size: 15px; cursor: pointer;">Quick Match</button>
+                  <button style="flex: 1; height: 44px; border-radius: 10px; border: 2px solid {{ s.accent }}; background: transparent; color: {{ s.textPrimary }}; font-family: 'Cabin', sans-serif; font-weight: 600; font-size: 15px; cursor: pointer;">Map Editor</button>
+                </div>
+              </div>
+
+              <button onclick="{{ s.toggleMore }}" style="align-self: center; background: none; border: none; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 4px 8px;">
+                <span>{{ s.moreLabel }}</span>
+                <span style="display: inline-block; transform: {{ s.moreArrowTransform }}; transition: transform 200ms;">&#9662;</span>
+              </button>
+
+              <sc-if value="{{ s.moreOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Theme Packs</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Account</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Watch Replay</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Spectate</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Grant Spectator Access</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer;">Match Browser</button>
+                  <button style="height: 38px; border-radius: 8px; border: 1px solid {{ s.panelBorder }}; background: {{ s.panelBg }}; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px; cursor: pointer; grid-column: 1 / -1;">Leaderboard</button>
+                </div>
+              </sc-if>
+
+              <div style="height: 1px; background: {{ s.panelBorder }}; opacity: 0.3;"></div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; align-items: center; gap: 8px; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px;">
+                  <input type="checkbox">
+                  Mute audio
+                </label>
+                <div style="display: grid; grid-template-columns: 100px 1fr; row-gap: 4px; align-items: center; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 13px;">
+                  <span>Dialogue</span><input type="range" min="0" max="100" value="70">
+                  <span>Music</span><input type="range" min="0" max="100" value="55">
+                  <span>SFX</span><input type="range" min="0" max="100" value="65">
+                </div>
+              </div>
+
+              <button onclick="{{ s.replay }}" style="position: absolute; top: 10px; right: 12px; background: none; border: none; color: {{ s.textSecondary }}; font-family: 'Cabin', sans-serif; font-size: 12px; cursor: pointer; opacity: 0.7;">&#8635; Replay intro</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const STYLE_DEFS = [
+  {
+    id: 'a', badge: '1a', label: 'Weathered Parchment & Rope', kind: 'parchment',
+    bg: 'radial-gradient(120% 100% at 50% -10%, #cbb17a 0%, #a9855a 40%, #7d5f3d 75%, #5c4429 100%)',
+    texture: 'repeating-linear-gradient(115deg, rgba(60,40,20,0.06) 0px, rgba(60,40,20,0.06) 2px, transparent 2px, transparent 6px)',
+    panelBg: 'rgba(48,32,17,0.85)',
+    panelBorder: '#c8962c',
+    accent: '#c8962c',
+    accent2: '#7a2e1a',
+    textPrimary: '#f3e6c8',
+    textSecondary: '#e7d4ac',
+    textOnAccent: '#2c1810',
+    titleColor: '#2c1810',
+    glow: 'rgba(200,150,44,0.35)',
+    boneColor: '#ece0c0',
+    socketColor: '#1a1006',
+    isSkull: true, isShip: false,
+  },
+  {
+    id: 'b', badge: '1b', label: 'Dark Stormy Sea', kind: 'storm',
+    bg: 'linear-gradient(180deg, #050b14 0%, #0c2032 45%, #123246 80%, #0a1a26 100%)',
+    texture: 'radial-gradient(circle at 80% 15%, rgba(255,255,255,0.05), transparent 40%)',
+    panelBg: 'rgba(8,22,34,0.8)',
+    panelBorder: '#2dd4bf',
+    accent: '#2dd4bf',
+    accent2: '#d4af37',
+    textPrimary: '#e8eef2',
+    textSecondary: '#a9bdca',
+    textOnAccent: '#04211c',
+    titleColor: '#eaf6f4',
+    glow: 'rgba(45,212,191,0.35)',
+    isSkull: false, isShip: true,
+  },
+  {
+    id: 'c', badge: '1c', label: 'Blood & Gold', kind: 'gritty',
+    bg: 'radial-gradient(120% 100% at 50% 0%, #3a0a0a 0%, #200404 55%, #120000 100%)',
+    texture: 'repeating-linear-gradient(70deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 5px)',
+    panelBg: 'rgba(20,4,4,0.88)',
+    panelBorder: '#d4af37',
+    accent: '#d4af37',
+    accent2: '#8b0000',
+    textPrimary: '#f0e6d2',
+    textSecondary: '#c9ab86',
+    textOnAccent: '#2a1000',
+    titleColor: '#f6e9c9',
+    glow: 'rgba(212,175,55,0.35)',
+    boneColor: '#e9e3d1',
+    socketColor: '#180404',
+    isSkull: true, isShip: false,
+  },
+];
+
+class Component extends DCLogic {
+  state = { transitioned: { a: false, b: false, c: false }, moreOpen: { a: false, b: false, c: false } };
+
+  componentDidMount() {
+    this._timers = STYLE_DEFS.map(def => setTimeout(() => {
+      this.setState(s => ({ transitioned: { ...s.transitioned, [def.id]: true } }));
+    }, 3200));
+  }
+
+  componentWillUnmount() {
+    (this._timers || []).forEach(t => clearTimeout(t));
+  }
+
+  replay(id) {
+    if (this._replayTimer) clearTimeout(this._replayTimer);
+    this.setState(s => ({ transitioned: { ...s.transitioned, [id]: false }, moreOpen: { ...s.moreOpen, [id]: false } }));
+    this._replayTimer = setTimeout(() => {
+      this.setState(s => ({ transitioned: { ...s.transitioned, [id]: true } }));
+    }, 3200);
+  }
+
+  toggleMore(id) {
+    this.setState(s => ({ moreOpen: { ...s.moreOpen, [id]: !s.moreOpen[id] } }));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const styles = STYLE_DEFS.map(def => {
+      const moreOpen = !!st.moreOpen[def.id];
+      return {
+        ...def,
+        transitioned: !!st.transitioned[def.id],
+        showTitle: !st.transitioned[def.id],
+        moreOpen,
+        moreLabel: moreOpen ? 'Fewer Options' : 'More Options',
+        moreArrowTransform: moreOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+        toggleMore: () => this.toggleMore(def.id),
+        replay: () => this.replay(def.id),
+      };
+    });
+    return { styles };
+  }
+}
+
+</script>
+</body>
+</html>

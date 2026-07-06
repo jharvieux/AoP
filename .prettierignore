@@ -1,3 +1,7 @@
 # Machine-generated; owned by pnpm, not by the formatter. Prettier 3.9 began
 # reformatting its YAML, which broke `pnpm verify` on an untouched lockfile.
 pnpm-lock.yaml
+
+# Design-tool exports kept verbatim as the fidelity reference; reformatting
+# them would diverge the artifact from what design actually delivered.
+docs/design_handoff_start_screen/
