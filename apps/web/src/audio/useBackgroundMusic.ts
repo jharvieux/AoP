@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { audioManager } from './audioManager'
-import { MUSIC_TRACK_URL, type MusicContext } from './musicClips'
+import { MUSIC, pickMusicSource, type MusicContext } from './musicClips'
 
 const MUSIC_KEY = 'bg-music'
 
@@ -11,7 +11,8 @@ const MUSIC_KEY = 'bg-music'
  */
 export function useBackgroundMusic(context: MusicContext): void {
   useEffect(() => {
-    audioManager.play(MUSIC_TRACK_URL[context], { key: MUSIC_KEY, loop: true, category: 'music' })
+    const url = pickMusicSource(MUSIC[context], (mimeType) => new Audio().canPlayType(mimeType))
+    audioManager.play(url, { key: MUSIC_KEY, loop: true, category: 'music' })
     return () => audioManager.stop(MUSIC_KEY)
   }, [context])
 }

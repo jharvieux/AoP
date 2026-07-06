@@ -1,0 +1,10 @@
+{
+  "audio/music/menu_theme.wav": "MusicGen master, superseded at playback by menu_theme.ogg/.m4a (#253) — the loader never references the .wav. Kept in public/ pending an operator decision on git-LFS / an external asset bucket (#253); not re-shipped to players.",
+  "audio/music/exploration_ambient.wav": "MusicGen master, superseded at playback by exploration_ambient.ogg/.m4a (#253) — see menu_theme.wav's entry.",
+  "audio/music/battle_theme.wav": "MusicGen master, superseded at playback by battle_theme.ogg/.m4a (#253) — see menu_theme.wav's entry.",
+  "art/factions/pirates/unit_tier4.png": "Tier-4 unit sprite (#201), reviewed and shipped at this size — largest tier in the roster, all factions run 300-375 KB here.",
+  "art/factions/dutch/unit_tier4.png": "Tier-4 unit sprite (#201) — see pirates/unit_tier4.png's entry.",
+  "art/factions/french/unit_tier4.png": "Tier-4 unit sprite (#201) — see pirates/unit_tier4.png's entry.",
+  "art/factions/spanish/unit_tier4.png": "Tier-4 unit sprite (#201) — see pirates/unit_tier4.png's entry.",
+  "art/factions/spanish/unit_tier2.png": "Tier-2 unit sprite (#201), marginally over budget; reviewed and shipped at this size."
+}
