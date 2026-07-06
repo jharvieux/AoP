@@ -18,13 +18,20 @@ import {
 } from '../plugins/pushTokenStore'
 import { resolveSupabaseConfig } from './config'
 import { authReducer } from './machine'
-import { clearStoredSession, isExpired, loadStoredSession, storeSession } from './session'
+import {
+  clearStoredSession,
+  createSessionRefresher,
+  isExpired,
+  loadStoredSession,
+  storeSession,
+} from './session'
 import { SupabaseAuthBackend } from './supabaseAuth'
 import { upgradeGuestToAccount, type UpgradeParams, type UpgradeResult } from './upgrade'
 import {
   AuthError,
   GUEST_STATE,
   type AuthBackend,
+  type AuthSession,
   type AuthState,
   type OAuthProvider,
 } from './types'
@@ -40,6 +47,13 @@ interface AuthContextValue {
   signInWithOAuth(provider: OAuthProvider, redirectTo?: string): void
   setDisplayName(displayName: string): Promise<void>
   signOut(): Promise<void>
+  /**
+   * Returns a session guaranteed not to be within the refresh skew window,
+   * refreshing it against the backend first if needed (#234). Concurrent
+   * callers share one in-flight refresh. Throws `NOT_AUTHENTICATED` if
+   * called while a guest.
+   */
+  getFreshSession(): Promise<AuthSession>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -48,6 +62,8 @@ const NOT_CONFIGURED = new AuthError(
   'NOT_CONFIGURED',
   'Accounts are unavailable — this build has no Supabase configuration.',
 )
+
+const NOT_AUTHENTICATED = new AuthError('NOT_AUTHENTICATED', 'No signed-in session to refresh.')
 
 export interface AuthProviderProps {
   children: ReactNode
@@ -81,6 +97,20 @@ export function AuthProvider({
     }
   }
   const activeBackend = backendRef.current
+
+  // Single-flight token refresher for getFreshSession() (#234): concurrent
+  // callers made while the session is expired share one refreshSession
+  // request. Built once per backend — persistence/setState are stable for
+  // the provider's lifetime, same as activeBackend above.
+  const refresherRef = useRef<
+    ((current: AuthSession, now?: number) => Promise<AuthSession>) | null
+  >(null)
+  if (refresherRef.current === null && activeBackend) {
+    refresherRef.current = createSessionRefresher(activeBackend, (session) => {
+      if (persistence) storeSession(persistence, session)
+      setState((prev) => authReducer(prev, { type: 'session_refreshed', session }))
+    })
+  }
 
   // Same resolution for the push-token store (#157): explicit prop wins, else
   // build from env config, else null (guest-only build stores no tokens).
@@ -169,6 +199,13 @@ export function AuthProvider({
       async setDisplayName(displayName) {
         if (state.status !== 'authenticated') throw NOT_CONFIGURED
         await requireBackend().updateDisplayName(state.session, displayName)
+      },
+
+      async getFreshSession() {
+        if (state.status !== 'authenticated') throw NOT_AUTHENTICATED
+        const refresh = refresherRef.current
+        if (!refresh) throw NOT_CONFIGURED
+        return refresh(state.session)
       },
 
       async signOut() {

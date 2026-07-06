@@ -46,6 +46,7 @@ export type AuthErrorCode =
   | 'EMAIL_TAKEN'
   | 'EMAIL_CONFIRMATION_REQUIRED'
   | 'NOT_CONFIGURED'
+  | 'NOT_AUTHENTICATED'
   | 'NETWORK'
   | 'UNKNOWN'
 
