@@ -33,7 +33,12 @@ describe('engineVersionStamp (#251)', () => {
     const fetchMock = async () =>
       new Response(
         JSON.stringify([
-          { id: 'm1', status: 'finished', settings: { mapSize: 'small' }, engine_version: staleStamp },
+          {
+            id: 'm1',
+            status: 'finished',
+            settings: { mapSize: 'small' },
+            engine_version: staleStamp,
+          },
         ]),
         { status: 200, headers: { 'content-type': 'application/json' } },
       )

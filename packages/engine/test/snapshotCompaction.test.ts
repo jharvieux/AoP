@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chatRetentionCutoff,
   snapshotKeepSet,
   snapshotsToDelete,
+  DEFAULT_CHAT_RETENTION_DAYS,
   DEFAULT_ROUNDS_PER_SNAPSHOT,
   type SnapshotMeta,
 } from '@aop/shared'
@@ -85,6 +87,59 @@ describe('snapshotKeepSet (#143)', () => {
     expect(Math.max(...drop)).toBeLessThanOrEqual(17)
     expect(drop).not.toContain(18)
     expect(drop).not.toContain(19)
+  })
+
+  // --- Finished-match retention (#226) --------------------------------------
+
+  it("mode 'finished' keeps only genesis and the final snapshot, dropping everything between", () => {
+    const snaps = Array.from({ length: 25 }, (_, i) => meta(i, i))
+    const keep = snapshotKeepSet(snaps, DEFAULT_ROUNDS_PER_SNAPSHOT, 'finished')
+    expect(keep).toEqual(new Set([0, 24]))
+    const drop = snapshotsToDelete(snaps, 24, DEFAULT_ROUNDS_PER_SNAPSHOT, 'finished')
+    expect(drop).toEqual(Array.from({ length: 23 }, (_, i) => i + 1))
+  })
+
+  it("mode 'finished' collapses genesis and final into one entry for a single-snapshot match", () => {
+    const keep = snapshotKeepSet([meta(0, 1)], DEFAULT_ROUNDS_PER_SNAPSHOT, 'finished')
+    expect(keep).toEqual(new Set([0]))
+  })
+
+  it("mode 'finished' never deletes the final snapshot, even respecting a stale guardSeq", () => {
+    const snaps = Array.from({ length: 10 }, (_, i) => meta(i, i))
+    const drop = snapshotsToDelete(snaps, 9, DEFAULT_ROUNDS_PER_SNAPSHOT, 'finished')
+    expect(drop).not.toContain(0)
+    expect(drop).not.toContain(9)
+  })
+
+  it("defaults to 'active' mode when unspecified (backward compatible call sites)", () => {
+    const snaps = Array.from({ length: 13 }, (_, i) => meta(i, i))
+    expect(snapshotKeepSet(snaps, 5)).toEqual(snapshotKeepSet(snaps, 5, 'active'))
+  })
+})
+
+// --- Chat retention cutoff (#226) -------------------------------------------
+
+describe('chatRetentionCutoff (#226)', () => {
+  it('subtracts the retention window from "now"', () => {
+    const now = new Date('2026-07-05T00:00:00.000Z')
+    const cutoff = chatRetentionCutoff(now, 30)
+    expect(cutoff.toISOString()).toBe('2026-06-05T00:00:00.000Z')
+  })
+
+  it('defaults to DEFAULT_CHAT_RETENTION_DAYS when unspecified', () => {
+    const now = new Date('2026-07-05T00:00:00.000Z')
+    expect(chatRetentionCutoff(now).getTime()).toBe(
+      chatRetentionCutoff(now, DEFAULT_CHAT_RETENTION_DAYS).getTime(),
+    )
+  })
+
+  it('a match finished the day before the cutoff is eligible; the day after is not', () => {
+    const now = new Date('2026-07-05T00:00:00.000Z')
+    const cutoff = chatRetentionCutoff(now, 30)
+    const finishedJustBefore = new Date(cutoff.getTime() - 1)
+    const finishedJustAfter = new Date(cutoff.getTime() + 1)
+    expect(finishedJustBefore.getTime() < cutoff.getTime()).toBe(true)
+    expect(finishedJustAfter.getTime() < cutoff.getTime()).toBe(false)
   })
 })
 
