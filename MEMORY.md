@@ -1,5 +1,39 @@
 # MEMORY.md — Age of Plunder Decision Log
 
+## D-023 — 2026-07-06 — Visual theme: "Weathered Parchment & Rope" is the canonical app palette
+
+**Decision**: The operator delivered a Claude Design handoff for the launch experience
+(`docs/design_handoff_start_screen/`, README is the spec, HTML prototype is the fidelity
+reference) and chose direction **1a "Weathered Parchment & Rope"** — warm tan/brown
+parchment, gold accent `#c8962c`, rust accent `#7a2e1a`, Pirata One display font, Cabin
+body font. PR #310 shipped it: a new title splash (skull emblem, engraved title, loading
+bar, ~3.2s auto-advance) and a restructured main menu (New Game primary; Quick Match +
+Map Editor row; seven secondary actions behind a "More Options" toggle), closing #302.
+The palette lives as `:root` CSS custom properties in `apps/web/src/styles.css` and is
+the **single source of truth for the app-wide theme migration tracked in #301** — new UI
+work should consume the tokens, not add hex values.
+
+**Why**: first-impression gap (#302) + no design tokens (#301); the handoff resolves both
+the direction and the token values in one operator-approved artifact.
+
+**Rejected**: directions 1b "Dark Stormy Sea" (teal/navy) and 1c "Blood & Gold"
+(dark red/gold) — kept in the prototype HTML as a record only. Also rejected: reformatting
+the handoff files (added to `.prettierignore` so the reference stays verbatim), and the
+prototype's "Replay intro" affordance (README marks it optional; no current use case).
+
+**Open boundary question** (flagged in #301): whether the world-map sea palette
+(`MapCanvas.tsx`) and battle board (`battleBoardSvg.tsx`) count as diegetic art (keep
+their own colors) or UI chrome (migrate to tokens) — operator call when #301 is swept.
+
+**Follow-ups**: #311 (Stable Diffusion-generated skull illustration + real parchment
+texture, operator approved the SD approach; contact-sheet curation gate per D-016),
+#296 comment (Account moved behind "More Options", making its sign-in fix more urgent).
+
+Related: PR #310, #301, #302, #311, `docs/design_handoff_start_screen/`, fonts
+self-hosted in `apps/web/public/fonts/` (OFL).
+
+---
+
 ## D-022 — 2026-07-05 — Match size capped at 5 (faction-pool bound), amending D-006's 2–8 range
 
 **Decision**: Maximum players per match is now `MAX_MATCH_PLAYERS = FACTION_IDS.length`
