@@ -1,10 +1,11 @@
-import type { Action, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
+import type { Action, BattleReport, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { impactFeedback, shipMoveFeedback, tapFeedback } from '../audio/feedback'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
+import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BottomSheet } from '../components/BottomSheet'
 import { DiplomacyPanel } from '../components/DiplomacyPanel'
 import { MatchChatPanel } from '../components/MatchChatPanel'
@@ -12,13 +13,14 @@ import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
+  applyOptimisticMove,
   captainFromView,
   cityFromView,
   interpretTileClick,
   matchAction,
   ownCaptains,
 } from '../multiplayer/matchActions'
-import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
+import { MatchActionClient } from '../multiplayer/matchActionClient'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
 import {
   createMatchRealtimeTransport,
@@ -28,6 +30,7 @@ import {
 import { subscribeReconnectSync } from '../multiplayer/reconnectSync'
 import { SpectateClient, SpectateError } from '../multiplayer/spectateClient'
 import { subscribeSpectatePoll } from '../multiplayer/spectatePoll'
+import { submitActionWithRetry } from '../multiplayer/submitWithRetry'
 import { subscribeTurnSync } from '../multiplayer/turnSync'
 import {
   detectTurnTransition,
@@ -67,6 +70,15 @@ interface LiveMatch {
  * re-validated server-side (§5.4). The screen never holds a `GameState`;
  * every intent is derived from the view by `matchActions.ts` and every
  * response replaces the view wholesale (§13 — no diff-patching).
+ *
+ * #285 follow-ups this screen now covers: the attack response's `battleReport`
+ * is rendered through `BattleBoardSheet`; a boarding attacker with no live RNG
+ * to probe (single-player's #93 picker) gets a say in the melee by
+ * pre-committing a board doctrine via `CityScreen`'s standing-orders panel,
+ * which the reducer now falls back to (`reducer.ts` attackCaptain); moves
+ * apply an optimistic local patch before the round trip; and a stale
+ * (`SEQ_CONFLICT`/`NOT_YOUR_TURN`) rejection retries the same action once
+ * against a fresh view instead of dropping it (`submitWithRetry.ts`).
  */
 export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const auth = useAuth()
@@ -83,6 +95,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [confirmingResign, setConfirmingResign] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  // Structured result of the viewer's own last attack (#285), for the battle
+  // report sheet — derived output, never part of the polled view.
+  const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
   // The live `match:{id}` Realtime transport (#260) — also handed to the chat
   // panel so incoming-message pokes arrive without polling.
   const [transport, setTransport] = useState<MatchRealtimeTransport | null>(null)
@@ -96,8 +111,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const config = resolveSupabaseConfig()
   const session = auth.state.status === 'authenticated' ? auth.state.session : null
 
-  async function refetch() {
-    if (!session || !config) return
+  // Returns the freshly-fetched `{ seq, view }` so a caller that needs it
+  // synchronously (the SEQ_CONFLICT retry in `submit`, below) doesn't have to
+  // read back through `live` state, which a just-issued `setLive` here hasn't
+  // committed yet within the same tick.
+  async function fetchLive(): Promise<{ seq: number; view: PlayerView } | null> {
+    if (!session || !config) return null
     try {
       const result = await new SpectateClient(config).getPlayerView(session, matchId)
       hasLoadedRef.current = true
@@ -108,6 +127,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         turnDeadline: result.turnDeadline,
       })
       setLoadError(null)
+      return { seq: result.seq, view: result.view }
     } catch (err) {
       // Transient refetch failures keep the last-known view (the next poll
       // retries); losing the seat or the match ends the session outright.
@@ -117,7 +137,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       } else if (!hasLoadedRef.current) {
         setLoadError(err instanceof Error ? err.message : 'Could not load the match.')
       }
+      return null
     }
+  }
+
+  async function refetch() {
+    await fetchLive()
   }
 
   // Initial load + Realtime turn pokes (#260) + reconnect resync (§9) + the
@@ -197,28 +222,33 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     if (!session || !config || !live || submitting) return
     setActionError(null)
     setSubmitting(true)
-    try {
-      const client = new MatchActionClient(config)
-      const result = await client.submitAction(session, {
-        matchId,
-        expectedSeq: live.seq,
-        action,
-      })
-      setLive({ ...live, seq: result.seq, view: result.view })
+    const client = new MatchActionClient(config)
+    // §9 step 3 + #285 optimistic retry: a stale rejection (SEQ_CONFLICT /
+    // NOT_YOUR_TURN) refetches and retries the same action once against the
+    // fresh seq before giving up — a routine AI-auto-play bump between polls
+    // shouldn't force the player to redo their tap. See submitWithRetry.ts.
+    const outcome = await submitActionWithRetry(
+      {
+        submit: (expectedSeq, a) =>
+          client.submitAction(session, { matchId, expectedSeq, action: a }),
+        refetch: fetchLive,
+      },
+      live.seq,
+      action,
+    )
+    setSubmitting(false)
+    if (outcome.kind === 'ok') {
+      setLive({ ...live, seq: outcome.result.seq, view: outcome.result.view })
+      if (outcome.result.battleReport) setBattleReport(outcome.result.battleReport)
       // The response carries no turn_deadline; pick the fresh one up now
       // rather than waiting out the poll interval.
       void refetch()
-    } catch (err) {
-      if (err instanceof MatchActionError && err.isStale) {
-        // §9 step 3: stale view — discard and refetch, never patch around it.
-        setActionError('The board changed — refreshed.')
-        setSelectedCaptainId(null)
-        void refetch()
-      } else {
-        setActionError(err instanceof Error ? err.message : 'The action was rejected.')
-      }
-    } finally {
-      setSubmitting(false)
+    } else if (outcome.kind === 'stale') {
+      setActionError('The board changed — refreshed.')
+      setSelectedCaptainId(null)
+    } else {
+      const err = outcome.error
+      setActionError(err instanceof Error ? err.message : 'The action was rejected.')
     }
   }
 
@@ -305,6 +335,14 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         break
       case 'move':
         shipMoveFeedback()
+        // Optimistic local application (#285): move the sprite now rather
+        // than waiting out the submit-action round trip — the authoritative
+        // response (or a discard-on-conflict refetch) always replaces this
+        // wholesale, so a wrong guess here only ever flickers back.
+        setLive({
+          ...live,
+          view: applyOptimisticMove(view, board.map, selectedCaptain!.id, intent.to),
+        })
         void submit(matchAction.move(view, selectedCaptain!.id, intent.to))
         break
       case 'attack':
@@ -473,7 +511,16 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         !encounter &&
         !openCity &&
         !diplomacyOpen &&
-        !chatOpen && <AdSlot placement="between-turns" />}
+        !chatOpen &&
+        !battleReport && <AdSlot placement="between-turns" />}
+
+      {battleReport && (
+        <BattleBoardSheet
+          report={battleReport}
+          playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
+          onClose={() => setBattleReport(null)}
+        />
+      )}
 
       {attackTarget && selectedCaptain && (
         <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>

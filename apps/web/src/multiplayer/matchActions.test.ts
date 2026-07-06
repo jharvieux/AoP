@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PlayerView, ViewCaptain, ViewCity } from '@aop/engine'
 import {
+  applyOptimisticMove,
   captainFromView,
   cityFromView,
   interpretTileClick,
@@ -185,6 +186,31 @@ describe('interpretTileClick (#261: the PlayerView analog of GameScreen tile han
   })
 })
 
+describe('applyOptimisticMove (#285 optimistic local application)', () => {
+  it('moves the own captain and spends the movement cost immediately', () => {
+    const v = view()
+    const patched = applyOptimisticMove(v, mapOf(v), 'cap-own', { x: 2, y: 0 })
+    const cap = patched.captains.find((c) => c.id === 'cap-own')!
+    expect(cap.position).toEqual({ x: 2, y: 0 })
+    expect(cap.movementPoints).toBe(0)
+    // Nothing else in the view is touched.
+    expect(patched.players).toBe(v.players)
+    expect(patched.cities).toBe(v.cities)
+  })
+
+  it('is a no-op for a captain the viewer does not own', () => {
+    const v = view()
+    const patched = applyOptimisticMove(v, mapOf(v), 'cap-near', { x: 2, y: 1 })
+    expect(patched).toBe(v)
+  })
+
+  it('is a no-op for an unreachable destination', () => {
+    const v = view()
+    const patched = applyOptimisticMove(v, mapOf(v), 'cap-own', { x: -1, y: 0 })
+    expect(patched).toBe(v)
+  })
+})
+
 describe('captainFromView / cityFromView (own-detail widening)', () => {
   it('widens an own captain, defaulting only what a view never carries', () => {
     const own = view().captains[0]!
@@ -206,6 +232,18 @@ describe('captainFromView / cityFromView (own-detail widening)', () => {
   it('refuses to dress an enemy hull up as a full Captain', () => {
     const enemy: ViewCaptain = view().captains[1]!
     expect(captainFromView(enemy)).toBeNull()
+  })
+
+  it('carries through disclosed own standing/board orders (#285)', () => {
+    const own: ViewCaptain = {
+      ...view().captains[0]!,
+      standingOrders: [{ when: 'always', tactic: 'broadside' }],
+      boardOrders: [{ when: 'outnumbered', doctrine: 'holdLine' }],
+    }
+    expect(captainFromView(own)?.standingOrders).toEqual([{ when: 'always', tactic: 'broadside' }])
+    expect(captainFromView(own)?.boardOrders).toEqual([
+      { when: 'outnumbered', doctrine: 'holdLine' },
+    ])
   })
 
   it('widens an own city and refuses an enemy shell', () => {
