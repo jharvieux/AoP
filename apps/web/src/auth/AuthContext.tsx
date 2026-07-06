@@ -18,6 +18,7 @@ import {
 } from '../plugins/pushTokenStore'
 import { resolveSupabaseConfig } from './config'
 import { authReducer } from './machine'
+import { completeOAuthCallback, parseOAuthCallbackHash } from './oauthCallback'
 import {
   clearStoredSession,
   createSessionRefresher,
@@ -148,6 +149,38 @@ export function AuthProvider({
         setState(authReducer(GUEST_STATE, { type: 'authenticated', session }))
       } catch {
         if (!cancelled) clearStoredSession(persistence)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // activeBackend/persistence are stable for the provider's lifetime.
+  }, [activeBackend, persistence])
+
+  // Complete an OAuth implicit-flow redirect (#233): GoTrue appends tokens to
+  // the URL as `#access_token=...&refresh_token=...` instead of a normal
+  // callback page, and nothing parsed that fragment — sign-in silently
+  // dead-ended back at the guest menu. Bail out cheaply via a sync parse
+  // before doing the network exchange, so an ordinary boot's empty hash
+  // never touches history.
+  useEffect(() => {
+    if (!activeBackend || typeof window === 'undefined') return
+    if (!parseOAuthCallbackHash(window.location.hash)) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const session = await completeOAuthCallback(activeBackend, window.location)
+        if (session && !cancelled) {
+          if (persistence) storeSession(persistence, session)
+          setState((prev) => authReducer(prev, { type: 'authenticated', session }))
+        }
+      } catch {
+        // Swallowed like the session-restore effect above: surface nothing
+        // and let the user retry sign-in from the menu.
+      } finally {
+        if (!cancelled) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
       }
     })()
     return () => {

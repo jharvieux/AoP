@@ -95,6 +95,38 @@ describe('SupabaseAuthBackend auth', () => {
       'https://proj.supabase.co/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fapp.example%2Fcallback',
     )
   })
+
+  it('exchanges OAuth callback tokens for a session by fetching the user (#233)', async () => {
+    const { backend, fetchMock } = backendReturning(
+      jsonResponse(200, { id: 'user-1', email: 'cap@plunder.io' }),
+    )
+    const session = await backend.exchangeOAuthCallback({
+      accessToken: 'access-1',
+      refreshToken: 'refresh-1',
+      expiresAt: 1_700_000_000_000,
+    })
+
+    expect(session).toEqual({
+      accessToken: 'access-1',
+      refreshToken: 'refresh-1',
+      expiresAt: 1_700_000_000_000,
+      user: { id: 'user-1', email: 'cap@plunder.io' },
+    })
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('https://proj.supabase.co/auth/v1/user')
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer access-1' })
+  })
+
+  it('maps a failed user fetch during OAuth exchange to an AuthError', async () => {
+    const { backend } = backendReturning(jsonResponse(401, { msg: 'Invalid token' }))
+    await expect(
+      backend.exchangeOAuthCallback({
+        accessToken: 'bad-token',
+        refreshToken: 'refresh-1',
+        expiresAt: 1_700_000_000_000,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' })
+  })
 })
 
 describe('SupabaseAuthBackend profiles', () => {

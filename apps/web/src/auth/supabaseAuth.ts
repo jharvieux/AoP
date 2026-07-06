@@ -3,6 +3,7 @@ import {
   type AuthBackend,
   type AuthSession,
   type AuthUser,
+  type OAuthCallbackTokens,
   type OAuthProvider,
   type Profile,
 } from './types'
@@ -69,6 +70,24 @@ export class SupabaseAuthBackend implements AuthBackend {
   oauthAuthorizeUrl(provider: OAuthProvider, redirectTo: string): string {
     const params = new URLSearchParams({ provider, redirect_to: redirectTo })
     return `${this.url}/auth/v1/authorize?${params.toString()}`
+  }
+
+  async exchangeOAuthCallback(tokens: OAuthCallbackTokens): Promise<AuthSession> {
+    const res = await this.request('/auth/v1/user', {
+      method: 'GET',
+      headers: this.headers(tokens.accessToken),
+    })
+    const body = (await res.json().catch(() => ({}))) as GoTrueErrorBody & {
+      id?: string
+      email?: string | null
+    }
+    if (!res.ok) throw mapAuthError(res.status, body)
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+      user: toUser(body.id ? { id: body.id, email: body.email ?? null } : undefined),
+    }
   }
 
   async ensureProfile(session: AuthSession, displayName: string): Promise<Profile> {
