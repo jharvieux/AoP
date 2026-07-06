@@ -5,7 +5,7 @@
 import { serviceClient, requireUserId, ensureProfile } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import { assertFaction, firstFreeFaction, parseSettings, randomSeed } from '../_shared/match.ts'
-import { ENGINE_VERSION, type FactionId } from '@aop/shared'
+import { ENGINE_VERSION, openLobbyLimitReached, type FactionId } from '@aop/shared'
 
 function inviteCode(): string {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -26,6 +26,20 @@ Deno.serve(async (req) => {
     const settings = parseSettings(body.settings)
     const db = serviceClient()
     await ensureProfile(db, userId, body.displayName?.trim() || 'Captain')
+
+    // Rate limit (#230): cap how many lobbies this creator has open at once,
+    // rather than a rolling-window rate — a lobby is meant to be cleaned up
+    // (joined, started, or expired by the expire-lobbies sweep), so unbounded
+    // *open* lobbies is the actual abuse shape, not creation frequency.
+    const { count: openLobbyCount, error: countError } = await db
+      .from('matches')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by', userId)
+      .eq('status', 'lobby')
+    if (countError) throw new AppError('INTERNAL', countError.message)
+    if (openLobbyLimitReached(openLobbyCount ?? 0)) {
+      throw new AppError('RATE_LIMITED', 'Too many open lobbies — join or start one first')
+    }
 
     const creatorFaction: FactionId =
       body.faction === undefined ? firstFreeFaction([]) : assertFaction(body.faction)

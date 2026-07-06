@@ -155,8 +155,11 @@ supabase functions deploy   # deploys every function in this directory
 ```
 
 Injected at runtime by the platform: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`. Optional: `ENGINE_VERSION` (pinned into new matches; defaults
-to the value in `_shared/match.ts`).
+`SUPABASE_SERVICE_ROLE_KEY`. `engine_version` pinned into new matches (`create-match`) comes
+from `ENGINE_VERSION` in `@aop/shared` (`packages/shared/src/multiplayer.ts`) — a content
+hash of `packages/engine/src` and `packages/content/src`, regenerated via
+`node scripts/generate-engine-version.mjs` (#251). There is no env var override; it is not
+configurable per-deploy.
 
 > Note: local invocation and CI coverage are gated on a running Supabase stack; the pure
 > logic these functions call is covered by the workspace Vitest suites instead. Fog/view

@@ -11,15 +11,21 @@
 import type { MapSize } from './index'
 
 /**
- * The `@aop/engine` version pinned into `matches.engine_version` when a match
- * is created (`supabase/functions/create-match/index.ts`) and compared
- * against by the replay viewer's version guard
+ * The `@aop/engine`+`@aop/content` version pinned into `matches.engine_version`
+ * when a match is created (`supabase/functions/create-match/index.ts`) and
+ * compared against by the replay viewer's version guard
  * (`apps/web/src/multiplayer/matchReplay.ts`, docs/MULTIPLAYER.md §10). Kept
  * here as the single source of truth so the server and client sides can never
- * drift apart on a future engine version bump — bump this alongside any
- * breaking `@aop/engine` change.
+ * drift apart on a version bump.
+ *
+ * A content hash of `packages/engine/src` and `packages/content/src`
+ * (#251), not a hand-maintained literal — a hand-bumped string sat at
+ * `'0.0.1'` since repo creation through dozens of real engine/content
+ * changes, leaving this guard permanently a no-op. Regenerate after any
+ * change to either package: `node scripts/generate-engine-version.mjs`.
+ * `apps/web/src/multiplayer/engineVersion.test.ts` fails if you forget.
  */
-export const ENGINE_VERSION = '0.0.1'
+export { ENGINE_VERSION } from './engineVersion.generated'
 
 /**
  * The Realtime poke broadcast on channel `match:{id}` after a turn advances
@@ -247,6 +253,34 @@ export interface OpenMatchSummary {
 
 /** Hard cap on one page of the match browser (#150) — a lobby list, not a feed. */
 export const OPEN_MATCH_PAGE_MAX = 50
+
+/**
+ * Abuse limits on lobby creation (#230): `create-match` had no per-user rate
+ * limit and lobbies never expired, so one scripted account could create
+ * unbounded public lobbies and bury real ones in the browser (`matches` also
+ * grows without bound). Mirrors publish-map's `PUBLISH_MAX_PER_WINDOW` shape,
+ * but as an open-lobby *count* cap rather than a rolling-window rate — a
+ * lobby, unlike a published map, is meant to be cleaned up (joined, started,
+ * or expired), so bounding how many a creator may have open at once is the
+ * right throttle, not how many they may open per hour.
+ *
+ *  - **{@link MAX_OPEN_LOBBIES_PER_CREATOR}**: an honest host waiting on
+ *    friends rarely has more than one or two lobbies open; 5 is generous
+ *    headroom that still caps a spam script at a small, bounded number of
+ *    rows per account instead of unbounded growth.
+ *  - **{@link LOBBY_TTL_MS}**: an abandoned lobby (creator never returns, no
+ *    one joins) ages out to `abandoned` — the status the initial schema's
+ *    check constraint already allows but nothing previously ever set — via
+ *    the `expire-lobbies` cron sweep, freeing the creator's slot and keeping
+ *    the browser free of dead rows.
+ */
+export const MAX_OPEN_LOBBIES_PER_CREATOR = 5
+export const LOBBY_TTL_MS = 48 * 60 * 60 * 1000
+
+/** True when a creator who already has `openLobbyCount` open lobbies must be throttled. */
+export function openLobbyLimitReached(openLobbyCount: number): boolean {
+  return openLobbyCount >= MAX_OPEN_LOBBIES_PER_CREATOR
+}
 
 /**
  * Keyset-pagination cursor for the match browser (#150): the `(createdAt, matchId)`

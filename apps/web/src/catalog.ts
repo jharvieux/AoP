@@ -14,6 +14,11 @@ import type { ContentCatalog } from '@aop/engine'
  * imports content directly (it must stay dependency-free); the client builds
  * this snapshot and freezes it into the match config, exactly as the multiplayer
  * edge functions will later.
+ *
+ * Kept byte-for-byte identical to `supabase/functions/_shared/catalog.ts`'s
+ * `buildCatalog` — see `apps/web/src/multiplayer/catalogParity.test.ts`, which
+ * fails the build if the two ever diverge again (#250; they silently drifted
+ * on `resourceNodes` once already).
  */
 export function buildCatalog(): ContentCatalog {
   return {

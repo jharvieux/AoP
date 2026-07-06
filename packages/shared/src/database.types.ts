@@ -328,21 +328,21 @@ export type Database = {
       match_spectators: {
         Row: {
           created_at: string
-          granted_by: string
+          granted_by: string | null
           match_id: string
           user_id: string
           viewing_seat: number
         }
         Insert: {
           created_at?: string
-          granted_by: string
+          granted_by?: string | null
           match_id: string
           user_id: string
           viewing_seat: number
         }
         Update: {
           created_at?: string
-          granted_by?: string
+          granted_by?: string | null
           match_id?: string
           user_id?: string
           viewing_seat?: number
@@ -375,7 +375,7 @@ export type Database = {
         Row: {
           action_count: number
           created_at: string
-          created_by: string
+          created_by: string | null
           engine_version: string
           id: string
           invite_code: string | null
@@ -389,7 +389,7 @@ export type Database = {
         Insert: {
           action_count?: number
           created_at?: string
-          created_by: string
+          created_by?: string | null
           engine_version: string
           id?: string
           invite_code?: string | null
@@ -403,7 +403,7 @@ export type Database = {
         Update: {
           action_count?: number
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           engine_version?: string
           id?: string
           invite_code?: string | null
@@ -563,6 +563,7 @@ export type Database = {
         Returns: undefined
       }
       match_seed: { Args: { p_match_id: string }; Returns: number }
+      user_match_ids: { Args: { uid: string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
