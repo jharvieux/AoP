@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { resolveAdNetworkConfig } from './monetization/adConfig'
+import {
+  claimScriptInjection,
+  hasScriptFailed,
+  markScriptFailed,
+} from './monetization/adScriptGuard'
 import { isNativePlatform } from './monetization/iap'
 import { useRemoveAds } from './monetization/useRemoveAds'
 
@@ -35,7 +40,17 @@ export function AdSlot({ placement }: AdSlotProps) {
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (removeAds || native || !adConfig || failed) return
+    if (removeAds || native || !adConfig) return
+    if (hasScriptFailed(adConfig.scriptUrl)) {
+      setFailed(true)
+      return
+    }
+    // #246: GameScreen mounts/unmounts this component once per AI turn. The
+    // loader script only ever needs to run once per page — once it's up, the
+    // ad network's own runtime fills any `<div data-ad-slot>` that appears
+    // later, so a later mount just renders the container below and skips
+    // re-injecting the script.
+    if (!claimScriptInjection(adConfig.scriptUrl)) return
     const container = containerRef.current
     if (!container) return
 
@@ -43,16 +58,19 @@ export function AdSlot({ placement }: AdSlotProps) {
     script.src = adConfig.scriptUrl
     script.async = true
     script.dataset.adSlot = adConfig.slotId
-    script.onerror = () => setFailed(true)
+    script.onerror = () => {
+      markScriptFailed(adConfig.scriptUrl)
+      setFailed(true)
+    }
     container.appendChild(script)
     return () => {
       script.remove()
     }
-    // native/adConfig/failed only ever change identity when their underlying
-    // value changes (adConfig is a fresh object per render, but its fields are
+    // native/adConfig only ever change identity when their underlying value
+    // changes (adConfig is a fresh object per render, but its fields are
     // stable for a given build), so this stays a mount-time effect in practice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [removeAds, native, failed])
+  }, [removeAds, native])
 
   if (removeAds || failed) return null
   // AdMob banner wiring lands once #42's Capacitor project + plugin exist.
