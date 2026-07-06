@@ -33,6 +33,14 @@ import { dispatchTurnPush } from './push.ts'
  * stall the match. The last permitted iteration forces `endTurn` outright. */
 const MAX_AI_ACTIONS_PER_TURN = 100
 
+/** Bounded per-run batch size for the turn-timer sweep (#225) — after any sweep
+ * outage every 24h timer can expire at once; without a cap one run tries to
+ * process all of them and risks exceeding the edge function's wall-clock/CPU
+ * limit, in which case NONE of them get swept. Oldest-deadline-first ordering
+ * (see {@link findExpiredTurns}) means the backlog drains in FIFO order across
+ * runs instead of starving whichever matches happen to sort last. */
+const MAX_EXPIRED_TURNS_PER_SWEEP = 50
+
 /** Match settings persisted in `matches.settings` (docs/MULTIPLAYER.md §3). */
 export interface MatchSettings {
   mapSize: MapSize
@@ -707,15 +715,39 @@ export async function findExpiredTurns(db: Db): Promise<ExpiredTurn[]> {
     .select('id, action_count')
     .eq('status', 'active')
     .lt('turn_deadline', new Date().toISOString())
+    .order('turn_deadline', { ascending: true })
+    .limit(MAX_EXPIRED_TURNS_PER_SWEEP)
   if (error) throw new AppError('INTERNAL', error.message)
 
   const expired: ExpiredTurn[] = []
   for (const row of data ?? []) {
-    const state = await reconstructState(db, row.id, row.action_count)
-    if (state.status !== 'active') continue
-    expired.push({ matchId: row.id, seat: parseSeat(state.players[state.currentPlayerIndex]!.id) })
+    try {
+      const state = await reconstructState(db, row.id, row.action_count)
+      if (state.status !== 'active') continue
+      expired.push({
+        matchId: row.id,
+        seat: parseSeat(state.players[state.currentPlayerIndex]!.id),
+      })
+    } catch (err) {
+      // A match that can't be reconstructed (e.g. #216's wedged-match scenario)
+      // must never abort the whole sweep — log it and let the rest of the
+      // (oldest-first) batch through; this match is retried next run (#225).
+      console.error(`sweep-turns: failed to reconstruct match ${row.id}, skipping this run`, err)
+    }
   }
   return expired
+}
+
+/** Whether a `skipExpiredTurn` failure is an expected race — a human's own
+ * submission or a concurrent sweep pass already resolved this match's turn
+ * between {@link findExpiredTurns}'s read and the skip call — rather than a
+ * genuine bug (#225). The sweep loop logs-and-continues on every failure
+ * either way; this only controls whether it also logs loudly as unexpected. */
+export function isExpectedSweepRace(err: unknown): boolean {
+  return (
+    err instanceof AppError &&
+    (err.code === 'NOT_YOUR_TURN' || err.code === 'SEQ_CONFLICT' || err.code === 'MATCH_STATE')
+  )
 }
 
 /** The seat this user occupies in a match, or `FORBIDDEN` if they hold none. */
