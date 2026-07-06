@@ -31,6 +31,19 @@ export interface Profile {
 }
 
 /**
+ * Tokens GoTrue's implicit OAuth flow appends to the redirect URL as a hash
+ * fragment (`#access_token=...&refresh_token=...`) — see oauthCallback.ts.
+ * The fragment carries no user id/email, so exchanging these for a full
+ * `AuthSession` still requires a round trip to the backend.
+ */
+export interface OAuthCallbackTokens {
+  accessToken: string
+  refreshToken: string
+  /** Absolute expiry, epoch milliseconds. */
+  expiresAt: number
+}
+
+/**
  * Auth state is a two-state machine: single-player is always reachable as a
  * `guest`; an `authenticated` account unlocks multiplayer and cloud-backed
  * entitlements (docs/ARCHITECTURE.md §9).
@@ -46,6 +59,7 @@ export type AuthErrorCode =
   | 'EMAIL_TAKEN'
   | 'EMAIL_CONFIRMATION_REQUIRED'
   | 'NOT_CONFIGURED'
+  | 'NOT_AUTHENTICATED'
   | 'NETWORK'
   | 'UNKNOWN'
 
@@ -69,6 +83,12 @@ export interface AuthBackend {
   signOut(session: AuthSession): Promise<void>
   /** Build the provider redirect URL; the caller navigates the browser to it. */
   oauthAuthorizeUrl(provider: OAuthProvider, redirectTo: string): string
+  /**
+   * Exchange OAuth implicit-flow tokens (already parsed from the redirect
+   * fragment by oauthCallback.ts) for a full session, fetching the user
+   * record the fragment doesn't include (#233).
+   */
+  exchangeOAuthCallback(tokens: OAuthCallbackTokens): Promise<AuthSession>
   /** Create-or-update the caller's `profiles` row. */
   ensureProfile(session: AuthSession, displayName: string): Promise<Profile>
   getProfile(session: AuthSession): Promise<Profile | null>
