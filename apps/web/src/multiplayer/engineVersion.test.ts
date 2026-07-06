@@ -1,10 +1,6 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ENGINE_VERSION } from '@aop/shared'
 import { computeEngineVersion } from '../../../../scripts/generate-engine-version.mjs'
-
-const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..')
 
 // #251: ENGINE_VERSION sat at a hand-maintained '0.0.1' since repo creation
 // despite dozens of real packages/engine and packages/content changes,
@@ -17,7 +13,7 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..
 // changed without regenerating.
 describe('ENGINE_VERSION (#251)', () => {
   it('matches a fresh hash of packages/engine/src and packages/content/src', () => {
-    expect(ENGINE_VERSION).toBe(computeEngineVersion(REPO_ROOT))
+    expect(ENGINE_VERSION).toBe(computeEngineVersion())
   })
 
   it('is a non-empty hex string, not the old hardcoded literal', () => {
