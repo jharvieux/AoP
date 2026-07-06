@@ -253,10 +253,13 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   }
 }
 
-/** Build a combatant, layering in this captain's ship upgrades (#22) and skill bonuses (#21). */
+/**
+ * Build a combatant, layering in this captain's ship upgrades (#22) and skill
+ * bonuses (#21). Faction has no effect on combat stats (bonuses come from
+ * skills/upgrades) — see #215.
+ */
 export function captainToCombatant(
   captain: Captain,
-  faction: string,
   content: ContentCatalog | undefined,
 ): Combatant {
   const combatant: Combatant = {
@@ -346,16 +349,14 @@ function attackCaptain(
 
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
-  const attackerFaction = state.players.find((p) => p.id === attacker.ownerId)!.faction
-  const defenderFaction = state.players.find((p) => p.id === target.ownerId)!.faction
 
   // The attacker plays its submitted plan; the defender fights by the standing
   // orders its own owner saved in state (never anything the attacker supplies).
   // Either side without orders is driven by the combat AI — auto-resolve.
   const result: CombatResult = resolveTacticalCombat(
     {
-      attacker: captainToCombatant(attacker, attackerFaction, content),
-      defender: captainToCombatant(target, defenderFaction, content),
+      attacker: captainToCombatant(attacker, content),
+      defender: captainToCombatant(target, content),
     },
     stats,
     state.rngState,

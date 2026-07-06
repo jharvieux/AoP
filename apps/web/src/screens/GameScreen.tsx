@@ -231,16 +231,8 @@ export function GameScreen({
     if (!selectedCaptain || !attackTarget || !game.config.combatStats) return null
     return estimateOdds(
       {
-        attacker: captainToCombatant(
-          selectedCaptain,
-          factionOf(selectedCaptain.ownerId),
-          game.config.content,
-        ),
-        defender: captainToCombatant(
-          attackTarget,
-          factionOf(attackTarget.ownerId),
-          game.config.content,
-        ),
+        attacker: captainToCombatant(selectedCaptain, game.config.content),
+        defender: captainToCombatant(attackTarget, game.config.content),
       },
       createCombatStats(game.config.combatStats),
       game.actionCount,

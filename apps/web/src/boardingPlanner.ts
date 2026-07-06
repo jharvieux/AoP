@@ -94,7 +94,6 @@ export function probeBoardingBattle(
 
   const stats = createCombatStats(game.config.combatStats)
   const content = game.config.content
-  const factionOf = (ownerId: string) => game.players.find((p) => p.id === ownerId)!.faction
 
   let cursor = 0
   const recorder: BoardDriver = {
@@ -107,8 +106,8 @@ export function probeBoardingBattle(
   try {
     const result = resolveTacticalCombat(
       {
-        attacker: captainToCombatant(attacker, factionOf(attacker.ownerId), content),
-        defender: captainToCombatant(target, factionOf(target.ownerId), content),
+        attacker: captainToCombatant(attacker, content),
+        defender: captainToCombatant(target, content),
       },
       stats,
       game.rngState,
