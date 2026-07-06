@@ -25,6 +25,7 @@ import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { UpdateBanner } from './UpdateBanner'
 import type { GameSetupConfig } from './types'
+import { isTestPlayAfterLoadSlot, isTestPlayAfterRematch, shouldAutosave } from './gameSession'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
 import { registerBackButtonHandler } from './plugins/androidBackButton'
@@ -98,7 +99,7 @@ export function App() {
     setGame(next)
     setActionLog(nextLog)
     if (outcome.battleReport) setBattleReport(outcome.battleReport)
-    if (!isTestPlay) void saveGame('autosave', config, nextLog, next.round)
+    if (shouldAutosave(isTestPlay)) void saveGame('autosave', config, nextLog, next.round)
     if (next.status === 'finished' && !outcome.battleReport) setScreen('game-over')
   }
 
@@ -114,6 +115,9 @@ export function App() {
     setActionLog(record.actions)
     setBattleReport(null)
     setGame(replay(createGame(record.config), record.actions))
+    // #236: a loaded slot is always a real game — test-play never survives a
+    // load, so autosave (and the game-over → menu route) resume correctly.
+    setIsTestPlay(isTestPlayAfterLoadSlot())
     setScreen('game')
   }
 
@@ -124,7 +128,12 @@ export function App() {
   }
 
   function handleRematch() {
-    if (config) handleStartNewGame(config)
+    if (!config) return
+    // #236: a rematch of a test-play match must stay test-play — routing it
+    // through handleStartNewGame would flip isTestPlay false and autosave a
+    // scratch match over the real autosave slot.
+    if (isTestPlayAfterRematch(isTestPlay)) handleTestPlay(config)
+    else handleStartNewGame(config)
   }
 
   function handleReturnToMenu() {
