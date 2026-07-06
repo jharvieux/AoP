@@ -581,10 +581,12 @@ async function writeSnapshot(
  * Post-commit Realtime poke (§6, §7 leak audit) on channel `match:{id}`. Best
  * effort: a dropped broadcast just means a client waits for its next
  * `get-player-view` refetch instead of an instant nudge (§9), so it must never
- * fail the turn that already committed.
+ * fail the turn that already committed. The channel is private (#228): RLS on
+ * realtime.messages admits only match participants/spectators as listeners, and
+ * grants no client INSERT — only this service-role path may broadcast.
  */
 async function broadcastTurn(db: Db, matchId: string, seq: number): Promise<void> {
-  const status = await db.channel(`match:${matchId}`).send({
+  const status = await db.channel(`match:${matchId}`, { config: { private: true } }).send({
     type: 'broadcast',
     event: 'turn',
     payload: turnBroadcastPayload(seq),
