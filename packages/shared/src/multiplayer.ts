@@ -255,6 +255,34 @@ export interface OpenMatchSummary {
 export const OPEN_MATCH_PAGE_MAX = 50
 
 /**
+ * Abuse limits on lobby creation (#230): `create-match` had no per-user rate
+ * limit and lobbies never expired, so one scripted account could create
+ * unbounded public lobbies and bury real ones in the browser (`matches` also
+ * grows without bound). Mirrors publish-map's `PUBLISH_MAX_PER_WINDOW` shape,
+ * but as an open-lobby *count* cap rather than a rolling-window rate — a
+ * lobby, unlike a published map, is meant to be cleaned up (joined, started,
+ * or expired), so bounding how many a creator may have open at once is the
+ * right throttle, not how many they may open per hour.
+ *
+ *  - **{@link MAX_OPEN_LOBBIES_PER_CREATOR}**: an honest host waiting on
+ *    friends rarely has more than one or two lobbies open; 5 is generous
+ *    headroom that still caps a spam script at a small, bounded number of
+ *    rows per account instead of unbounded growth.
+ *  - **{@link LOBBY_TTL_MS}**: an abandoned lobby (creator never returns, no
+ *    one joins) ages out to `abandoned` — the status the initial schema's
+ *    check constraint already allows but nothing previously ever set — via
+ *    the `expire-lobbies` cron sweep, freeing the creator's slot and keeping
+ *    the browser free of dead rows.
+ */
+export const MAX_OPEN_LOBBIES_PER_CREATOR = 5
+export const LOBBY_TTL_MS = 48 * 60 * 60 * 1000
+
+/** True when a creator who already has `openLobbyCount` open lobbies must be throttled. */
+export function openLobbyLimitReached(openLobbyCount: number): boolean {
+  return openLobbyCount >= MAX_OPEN_LOBBIES_PER_CREATOR
+}
+
+/**
  * Keyset-pagination cursor for the match browser (#150): the `(createdAt, matchId)`
  * of the previous page's last row. It MUST carry `matchId` as well as `createdAt`
  * because the sort key is the composite tuple `(createdAt DESC, matchId DESC)`
