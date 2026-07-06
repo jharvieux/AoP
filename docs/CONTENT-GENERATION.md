@@ -7,11 +7,13 @@ hook into.
 
 **Status as of this writing**: the tooling to generate NPC dialogue clips (issue #75,
 script at `~/aop-ai-tools/`) exists and works, but the 10 predefined `.wav` files have not
-yet been committed to `main` (they live on a still-open PR, #78). Art generation (Stable
-Diffusion WebUI) is installed but unused — the map still renders as flat-color PixiJS
-shapes (see `MapCanvas.tsx`), matching decision D-008 ("stylized 2D sprites") as a
-not-yet-built target. The two worked examples below show the integration as it would be
-built today, using the code patterns already in the repo.
+yet been committed to `main` (they live on a still-open PR, #78). Background music
+(MusicGen) and generic gameplay SFX (procedural synthesis) are generated and wired in —
+see `docs/runbooks/music-sfx-generation.md`. Art generation (Stable Diffusion WebUI) is
+installed but unused — the map still renders as flat-color PixiJS shapes (see
+`MapCanvas.tsx`), matching decision D-008 ("stylized 2D sprites") as a not-yet-built
+target. The two worked examples below show the integration as it would be built today,
+using the code patterns already in the repo.
 
 ## Pipeline: generate → curate → integrate
 
@@ -89,6 +91,8 @@ selected by the client from IDs the engine already emits (faction id, encounter 
 | Faction names/rosters         | `packages/content/src/factions.ts`                                   | No art field on `FactionDef` yet; would need one to reference generated art by faction id (see Example 2).                                                                                                   |
 | Map/entity rendering          | `apps/web/src/MapCanvas.tsx`                                         | Currently `pixi.js` `Graphics` with flat-color fills (`TILE_COLOR`, `OWN_SHIP`, `ENEMY_SHIP`, `ENCOUNTER_COLOR`, …). This is where `Sprite`/`Texture` would replace `Graphics.fill()` calls once art exists. |
 | Generated audio files         | `apps/web/public/audio/generated/*.wav`                              | Written directly by `~/aop-ai-tools/generate-game-audio-piper.py`. Scripts and tooling exist (issue #75); new/regenerated clips need an explicit `git add` (not the whole directory) before commit.          |
+| Background music              | `apps/web/public/audio/music/*.wav`                                  | Written by `~/aop-ai-tools/generate_game_music.py` (MusicGen). Selected by `apps/web/src/audio/musicClips.ts`'s `selectGameplayMusicContext()`; see `docs/runbooks/music-sfx-generation.md`.                 |
+| Generic gameplay SFX          | `apps/web/public/audio/sfx/*.wav`                                    | Written by `~/aop-ai-tools/generate_game_sfx.py` (procedural synthesis, no model). Played via `apps/web/src/audio/feedback.ts`; see `docs/runbooks/music-sfx-generation.md`.                                 |
 | Generated art files (future)  | `apps/web/public/art/...` (convention, doesn't exist yet)            | Suggested split: `art/factions/<factionId>/`, `art/units/<unitId>.png`.                                                                                                                                      |
 
 ## Example: add a new NPC dialogue line

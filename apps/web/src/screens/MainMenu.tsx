@@ -1,4 +1,6 @@
 import { useAudioSettings } from '../audio/useAudioSettings'
+import { useBackgroundMusic } from '../audio/useBackgroundMusic'
+import { tapFeedback } from '../audio/feedback'
 
 interface MainMenuProps {
   onStart: () => void
@@ -31,41 +33,59 @@ export function MainMenu({
   onQuickMatch,
   onLeaderboard,
 }: MainMenuProps) {
-  const { muted, volume, setMuted, setVolume } = useAudioSettings()
+  const {
+    muted,
+    volume,
+    musicVolume,
+    sfxVolume,
+    setMuted,
+    setVolume,
+    setMusicVolume,
+    setSfxVolume,
+  } = useAudioSettings()
+
+  useBackgroundMusic('menu')
+
+  function withTap(handler: () => void): () => void {
+    return () => {
+      tapFeedback()
+      handler()
+    }
+  }
 
   return (
     <div className="screen menu-screen">
       <div className="menu-content">
         <h1 className="game-title">Age of Plunder</h1>
         <p className="game-subtitle">A pirate strategy game</p>
-        <button className="primary large" onClick={onStart}>
+        <button className="primary large" onClick={withTap(onStart)}>
           New Game
         </button>
-        <button className="secondary large" onClick={onMapEditor}>
+        <button className="secondary large" onClick={withTap(onMapEditor)}>
           Map Editor
         </button>
-        <button className="secondary large" onClick={onThemePacks}>
+        <button className="secondary large" onClick={withTap(onThemePacks)}>
           Theme Packs
         </button>
-        <button className="secondary large" onClick={onAccount}>
+        <button className="secondary large" onClick={withTap(onAccount)}>
           Account
         </button>
-        <button className="secondary large" onClick={onWatchReplay}>
+        <button className="secondary large" onClick={withTap(onWatchReplay)}>
           Watch Replay
         </button>
-        <button className="secondary large" onClick={onSpectate}>
+        <button className="secondary large" onClick={withTap(onSpectate)}>
           Spectate
         </button>
-        <button className="secondary large" onClick={onDesignateSpectator}>
+        <button className="secondary large" onClick={withTap(onDesignateSpectator)}>
           Grant Spectator Access
         </button>
-        <button className="secondary large" onClick={onMatchBrowser}>
+        <button className="secondary large" onClick={withTap(onMatchBrowser)}>
           Match Browser
         </button>
-        <button className="secondary large" onClick={onQuickMatch}>
+        <button className="secondary large" onClick={withTap(onQuickMatch)}>
           Quick Match
         </button>
-        <button className="secondary large" onClick={onLeaderboard}>
+        <button className="secondary large" onClick={withTap(onLeaderboard)}>
           Leaderboard
         </button>
 
@@ -75,7 +95,7 @@ export function MainMenu({
             Mute audio
           </label>
           <label className="menu-audio-settings__row">
-            Volume
+            Dialogue volume
             <input
               type="range"
               min={0}
@@ -84,7 +104,33 @@ export function MainMenu({
               value={volume}
               disabled={muted}
               onChange={(e) => setVolume(Number(e.target.value))}
-              aria-label="Audio volume"
+              aria-label="Dialogue volume"
+            />
+          </label>
+          <label className="menu-audio-settings__row">
+            Music volume
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={musicVolume}
+              disabled={muted}
+              onChange={(e) => setMusicVolume(Number(e.target.value))}
+              aria-label="Music volume"
+            />
+          </label>
+          <label className="menu-audio-settings__row">
+            SFX volume
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={sfxVolume}
+              disabled={muted}
+              onChange={(e) => setSfxVolume(Number(e.target.value))}
+              aria-label="SFX volume"
             />
           </label>
         </div>

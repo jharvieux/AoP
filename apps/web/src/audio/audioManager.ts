@@ -1,11 +1,24 @@
+/** Which volume slider a clip is governed by. Defaults to `'dialogue'` for
+ * backward compatibility with call sites that predate music/sfx (#75/#28). */
+export type AudioCategory = 'dialogue' | 'music' | 'sfx'
+
 export interface AudioSettings {
   muted: boolean
-  /** Master volume in [0,1] applied to every clip this manager plays. */
+  /** Volume in [0,1] for NPC/narrator dialogue clips (the original category). */
   volume: number
+  /** Volume in [0,1] for looping background music. */
+  musicVolume: number
+  /** Volume in [0,1] for one-shot gameplay SFX (clicks, hits, pickups). */
+  sfxVolume: number
 }
 
 const STORAGE_KEY = 'aop:audio-settings'
-const DEFAULT_SETTINGS: AudioSettings = { muted: false, volume: 0.8 }
+const DEFAULT_SETTINGS: AudioSettings = {
+  muted: false,
+  volume: 0.8,
+  musicVolume: 0.5,
+  sfxVolume: 0.8,
+}
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value))
@@ -20,9 +33,32 @@ function loadSettings(): AudioSettings {
     return {
       muted: typeof parsed.muted === 'boolean' ? parsed.muted : DEFAULT_SETTINGS.muted,
       volume: typeof parsed.volume === 'number' ? clamp01(parsed.volume) : DEFAULT_SETTINGS.volume,
+      musicVolume:
+        typeof parsed.musicVolume === 'number'
+          ? clamp01(parsed.musicVolume)
+          : DEFAULT_SETTINGS.musicVolume,
+      sfxVolume:
+        typeof parsed.sfxVolume === 'number'
+          ? clamp01(parsed.sfxVolume)
+          : DEFAULT_SETTINGS.sfxVolume,
     }
   } catch {
     return DEFAULT_SETTINGS
+  }
+}
+
+/** Pure: which volume slider governs `category` under the current settings
+ * (muted always wins). Exported so the selection logic is unit-testable
+ * without touching the `Audio` element. */
+export function volumeForCategory(settings: AudioSettings, category: AudioCategory): number {
+  if (settings.muted) return 0
+  switch (category) {
+    case 'music':
+      return settings.musicVolume
+    case 'sfx':
+      return settings.sfxVolume
+    case 'dialogue':
+      return settings.volume
   }
 }
 
@@ -45,10 +81,15 @@ type Listener = (settings: AudioSettings) => void
  * missing asset) are swallowed — audio is optional presentation, never a
  * blocking dependency for gameplay.
  */
+interface ActiveClip {
+  audio: HTMLAudioElement
+  category: AudioCategory
+}
+
 class AudioManager {
   private settings: AudioSettings = loadSettings()
   private listeners = new Set<Listener>()
-  private active = new Map<string, HTMLAudioElement>()
+  private active = new Map<string, ActiveClip>()
 
   getSettings(): AudioSettings {
     return this.settings
@@ -67,21 +108,39 @@ class AudioManager {
     this.update({ volume: clamp01(volume) })
   }
 
+  setMusicVolume(volume: number): void {
+    this.update({ musicVolume: clamp01(volume) })
+  }
+
+  setSfxVolume(volume: number): void {
+    this.update({ sfxVolume: clamp01(volume) })
+  }
+
+  private volumeFor(category: AudioCategory): number {
+    return volumeForCategory(this.settings, category)
+  }
+
   /**
    * Play a clip once, fire-and-forget. `key` defaults to the clip's `url`; a
    * second call with the same key stops any still-playing instance first.
-   * Returns the `Audio` element so callers can observe its `ended` event.
+   * `category` picks which volume slider governs it (defaults to `'dialogue'`
+   * for pre-existing call sites). Returns the `Audio` element so callers can
+   * observe its `ended` event.
    */
-  play(url: string, opts: { key?: string; loop?: boolean } = {}): HTMLAudioElement {
+  play(
+    url: string,
+    opts: { key?: string; loop?: boolean; category?: AudioCategory } = {},
+  ): HTMLAudioElement {
     const key = opts.key ?? url
-    this.active.get(key)?.pause()
+    this.active.get(key)?.audio.pause()
 
+    const category = opts.category ?? 'dialogue'
     const audio = new Audio(url)
     audio.loop = opts.loop ?? false
-    audio.volume = this.settings.muted ? 0 : this.settings.volume
-    this.active.set(key, audio)
+    audio.volume = this.volumeFor(category)
+    this.active.set(key, { audio, category })
     audio.addEventListener('ended', () => {
-      if (this.active.get(key) === audio) this.active.delete(key)
+      if (this.active.get(key)?.audio === audio) this.active.delete(key)
     })
     void audio.play().catch(() => {
       // Autoplay rejection or missing asset: silently no-op.
@@ -91,15 +150,15 @@ class AudioManager {
 
   /** Stop a specific keyed clip early (e.g. an encounter's greeting closing). */
   stop(key: string): void {
-    this.active.get(key)?.pause()
+    this.active.get(key)?.audio.pause()
     this.active.delete(key)
   }
 
   private update(partial: Partial<AudioSettings>): void {
     this.settings = { ...this.settings, ...partial }
     // Re-apply volume to anything already playing so a slider drag is heard live.
-    for (const audio of this.active.values()) {
-      audio.volume = this.settings.muted ? 0 : this.settings.volume
+    for (const clip of this.active.values()) {
+      clip.audio.volume = this.volumeFor(clip.category)
     }
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings))

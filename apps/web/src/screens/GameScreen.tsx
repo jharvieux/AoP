@@ -37,7 +37,15 @@ import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
 import { DIALOGUE } from '../audio/dialogueClips'
 import { useEncounterAudio } from '../audio/useEncounterAudio'
-import { hapticImpact, hapticTap } from '../haptics'
+import { useBackgroundMusic } from '../audio/useBackgroundMusic'
+import { selectGameplayMusicContext } from '../audio/musicClips'
+import {
+  coinFeedback,
+  combatFeedback,
+  impactFeedback,
+  shipMoveFeedback,
+  tapFeedback,
+} from '../audio/feedback'
 import { UI_ICON } from '../uiIcons'
 import { ENCOUNTER_PORTRAIT } from '../encounterPortraits'
 
@@ -95,6 +103,17 @@ export function GameScreen({
   const [boarding, setBoarding] = useState<BoardingState | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
+
+  // Ambient during normal play, battle theme while a battle report or boarding
+  // melee sheet is open.
+  useBackgroundMusic(
+    selectGameplayMusicContext({ battleReportOpen: !!battleReport, boardingOpen: !!boarding }),
+  )
+
+  // Combat-resolved feedback, once per battle report shown.
+  useEffect(() => {
+    if (battleReport) combatFeedback()
+  }, [battleReport])
 
   // AI seats play themselves, one action per tick, so the main thread never
   // blocks. The same nextAiAction() runs unchanged in a worker or edge function.
@@ -198,6 +217,7 @@ export function GameScreen({
     // Empty tile: move there if it is reachable by sea within remaining movement.
     const cost = pathCost(game.map, selectedCaptain.position, { x, y })
     if (cost !== null && cost <= selectedCaptain.movementPoints) {
+      shipMoveFeedback()
       onAction({
         type: 'moveCaptain',
         playerId: viewer.id,
@@ -241,7 +261,7 @@ export function GameScreen({
    */
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
-    hapticImpact()
+    impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
@@ -313,7 +333,11 @@ export function GameScreen({
 
   function resolveEncounter(choice: string) {
     if (!selectedCaptain || !encounter) return
-    hapticImpact()
+    impactFeedback()
+    const reward =
+      game.config.content?.encounters?.[encounter.kind]?.choices?.[choice as EncounterChoice]
+        ?.reward
+    if (reward?.gold) coinFeedback()
     playEncounterResolutionBark(encounter.kind, choice)
     onAction({
       type: 'resolveEncounter',
@@ -327,13 +351,13 @@ export function GameScreen({
   }
 
   function endTurn() {
-    hapticTap()
+    tapFeedback()
     setSelectedCaptainId(null)
     onAction({ type: 'endTurn', playerId: player.id })
   }
 
   function resign() {
-    hapticImpact()
+    impactFeedback()
     onAction({ type: 'resign', playerId: player.id })
     setConfirmingResign(false)
   }
@@ -429,7 +453,7 @@ export function GameScreen({
           <button
             className="secondary"
             onClick={() => {
-              hapticTap()
+              tapFeedback()
               setCityOpen(true)
             }}
             disabled={!isViewerTurn}
@@ -439,7 +463,7 @@ export function GameScreen({
           <button
             className="secondary"
             onClick={() => {
-              hapticTap()
+              tapFeedback()
               setSavesOpen(true)
             }}
           >
