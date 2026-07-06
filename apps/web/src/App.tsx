@@ -5,7 +5,7 @@ import {
   type GameConfig,
   type GameState,
 } from '@aop/engine'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
@@ -89,6 +89,10 @@ export function App() {
     const id = setTimeout(() => setActionError(null), 3000)
     return () => clearTimeout(id)
   }, [actionError])
+
+  // Stable identity: TitleScreen's auto-advance timer keys its effect on this
+  // callback, so a fresh closure per render would restart the 3.2s countdown.
+  const handleTitleDone = useCallback(() => setScreen('menu'), [])
 
   function handleStartNewGame(setupConfig: GameSetupConfig) {
     // config already carries setup + startingTroops + frozen combatStats + content
@@ -248,7 +252,7 @@ export function App() {
         </div>
       )}
       <CheckoutPendingBanner />
-      {screen === 'title' && <TitleScreen onDone={() => setScreen('menu')} />}
+      {screen === 'title' && <TitleScreen onDone={handleTitleDone} />}
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}
