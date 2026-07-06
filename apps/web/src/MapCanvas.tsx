@@ -144,7 +144,7 @@ export interface MapCanvasProps {
 }
 
 export function MapCanvas(props: MapCanvasProps) {
-  const { containerRef, app } = usePixiApp({ background: TILE_COLOR.deep })
+  const { containerRef, app, error } = usePixiApp({ background: TILE_COLOR.deep })
   const { spriteUrl: themeSpriteUrl, pack: themePack, factionName } = useTheme()
 
   // Latest props + view are read by the render loop via refs, so per-action
@@ -550,6 +550,19 @@ export function MapCanvas(props: MapCanvasProps) {
       world.destroy({ children: true })
     }
   }, [app])
+
+  // #241: without this, a failed Application.init() (blacklisted GPU,
+  // exhausted WebGL contexts, some WebViews) left `app` undefined forever and
+  // this rendered an empty, unexplained div — the whole map invisible, with
+  // no signal that anything had gone wrong.
+  if (error) {
+    return (
+      <div className="map-canvas-error">
+        <p>The map couldn&rsquo;t be displayed on this device.</p>
+        <p className="map-canvas-error__detail">{error.message}</p>
+      </div>
+    )
+  }
 
   // containerRef's div is Pixi's exclusive mount point (it appends the
   // <canvas> into it outside React's tracking — see usePixiApp) — the a11y
