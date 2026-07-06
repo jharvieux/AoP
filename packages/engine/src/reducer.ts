@@ -53,6 +53,7 @@ import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
 import { tileAt } from './map'
 import { findPath } from './pathfinding'
+import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
 import {
@@ -111,6 +112,9 @@ export function applyAction(state: GameState, action: Action): GameState {
  * derived from the pre-action RNG state, so replays reproduce it exactly.
  */
 export function applyActionWithOutcome(state: GameState, action: Action): ActionOutcome {
+  if (state.config.rulesVersion !== RULES_VERSION) {
+    throw new RulesVersionMismatchError(state.config.rulesVersion, RULES_VERSION)
+  }
   if (state.status !== 'active') {
     throw new InvalidActionError('Game is over', action)
   }

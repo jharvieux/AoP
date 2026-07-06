@@ -255,8 +255,13 @@ odds-preview UX (#19).
   is only valid when versions match. Consequence: engine changes must keep `GameState`
   backward-compatible (additive fields with defaults) or ship a state migration keyed off
   `engine_version`.
-- **Compaction** (#37): keep snapshot 0, the latest two snapshots, and one per N rounds;
-  keep the full action log until `finished` + retention window (replays), then archive.
+- **Compaction** (#37): while `active`, keep snapshot 0, the latest two snapshots, and one
+  per N rounds. Once `finished` (#226), drop straight to just snapshot 0 + the final
+  snapshot — the replay viewer always rebuilds from the frozen `GameConfig` plus the full
+  action log, never from a snapshot, so nothing in between is load-bearing; the action log
+  itself is kept in full, indefinitely, since replays depend on it. `match_chat` is purged
+  outright (no archive) for matches finished more than the retention window ago (#226,
+  default 30 days) on the same daily cron.
 
 ## 11. Threat model
 

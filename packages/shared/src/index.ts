@@ -10,10 +10,15 @@ export type { Database, Json } from './database.types'
 // compact-snapshots Edge Function and the engine's determinism test suite.
 export {
   type SnapshotMeta,
+  type SnapshotRetentionMode,
   DEFAULT_ROUNDS_PER_SNAPSHOT,
   snapshotKeepSet,
   snapshotsToDelete,
 } from './snapshots'
+
+// Finished-match retention policy (#226) — pure cutoff math, shared by the
+// compact-snapshots Edge Function's chat-purge step and its vitest suite.
+export { DEFAULT_CHAT_RETENTION_DAYS, chatRetentionCutoff } from './retention'
 
 // Multiplayer transport contracts (turn poke + timer state machine), shared by
 // the Edge Functions and the web client.
