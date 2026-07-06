@@ -4,6 +4,7 @@ import { MAP_VALIDATION_LIMITS } from '@aop/content'
 import {
   addStartPosition,
   blankDraft,
+  cycleResourceMarkerOwner,
   draftFromGenerated,
   draftToMapDefinition,
   eraseEntityAt,
@@ -125,6 +126,46 @@ describe('draftToMapDefinition', () => {
     expect(def.encounters).toEqual([{ kind: 'merchant', position: { x: 3, y: 3 } }])
     expect(def.resourceNodes).toEqual([{ kind: 'timber', position: { x: 4, y: 4 } }])
     expect('resourceMarkers' in def).toBe(false)
+  })
+
+  it('exports ownerSeat in resourceNodes when set (#211, #283)', () => {
+    let draft = blankDraft('small')
+    draft = placeResourceMarker(draft, { x: 4, y: 4 }, 'gold')
+    draft = cycleResourceMarkerOwner(draft, { x: 4, y: 4 }, 3)
+    const def = draftToMapDefinition(draft)
+    expect(def.resourceNodes).toEqual([{ kind: 'gold', position: { x: 4, y: 4 }, ownerSeat: 0 }])
+  })
+
+  it('omits ownerSeat from resourceNodes when undefined (#211, #283)', () => {
+    let draft = blankDraft('small')
+    draft = placeResourceMarker(draft, { x: 4, y: 4 }, 'timber')
+    const def = draftToMapDefinition(draft)
+    expect(def.resourceNodes).toEqual([{ kind: 'timber', position: { x: 4, y: 4 } }])
+  })
+})
+
+describe('cycleResourceMarkerOwner', () => {
+  it('cycles ownerSeat: null → 0 → 1 → ... → null (#283)', () => {
+    let draft = blankDraft('small')
+    draft = placeResourceMarker(draft, { x: 5, y: 5 }, 'rum')
+
+    let cycled = cycleResourceMarkerOwner(draft, { x: 5, y: 5 }, 3)
+    expect(cycled.resourceMarkers[0]?.ownerSeat).toBe(0)
+
+    cycled = cycleResourceMarkerOwner(cycled, { x: 5, y: 5 }, 3)
+    expect(cycled.resourceMarkers[0]?.ownerSeat).toBe(1)
+
+    cycled = cycleResourceMarkerOwner(cycled, { x: 5, y: 5 }, 3)
+    expect(cycled.resourceMarkers[0]?.ownerSeat).toBe(2)
+
+    cycled = cycleResourceMarkerOwner(cycled, { x: 5, y: 5 }, 3)
+    expect(cycled.resourceMarkers[0]?.ownerSeat).toBeUndefined()
+  })
+
+  it('is a no-op if no marker exists at the given coord', () => {
+    const draft = blankDraft('small')
+    const result = cycleResourceMarkerOwner(draft, { x: 5, y: 5 }, 4)
+    expect(result).toBe(draft)
   })
 })
 

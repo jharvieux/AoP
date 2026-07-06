@@ -7,7 +7,7 @@ import {
   type TileType,
 } from '@aop/engine'
 import type { Coord, MapSize } from '@aop/shared'
-import type { EditorDraft, ResourceMarkerKind } from './types'
+import type { EditorDraft, ResourceMarker, ResourceMarkerKind } from './types'
 
 /** Pure editing operations over an `EditorDraft`. Every function returns a new
  * draft (immutable updates) so React state and undo/redo (if ever added) stay
@@ -146,6 +146,34 @@ export function placeResourceMarker(
   return { ...draft, resourceMarkers: [...draft.resourceMarkers, { kind, position: { ...coord } }] }
 }
 
+/** Update the ownerSeat of a resource marker at the given coord, cycling through
+ * null → 0 → 1 → ... → maxPlayers-1 → null. (#283) */
+export function cycleResourceMarkerOwner(
+  draft: EditorDraft,
+  coord: Coord,
+  maxPlayers: number,
+): EditorDraft {
+  const key = coordKey(coord)
+  const markerIdx = draft.resourceMarkers.findIndex((r) => coordKey(r.position) === key)
+  if (markerIdx === -1) return draft
+
+  const marker = draft.resourceMarkers[markerIdx]!
+  const nextSeat =
+    marker.ownerSeat === undefined || marker.ownerSeat === null
+      ? 0
+      : marker.ownerSeat + 1 >= maxPlayers
+        ? undefined
+        : marker.ownerSeat + 1
+
+  const updated = draft.resourceMarkers.slice()
+  const updatedMarker: ResourceMarker =
+    nextSeat === undefined
+      ? { kind: marker.kind, position: marker.position }
+      : { ...marker, ownerSeat: nextSeat }
+  updated[markerIdx] = updatedMarker
+  return { ...draft, resourceMarkers: updated }
+}
+
 /** Removes whichever entity (start/encounter/marker) sits at `coord`, if any. */
 export function eraseEntityAt(draft: EditorDraft, coord: Coord): EditorDraft {
   const key = coordKey(coord)
@@ -160,7 +188,7 @@ export function eraseEntityAt(draft: EditorDraft, coord: Coord): EditorDraft {
 /** Convert an `EditorDraft` to the shape @aop/engine understands.
  * `validateMapDefinition`/`createGame` both take this. Resource markers carry
  * straight through as `resourceNodes` (#101) — they're no longer editor-only
- * annotations, they drive real per-round income once a captain holds the tile. */
+ * annotations, they drive real per-round income once a captain holds the tile. (#211, #283) */
 export function draftToMapDefinition(draft: EditorDraft): MapDefinition {
   return {
     width: draft.width,
@@ -171,6 +199,7 @@ export function draftToMapDefinition(draft: EditorDraft): MapDefinition {
     resourceNodes: draft.resourceMarkers.map((r) => ({
       kind: r.kind,
       position: { ...r.position },
+      ...(r.ownerSeat !== undefined && { ownerSeat: r.ownerSeat }),
     })),
   }
 }

@@ -9,6 +9,7 @@ import { MapEditorCanvas } from '../mapEditor/MapEditorCanvas'
 import {
   addStartPosition,
   blankDraft,
+  cycleResourceMarkerOwner,
   draftFromGenerated,
   draftToMapDefinition,
   eraseEntityAt,
@@ -171,6 +172,10 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
       if (entityItem.kind === 'encounter') return placeEncounter(d, coord, entityItem.encounterKind)
       return placeResourceMarker(d, coord, entityItem.resourceKind)
     })
+  }
+
+  function handleRightClickTile(coord: Coord) {
+    setDraft((d) => cycleResourceMarkerOwner(d, coord, draft.startPositions.length))
   }
 
   function handleNewBlank() {
@@ -533,7 +538,11 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
         </div>
 
         <div className="map-editor-canvas-wrap">
-          <MapEditorCanvas draft={draft} onTileAt={handleTileAt} />
+          <MapEditorCanvas
+            draft={draft}
+            onTileAt={handleTileAt}
+            onRightClickTile={handleRightClickTile}
+          />
         </div>
 
         <div className="map-editor-validation">

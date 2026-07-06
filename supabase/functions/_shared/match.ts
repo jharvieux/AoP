@@ -490,17 +490,58 @@ export async function startMatch(
 }
 
 /**
- * Append one already-validated action at `priorCount + 1` and advance the
- * counter. Two concurrency layers, per the threat model (§11): the
- * `(match_id, seq)` primary key rejects a duplicate append (23505), and the
- * `action_count = priorCount` guard on the matches UPDATE rejects a racer who
- * slipped past the read. Either failure surfaces as `SEQ_CONFLICT`.
+ * Shapes the atomic `append_match_action` RPC's arguments (#216). The
+ * `undefined` / `null` / ISO-string trichotomy of `deadline` is encoded as
+ * `(p_set_deadline, p_deadline)`: `undefined` means the turn did not advance,
+ * so the running deadline is left untouched (`p_set_deadline: false`); `null`
+ * means the turn advanced with no timer, clearing it. As with
+ * {@link finalizeRpcArgs} (#265), the generated Args type omits `| null` for
+ * the plpgsql scalar `p_deadline`, so the null case is cast rather than
+ * replaced with a sentinel timestamp.
  *
- * The action is persisted through {@link sanitizeAction} (#223), not spread
- * verbatim — this is the single choke point every action (human-submitted or
- * AI-generated) passes through on its way into the log.
+ * The action is persisted through {@link sanitizeAction} (#223/#206), not
+ * spread verbatim — this is the single choke point every action
+ * (human-submitted or AI-generated) passes through on its way into the log.
  */
-async function appendAction(
+export function appendActionRpcArgs(
+  matchId: string,
+  priorCount: number,
+  seat: number,
+  action: Action,
+  deadline: string | null | undefined,
+): {
+  p_match_id: string
+  p_prior_count: number
+  p_seat: number
+  p_action: Json
+  p_deadline: string
+  p_set_deadline: boolean
+} {
+  return {
+    p_match_id: matchId,
+    p_prior_count: priorCount,
+    p_seat: seat,
+    p_action: sanitizeAction(action) as unknown as Json,
+    p_deadline: (deadline ?? null) as unknown as string,
+    p_set_deadline: deadline !== undefined,
+  }
+}
+
+/**
+ * Append one already-validated action at `priorCount + 1` and advance the
+ * counter — in ONE database transaction, the `append_match_action` RPC (#216).
+ * Previously these were two separate PostgREST round-trips; a crash between
+ * them left a committed action row above `action_count`, and every later
+ * append then hit the `(match_id, seq)` primary key forever — a permanently
+ * wedged match. Both concurrency layers of the threat model (§11) survive
+ * inside the RPC: the `action_count = priorCount` CAS rejects a racer who
+ * slipped past the read (SQLSTATE `SC409`), and the `(match_id, seq)` primary
+ * key backstops a deploy-skew duplicate (23505). Either failure rolls the
+ * whole transaction back and surfaces as `SEQ_CONFLICT`. The RPC also deletes
+ * any orphan rows the pre-RPC crash window already left, un-wedging previously
+ * stuck matches on their next append.
+ */
+export async function appendAction(
   db: Db,
   matchId: string,
   priorCount: number,
@@ -508,38 +549,17 @@ async function appendAction(
   action: Action,
   deadline: string | null | undefined,
 ): Promise<number> {
-  const seq = priorCount + 1
-  const insert = await db.from('match_actions').insert({
-    match_id: matchId,
-    seq,
-    seat,
-    action: sanitizeAction(action) as unknown as Json,
-  })
-  if (insert.error) {
-    if (insert.error.code === '23505') throw new AppError('SEQ_CONFLICT', 'Sequence already taken')
-    throw new AppError('INTERNAL', insert.error.message)
+  const { data, error } = await db.rpc(
+    'append_match_action',
+    appendActionRpcArgs(matchId, priorCount, seat, action, deadline),
+  )
+  if (error) {
+    if (error.code === 'SC409' || error.code === '23505') {
+      throw new AppError('SEQ_CONFLICT', 'Match advanced concurrently')
+    }
+    throw new AppError('INTERNAL', error.message)
   }
-  // `undefined` deadline means the turn did not advance — leave the running
-  // deadline untouched rather than clearing it. Typed as the generated `Update`
-  // row (not `Record<string, unknown>`, #265) — supabase-js rejects a plain
-  // index-signature object for `.update()` since it can't verify it has no
-  // excess properties against the known column set.
-  const patch: Database['public']['Tables']['matches']['Update'] = {
-    action_count: seq,
-    updated_at: new Date().toISOString(),
-  }
-  if (deadline !== undefined) patch.turn_deadline = deadline
-  const update = await db
-    .from('matches')
-    .update(patch)
-    .eq('id', matchId)
-    .eq('action_count', priorCount)
-    .select('id')
-  if (update.error) throw new AppError('INTERNAL', update.error.message)
-  if (!update.data || update.data.length === 0) {
-    throw new AppError('SEQ_CONFLICT', 'Match advanced concurrently')
-  }
-  return seq
+  return data
 }
 
 async function writeSnapshot(
