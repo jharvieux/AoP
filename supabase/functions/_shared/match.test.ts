@@ -7,6 +7,8 @@
 import { createGame, type Action } from '@aop/engine'
 import { assertEquals, assertNotEquals, assertRejects, assertThrows } from 'jsr:@std/assert@1'
 import {
+  appendAction,
+  appendActionRpcArgs,
   assertClientSubmittable,
   assertExpectedSeq,
   buildStartMatchConfig,
@@ -177,6 +179,89 @@ Deno.test('finalizeRpcArgs: carries match id and rating rows through unchanged',
   const args = finalizeRpcArgs('match-1', 0, ratings)
   assertEquals(args.p_match_id, 'match-1')
   assertEquals(args.p_ratings, ratings)
+})
+
+// appendAction / appendActionRpcArgs (#216): the append is ONE atomic
+// `append_match_action` RPC — insert + counter bump commit together or not at
+// all, closing the crash window that permanently wedged a match. True
+// transactionality lives in SQL and needs a live Postgres to exercise; what
+// these tests lock in is the client half of the contract: the wrapper makes
+// exactly one RPC round-trip (no separate insert/update to crash between), the
+// deadline trichotomy is encoded losslessly, the action passes through
+// sanitizeAction, and both conflict SQLSTATEs map to SEQ_CONFLICT.
+
+/** A fake `Db` exposing ONLY `.rpc` — any table round-trip would throw, which is
+ * itself the #216 assertion: the append must not touch PostgREST tables. */
+function fakeRpcDb(result: { data: unknown; error: { code?: string; message: string } | null }) {
+  const calls: { fn: string; args: Record<string, unknown> }[] = []
+  const db = {
+    rpc: (fn: string, args: Record<string, unknown>) => {
+      calls.push({ fn, args })
+      return Promise.resolve(result)
+    },
+  } as unknown as Db
+  return { db, calls }
+}
+
+const END_TURN: Action = { type: 'endTurn', playerId: 'seat-0' }
+
+Deno.test(
+  'appendActionRpcArgs: undefined deadline means "leave the running deadline alone"',
+  () => {
+    const args = appendActionRpcArgs('m1', 4, 0, END_TURN, undefined)
+    assertEquals(args.p_set_deadline, false)
+    assertEquals(args.p_deadline, null)
+  },
+)
+
+Deno.test('appendActionRpcArgs: null deadline means "turn advanced, untimed — clear it"', () => {
+  const args = appendActionRpcArgs('m1', 4, 0, END_TURN, null)
+  assertEquals(args.p_set_deadline, true)
+  assertEquals(args.p_deadline, null)
+})
+
+Deno.test('appendActionRpcArgs: a real deadline is set verbatim', () => {
+  const args = appendActionRpcArgs('m1', 4, 0, END_TURN, '2026-07-07T00:00:00.000Z')
+  assertEquals(args.p_set_deadline, true)
+  assertEquals(args.p_deadline, '2026-07-07T00:00:00.000Z')
+})
+
+Deno.test(
+  'appendActionRpcArgs: the action passes through sanitizeAction, ids carry through',
+  () => {
+    const withJunk = { ...END_TURN, junk: 'x'.repeat(1000) } as unknown as Action
+    const args = appendActionRpcArgs('m1', 4, 2, withJunk, undefined)
+    assertEquals(args.p_action, END_TURN)
+    assertEquals(args.p_match_id, 'm1')
+    assertEquals(args.p_prior_count, 4)
+    assertEquals(args.p_seat, 2)
+  },
+)
+
+Deno.test('appendAction: one RPC round-trip, resolves the RPC-confirmed seq', async () => {
+  const { db, calls } = fakeRpcDb({ data: 5, error: null })
+  const seq = await appendAction(db, 'm1', 4, 0, END_TURN, undefined)
+  assertEquals(seq, 5)
+  assertEquals(calls.length, 1)
+  assertEquals(calls[0]!.fn, 'append_match_action')
+})
+
+Deno.test('appendAction: the RPC CAS raise (SC409) maps to SEQ_CONFLICT', async () => {
+  const { db } = fakeRpcDb({ data: null, error: { code: 'SC409', message: 'advanced' } })
+  const err = await assertRejects(() => appendAction(db, 'm1', 4, 0, END_TURN, undefined), AppError)
+  assertEquals(err.code, 'SEQ_CONFLICT')
+})
+
+Deno.test('appendAction: a deploy-skew PK duplicate (23505) maps to SEQ_CONFLICT too', async () => {
+  const { db } = fakeRpcDb({ data: null, error: { code: '23505', message: 'duplicate key' } })
+  const err = await assertRejects(() => appendAction(db, 'm1', 4, 0, END_TURN, undefined), AppError)
+  assertEquals(err.code, 'SEQ_CONFLICT')
+})
+
+Deno.test('appendAction: any other RPC failure surfaces as INTERNAL', async () => {
+  const { db } = fakeRpcDb({ data: null, error: { code: '42P01', message: 'boom' } })
+  const err = await assertRejects(() => appendAction(db, 'm1', 4, 0, END_TURN, undefined), AppError)
+  assertEquals(err.code, 'INTERNAL')
 })
 
 // --- findExpiredTurns (#225: bounded, oldest-deadline-first, catch-log-continue) ---

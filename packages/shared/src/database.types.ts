@@ -535,6 +535,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_match_action: {
+        Args: {
+          p_action: Json
+          p_deadline: string
+          p_match_id: string
+          p_prior_count: number
+          p_seat: number
+          p_set_deadline: boolean
+        }
+        Returns: number
+      }
       claim_matchmaking_group: {
         Args: { p_map_size: string; p_match_size: number }
         Returns: {
