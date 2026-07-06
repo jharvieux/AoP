@@ -225,6 +225,38 @@ describe('turn loop', () => {
     expect(currentPlayer(state).id).toBe('p3')
   })
 
+  it('sweeps a resigned seat’s captains and cities off the board (#208)', () => {
+    let state = createGame(testConfig(3))
+    const ghost = captainsOf(state, 'p2')[0]!
+    expect(state.cities.some((c) => c.ownerId === 'p2')).toBe(true)
+
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'resign', playerId: 'p2' })
+
+    expect(state.captains.some((c) => c.ownerId === 'p2')).toBe(false)
+    expect(state.cities.some((c) => c.ownerId === 'p2')).toBe(false)
+    // The ghost fleet is gone, so it can never be attacked (or XP-farmed).
+    const p3cap = captainsOf(state, 'p3')[0]!
+    expect(() =>
+      applyAction(state, {
+        type: 'attackCaptain',
+        playerId: 'p3',
+        captainId: p3cap.id,
+        targetCaptainId: ghost.id,
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('replays a resign log to an identical swept state (#208)', () => {
+    const base = createGame(testConfig(3))
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'resign', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p3' },
+    ]
+    expect(JSON.stringify(replay(base, log))).toBe(JSON.stringify(replay(base, log)))
+  })
+
   it('finishes the game when one player remains', () => {
     let state = createGame(testConfig(3))
     state = applyAction(state, { type: 'resign', playerId: 'p1' })
