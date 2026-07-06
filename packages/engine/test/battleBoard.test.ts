@@ -846,6 +846,34 @@ describe('attackCaptain with the battle board', () => {
     ).toThrow(/Malformed board command/)
   })
 
+  it('an attacker with no boardCommands falls back to its own saved board doctrine (#285)', () => {
+    // A multiplayer attacker has no RNG access to probe the melee with (#93's
+    // interactive picker is single-player only), so its only way to have a
+    // say in the boarding fight is a pre-committed doctrine — the same
+    // `boardOrders` field the defender already uses. `holdLine` should keep
+    // every attacker stack anchored, exactly like the defender-side test
+    // above for `boardOrdersDriver` directly.
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const withDoctrine: GameState = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === p1cap.id ? { ...c, boardOrders: [{ when: 'always', doctrine: 'holdLine' }] } : c,
+      ),
+    }
+    const { battleReport } = applyActionWithOutcome(withDoctrine, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+      attackerOrders: ['board'],
+    })
+    const board = battleReport!.board!
+    const attackerIds = new Set(board.stacks.filter((s) => s.side === 'attacker').map((s) => s.id))
+    expect(board.events.filter((e) => e.type === 'move' && attackerIds.has(e.stackId))).toEqual([])
+  })
+
   it('replays a full boarding log — recorded commands and board orders — to identical state', () => {
     const base = adjacentBattleState()
     const p1cap = captainsOf(base, 'p1')[0]!

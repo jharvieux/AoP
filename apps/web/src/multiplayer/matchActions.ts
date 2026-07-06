@@ -31,11 +31,12 @@ export function ownCaptains(view: PlayerView): ViewCaptain[] {
 
 /**
  * Widen an own-seat `ViewCaptain` to the engine `Captain` shape UI components
- * (`CityScreen`, `MapCanvas`) expect. Own rows carry the full manifest;
- * anything the view legitimately omits even for the owner — standing/board
- * orders are write-only from a client (§7 keeps them out of every view) — is
- * defaulted inert. Returns null for an enemy hull (no own-detail fields):
- * those must never be dressed up as a full Captain.
+ * (`CityScreen`, `MapCanvas`) expect. Own rows carry the full manifest,
+ * including the captain's own standing/board orders (#285 — disclosed for the
+ * viewer's own captains only, see `playerView.ts`), so `CityScreen`'s presets
+ * reflect what's actually saved server-side instead of always starting blank.
+ * Returns null for an enemy hull (no own-detail fields): those must never be
+ * dressed up as a full Captain.
  */
 export function captainFromView(cap: ViewCaptain): Captain | null {
   if (cap.troops === undefined || cap.movementPoints === undefined) return null
@@ -51,6 +52,8 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
     xp: cap.xp ?? 0,
     skills: cap.skills ?? [],
     shipUpgrades: cap.shipUpgrades ?? {},
+    ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
+    ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
   }
 }
 
@@ -140,6 +143,39 @@ export function interpretTileClick(
   const cost = pathCost(map, selected.position, { x, y })
   if (cost !== null && cost <= movement) return { kind: 'move', to: { x, y } }
   return null
+}
+
+/**
+ * Optimistic local patch for a move (#285 "optimistic local application"):
+ * shifts the moving captain to its destination and spends the movement cost
+ * right away, so the board updates before the `submit-action` round trip
+ * returns rather than sitting frozen for a poll interval. Purely a rendering
+ * prediction — `MatchScreen` always replaces the whole view wholesale once
+ * the server answers (§13: no diff-patching) and discards this patch outright
+ * on any rejection, so a wrong guess here can never desync real state, only
+ * flicker back on the next authoritative view. Returns `view` unchanged if
+ * the captain isn't the viewer's own, has no disclosed movement, or the
+ * destination isn't reachable at the view's cached cost (should never happen
+ * for a caller that only invokes this after `interpretTileClick` accepted the
+ * same move, but never throws either way).
+ */
+export function applyOptimisticMove(
+  view: PlayerView,
+  map: GameMap,
+  captainId: string,
+  to: { x: number; y: number },
+): PlayerView {
+  const captain = view.captains.find((c) => c.id === captainId && c.ownerId === view.viewerId)
+  if (!captain || captain.movementPoints === undefined) return view
+  const cost = pathCost(map, captain.position, to)
+  if (cost === null) return view
+  const spent = Math.max(0, captain.movementPoints - cost)
+  return {
+    ...view,
+    captains: view.captains.map((c) =>
+      c.id === captainId ? { ...c, position: to, movementPoints: spent } : c,
+    ),
+  }
 }
 
 /**

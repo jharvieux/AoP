@@ -1,8 +1,10 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiTuning } from './ai'
+import type { BoardOrder } from './battleBoard'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { TileType } from './map'
+import type { StandingOrder } from './tactics'
 import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
 
@@ -137,6 +139,16 @@ export interface ViewCaptain {
   xp?: number
   skills?: string[]
   shipUpgrades?: Record<string, number>
+  /**
+   * The viewer's own pre-committed doctrine for this captain (#285): write-only
+   * from a client until now, so a returning client's presets (`CityScreen`'s
+   * standing/board-orders panels) started from a blank slate every time even
+   * when orders were already saved server-side. Own-seat disclosure only —
+   * an enemy's orders stay stripped exactly as before (§7: knowing a
+   * defender's standing orders would break interactive attacks).
+   */
+  standingOrders?: StandingOrder[]
+  boardOrders?: BoardOrder[]
 }
 
 export interface ViewEncounter {
@@ -225,6 +237,8 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         xp: cap.xp,
         skills: cap.skills,
         shipUpgrades: cap.shipUpgrades,
+        ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
+        ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
       })
     } else if (visibleKeys.has(tileKey(cap.position))) {
       // Enemy captain in current vision: you see a hull of a known class at a

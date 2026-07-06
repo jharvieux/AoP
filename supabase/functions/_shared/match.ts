@@ -1,6 +1,7 @@
 import {
   allianceComponents,
   applyAction,
+  applyActionWithOutcome,
   BOARD_DOCTRINES,
   BOARD_ORDER_CONDITIONS,
   createGame,
@@ -11,6 +12,7 @@ import {
   TACTICS,
   InvalidActionError,
   type Action,
+  type BattleReport,
   type BoardCommand,
   type BoardOrder,
   type GameConfig,
@@ -732,6 +734,15 @@ const turnAdvanced = (before: GameState, after: GameState): boolean =>
 export interface SubmitResult {
   seq: number
   state: GameState
+  /**
+   * The structured combat outcome of the caller's own action, if it was an
+   * attack (#285) — dropped before this, so a multiplayer client had no way
+   * to show what an attack actually did beyond the before/after view diff.
+   * Only ever the *submitting* seat's own action outcome, never one produced
+   * by the AI auto-play loop below (that never reported to the human whose
+   * turn triggered it either, in single-player terms).
+   */
+  battleReport?: BattleReport
 }
 
 /**
@@ -818,8 +829,11 @@ async function submitActionInternal(
 
   const owned: Action = { ...action, playerId: seatPlayerId(callerSeat) }
   let next: GameState
+  let battleReport: BattleReport | undefined
   try {
-    next = applyAction(state, owned)
+    const outcome = applyActionWithOutcome(state, owned)
+    next = outcome.state
+    battleReport = outcome.battleReport
   } catch (err) {
     if (err instanceof InvalidActionError) throw new AppError('INVALID_ACTION', err.message)
     throw err
@@ -875,7 +889,7 @@ async function submitActionInternal(
 
   await finalize(db, matchId, state)
   await mirrorAllianceIds(db, matchId, state)
-  return { seq: count, state }
+  return { seq: count, state, battleReport }
 }
 
 /**
