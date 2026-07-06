@@ -3,13 +3,33 @@ import type { SupabaseConfig } from '../auth/supabaseAuth'
 import type { AuthSession } from '../auth/types'
 
 /** A failure joining/leaving/reading the quick-match queue, or reading the
- * caller's seated matches. `undefined` reason means the failure never
- * produced a parseable body (network error, non-JSON response, …). */
+ * caller's seated matches. `status` is the HTTP status when the failure came
+ * from a non-ok response; `undefined` means it never got that far (network
+ * error, non-JSON response, …). */
 export class MatchmakingQueueError extends Error {
-  constructor(message: string) {
+  readonly status: number | undefined
+
+  constructor(message: string, status?: number) {
     super(message)
     this.name = 'MatchmakingQueueError'
+    this.status = status
   }
+}
+
+/**
+ * Whether a queue-client failure is permanent — a 4xx (expired/invalid auth,
+ * forbidden, not found, bad request) that retrying the same request won't
+ * fix — versus transient (network blip, 5xx) worth silently retrying on the
+ * next poll tick (#239: a poll loop that swallows every failure the same way
+ * leaves an expired-token player watching "Searching…" forever).
+ */
+export function isPermanentQueueError(error: unknown): boolean {
+  return (
+    error instanceof MatchmakingQueueError &&
+    error.status !== undefined &&
+    error.status >= 400 &&
+    error.status < 500
+  )
 }
 
 /** What a quick-match search asks for: desired human player count and map
@@ -85,7 +105,8 @@ export class MatchmakingQueueClient {
     } catch {
       throw new MatchmakingQueueError('Could not reach the server. Check your connection.')
     }
-    if (!res.ok) throw new MatchmakingQueueError(`Could not join the queue (${res.status}).`)
+    if (!res.ok)
+      throw new MatchmakingQueueError(`Could not join the queue (${res.status}).`, res.status)
   }
 
   /** Leave the queue: delete the caller's own row. A no-op (not an error) if
@@ -106,7 +127,8 @@ export class MatchmakingQueueClient {
     } catch {
       throw new MatchmakingQueueError('Could not reach the server. Check your connection.')
     }
-    if (!res.ok) throw new MatchmakingQueueError(`Could not leave the queue (${res.status}).`)
+    if (!res.ok)
+      throw new MatchmakingQueueError(`Could not leave the queue (${res.status}).`, res.status)
   }
 
   /** The caller's own queue entry, or `null` once it's been drained (or was never joined). */
@@ -149,7 +171,7 @@ export class MatchmakingQueueClient {
     } catch {
       throw new MatchmakingQueueError('Could not reach the server. Check your connection.')
     }
-    if (!res.ok) throw new MatchmakingQueueError(`Request failed (${res.status}).`)
+    if (!res.ok) throw new MatchmakingQueueError(`Request failed (${res.status}).`, res.status)
     return (await res.json().catch(() => [])) as T
   }
 }

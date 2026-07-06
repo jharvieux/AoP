@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { FACTION_IDS, type FactionId, type MapSize } from '@aop/shared'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
-import { MatchmakingQueueClient } from '../multiplayer/matchmakingQueueClient'
+import {
+  isPermanentQueueError,
+  MatchmakingQueueClient,
+} from '../multiplayer/matchmakingQueueClient'
 import { subscribeSpectatePoll } from '../multiplayer/spectatePoll'
 
 interface QuickMatchScreenProps {
@@ -13,7 +16,14 @@ const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
 const MATCH_SIZES = [2, 3, 4, 5, 6, 7, 8]
 const STATUS_POLL_MS = 3000
 
-type SearchState = { phase: 'idle' } | { phase: 'searching' } | { phase: 'found'; matchId: string }
+type SearchState =
+  | { phase: 'idle' }
+  | { phase: 'searching' }
+  | { phase: 'found'; matchId: string | null }
+  // A permanent (auth/4xx) failure polling the queue — retrying the same
+  // request won't help, so the poll stops and the player gets Retry/Cancel
+  // instead of an infinite "Searching…" (#239).
+  | { phase: 'queue-error' }
 
 /**
  * Quick-match queue UI (#153, docs/MULTIPLAYER.md §14): join the server-side
@@ -77,7 +87,7 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
     const session = auth.state.session
     const client = new MatchmakingQueueClient(config)
 
-    return subscribeSpectatePoll({
+    const stopPolling = subscribeSpectatePoll({
       intervalMs: STATUS_POLL_MS,
       onTick: async () => {
         try {
@@ -85,12 +95,27 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
           if (status !== null) return // still queued
           const seated = await client.mySeatedMatchIds(session)
           const fresh = seated.find((id) => !knownMatchIds.current.has(id))
-          setSearch({ phase: 'found', matchId: fresh ?? seated[seated.length - 1] ?? '' })
-        } catch {
-          // A transient poll failure just tries again next tick.
+          setSearch({ phase: 'found', matchId: fresh ?? seated[seated.length - 1] ?? null })
+        } catch (err) {
+          if (isPermanentQueueError(err)) {
+            setError(err instanceof Error ? err.message : 'Could not check match status.')
+            setSearch({ phase: 'queue-error' })
+          }
+          // Transient failures (network blip, 5xx) just try again next tick.
         }
       },
     })
+
+    return () => {
+      stopPolling()
+      // Fire-and-forget: releases the queue row whenever this effect tears
+      // down, for any reason — explicit cancel, a match being found (already
+      // drained server-side, so this is a no-op), or the screen unmounting
+      // because the player backed out (Android back / app close) without
+      // ever hitting Cancel. Without this the row leaked and the player
+      // could get seated into a real match they never saw (#239).
+      void client.leave(session).catch(() => undefined)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.phase, authed])
 
@@ -100,7 +125,13 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
         <div className="menu-content">
           <h1 className="game-title">Match Found!</h1>
           <p className="game-subtitle">
-            You've been seated in match <strong>{search.matchId}</strong>.
+            {search.matchId ? (
+              <>
+                You've been seated in match <strong>{search.matchId}</strong>.
+              </>
+            ) : (
+              "You've been matched — check your matches."
+            )}
           </p>
           <button
             className="primary large"
@@ -110,6 +141,29 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
             }}
           >
             Back to Menu
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (search.phase === 'queue-error') {
+    return (
+      <div className="screen menu-screen">
+        <div className="menu-content">
+          <h1 className="game-title">Search interrupted</h1>
+          {error && <p className="theme-error">{error}</p>}
+          <button
+            className="primary large"
+            onClick={() => {
+              setSearch({ phase: 'idle' })
+              void handleSearch()
+            }}
+          >
+            Retry
+          </button>
+          <button className="secondary large" onClick={() => void handleCancel()}>
+            Cancel
           </button>
         </div>
       </div>

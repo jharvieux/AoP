@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SupabaseConfig } from '../auth/supabaseAuth'
 import type { AuthSession } from '../auth/types'
-import { MatchmakingQueueClient, MatchmakingQueueError } from './matchmakingQueueClient'
+import {
+  isPermanentQueueError,
+  MatchmakingQueueClient,
+  MatchmakingQueueError,
+} from './matchmakingQueueClient'
 
 const CONFIG: SupabaseConfig = { url: 'https://proj.supabase.co', anonKey: 'anon-key' }
 const SESSION: AuthSession = {
@@ -126,5 +130,47 @@ describe('MatchmakingQueueClient.mySeatedMatchIds', () => {
     expect(url).toBe(
       'https://proj.supabase.co/rest/v1/match_players?user_id=eq.user-1&select=match_id',
     )
+  })
+})
+
+describe('MatchmakingQueueError status', () => {
+  it('carries the response status on a non-ok response', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(jsonResponse(401, {}))
+    const client = new MatchmakingQueueClient(CONFIG, fetchMock)
+
+    const err = await client.join(SESSION, { matchSize: 2, mapSize: 'small' }).catch((e) => e)
+
+    expect(err).toBeInstanceOf(MatchmakingQueueError)
+    expect((err as MatchmakingQueueError).status).toBe(401)
+  })
+
+  it('leaves status undefined on a network failure', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValueOnce(new TypeError('offline'))
+    const client = new MatchmakingQueueClient(CONFIG, fetchMock)
+
+    const err = await client.join(SESSION, { matchSize: 2, mapSize: 'small' }).catch((e) => e)
+
+    expect((err as MatchmakingQueueError).status).toBeUndefined()
+  })
+})
+
+describe('isPermanentQueueError', () => {
+  it('treats 4xx (auth/forbidden/not-found/bad-request) as permanent', () => {
+    for (const status of [400, 401, 403, 404, 422]) {
+      expect(isPermanentQueueError(new MatchmakingQueueError('nope', status))).toBe(true)
+    }
+  })
+
+  it('treats 5xx as transient', () => {
+    expect(isPermanentQueueError(new MatchmakingQueueError('server blip', 500))).toBe(false)
+    expect(isPermanentQueueError(new MatchmakingQueueError('unavailable', 503))).toBe(false)
+  })
+
+  it('treats a network failure (no status) as transient', () => {
+    expect(isPermanentQueueError(new MatchmakingQueueError('offline'))).toBe(false)
+  })
+
+  it('treats a non-queue error as transient', () => {
+    expect(isPermanentQueueError(new Error('some other failure'))).toBe(false)
   })
 })
