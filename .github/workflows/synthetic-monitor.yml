@@ -1,0 +1,100 @@
+name: Synthetic Monitor
+
+# Scheduled production health probe (#252). Nothing in any tier alerted anyone on
+# breakage: a crashed edge function, a wedged maintenance cron, or a dead deploy was
+# invisible until a user complained. A failing run of this workflow emails the repo
+# watchers (GitHub's default for scheduled-workflow failures on the default branch) —
+# that email IS the alert channel; no external pager is wired up.
+#
+# What it checks, mirroring deploy.yml's smoke-test reasoning:
+#  - get-leaderboard / list-open-matches respond with a structured 403 FORBIDDEN to an
+#    unauthenticated POST. A literal 200 needs a provisioned smoke-test account (an
+#    operator decision, docs/runbooks/deploy.md); a 403 envelope still proves the
+#    function is deployed, reachable, and executing its auth boundary. Anything else —
+#    5xx, timeout, non-envelope body — fails the run.
+#  - extensions.maintenance_heartbeats (#224) has no 'error'/'timed_out' rows in the
+#    last hour, i.e. the sweep-turns / drain-matchmaking / compact-snapshots crons are
+#    actually reaching their edge functions. Requires the optional SUPABASE_DB_URL
+#    secret (full Postgres connection string); skipped with a notice without it.
+#
+# Secrets are read at the repository level, NOT via `environment: production`:
+# a required-reviewer rule on that environment would leave every 15-minute scheduled
+# run pending approval forever. If the operator scopes SUPABASE_URL/SUPABASE_ANON_KEY
+# to the production environment only, duplicate them as repo-level secrets for this
+# workflow. Until they exist (no production project yet — see deploy.yml), every run
+# exits green with a "not configured" notice rather than crying wolf.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::notice::SUPABASE_URL / SUPABASE_ANON_KEY secrets not configured — no production project to monitor yet (see deploy.yml). Skipping."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Probe edge functions (deployed, reachable, auth boundary executing)
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          probe() {
+            fn="$1"
+            status=$(curl -sS --max-time 20 -o /tmp/probe.json -w '%{http_code}' \
+              -X POST "$SUPABASE_URL/functions/v1/$fn" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{}') || {
+              echo "::error::$fn: request failed outright (DNS/TLS/timeout)"
+              return 1
+            }
+            echo "$fn: HTTP $status"
+            cat /tmp/probe.json
+            echo
+            if [ "$status" != "403" ]; then
+              echo "::error::$fn: expected 403 FORBIDDEN (unauthenticated probe), got $status"
+              return 1
+            fi
+            if ! grep -q '"code"' /tmp/probe.json; then
+              echo "::error::$fn: response is not the { error: { code, message } } envelope"
+              return 1
+            fi
+          }
+          probe get-leaderboard
+          probe list-open-matches
+
+      - name: Check maintenance cron heartbeats (#224)
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::notice::SUPABASE_DB_URL secret not configured — skipping the cron heartbeat check."
+            exit 0
+          fi
+          failures=$(psql "$SUPABASE_DB_URL" -tA -c \
+            "select count(*) from extensions.maintenance_heartbeats
+             where outcome in ('error', 'timed_out')
+               and ran_at > now() - interval '1 hour'")
+          echo "failed/timed-out maintenance invocations in the last hour: $failures"
+          if [ "$failures" != "0" ]; then
+            psql "$SUPABASE_DB_URL" -c \
+              "select job_name, ran_at, outcome, status_code
+               from extensions.maintenance_heartbeats
+               where outcome in ('error', 'timed_out')
+                 and ran_at > now() - interval '1 hour'
+               order by ran_at desc"
+            echo "::error::maintenance crons are failing — see the heartbeat rows above"
+            exit 1
+          fi

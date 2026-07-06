@@ -7,6 +7,7 @@ import {
 } from '@aop/engine'
 import { useEffect, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
+import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
@@ -118,6 +119,9 @@ export function App() {
         'Forced endTurn for a stuck AI seat also failed; giving up on this action',
         action,
       )
+      // An engine invariant failure the UI absorbs silently — the one class of
+      // caught error worth telemetry beyond the ErrorBoundary (#252).
+      reportError(new Error('Unrecoverable engine action: forced endTurn also failed'), { action })
       return
     }
     const { appliedAction, outcome } = result

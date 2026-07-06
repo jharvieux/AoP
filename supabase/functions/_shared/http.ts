@@ -1,6 +1,8 @@
 // Shared HTTP plumbing for every Edge Function: CORS, the error envelope, and
 // JSON responses. Error codes match docs/MULTIPLAYER.md §5.
 
+import { reportUnexpectedError } from './reporting.ts'
+
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -59,6 +61,10 @@ export function errorResponse(err: unknown): Response {
   if (err instanceof AppError) {
     return jsonResponse({ error: { code: err.code, message: err.message } }, STATUS[err.code])
   }
+  // Anything that isn't an AppError is an unexpected throw — a bug, not a
+  // domain failure. Log it for the pull-logs and report it to Sentry (#252).
+  console.error('Unexpected error', err)
+  reportUnexpectedError(err)
   const message = err instanceof Error ? err.message : 'Unexpected error'
   return jsonResponse({ error: { code: 'INTERNAL', message } }, STATUS.INTERNAL)
 }
