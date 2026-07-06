@@ -5,6 +5,7 @@ import {
   ENCOUNTERS,
   FACTIONS,
   GAME_SETUP,
+  RESOURCE_NODES,
   SHIP_CLASSES,
   SKILLS,
   combatStatsData,
@@ -17,6 +18,11 @@ import type { ContentCatalog, GameConfig, PlayerConfig, TroopStack } from '@aop/
  * of apps/web/src/catalog.ts. The engine must stay dependency-free, so the
  * caller (here, the Edge Function) freezes this snapshot into the match config;
  * the client does the same, and both sides run the identical engine (§2).
+ *
+ * Kept byte-for-byte identical to apps/web/src/catalog.ts's `buildCatalog` —
+ * see `apps/web/src/multiplayer/catalogParity.test.ts`, which fails the build
+ * if the two ever diverge again (#250; they silently drifted on
+ * `resourceNodes` once already).
  */
 export function buildCatalog(): ContentCatalog {
   return {
@@ -62,6 +68,9 @@ export function buildCatalog(): ContentCatalog {
     ),
     captainXpThresholds: [...CAPTAIN_XP_THRESHOLDS],
     encounters: ENCOUNTERS,
+    resourceNodes: Object.fromEntries(
+      Object.values(RESOURCE_NODES).map((node) => [node.id, { yield: node.yield }]),
+    ),
   }
 }
 

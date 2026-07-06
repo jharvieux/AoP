@@ -67,15 +67,14 @@ describe('buildMatchConfig', () => {
     })
   })
 
-  // #169: the client catalog carries a `resourceNodes` field the server's
-  // twin omits (apps/web/src/catalog.ts vs supabase/functions/_shared/catalog.ts).
-  // That's currently inert because `buildMatchConfig` never sets
-  // `mapDefinition`, and the engine only seeds `GameState.resourceNodes` from
-  // `mapDefinition` (packages/engine/src/game.ts) — so a multiplayer-sourced
-  // config always starts with zero resource nodes on the board regardless of
-  // the catalog divergence. This test pins that inertness so a future change
-  // that starts wiring up `mapDefinition` here is forced to also reconcile
-  // the two catalogs.
+  // #169/#250: the catalog carries a `resourceNodes` field (mirrored on both
+  // client and server twins — see catalogParity.test.ts), but it's currently
+  // inert because `buildMatchConfig` never sets `mapDefinition`, and the
+  // engine only seeds `GameState.resourceNodes` from `mapDefinition`
+  // (packages/engine/src/game.ts) — so a multiplayer-sourced config always
+  // starts with zero resource nodes on the board. This test pins that
+  // inertness so a future change that starts wiring up `mapDefinition` here
+  // is forced to reconsider it.
   it('never seeds resource nodes onto the board (mapDefinition is unset for multiplayer)', () => {
     const config = buildMatchConfig(7, 'small', SEATS)
     expect(config.mapDefinition).toBeUndefined()
