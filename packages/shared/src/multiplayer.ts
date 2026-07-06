@@ -11,15 +11,21 @@
 import type { MapSize } from './index'
 
 /**
- * The `@aop/engine` version pinned into `matches.engine_version` when a match
- * is created (`supabase/functions/create-match/index.ts`) and compared
- * against by the replay viewer's version guard
+ * The `@aop/engine`+`@aop/content` version pinned into `matches.engine_version`
+ * when a match is created (`supabase/functions/create-match/index.ts`) and
+ * compared against by the replay viewer's version guard
  * (`apps/web/src/multiplayer/matchReplay.ts`, docs/MULTIPLAYER.md §10). Kept
  * here as the single source of truth so the server and client sides can never
- * drift apart on a future engine version bump — bump this alongside any
- * breaking `@aop/engine` change.
+ * drift apart on a version bump.
+ *
+ * A content hash of `packages/engine/src` and `packages/content/src`
+ * (#251), not a hand-maintained literal — a hand-bumped string sat at
+ * `'0.0.1'` since repo creation through dozens of real engine/content
+ * changes, leaving this guard permanently a no-op. Regenerate after any
+ * change to either package: `node scripts/generate-engine-version.mjs`.
+ * `apps/web/src/multiplayer/engineVersion.test.ts` fails if you forget.
  */
-export const ENGINE_VERSION = '0.0.1'
+export { ENGINE_VERSION } from './engineVersion.generated'
 
 /**
  * The Realtime poke broadcast on channel `match:{id}` after a turn advances
