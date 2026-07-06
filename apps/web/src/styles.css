@@ -51,6 +51,16 @@ body {
   opacity: 0.9;
 }
 
+/* Multiplayer turn clock (#35): the auto-skip countdown in the HUD. */
+.turn-countdown {
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-countdown--urgent {
+  color: #e0685a;
+  font-weight: 700;
+}
+
 /* Narrow phones (iPhone SE/375px and up): the title wastes space that the
    turn indicator and resources need more, and the primary actions live in
    the bottom bar anyway (#27), so drop it rather than let the row wrap. */

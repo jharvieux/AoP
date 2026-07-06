@@ -34,6 +34,7 @@ import {
 import { buildMatchConfig, type SeatConfig } from './catalog.ts'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
+import { dispatchTurnEmail } from './email.ts'
 import { dispatchTurnPush } from './push.ts'
 
 /** Safety cap on actions a single AI (or ai_takeover) seat may take in one turn
@@ -822,16 +823,14 @@ async function submitActionInternal(
   // dispatch (#158) this call makes.
   const seats = await loadSeats(db, matchId)
 
-  // #158: notify whoever the turn just advanced to, if that's a human seat
-  // (dispatchTurnPush no-ops for AI/ai_takeover seats and for a turn that
-  // didn't advance). Best-effort — see its doc comment.
+  // #158 push + #132 offline email: notify whoever the turn just advanced to,
+  // if that's a human seat (both dispatchers no-op for AI/ai_takeover seats,
+  // and the email additionally no-ops unless the player has been offline 15+
+  // minutes per §6). Best-effort — see their doc comments.
   if (advanced && state.status === 'active') {
-    await dispatchTurnPush(
-      db,
-      matchId,
-      toTurnSeats(seats),
-      parseSeat(state.players[state.currentPlayerIndex]!.id),
-    )
+    const nextSeat = parseSeat(state.players[state.currentPlayerIndex]!.id)
+    await dispatchTurnPush(db, matchId, toTurnSeats(seats), nextSeat)
+    await dispatchTurnEmail(db, matchId, toTurnSeats(seats), nextSeat)
   }
 
   // Auto-play any AI / ai_takeover seats the turn advanced onto (#133).
@@ -947,15 +946,13 @@ async function runAiSeatTurn(
     if (advanced) {
       await writeSnapshot(db, matchId, count, state)
       await broadcastTurn(db, matchId, count)
-      // #158: notify the next seat's human occupant, if any (see the call
-      // site in submitActionInternal for the full rationale).
+      // #158 push + #132 offline email: notify the next seat's human
+      // occupant, if any (see the call site in submitActionInternal for the
+      // full rationale).
       if (state.status === 'active') {
-        await dispatchTurnPush(
-          db,
-          matchId,
-          toTurnSeats(seats),
-          parseSeat(state.players[state.currentPlayerIndex]!.id),
-        )
+        const nextSeat = parseSeat(state.players[state.currentPlayerIndex]!.id)
+        await dispatchTurnPush(db, matchId, toTurnSeats(seats), nextSeat)
+        await dispatchTurnEmail(db, matchId, toTurnSeats(seats), nextSeat)
       }
     }
     if (action.type === 'endTurn') break

@@ -11,6 +11,8 @@ import { subscribeSpectatePoll } from '../multiplayer/spectatePoll'
 
 interface QuickMatchScreenProps {
   onBack: () => void
+  /** Open the live match screen (#261) for the match the queue just seated the caller into. */
+  onPlayMatch: (matchId: string) => void
 }
 
 const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
@@ -39,7 +41,7 @@ type SearchState =
  * `match_players` that wasn't there when the search started is the match the
  * drain just seated the caller into (`knownMatchIds` below).
  */
-export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
+export function QuickMatchScreen({ onBack, onPlayMatch }: QuickMatchScreenProps) {
   const auth = useAuth()
   const [matchSize, setMatchSize] = useState(4)
   const [mapSize, setMapSize] = useState<MapSize>('medium')
@@ -134,8 +136,20 @@ export function QuickMatchScreen({ onBack }: QuickMatchScreenProps) {
               "You've been matched — check your matches."
             )}
           </p>
+          {search.matchId && (
+            <button
+              className="primary large"
+              onClick={() => {
+                const matchId = search.matchId!
+                setSearch({ phase: 'idle' })
+                onPlayMatch(matchId)
+              }}
+            >
+              Play Now
+            </button>
+          )}
           <button
-            className="primary large"
+            className="secondary large"
             onClick={() => {
               setSearch({ phase: 'idle' })
               onBack()
