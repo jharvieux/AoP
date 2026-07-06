@@ -25,10 +25,10 @@ DOM/Node/Deno API, so it runs here unmodified.
 
 Maintenance (not player-facing — gated by a shared secret or the service role, never a user JWT):
 
-| Function            | Contract                                                                      | Issue |
-| ------------------- | ----------------------------------------------------------------------------- | ----- |
-| `compact-snapshots` | `POST { matchId?, roundsPerSnapshot? } -> { matchesProcessed, totalDeleted }` | #37   |
-| `drain-matchmaking` | `POST -> { matchesCreated, playersMatched, matches }` (service-role only)     | #153  |
+| Function            | Contract                                                                                                     | Issue     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | --------- |
+| `compact-snapshots` | `POST { matchId?, roundsPerSnapshot?, chatRetentionDays? } -> { matchesProcessed, totalDeleted, chatPurge }` | #37, #226 |
+| `drain-matchmaking` | `POST -> { matchesCreated, playersMatched, matches }` (service-role only)                                    | #153      |
 
 `drain-matchmaking` (§14) drains the quick-match queue: it groups compatible waiters (same
 `match_size` + `map_size`, FIFO) into fresh matches, seats them, starts each match (createGame
@@ -43,12 +43,16 @@ row — no enqueue Edge Function. Rating-based matchmaking (#151/#152) and the q
 are separate issues.
 
 `compact-snapshots` (§10) trims each active match's `match_snapshots` history to the keep-set
-— snapshot 0, the two newest, and one per N rounds — leaving the action log intact so
+— snapshot 0, the two newest, and one per N rounds — and each _finished_ match's down to just
+snapshot 0 + the final snapshot (#226; the replay viewer always rebuilds from `GameConfig` +
+the full action log, never a snapshot), leaving the action log intact throughout so
 `reconstructState` output is byte-identical before and after. It reads each snapshot's round
 from `state->'round'` (no schema column), and serializes against `submit-action` with a
 per-match seq guard (deletes are scoped to `seq <= action_count` read at the start, so a
-concurrently-written newer snapshot is never touched). Requires `Authorization: Bearer
-<CRON_SECRET>`; fails closed if `CRON_SECRET` is unset. Cron scheduling is out of scope (#37).
+concurrently-written newer snapshot is never touched). Every invocation also purges
+`match_chat` for matches finished more than `chatRetentionDays` ago (#226, default 30).
+Requires `Authorization: Bearer <CRON_SECRET>`; fails closed if `CRON_SECRET` is unset. Cron
+scheduling is daily at 04:00 UTC (`supabase/migrations/20260705000000_cron_schedules.sql`).
 
 `list-open-matches` (§14, #150) is the public match browser's backend — the only read
 path that does **not** require the caller to already hold a seat. Rather than loosen the

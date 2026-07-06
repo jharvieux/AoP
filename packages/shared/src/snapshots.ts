@@ -31,6 +31,21 @@ export interface SnapshotMeta {
 export const DEFAULT_ROUNDS_PER_SNAPSHOT = 10
 
 /**
+ * Which compaction policy applies to a match (#226):
+ *
+ *  - `'active'` — the ongoing policy below (genesis, two newest, one per N rounds).
+ *  - `'finished'` — a stricter keep-set for matches that will never advance again:
+ *    just genesis and the final snapshot. A finished match's replay viewer
+ *    (`apps/web/src/multiplayer/matchReplay.ts`) always rebuilds from the frozen
+ *    `GameConfig` plus the full `match_actions` log, never from a snapshot, so no
+ *    intermediate history is load-bearing; `get-player-view`'s spectator path only
+ *    ever needs the final snapshot, since a finished match's head never moves
+ *    again. Keeping genesis too matches the never-strand-early-seqs invariant the
+ *    active policy relies on, at negligible cost (one extra row per match).
+ */
+export type SnapshotRetentionMode = 'active' | 'finished'
+
+/**
  * The set of snapshot seqs to KEEP (docs/MULTIPLAYER.md §10):
  *
  *  - **snapshot 0** (the minimum seq / genesis) — so reconstruction of *any*
@@ -41,6 +56,9 @@ export const DEFAULT_ROUNDS_PER_SNAPSHOT = 10
  *  - **one per N rounds** — the earliest snapshot reaching each N-round bucket,
  *    bounding the replay tail for historical seqs.
  *
+ * `mode: 'finished'` (#226) skips all of that in favor of just genesis + the
+ * final snapshot — see {@link SnapshotRetentionMode}.
+ *
  * Pure and deterministic. Idempotent: the keep-set of a snapshot list already
  * reduced to its keep-set is that same set (every survivor is re-kept), so
  * re-running compaction deletes nothing.
@@ -48,11 +66,19 @@ export const DEFAULT_ROUNDS_PER_SNAPSHOT = 10
 export function snapshotKeepSet(
   snapshots: readonly SnapshotMeta[],
   roundsPerSnapshot: number = DEFAULT_ROUNDS_PER_SNAPSHOT,
+  mode: SnapshotRetentionMode = 'active',
 ): Set<number> {
   const keep = new Set<number>()
   if (snapshots.length === 0) return keep
 
   const bySeq = [...snapshots].sort((a, b) => a.seq - b.seq)
+
+  if (mode === 'finished') {
+    keep.add(bySeq[0]!.seq)
+    keep.add(bySeq[bySeq.length - 1]!.seq)
+    return keep
+  }
+
   const bucketSize = Math.max(1, Math.floor(roundsPerSnapshot))
 
   // Genesis + the two newest.
@@ -88,8 +114,9 @@ export function snapshotsToDelete(
   snapshots: readonly SnapshotMeta[],
   guardSeq: number,
   roundsPerSnapshot: number = DEFAULT_ROUNDS_PER_SNAPSHOT,
+  mode: SnapshotRetentionMode = 'active',
 ): number[] {
-  const keep = snapshotKeepSet(snapshots, roundsPerSnapshot)
+  const keep = snapshotKeepSet(snapshots, roundsPerSnapshot, mode)
   return snapshots
     .filter((s) => s.seq <= guardSeq && !keep.has(s.seq))
     .map((s) => s.seq)
