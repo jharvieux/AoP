@@ -1,11 +1,13 @@
 // Deno tests for `_shared/match.ts`'s pure/DB-mockable helpers (parseSettings,
-// buildStartMatchConfig, findExpiredTurns, isExpectedSweepRace, sanitizeAction). Run with
+// buildStartMatchConfig, findExpiredTurns, isExpectedSweepRace, sanitizeAction,
+// assertExpectedSeq). Run with
 //   deno test --import-map supabase/functions/deno.json supabase/functions/_shared/match.test.ts
 // These edge functions are not part of the pnpm/vitest CI gate (they run on
 // Deno, not Node), so this file is exercised by `deno test`, not `pnpm test`.
 import { createGame, type Action } from '@aop/engine'
-import { assertEquals, assertNotEquals, assertThrows } from 'jsr:@std/assert@1'
+import { assertEquals, assertNotEquals, assertRejects, assertThrows } from 'jsr:@std/assert@1'
 import {
+  assertExpectedSeq,
   buildStartMatchConfig,
   finalizeRpcArgs,
   findExpiredTurns,
@@ -297,6 +299,33 @@ Deno.test('findExpiredTurns: a match that fails to reconstruct is skipped, not f
 
   assertEquals(expired, [{ matchId: 'good', seat: 0 }])
 })
+
+// --- assertExpectedSeq (#232: shared optimistic-concurrency token check) ---
+
+Deno.test('assertExpectedSeq: passes when expectedSeq matches the authoritative head', async () => {
+  const db = fakeDb({ matches: [{ id: 'm1', action_count: 7 }] })
+  await assertExpectedSeq(db, 'm1', 7) // must not throw
+})
+
+Deno.test('assertExpectedSeq: rejects a stale token as SEQ_CONFLICT', async () => {
+  const db = fakeDb({ matches: [{ id: 'm1', action_count: 7 }] })
+  const err = await assertRejects(() => assertExpectedSeq(db, 'm1', 6), AppError)
+  assertEquals(err.code, 'SEQ_CONFLICT')
+})
+
+Deno.test('assertExpectedSeq: rejects a token ahead of the head as SEQ_CONFLICT too', async () => {
+  const db = fakeDb({ matches: [{ id: 'm1', action_count: 7 }] })
+  const err = await assertRejects(() => assertExpectedSeq(db, 'm1', 8), AppError)
+  assertEquals(err.code, 'SEQ_CONFLICT')
+})
+
+Deno.test(
+  'assertExpectedSeq: a missing match falls through (downstream load owns NOT_FOUND)',
+  async () => {
+    const db = fakeDb({ matches: [] })
+    await assertExpectedSeq(db, 'no-such-match', 0) // must not throw
+  },
+)
 
 // --- isExpectedSweepRace (#225) ---
 

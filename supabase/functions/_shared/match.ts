@@ -589,6 +589,32 @@ export interface SubmitResult {
 }
 
 /**
+ * Optimistic-concurrency pre-check shared by `submit-action` and `end-turn`
+ * (#232): rejects a request whose `expectedSeq` no longer matches the match's
+ * authoritative `action_count` as SEQ_CONFLICT, so a caller acting on a stale
+ * view fails fast with a retriable error instead of racing. A missing match
+ * falls through untouched — {@link submitAction}'s own load raises the proper
+ * NOT_FOUND. Advisory only: the append itself is still serialized by the
+ * `(match_id, seq)` primary key and the `action_count` CAS in `appendAction`,
+ * so a racer that slips between this read and the append still loses safely.
+ */
+export async function assertExpectedSeq(
+  db: Db,
+  matchId: string,
+  expectedSeq: number,
+): Promise<void> {
+  const { data: match, error } = await db
+    .from('matches')
+    .select('action_count')
+    .eq('id', matchId)
+    .maybeSingle()
+  if (error) throw new AppError('INTERNAL', error.message)
+  if (match && match.action_count !== expectedSeq) {
+    throw new AppError('SEQ_CONFLICT', 'Your view is stale; refetch and retry')
+  }
+}
+
+/**
  * The core server-authoritative write (§5.4 `submit-action`). `callerSeat` is
  * the seat the request's JWT resolved to; the action's `playerId` is overwritten
  * from it so a forged `playerId` in the body is meaningless. After a human turn

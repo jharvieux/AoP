@@ -11,7 +11,7 @@ DOM/Node/Deno API, so it runs here unmodified.
 | `join-match`        | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`           | #32   |
 | `start-match`       | `POST { matchId } -> { seq: 0 }` (creator only)                           | #32   |
 | `submit-action`     | `POST { matchId, expectedSeq, action } -> { seq, view }`                  | #33   |
-| `end-turn`          | `POST { matchId } -> { seq, view }`                                       | #33   |
+| `end-turn`          | `POST { matchId, expectedSeq } -> { seq, view }`                          | #33   |
 | `get-player-view`   | `POST { matchId } -> { seq, seat, view, turnDeadline }`                   | #34   |
 | `sweep-turns`       | `POST -> { swept }` (§8 turn-timer sweep; service-role only)              | #129  |
 | `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
