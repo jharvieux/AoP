@@ -204,6 +204,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     if (candidate) candidates.push(candidate)
   }
 
+  // Scoped to this single call so repeated (captain, goal) route queries within
+  // the same turn's candidate scan reuse one A* result instead of recomputing it
+  // (#214); discarded once nextAiAction returns, so it carries no engine state.
+  const pathCache = new Map<string, Coord[] | null>()
+
   for (const cap of myCaptains) {
     if (cap.movementPoints < 1) continue
 
@@ -228,7 +233,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
 
       // Expand: advance on a beatable target if a sea route exists.
       if (ratio >= engageMinRatio) {
-        const step = stepToward(state, cap, enemy.position)
+        const step = stepToward(state, cap, enemy.position, pathCache)
         if (step) {
           // Prefer closing on nearer targets; keep well below any attack score.
           const score =
@@ -310,9 +315,21 @@ function toCombatant(c: Captain) {
  * The furthest tile along the sea route toward `goal` the captain can reach this
  * turn, stopping one tile short of the goal (so it ends adjacent, ready to
  * attack, rather than stacking on top of the target). Returns null if no route.
+ * `cache` (see {@link nextAiAction}) memoizes repeated (position, goal) queries
+ * within a single candidate scan.
  */
-function stepToward(state: GameState, cap: Captain, goal: Coord): Coord | null {
-  const path = findPath(state.map, cap.position, goal)
+function stepToward(
+  state: GameState,
+  cap: Captain,
+  goal: Coord,
+  cache?: Map<string, Coord[] | null>,
+): Coord | null {
+  const key = `${cap.position.x},${cap.position.y}:${goal.x},${goal.y}`
+  let path = cache?.get(key)
+  if (path === undefined) {
+    path = findPath(state.map, cap.position, goal)
+    cache?.set(key, path)
+  }
   if (!path || path.length < 2) return null
   // path[0] is the captain's current tile; the last tile is the goal itself.
   const maxIndex = Math.min(cap.movementPoints, path.length - 2)

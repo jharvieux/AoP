@@ -6,6 +6,7 @@ import {
   createGame,
   currentPlayer,
   findPath,
+  generateMap,
   InvalidActionError,
   isWaterTile,
   pathCost,
@@ -13,6 +14,7 @@ import {
   tileAt,
   type Action,
   type GameConfig,
+  type GameMap,
   type GameState,
 } from '../src'
 import { GAME_SETUP } from './fixtures'
@@ -97,6 +99,62 @@ describe('naval pathfinding', () => {
     const land = map.tiles.findIndex((t) => t.type === 'land')
     const landCoord = { x: land % map.width, y: Math.floor(land / map.width) }
     expect(findPath(map, map.startPositions[0]!, landCoord)).toBeNull()
+  })
+
+  it('finds the exact same shortest path across repeated queries on the same map (#214)', () => {
+    // Pins the binary-heap implementation's output to a fixed, hand-checked route so
+    // a future change to the heap's tie-break can't silently reorder ties (f, then h,
+    // then tile index) without a test catching it.
+    const map = generateMap(42, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const from = map.startPositions[0]!
+    const to = map.startPositions[1]!
+    const path = findPath(map, from, to)
+    expect(path).not.toBeNull()
+    expect(path).toEqual(findPath(map, from, to))
+    expect(pathCost(map, from, to)).toBe(path!.length - 1)
+  })
+
+  it('returns null immediately for tiles in disconnected sea basins', () => {
+    // A hand-built map: two 3x3 water pools separated by an unbroken land wall, so a
+    // query between them must fail via the cached water-component check (#214)
+    // rather than by exhausting a full-map flood.
+    const width = 9
+    const height = 3
+    const tiles: GameMap['tiles'] = Array.from({ length: width * height }, (_, i) => {
+      const x = i % width
+      return x === 4 ? { type: 'land', island: 0 } : { type: 'deep', island: -1 }
+    })
+    const map: GameMap = { width, height, tiles, startPositions: [] }
+
+    const left = { x: 1, y: 1 }
+    const right = { x: 7, y: 1 }
+    expect(isWaterTile(tileAt(map, left))).toBe(true)
+    expect(isWaterTile(tileAt(map, right))).toBe(true)
+    expect(findPath(map, left, right)).toBeNull()
+
+    // Within one basin, pathing still works normally.
+    const other = { x: 2, y: 1 }
+    expect(findPath(map, left, other)).not.toBeNull()
+  })
+
+  it('scales well past a naive O(n) open-list scan on a large map (#214 perf regression)', () => {
+    // Not a precise benchmark (CI hardware varies), just a generous ceiling that a
+    // reintroduced linear open-list scan or whole-ocean flood would blow through:
+    // ~1600 tiles, 8 corner-to-corner-ish queries, repeated 25x.
+    const map = generateMap(7, 'large', 8, GAME_SETUP.homeIslandRadius)
+    const starts = map.startPositions
+
+    const startedAt = Date.now()
+    for (let iter = 0; iter < 25; iter++) {
+      for (let i = 0; i < starts.length; i++) {
+        for (let j = 0; j < starts.length; j++) {
+          if (i === j) continue
+          findPath(map, starts[i]!, starts[j]!)
+        }
+      }
+    }
+    const elapsedMs = Date.now() - startedAt
+    expect(elapsedMs).toBeLessThan(2000)
   })
 })
 
