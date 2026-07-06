@@ -29,14 +29,18 @@ export interface MapEditorCanvasProps {
    * is true only for the initial press, so callers can gate one-shot tools
    * (flood fill) separately from continuous ones (brush/eraser/placement). */
   onTileAt: (coord: Coord, isDown: boolean) => void
+  /** Fired on right-click to cycle ownerSeat of a resource marker. (#283) */
+  onRightClickTile?: (coord: Coord) => void
 }
 
-export function MapEditorCanvas({ draft, onTileAt }: MapEditorCanvasProps) {
+export function MapEditorCanvas({ draft, onTileAt, onRightClickTile }: MapEditorCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const draggingRef = useRef(false)
   const lastCoordRef = useRef<Coord | null>(null)
   const onTileAtRef = useRef(onTileAt)
+  const onRightClickTileRef = useRef(onRightClickTile)
   onTileAtRef.current = onTileAt
+  onRightClickTileRef.current = onRightClickTile
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -77,6 +81,12 @@ export function MapEditorCanvas({ draft, onTileAt }: MapEditorCanvasProps) {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(RESOURCE_LABEL[marker.kind], cx, cy + 1)
+      // Display ownerSeat as a small number in the corner (#283)
+      if (marker.ownerSeat !== undefined) {
+        ctx.font = `${TILE / 3}px sans-serif`
+        ctx.fillStyle = RESOURCE_COLOR[marker.kind]
+        ctx.fillText(String(marker.ownerSeat + 1), cx + TILE / 4, cy - TILE / 4)
+      }
     })
 
     draft.encounters.forEach((enc) => {
@@ -142,6 +152,13 @@ export function MapEditorCanvas({ draft, onTileAt }: MapEditorCanvasProps) {
     lastCoordRef.current = null
   }
 
+  function handleContextMenu(e: React.MouseEvent<HTMLCanvasElement>) {
+    e.preventDefault()
+    const coord = coordFromEvent(e)
+    if (!coord) return
+    onRightClickTileRef.current?.(coord)
+  }
+
   return (
     <canvas
       ref={canvasRef}
@@ -152,6 +169,7 @@ export function MapEditorCanvas({ draft, onTileAt }: MapEditorCanvasProps) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onContextMenu={handleContextMenu}
     />
   )
 }
