@@ -10,6 +10,20 @@ export interface UsePixiApp {
   containerRef: RefObject<HTMLDivElement | null>
   /** undefined until Pixi's async init resolves, and again once torn down. */
   app: Application | undefined
+  /**
+   * Set once `Application.init()` rejects (#241) — e.g. WebGL context
+   * creation failed (blacklisted GPU, exhausted contexts, some WebViews).
+   * Callers should render a fallback instead of an empty canvas div, since
+   * `app` will otherwise just stay `undefined` forever with no other signal.
+   */
+  error: Error | undefined
+}
+
+/** Coerces whatever `Application.init()` rejects with into a real Error — a
+ * rejection reason isn't guaranteed to be an `Error` instance (e.g. some WebGL
+ * context-creation failures reject with a bare string or DOMException). */
+export function toError(reason: unknown): Error {
+  return reason instanceof Error ? reason : new Error(String(reason))
 }
 
 /**
@@ -22,6 +36,7 @@ export interface UsePixiApp {
 export function usePixiApp(options: UsePixiAppOptions = {}): UsePixiApp {
   const containerRef = useRef<HTMLDivElement>(null)
   const [app, setApp] = useState<Application | undefined>(undefined)
+  const [error, setError] = useState<Error | undefined>(undefined)
 
   useEffect(() => {
     const container = containerRef.current
@@ -29,9 +44,15 @@ export function usePixiApp(options: UsePixiAppOptions = {}): UsePixiApp {
 
     let destroyed = false
     const instance = new Application()
+    setError(undefined)
 
     instance
       .init({
+        // Explicit WebGL preference (#241): broadest device compatibility —
+        // some browsers' WebGPU implementations are still partial/buggy, and
+        // an explicit choice here is more predictable than Pixi's own
+        // auto-detection when we're about to report init failure as fatal.
+        preference: 'webgl',
         resizeTo: container,
         background: options.background ?? '#000000',
         antialias: true,
@@ -46,6 +67,12 @@ export function usePixiApp(options: UsePixiAppOptions = {}): UsePixiApp {
         container.appendChild(instance.canvas)
         setApp(instance)
       })
+      .catch((reason: unknown) => {
+        if (destroyed) return
+        const err = toError(reason)
+        console.error('Pixi Application.init() failed', err)
+        setError(err)
+      })
 
     return () => {
       destroyed = true
@@ -54,5 +81,5 @@ export function usePixiApp(options: UsePixiAppOptions = {}): UsePixiApp {
     }
   }, [options.background])
 
-  return { containerRef, app }
+  return { containerRef, app, error }
 }

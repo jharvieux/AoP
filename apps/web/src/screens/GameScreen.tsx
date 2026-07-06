@@ -75,9 +75,12 @@ interface GameScreenProps {
   onDismissBattleReport: () => void
   onAction: (action: Action) => void
   onSaveSlot: (slotId: string) => Promise<void>
-  onLoadSlot: (slotId: string) => void
+  /** Throws on failure (#237) — SaveScreen catches it and keeps its sheet open. */
+  onLoadSlot: (slotId: string) => Promise<void>
   /** Opens the #146 replay viewer over a saved slot, without disturbing this game. */
   onWatchSlot: (slotId: string) => void
+  /** True once autosave has failed and hasn't succeeded since (#237). */
+  autosaveFailing: boolean
 }
 
 export function GameScreen({
@@ -88,6 +91,7 @@ export function GameScreen({
   onSaveSlot,
   onLoadSlot,
   onWatchSlot,
+  autosaveFailing,
 }: GameScreenProps) {
   const { factionName } = useTheme()
   const player = currentPlayer(game)
@@ -423,6 +427,14 @@ export function GameScreen({
         <ResourceHud resources={viewer.resources} />
       </header>
 
+      {/* Persistent until the next successful autosave (#237) — a long game
+          is exactly when hitting storage quota costs the most. */}
+      {autosaveFailing && (
+        <div className="autosave-failing-banner" role="status">
+          Autosave failing — free up storage or save to a slot manually.
+        </div>
+      )}
+
       <div className="map-container">
         <MapCanvas
           map={game.map}
@@ -603,9 +615,11 @@ export function GameScreen({
         <SaveScreen
           onClose={() => setSavesOpen(false)}
           onSave={onSaveSlot}
-          onLoad={(slotId) => {
+          onLoad={async (slotId) => {
+            // #237: only close the sheet on success — SaveScreen's own
+            // try/catch keeps it open (with a message) if onLoadSlot throws.
+            await onLoadSlot(slotId)
             setSavesOpen(false)
-            onLoadSlot(slotId)
           }}
           onWatch={(slotId) => {
             setSavesOpen(false)

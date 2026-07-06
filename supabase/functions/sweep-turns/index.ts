@@ -14,7 +14,7 @@
 
 import { requireServiceRole, serviceClient } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
-import { findExpiredTurns, skipExpiredTurn } from '../_shared/match.ts'
+import { findExpiredTurns, isExpectedSweepRace, skipExpiredTurn } from '../_shared/match.ts'
 
 interface SweepResult {
   matchId: string
@@ -40,13 +40,19 @@ Deno.serve(async (req) => {
       } catch (err) {
         // A concurrent human submission or another sweep pass already resolved
         // this match's turn between our read and this call — not a failure.
-        const handled =
-          err instanceof AppError &&
-          (err.code === 'NOT_YOUR_TURN' ||
-            err.code === 'SEQ_CONFLICT' ||
-            err.code === 'MATCH_STATE')
-        if (!handled) throw err
-        results.push({ matchId, seat, skipped: false, reason: err.code })
+        // An unexpected error (e.g. #216's wedged-match scenario) must also
+        // never abort the batch: log it loudly and keep sweeping the rest
+        // (#225) — one poisoned match must never starve every match sorted
+        // after it.
+        if (!isExpectedSweepRace(err)) {
+          console.error(`sweep-turns: unexpected error skipping match ${matchId} seat ${seat}`, err)
+        }
+        results.push({
+          matchId,
+          seat,
+          skipped: false,
+          reason: err instanceof AppError ? err.code : 'INTERNAL',
+        })
       }
     }
 

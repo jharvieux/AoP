@@ -1,13 +1,13 @@
 import {
-  applyActionWithOutcome,
   createGame,
-  replay,
   type Action,
   type BattleReport,
   type GameConfig,
   type GameState,
 } from '@aop/engine'
 import { useEffect, useState } from 'react'
+import { dispatchAction } from './actionDispatch'
+import { stateFromSave } from './loadSave'
 import { MainMenu } from './screens/MainMenu'
 import { NewGameSetup } from './screens/NewGameSetup'
 import { GameScreen } from './screens/GameScreen'
@@ -66,6 +66,19 @@ export function App() {
   // viewer, and which screen to return to when it closes.
   const [replayData, setReplayData] = useState<ReplayData | null>(null)
   const [replayReturnScreen, setReplayReturnScreen] = useState<Screen>('menu')
+  // A human action the engine rejected (#240) — a brief, self-dismissing toast;
+  // never blocks play the way a forced AI endTurn (below) has to.
+  const [actionError, setActionError] = useState<string | null>(null)
+  // Persists until the next successful autosave (#237) — unlike actionError,
+  // this is not self-dismissing: it should stay visible for as long as saves
+  // are actually failing (e.g. storage quota exhausted).
+  const [autosaveFailing, setAutosaveFailing] = useState(false)
+
+  useEffect(() => {
+    if (!actionError) return
+    const id = setTimeout(() => setActionError(null), 3000)
+    return () => clearTimeout(id)
+  }, [actionError])
 
   function handleStartNewGame(setupConfig: GameSetupConfig) {
     // config already carries setup + startingTroops + frozen combatStats + content
@@ -91,30 +104,65 @@ export function App() {
   // saves persist the log (not raw state) and load replays it, the same
   // event-sourced path multiplayer will use server-side (#4). Test-play matches
   // skip autosave so sculpting a draft map never clobbers a real save slot.
+  // See dispatchAction (#240) for why a rejected action doesn't just throw.
   function handleAction(action: Action) {
     if (!game || !config) return
-    const outcome = applyActionWithOutcome(game, action)
+    const result = dispatchAction(game, action)
+    if (result.kind === 'rejected') {
+      console.error('Rejected action', action, result.message)
+      setActionError(result.message)
+      return
+    }
+    if (result.kind === 'unrecoverable') {
+      console.error(
+        'Forced endTurn for a stuck AI seat also failed; giving up on this action',
+        action,
+      )
+      return
+    }
+    const { appliedAction, outcome } = result
     const next = outcome.state
-    const nextLog = [...actionLog, action]
+    const nextLog = [...actionLog, appliedAction]
     setGame(next)
     setActionLog(nextLog)
     if (outcome.battleReport) setBattleReport(outcome.battleReport)
-    if (shouldAutosave(isTestPlay)) void saveGame('autosave', config, nextLog, next.round)
+    // #237: autosave used to be `void saveGame(...)` — a QuotaExceededError
+    // (or any other rejection) became an unhandled promise rejection while
+    // the game kept "autosaving" into the void, with zero feedback right when
+    // a long game needs its autosave most. Failure now flips a persistent,
+    // non-blocking indicator (cleared the moment autosave next succeeds).
+    if (shouldAutosave(isTestPlay)) {
+      saveGame('autosave', config, nextLog, next.round)
+        .then(() => setAutosaveFailing(false))
+        .catch((err: unknown) => {
+          console.error('Autosave failed', err)
+          setAutosaveFailing(true)
+        })
+    }
     if (next.status === 'finished' && !outcome.battleReport) setScreen('game-over')
   }
 
-  async function handleSaveSlot(slotId: string) {
+  async function handleSaveSlot(slotId: string): Promise<void> {
     if (!config || !game) return
     await saveGame(slotId, config, actionLog, game.round)
   }
 
-  async function handleLoadSlot(slotId: string) {
+  /**
+   * Throws on failure (#237) instead of silently no-op'ing: `loadGame`
+   * deliberately throws for a newer-schema save and `replay` throws on a
+   * corrupt action log — the caller (SaveScreen) catches this and keeps its
+   * sheet open with the message, instead of closing on a load that never
+   * actually happened. `replay` runs before any state is touched, so a
+   * failure here can never leave the in-progress game half-overwritten.
+   */
+  async function handleLoadSlot(slotId: string): Promise<void> {
     const record = await loadGame(slotId)
-    if (!record) return
+    if (!record) throw new Error(`No save found in slot "${slotId}"`)
+    const state = stateFromSave(record)
     setConfig(record.config)
     setActionLog(record.actions)
     setBattleReport(null)
-    setGame(replay(createGame(record.config), record.actions))
+    setGame(state)
     // #236: a loaded slot is always a real game — test-play never survives a
     // load, so autosave (and the game-over → menu route) resume correctly.
     setIsTestPlay(isTestPlayAfterLoadSlot())
@@ -181,6 +229,11 @@ export function App() {
   return (
     <div className="app">
       <UpdateBanner />
+      {actionError && (
+        <div className="action-toast" role="status">
+          {actionError}
+        </div>
+      )}
       {screen === 'menu' && (
         <MainMenu
           onStart={() => setScreen('setup')}
@@ -225,6 +278,7 @@ export function App() {
           onSaveSlot={handleSaveSlot}
           onLoadSlot={handleLoadSlot}
           onWatchSlot={handleWatchSlot}
+          autosaveFailing={autosaveFailing}
         />
       )}
       {screen === 'game-over' && game && (
