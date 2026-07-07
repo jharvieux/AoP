@@ -548,6 +548,17 @@ export function GameScreen({
         track,
       })
     },
+    onRecruitCaptain: (captainId?: string) => {
+      onAction({
+        type: 'recruitCaptain',
+        playerId: viewer.id,
+        cityId: viewerCity.id,
+        ...(captainId ? { captainId } : {}),
+      })
+    },
+    onRansomCaptain: (captainId: string) => {
+      onAction({ type: 'ransomCaptain', playerId: viewer.id, captainId })
+    },
   }
 
   return (
@@ -758,6 +769,9 @@ export function GameScreen({
           captains={viewerCaptains}
           faction={viewer.faction}
           resources={viewer.resources}
+          setup={game.config.setup}
+          round={game.round}
+          playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
           onClose={() => setCityOpen(false)}
           {...cityCallbacks}
         />

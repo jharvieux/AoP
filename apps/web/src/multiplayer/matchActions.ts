@@ -261,4 +261,16 @@ export const matchAction = {
   upgradeShip(view: PlayerView, cityId: string, captainId: string, track: string): Action {
     return { type: 'upgradeShip', playerId: view.viewerId, cityId, captainId, track }
   },
+  /** Omit `captainId` to mint a brand-new captain; pass an eligible captive's id to rehire it instead. */
+  recruitCaptain(view: PlayerView, cityId: string, captainId?: string): Action {
+    return {
+      type: 'recruitCaptain',
+      playerId: view.viewerId,
+      cityId,
+      ...(captainId ? { captainId } : {}),
+    }
+  },
+  ransomCaptain(view: PlayerView, captainId: string): Action {
+    return { type: 'ransomCaptain', playerId: view.viewerId, captainId }
+  },
 }
