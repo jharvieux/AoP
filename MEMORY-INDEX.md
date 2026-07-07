@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-024 — 2026-07-06 — Issue sweep (14 issues); title emblem sourced CC0 (SD couldn't meet brief), shipped as static asset for #253 bundle budget
 - D-023 — 2026-07-06 — Visual theme: "Weathered Parchment & Rope" is the canonical app palette
 - D-022 — 2026-07-05 — Match size capped at 5 (faction-pool bound), amending D-006's 2–8 range
 - D-021 — 2026-07-05 — Audio: local music generation (MusicGen) + procedural SFX, wired into gameplay

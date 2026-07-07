@@ -1,66 +1,45 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-06 (design handoff implemented: title splash + parchment main
-menu, PR #310 merged)._
+_Last updated: 2026-07-06 (issue sweep + title emblem)._
 
 ## Just completed
 
-**Launch-experience redesign from the Claude Design handoff** (operator-delivered,
-`docs/design_handoff_start_screen/`, chosen direction 1a "Weathered Parchment & Rope" —
-see D-023):
+- **Full `/issue-sweep`**: 14 issues fixed and squash-merged into `main` across 8 PRs
+  (#313 #314 #315 #316 #318 #319 #323 #324 #325 #327), each `pre-pr-reviewer`-audited with
+  green `ci`. Closed: #295 #296 #297 #298 #299 #300 #301 #303 #304 #305 #306 #308 #309 #311.
+  Highlights: turn-2 rush fix + multiple captains/capture/ransom (#308/#309), fog-along-path
+  (#295), PixiJS teardown crash (#306), sprite crispness + ship animation (#300/#297),
+  battle playback + Tactical mode (#304/#305), board animation + ambient map (#303/#298),
+  design tokens + transitions (#301), auth discoverability (#296).
+- **#311 title emblem**: replaced the interim hand-drawn skull with the **CC0 "Jolly Roger 2"**
+  (Wikimedia Commons), recoloured to the parchment palette, shipped as a static asset
+  (`public/art/ui/skull-emblem.svg`) to stay under the #253 bundle budget. Local Stable
+  Diffusion (DreamShaper) was tried first but couldn't render crossbones / kept biasing
+  yellow. Parchment stayed the CSS gradient. See D-024.
 
-- **PR #310 (merged, closes #302)**: new `TitleScreen` splash (skull-and-crossbones SVG
-  emblem, Pirata One engraved title, 2.8s loading bar, 3.2s auto-advance) + `MainMenu`
-  restructured per spec (New Game primary → Quick Match/Map Editor row → 7 secondary
-  actions behind "More Options" → audio-settings grid). Parchment palette landed as
-  `:root` design tokens in `apps/web/src/styles.css`; Pirata One + Cabin self-hosted in
-  `apps/web/public/fonts/` (OFL, no runtime deps); PWA theme/manifest colors updated.
-  Handoff docs checked in verbatim (`.prettierignore`d). Verified via `pnpm verify` +
-  headless-Chrome screenshots; pre-pr-reviewer found no blockers (its stale-closure nit
-  fixed pre-merge; its "no component tests" warning accepted — repo has no DOM-test
-  setup and the code is presentation-only).
-- **Issue updates**: #301 re-scoped (tokens now exist; remaining work = migrate the ~23
-  hardcoded hexes / 8 satellite screens onto them; open operator call on whether
-  MapCanvas/battleBoard palettes are diegetic art or UI chrome). #296 warned that
-  Account moved behind "More Options" (sign-in discoverability got worse — its fix is
-  now more urgent). #311 filed for real art assets (illustrated skull + parchment
-  texture); operator approved the Stable Diffusion approach (existing `~/aop-ai-tools`
-  pipeline, DreamShaper 8, contact-sheet curation gate per D-016).
-- Other open UI issues compared against the handoff: #297–#300, #303–#305 are map/battle
-  rendering work, orthogonal to the theme — unchanged.
+## In flight
 
-## Next steps
+- None — sweep fully finalized, no open PRs.
 
-1. **#311**: run the SD generation (skull emblem + parchment texture), contact-sheet for
-   operator curation, swap in (`SkullEmblem.tsx` → `<img>`; `--parchment-grain` →
-   texture url).
-2. **#301**: app-wide token migration (satellite screens, buttons, sheets, HUD) — now
-   fully specced in the issue thread; sweepable.
-3. Operator triage of the 2026-07-05 audit issues #205–#256 (P0 #216 was fixed via
-   PR #288; the P1 batch remains) — carried over.
-4. Carried over: #132 (needs RESEND_API_KEY), Capacitor native track (blocked on
-   device), #203 (sweep process gap).
+## Next step
+
+- Operator decisions on the sweep's tech-debt (see D-024): the **#319 two-gold-token split**
+  (`--accent` #c8962c vs `--color-gold` #c9a227) and the thin bundle-budget headroom
+  (~846 KB raw / 850 KB ceiling).
+- Follow-up issues to schedule: #326 (recruit/ransom captain UI — engine done, no UI yet),
+  #320 (spectate battle playback), #321 (multiplayer Tactical authority), #322 (first-contact
+  tuning).
 
 ## Blocked on user
 
-- #301 boundary call (map/battle palettes: diegetic vs UI chrome) — non-urgent, embedded
-  in the issue.
-- Carried over: decisions embedded in audit issues #205–#256 (supervised paths, runtime
-  dep approvals).
+- **#307 OAuth** (supervised, left open): now scoped to **Google + Microsoft/Azure AD** (ATC
+  pattern), GitHub dropped. Needs Supabase provider provisioning (operator actions) before it
+  can be swept.
 
 ## Open questions
 
-- None new.
-
-## Prior session summary (2026-07-05 principal-architect audit, unchanged)
-
-Four parallel review agents audited engine/server/web/cross-cutting; 52 issues filed
-(#205–#256), no code changed. Highest: #216 (P0, fixed since via PR #288), #205/#206
-anti-cheat, #217 RLS recursion, #218 verify_jwt, #219 (fixed via cap, D-022),
-#233–#235 auth flows, #248–#250 CI/deploy gaps.
-
-## Prior session summary (2026-07-06 follow-up round, unchanged)
-
-#93/#177/#189 finalized (PRs #193–195); #63 fully closed (PRs #197, #199); visuals/audio
-gaps fixed (PRs #200–202); filed #203; closed #81 as stale.
+- Resolve the two-gold-token palette split (#319) — unify onto D-023's `--accent`, or keep
+  HUD chrome as a distinct token?
+- Native-mobile issues (#98 #100 #156 #159 #160 #161) and epics (#2–#5) are held as
+  `needs-human-fix` — confirm they stay out of automated sweeps.

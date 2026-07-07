@@ -1,3 +1,44 @@
+## D-024 — 2026-07-06 — Issue sweep (14 issues) + title emblem sourced CC0, not AI-generated
+
+**Decision.** Ran a full `/issue-sweep`: triaged the open backlog, executed 14 issues
+across 8 PRs (#313 #314 #315 #316 #318 #319 #323 #324 #325 #327), all squash-merged into
+`main` with the `pre-pr-reviewer` audit + green `ci`. Closed: #295 #296 #297 #298 #299
+#300 #301 #303 #304 #305 #306 #308 #309 #311.
+
+**#311 emblem — what shipped and why.** The interim hand-drawn `SkullEmblem` (from #316,
+an over-eager first pass) was replaced. We first tried the documented local Stable
+Diffusion pipeline (AUTOMATIC1111 + DreamShaper_8, `docs/AI-TOOLS-GUIDE.md`): three passes
+on GPU/MPS could not meet the brief — DreamShaper would not render crossbones behind the
+skull and biased strongly yellow, so the outputs were rejected (consistent with the
+DreamShaper failure notes already in `uiIcons.ts`). Instead sourced **"Jolly Roger 2"**
+from Wikimedia Commons / Open Clip Art Library (**CC0 1.0**, no attribution required),
+recoloured to the Weathered Parchment tokens and cropped/centred. **Shipped as a static
+asset** (`apps/web/public/art/ui/skull-emblem.svg` + `<img>`), NOT inline, because the
+~113 KB vector path inlined into the JS bundle blew the #253 asset-size budget (923 KB raw
+vs 850 KB). Parchment texture stayed the existing CSS gradient (operator decision — did
+not regenerate).
+
+**Why (rejected alternatives).** AI-generated skull rejected on quality; inline SVG
+rejected on bundle budget; paid/attribution-required art avoided in favour of CC0.
+
+**Open tech-debt from the sweep (operator calls).**
+
+- **#319 palette split:** the design-token migration introduced `--color-gold #c9a227`
+  (HUD chrome) which now coexists with D-023's `--accent #c8962c` (Weathered Parchment) —
+  two "gold" tokens live at once. D-023 flagged this as an operator decision when #301 was
+  swept; still unresolved.
+- Bundle is at ~846 KB raw / ~250 KB gzip — thin headroom under the 850/260 budget.
+- #293 (multiplayer boarding race) closed-as-skipped: the buggy code only ever existed on
+  unmerged PR #294; left OPEN with an explanatory comment rather than auto-closed.
+- Follow-ups filed: #320 (spectate battle playback), #321 (multiplayer tactical authority),
+  #322 (first-contact tuning), #326 (recruit/ransom captain UI).
+
+**Excluded (not swept).** #307 (OAuth — now scoped to Google + Microsoft/Azure AD per the
+ATC pattern, GitHub dropped; supervised, left open). Native-mobile issues #98 #100 #156
+#159 #160 #161 and epics #2–#5 relabeled/held as `needs-human-fix`.
+
+---
+
 # MEMORY.md — Age of Plunder Decision Log
 
 ## D-023 — 2026-07-06 — Visual theme: "Weathered Parchment & Rope" is the canonical app palette
