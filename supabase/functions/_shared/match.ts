@@ -69,6 +69,8 @@ export interface MatchSettings {
   betrayalReputationPenalty: number
   /** Host-chosen betrayal truce window in rounds (#177); overrides `GAME_SETUP.betrayalTruceRounds`. `0` disables the truce. */
   betrayalTruceRounds: number
+  /** Host-chosen captivity window in rounds (#309); overrides `GAME_SETUP.captainCaptivityRounds`. */
+  captainCaptivityRounds: number
 }
 
 /** A server-generated map + RNG seed (§11 chosen-seed advantage: never client-chosen).
@@ -448,6 +450,7 @@ export function buildStartMatchConfig(
   return buildMatchConfig(seed, settings.mapSize, seatConfigs, {
     betrayalReputationPenalty: settings.betrayalReputationPenalty,
     betrayalTruceRounds: settings.betrayalTruceRounds,
+    captainCaptivityRounds: settings.captainCaptivityRounds,
   })
 }
 
@@ -1197,6 +1200,18 @@ export function parseSettings(raw: unknown): MatchSettings {
   ) {
     throw new AppError('BAD_REQUEST', 'settings.betrayalTruceRounds must be an integer 0..10')
   }
+  // Captivity knob (#309). Default mirrors @aop/content's GAME_SETUP; bounds
+  // match the NewGameSetup slider (apps/web/src/screens/NewGameSetup.tsx):
+  // 0..20 rounds (0 = a captured captain is immediately recruitable).
+  const captainCaptivityRounds =
+    s.captainCaptivityRounds === undefined ? 5 : Number(s.captainCaptivityRounds)
+  if (
+    !Number.isInteger(captainCaptivityRounds) ||
+    captainCaptivityRounds < 0 ||
+    captainCaptivityRounds > 20
+  ) {
+    throw new AppError('BAD_REQUEST', 'settings.captainCaptivityRounds must be an integer 0..20')
+  }
   return {
     mapSize,
     maxPlayers,
@@ -1206,6 +1221,7 @@ export function parseSettings(raw: unknown): MatchSettings {
     missedTurnThreshold: threshold,
     betrayalReputationPenalty,
     betrayalTruceRounds,
+    captainCaptivityRounds,
   }
 }
 

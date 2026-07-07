@@ -28,8 +28,9 @@ describe('client/server catalog parity (#250)', () => {
   })
 
   it('buildMatchConfig produces byte-for-byte identical output on both runtimes', () => {
-    const client = buildClientMatchConfig(7, 'small', SEATS, { betrayalTruceRounds: 5 })
-    const server = buildServerMatchConfig(7, 'small', SEATS, { betrayalTruceRounds: 5 })
+    const overrides = { betrayalTruceRounds: 5, captainCaptivityRounds: 10 }
+    const client = buildClientMatchConfig(7, 'small', SEATS, overrides)
+    const server = buildServerMatchConfig(7, 'small', SEATS, overrides)
     expect(client).toEqual(server)
   })
 })

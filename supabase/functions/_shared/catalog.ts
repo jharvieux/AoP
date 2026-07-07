@@ -96,6 +96,8 @@ export interface SeatConfig {
 export interface MatchSetupOverrides {
   betrayalReputationPenalty?: number | undefined
   betrayalTruceRounds?: number | undefined
+  /** Host-chosen captivity window in rounds (#309); overrides `GAME_SETUP.captainCaptivityRounds`. */
+  captainCaptivityRounds?: number | undefined
 }
 
 /**
@@ -125,6 +127,8 @@ export function buildMatchConfig(
       betrayalReputationPenalty:
         setupOverrides.betrayalReputationPenalty ?? GAME_SETUP.betrayalReputationPenalty,
       betrayalTruceRounds: setupOverrides.betrayalTruceRounds ?? GAME_SETUP.betrayalTruceRounds,
+      captainCaptivityRounds:
+        setupOverrides.captainCaptivityRounds ?? GAME_SETUP.captainCaptivityRounds,
     },
     combatStats: combatStatsData(),
     content: buildCatalog(),

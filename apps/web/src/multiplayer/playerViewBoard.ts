@@ -71,6 +71,13 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     xp: c.xp ?? 0,
     skills: c.skills ?? [],
     shipUpgrades: c.shipUpgrades ?? {},
+    // Captured status (#309) is public in the view (unlike the fields above),
+    // so it's forwarded rather than defaulted.
+    captured: c.captured,
+    ...(c.capturedBy !== undefined ? { capturedBy: c.capturedBy } : {}),
+    ...(c.captivityReturnRound !== undefined
+      ? { captivityReturnRound: c.captivityReturnRound }
+      : {}),
   }))
 
   const cities: CityState[] = view.cities.map((c) => ({

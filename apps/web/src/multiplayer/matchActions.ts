@@ -52,6 +52,11 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
     xp: cap.xp ?? 0,
     skills: cap.skills ?? [],
     shipUpgrades: cap.shipUpgrades ?? {},
+    captured: cap.captured,
+    ...(cap.capturedBy !== undefined ? { capturedBy: cap.capturedBy } : {}),
+    ...(cap.captivityReturnRound !== undefined
+      ? { captivityReturnRound: cap.captivityReturnRound }
+      : {}),
     ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
     ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
   }

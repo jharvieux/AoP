@@ -73,6 +73,7 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
         xp: 10,
         skills: ['navigator'],
         shipUpgrades: { hull: 1 },
+        captured: false,
       },
       // Enemy hull in vision: identity only, no manifest.
       {
@@ -81,6 +82,7 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
         name: 'Bart',
         position: { x: 1, y: 1 },
         shipClassId: 'sloop',
+        captured: false,
       },
       {
         id: 'cap-far',
@@ -88,6 +90,7 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
         name: 'Bart II',
         position: { x: 3, y: 3 },
         shipClassId: 'sloop',
+        captured: false,
       },
     ],
     encounters: [{ id: 'enc-0', kind: 'merchant', position: { x: 0, y: 1 }, active: true }],
@@ -226,6 +229,7 @@ describe('captainFromView / cityFromView (own-detail widening)', () => {
       xp: 10,
       skills: ['navigator'],
       shipUpgrades: { hull: 1 },
+      captured: false,
     })
   })
 
