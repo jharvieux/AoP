@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
 import { LeaderboardClient, type LeaderboardEntry } from '../multiplayer/leaderboardClient'
+import { Skeleton } from '../components/Skeleton'
+import { Spinner } from '../components/Spinner'
 
 interface LeaderboardScreenProps {
   onBack: () => void
@@ -77,13 +79,24 @@ export function LeaderboardScreen({ onBack, onSignIn }: LeaderboardScreenProps) 
           <>
             <div className="button-group">
               <button className="secondary" onClick={() => void load()} disabled={loading}>
-                {loading ? 'Loading…' : 'Refresh'}
+                {loading ? <Spinner label="Loading" /> : 'Refresh'}
               </button>
             </div>
 
             {error && <p className="theme-error">{error}</p>}
             {!loading && entries.length === 0 && !error && (
               <p className="game-subtitle">No rated players yet.</p>
+            )}
+
+            {loading && entries.length === 0 && (
+              <ul className="building-list">
+                {[0, 1, 2].map((i) => (
+                  <li key={i} className="garrison-row">
+                    <Skeleton width="60%" height="0.9rem" />
+                    <Skeleton width="40%" height="0.78rem" />
+                  </li>
+                ))}
+              </ul>
             )}
 
             <ul className="building-list">

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
 import { MatchReplayClient, type MatchReplayData } from '../multiplayer/matchReplay'
+import { Spinner } from '../components/Spinner'
 
 interface WatchReplayScreenProps {
   onBack: () => void
@@ -65,7 +66,7 @@ export function WatchReplayScreen({ onBack, onLoaded }: WatchReplayScreenProps) 
             disabled={busy}
           />
           <button className="primary large" type="submit" disabled={busy || !matchId.trim()}>
-            {busy ? 'Loading…' : 'Watch'}
+            {busy ? <Spinner label="Loading" /> : 'Watch'}
           </button>
         </form>
 

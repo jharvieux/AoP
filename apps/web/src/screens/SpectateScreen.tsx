@@ -6,6 +6,7 @@ import { MapCanvas } from '../MapCanvas'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
 import { SpectateClient, SpectateError } from '../multiplayer/spectateClient'
 import { subscribeSpectatePoll } from '../multiplayer/spectatePoll'
+import { Spinner } from '../components/Spinner'
 
 interface SpectateScreenProps {
   onBack: () => void
@@ -167,7 +168,7 @@ export function SpectateScreen({ onBack }: SpectateScreenProps) {
             disabled={busy}
           />
           <button className="primary large" type="submit" disabled={busy || !matchId.trim()}>
-            {busy ? 'Loading…' : 'Watch Live'}
+            {busy ? <Spinner label="Loading" /> : 'Watch Live'}
           </button>
         </form>
 

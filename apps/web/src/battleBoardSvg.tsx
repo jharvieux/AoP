@@ -11,17 +11,23 @@ import type { HexCoord } from '@aop/engine'
 export const HEX_SIZE = 22
 const SQRT3 = Math.sqrt(3)
 
+// CSS custom-property references (styles.css :root, #301), not hardcoded
+// hex — these render as SVG `fill`/`stroke` attribute values in the DOM,
+// which resolve `var()` the same way an inline style would, so the design
+// tokens stay the single palette source instead of forking their own copy.
 export const TERRAIN_FILL: Record<string, string> = {
-  open: '#1d3345',
-  rough: '#4a3c22',
-  cover: '#1f4a2a',
-  blocked: '#3a3f45',
+  open: 'var(--color-terrain-open)',
+  rough: 'var(--color-terrain-rough)',
+  cover: 'var(--color-terrain-cover)',
+  blocked: 'var(--color-terrain-blocked)',
 }
 
 export const SIDE_FILL: Record<'attacker' | 'defender', string> = {
-  attacker: '#a33c2e',
-  defender: '#2e5da3',
+  attacker: 'var(--color-battle-attacker)',
+  defender: 'var(--color-battle-defender)',
 }
+
+export const TOKEN_STROKE = 'var(--color-battle-token-stroke)'
 
 export function hexCenter(hex: HexCoord): { x: number; y: number } {
   return {
@@ -101,7 +107,7 @@ export function StackToken({
         cy={y}
         r={HEX_SIZE * 0.62}
         fill={SIDE_FILL[side]}
-        stroke="#0e1c26"
+        stroke={TOKEN_STROKE}
         strokeWidth="1.5"
       />
       {iconUrl ? (

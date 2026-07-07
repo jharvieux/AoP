@@ -13,6 +13,7 @@ import {
   HEX_SIZE,
   StackToken,
   TERRAIN_FILL,
+  TOKEN_STROKE,
   unitDefinition,
 } from './battleBoardSvg'
 import {
@@ -201,7 +202,7 @@ export function BoardingCommandSheet({
                     key={i}
                     points={hexPoints(x, y)}
                     fill={TERRAIN_FILL[t] ?? TERRAIN_FILL.open}
-                    stroke="#0e1c26"
+                    stroke={TOKEN_STROKE}
                     strokeWidth="1"
                     onClick={() => handleHexClick(hex)}
                   />
