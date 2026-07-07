@@ -80,6 +80,27 @@ const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
   galleon: 0.95,
 }
 
+/** Every default (non-theme-pack-override) sprite URL the map can draw, so they can be
+ * warmed into the texture cache before first paint (#300) instead of popping in tile by
+ * tile as the camera first reaches them. Theme-pack overrides are `data:` URLs decided at
+ * runtime and are out of scope here — they're already in memory, just not yet decoded. */
+function defaultArtUrls(): string[] {
+  const urls = new Set<string>()
+  for (const url of Object.values(TILE_SPRITE_URL)) {
+    if (url) urls.add(url)
+  }
+  urls.add(CITY_SPRITE_URL.own)
+  urls.add(CITY_SPRITE_URL.enemy)
+  for (const url of Object.values(ENCOUNTER_SPRITE_URL)) urls.add(url)
+  for (const faction of Object.values(FACTIONS)) {
+    if (faction.shipSpriteUrl) urls.add(faction.shipSpriteUrl)
+    for (const url of Object.values(faction.shipSpriteUrlsByClass ?? {})) {
+      if (url) urls.add(url)
+    }
+  }
+  return [...urls]
+}
+
 /** Get-or-create a pooled Sprite by a stable key, and drop any pool entries not
  * touched this frame — reused across redraws instead of destroyed/recreated on
  * every dirty tick (panning re-dirties every frame, so this matters for #27's
@@ -258,6 +279,10 @@ export function MapCanvas(props: MapCanvasProps) {
       dirtyRef.current = true
     })
     textureLoaderRef.current = textureLoader
+    // Warm the whole default art set up front (#300) so the common case — panning into a
+    // tile/city/encounter/ship whose texture was never requested before — is already a
+    // cache hit instead of a flat-color-then-pop.
+    void textureLoader.preload(defaultArtUrls())
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const cityPool = new SpritePool(citySprites)

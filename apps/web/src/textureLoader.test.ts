@@ -108,4 +108,46 @@ describe('createTextureLoader', () => {
     loader.getTexture('data:image/png;base64,CCC')
     expect(loadSpy).toHaveBeenCalledTimes(2)
   })
+
+  it('preload warms the cache for a batch of URLs before any getTexture call (#300)', async () => {
+    const assets = fakeAssets()
+    const loadSpy = vi.spyOn(assets, 'load')
+    const loader = createTextureLoader(assets, () => undefined)
+
+    await loader.preload(['/art/tiles/deep.png', '/art/tiles/land.png'])
+
+    expect(loadSpy).toHaveBeenCalledTimes(2)
+    expect(loader.getTexture('/art/tiles/deep.png')).toEqual({ url: '/art/tiles/deep.png' })
+    expect(loader.getTexture('/art/tiles/land.png')).toEqual({ url: '/art/tiles/land.png' })
+    // Already warm — no second load kicked off.
+    expect(loadSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('marks dirty exactly once per URL whether preload or getTexture triggered the load', async () => {
+    const assets = fakeAssets()
+    const loadSpy = vi.spyOn(assets, 'load')
+    const markDirty = vi.fn()
+    const loader = createTextureLoader(assets, markDirty)
+
+    // getTexture asks for it first (still pending)...
+    expect(loader.getTexture('/art/tiles/deep.png')).toBeUndefined()
+    // ...then preload is asked for the same URL — must dedupe against the same load.
+    await loader.preload(['/art/tiles/deep.png'])
+
+    expect(loadSpy).toHaveBeenCalledTimes(1)
+    expect(markDirty).toHaveBeenCalledTimes(1)
+    expect(loader.getTexture('/art/tiles/deep.png')).toEqual({ url: '/art/tiles/deep.png' })
+  })
+
+  it('preload resolves even when one of its URLs fails to load', async () => {
+    const assets: AssetLoader<{ url: string }> = {
+      load: (url) => (url === 'bad' ? Promise.reject(new Error('nope')) : Promise.resolve({ url })),
+      unload: () => Promise.resolve(),
+    }
+    const loader = createTextureLoader(assets, () => undefined)
+
+    await expect(loader.preload(['bad', 'good'])).resolves.toBeUndefined()
+    expect(loader.getTexture('good')).toEqual({ url: 'good' })
+    expect(loader.getTexture('bad')).toBeUndefined()
+  })
 })
