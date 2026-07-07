@@ -789,7 +789,7 @@ function adjacentBattleState(p1Troops = [{ unitId: 'grunt', count: 12 }]): GameS
 }
 
 describe('attackCaptain with the battle board', () => {
-  it('a boarding attack resolves on the board and sinks the loser', () => {
+  it('a boarding attack resolves on the board and captures the loser (#309)', () => {
     const state = adjacentBattleState()
     const p1cap = captainsOf(state, 'p1')[0]!
     const p2cap = captainsOf(state, 'p2')[0]!
@@ -801,11 +801,16 @@ describe('attackCaptain with the battle board', () => {
       attackerOrders: ['board'],
     })
     expect(battleReport!.board).toBeDefined()
-    // Decisive: one captain is gone, the other keeps its melee survivors.
-    expect(next.captains).toHaveLength(1)
-    const survivor = next.captains[0]!
+    // Decisive: the loser is captured (not removed, #309) and the winner
+    // keeps its melee survivors.
+    expect(next.captains).toHaveLength(2)
+    const survivor = next.captains.find((c) => !c.captured)!
+    const captive = next.captains.find((c) => c.captured)!
     expect(survivor.ownerId).toBe(battleReport!.winnerId)
     expect(survivor.troops[0]!.count).toBeGreaterThan(0)
+    expect(captive.ownerId).toBe(battleReport!.loserId)
+    expect(captive.capturedBy).toBe(battleReport!.winnerId)
+    expect(captive.troops).toHaveLength(0)
   })
 
   it('a boarding attack with ranged crews replays through the action log identically (#94)', () => {

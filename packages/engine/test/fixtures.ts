@@ -77,6 +77,12 @@ export const GAME_SETUP: GameSetup = {
   betrayalReputationPenalty: 40,
   betrayalTruceRounds: 2,
   allianceReputationMin: 30,
+  recruitCaptainBaseCost: 400,
+  recruitCaptainCostGrowth: 1.5,
+  recruitCaptainStartingCrew: 3,
+  captainCaptivityRounds: 5,
+  ransomBaseCost: 200,
+  ransomXpMultiplier: 2,
 }
 
 export const AI_TUNING: AiTuning = {
@@ -99,6 +105,8 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+  recruitCaptainScoreBase: 500,
+  ransomScoreBase: 50,
 }
 
 export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {

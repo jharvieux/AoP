@@ -9,6 +9,7 @@ import {
   runAiTurn,
   type Action,
   type AiProfile,
+  type Captain,
   type CombatStatsData,
   type ContentCatalog,
   type GameConfig,
@@ -96,6 +97,87 @@ describe('nextAiAction', () => {
     const state = placeAdjacent(createGame(config(1, 8)))
     const action = nextAiAction(state, 'p1')
     expect(action.type).not.toBe('attackCaptain')
+  })
+
+  it('never targets a captured enemy captain (#309)', () => {
+    const base = placeAdjacent(createGame(config(8, 1)))
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const state: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === p2cap.id
+          ? {
+              ...c,
+              captured: true,
+              capturedBy: 'p1',
+              troops: [],
+              movementPoints: 0,
+              maxMovementPoints: 0,
+              captivityReturnRound: base.round + 5,
+            }
+          : c,
+      ),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).not.toBe('attackCaptain')
+  })
+})
+
+describe('captain recovery (#308/#309)', () => {
+  it('recruits a replacement captain when captain-less and affordable', () => {
+    const base = createGame(config(5, 5))
+    const state: GameState = { ...base, captains: base.captains.filter((c) => c.ownerId !== 'p1') }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({ type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
+  })
+
+  it('ransoms an eligible captive when outnumbered and affordable', () => {
+    // p1 keeps one live captain (so the higher-scoring planRecruitCaptain
+    // stays out of the running — it only fires when captain-less) plus one
+    // captive; p2 fields two live captains, so p1 is outnumbered 1-vs-2.
+    const base = createGame(config(5, 5))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const captiveP1Captain: Captain = {
+      ...p1cap,
+      id: `${p1cap.id}-captive`,
+      captured: true,
+      capturedBy: 'p2',
+      troops: [],
+      movementPoints: 0,
+      maxMovementPoints: 0,
+      captivityReturnRound: base.round + 5,
+    }
+    const extraP2Captain: Captain = { ...p2cap, id: `${p2cap.id}-2` }
+    const state: GameState = {
+      ...base,
+      captains: [p1cap, captiveP1Captain, p2cap, extraP2Captain],
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'ransomCaptain',
+      playerId: 'p1',
+      captainId: captiveP1Captain.id,
+    })
+  })
+
+  it('does not ransom when not outnumbered', () => {
+    const base = createGame(config(5, 5))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const extraP1Captive: Captain = {
+      ...p1cap,
+      id: `${p1cap.id}-captive`,
+      captured: true,
+      capturedBy: 'p2',
+      troops: [],
+      movementPoints: 0,
+      maxMovementPoints: 0,
+      captivityReturnRound: base.round + 5,
+    }
+    const state: GameState = { ...base, captains: [p1cap, extraP1Captive, p2cap] }
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).not.toBe('ransomCaptain')
   })
 })
 

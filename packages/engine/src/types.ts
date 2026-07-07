@@ -86,6 +86,32 @@ export interface Captain {
   skills: string[]
   /** Purchased level (0 = stock) per upgrade track at a city shipyard (#22). Missing key = 0. */
   shipUpgrades: Record<string, number>
+  /**
+   * True while this captain is held captive by another seat (#309) after
+   * losing a decisive battle, instead of being removed from play outright. A
+   * captured captain cannot move, attack, or take any other action — its
+   * owner must either wait out `captivityReturnRound` or pay
+   * `ransomCaptain`, then spend a `recruitCaptain` action to bring it back
+   * into active service. Public information in player views, unlike XP,
+   * skills, or troops (#309).
+   */
+  captured: boolean
+  /**
+   * The seat currently holding this captain captive. Present while
+   * `captured`, except once that captor is itself eliminated or resigns
+   * (#309) — its identity stops mattering the moment there is no one left to
+   * ransom, so it is dropped rather than pointing at a dead seat.
+   */
+  capturedBy?: string
+  /**
+   * The round at or after which the owner may spend `recruitCaptain` to
+   * rehire this captive from the recruitment pool, preserving its name/XP/
+   * skills (#309). Set to `round + setup.captainCaptivityRounds` at capture
+   * time; `ransomCaptain` pulls it forward to the current round instead of
+   * reactivating the captain outright, so a ransomed captive still costs the
+   * normal recruit fee to rejoin the fleet. Present iff `captured`.
+   */
+  captivityReturnRound?: number
 }
 
 /**
@@ -140,6 +166,37 @@ export interface GameSetup {
   betrayalTruceRounds: number
   /** Minimum reputation a seat needs to form a new alliance (#138); existing ones are unaffected. */
   allianceReputationMin: number
+  /**
+   * Base gold cost of the `recruitCaptain` action (#308/#309) — minting a
+   * brand-new captain, or rehiring an eligible captive, at an owned port.
+   */
+  recruitCaptainBaseCost: number
+  /**
+   * Multiplier applied to `recruitCaptainBaseCost` per live (non-captured)
+   * captain this seat already owns, so a snowballing fleet gets steadily
+   * pricier instead of unbounded (#309). Recovering from zero captains
+   * always costs the base price.
+   */
+  recruitCaptainCostGrowth: number
+  /**
+   * Tier-1 troops a freshly recruited (or rehired) captain starts crewed
+   * with (#308) — deliberately smaller than a match's starting roster so an
+   * early rush can't field full-strength replacements for free.
+   */
+  recruitCaptainStartingCrew: number
+  /**
+   * Rounds a captured captain (#309) stays in captivity before its owner may
+   * spend `recruitCaptain` to rehire it from the recruitment pool.
+   * Host-configurable per match.
+   */
+  captainCaptivityRounds: number
+  /** Base gold cost of the `ransomCaptain` action (#309) — freeing a captive early. */
+  ransomBaseCost: number
+  /**
+   * Gold added to `ransomBaseCost` per XP point the captive has earned
+   * (#309) — a veteran captain costs more to buy back.
+   */
+  ransomXpMultiplier: number
 }
 
 export interface GameConfig {

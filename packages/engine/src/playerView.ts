@@ -149,6 +149,16 @@ export interface ViewCaptain {
    */
   standingOrders?: StandingOrder[]
   boardOrders?: BoardOrder[]
+  /**
+   * Captured status (#309) is public information — unlike troops/XP/orders
+   * above, this is disclosed for both own and enemy captains once in vision,
+   * so every seat can see who is holding whom.
+   */
+  captured: boolean
+  /** The seat currently holding this captain captive. Present only while `captured`. */
+  capturedBy?: string
+  /** Round at/after which the owner may rehire this captive (#309). Present only while `captured`. */
+  captivityReturnRound?: number
 }
 
 export interface ViewEncounter {
@@ -224,6 +234,15 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
 
   const captains: ViewCaptain[] = []
   for (const cap of state.captains) {
+    // Captured status (#309) is public — disclosed for own and enemy captains
+    // alike, unlike the rest of an enemy captain's manifest.
+    const capturedFields: Pick<ViewCaptain, 'captured' | 'capturedBy' | 'captivityReturnRound'> = {
+      captured: cap.captured,
+      ...(cap.capturedBy !== undefined ? { capturedBy: cap.capturedBy } : {}),
+      ...(cap.captivityReturnRound !== undefined
+        ? { captivityReturnRound: cap.captivityReturnRound }
+        : {}),
+    }
     if (cap.ownerId === viewerId) {
       captains.push({
         id: cap.id,
@@ -239,6 +258,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         shipUpgrades: cap.shipUpgrades,
         ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
         ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
+        ...capturedFields,
       })
     } else if (visibleKeys.has(tileKey(cap.position))) {
       // Enemy captain in current vision: you see a hull of a known class at a
@@ -249,6 +269,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         name: cap.name,
         position: cap.position,
         shipClassId: cap.shipClassId,
+        ...capturedFields,
       })
     }
   }

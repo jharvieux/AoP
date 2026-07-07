@@ -36,7 +36,12 @@ export function resourceNodeIncome(
     const def = catalog.resourceNodes?.[node.kind]
     if (!def) return total
     const ownerId = node.ownerSeat !== undefined ? state.players[node.ownerSeat]?.id : undefined
-    const occupants = state.captains.filter((c) => coordsEqual(c.position, node.position))
+    // A captured captain (#309) is stripped of its ship in all but name — it
+    // never actually left its capture-time tile, so it must not keep
+    // occupying (and yielding) a resource node for its former owner.
+    const occupants = state.captains.filter(
+      (c) => coordsEqual(c.position, node.position) && !c.captured,
+    )
     const controllerId =
       occupants.length > 0
         ? ownerId !== undefined && occupants.some((c) => c.ownerId === ownerId)

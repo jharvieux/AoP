@@ -35,12 +35,19 @@ const BETRAYAL_PENALTY_MAX = 100
 const TRUCE_ROUNDS_MIN = 0
 const TRUCE_ROUNDS_MAX = 10
 
+// Captivity knob bounds (#309). 0 rounds means a captured captain is
+// immediately eligible for recruitment (no captivity at all); 20 is a long
+// wait that keeps a captor's prize off the board for most of a match.
+const CAPTIVITY_ROUNDS_MIN = 0
+const CAPTIVITY_ROUNDS_MAX = 20
+
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const { factionName } = useTheme()
   const [mapSize, setMapSize] = useState<MapSize>('small')
   const [playerCount, setPlayerCount] = useState(2)
   const [betrayalPenalty, setBetrayalPenalty] = useState(GAME_SETUP.betrayalReputationPenalty)
   const [truceRounds, setTruceRounds] = useState(GAME_SETUP.betrayalTruceRounds)
+  const [captivityRounds, setCaptivityRounds] = useState(GAME_SETUP.captainCaptivityRounds)
   const [players, setPlayers] = useState<PlayerConfig[]>(
     Array.from({ length: 2 }, (_, i) => createDefaultPlayer(i)),
   )
@@ -82,11 +89,13 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
       players: players.map((p) => ({ ...p, startingTroops: starterTroops(p.faction) })),
       // Freeze opening-state + combat + economy/content balance snapshots from
       // @aop/content into the match so the pure engine holds no balance data.
-      // The host's two diplomacy knobs (#177) override the content defaults.
+      // The host's diplomacy knobs (#177) and captivity window (#309)
+      // override the content defaults.
       setup: {
         ...GAME_SETUP,
         betrayalReputationPenalty: betrayalPenalty,
         betrayalTruceRounds: truceRounds,
+        captainCaptivityRounds: captivityRounds,
       },
       combatStats: combatStatsData(),
       content: buildCatalog(),
@@ -146,6 +155,21 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
             value={truceRounds}
             onChange={(e) => setTruceRounds(Number(e.target.value))}
             aria-label="Betrayal truce window in rounds"
+          />
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">
+            Captain captivity ({captivityRounds} {captivityRounds === 1 ? 'round' : 'rounds'})
+          </label>
+          <input
+            type="range"
+            min={CAPTIVITY_ROUNDS_MIN}
+            max={CAPTIVITY_ROUNDS_MAX}
+            step={1}
+            value={captivityRounds}
+            onChange={(e) => setCaptivityRounds(Number(e.target.value))}
+            aria-label="Captain captivity window in rounds"
           />
         </div>
 
