@@ -1,11 +1,11 @@
 {
   "imports": {
-    "@aop/shared": "../../packages/shared/src/index.ts",
-    "@aop/shared/stripe": "../../packages/shared/src/stripe.ts",
-    "@aop/shared/push": "../../packages/shared/src/push.ts",
-    "@aop/shared/email": "../../packages/shared/src/email.ts",
-    "@aop/engine": "../../packages/engine/src/index.ts",
-    "@aop/content": "../../packages/content/src/index.ts",
+    "@aop/shared": "./_vendor/shared/index.ts",
+    "@aop/shared/stripe": "./_vendor/shared/stripe.ts",
+    "@aop/shared/push": "./_vendor/shared/push.ts",
+    "@aop/shared/email": "./_vendor/shared/email.ts",
+    "@aop/engine": "./_vendor/engine/index.ts",
+    "@aop/content": "./_vendor/content/index.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "@sentry/deno": "npm:@sentry/deno@10.63.0"
   }
