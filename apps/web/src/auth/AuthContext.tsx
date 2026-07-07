@@ -18,7 +18,11 @@ import {
 } from '../plugins/pushTokenStore'
 import { resolveSupabaseConfig } from './config'
 import { authReducer } from './machine'
-import { completeOAuthCallback, parseOAuthCallbackHash } from './oauthCallback'
+import {
+  completeOAuthCallback,
+  parseOAuthCallbackError,
+  parseOAuthCallbackHash,
+} from './oauthCallback'
 import {
   clearStoredSession,
   createSessionRefresher,
@@ -46,6 +50,13 @@ interface AuthContextValue {
   /** Create an account from the current guest session and migrate local saves. */
   createAccount(params: UpgradeParams): Promise<UpgradeResult>
   signInWithOAuth(provider: OAuthProvider, redirectTo?: string): void
+  /**
+   * A failed or cancelled OAuth redirect's readable message (#307) — set when
+   * GoTrue's callback carries an `error` instead of tokens, or the token
+   * exchange itself throws. Null the rest of the time.
+   */
+  oauthError: string | null
+  clearOAuthError(): void
   setDisplayName(displayName: string): Promise<void>
   signOut(): Promise<void>
   /**
@@ -127,6 +138,7 @@ export function AuthProvider({
   const activePushStore = pushStoreRef.current
 
   const [state, setState] = useState<AuthState>(GUEST_STATE)
+  const [oauthError, setOauthError] = useState<string | null>(null)
 
   // The push token arrives asynchronously from the native runtime; read the
   // live session through a ref so the handler never captures a stale one.
@@ -162,21 +174,32 @@ export function AuthProvider({
   // callback page, and nothing parsed that fragment — sign-in silently
   // dead-ended back at the guest menu. Bail out cheaply via a sync parse
   // before doing the network exchange, so an ordinary boot's empty hash
-  // never touches history.
+  // never touches history. A cancelled/failed OAuth attempt redirects with
+  // `#error=...` instead of tokens (#307) — surface it via `oauthError`
+  // rather than silently returning to the signed-out screen, and still scrub
+  // the hash so a refresh doesn't re-trigger it.
   useEffect(() => {
     if (!activeBackend || typeof window === 'undefined') return
-    if (!parseOAuthCallbackHash(window.location.hash)) return
+    const hash = window.location.hash
+    const tokens = parseOAuthCallbackHash(hash)
+    const redirectError = tokens ? null : parseOAuthCallbackError(hash)
+    if (!tokens && !redirectError) return
     let cancelled = false
     void (async () => {
       try {
+        if (redirectError) {
+          setOauthError(redirectError)
+          return
+        }
         const session = await completeOAuthCallback(activeBackend, window.location)
         if (session && !cancelled) {
           if (persistence) storeSession(persistence, session)
           setState((prev) => authReducer(prev, { type: 'authenticated', session }))
         }
-      } catch {
-        // Swallowed like the session-restore effect above: surface nothing
-        // and let the user retry sign-in from the menu.
+      } catch (err) {
+        if (!cancelled) {
+          setOauthError(err instanceof AuthError ? err.message : 'Sign-in failed. Please try again.')
+        }
       } finally {
         if (!cancelled) {
           window.history.replaceState(null, '', window.location.pathname + window.location.search)
@@ -224,9 +247,15 @@ export function AuthProvider({
       },
 
       signInWithOAuth(provider, redirectTo) {
+        setOauthError(null)
         const target = redirectTo ?? (typeof window !== 'undefined' ? window.location.origin : '')
         const authorizeUrl = requireBackend().oauthAuthorizeUrl(provider, target)
         if (typeof window !== 'undefined') window.location.assign(authorizeUrl)
+      },
+
+      oauthError,
+      clearOAuthError() {
+        setOauthError(null)
       },
 
       async setDisplayName(displayName) {
@@ -257,7 +286,7 @@ export function AuthProvider({
         setState((prev) => authReducer(prev, { type: 'signed_out' }))
       },
     }
-  }, [state, activeBackend, persistence, store, activePushStore])
+  }, [state, activeBackend, persistence, store, activePushStore, oauthError])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

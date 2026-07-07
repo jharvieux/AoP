@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { completeOAuthCallback, parseOAuthCallbackHash } from './oauthCallback'
+import { completeOAuthCallback, parseOAuthCallbackError, parseOAuthCallbackHash } from './oauthCallback'
 import type { AuthBackend, AuthSession } from './types'
 
 const SESSION: AuthSession = {
@@ -47,6 +47,27 @@ describe('parseOAuthCallbackHash', () => {
   it('returns null when only one of the two tokens is present', () => {
     expect(parseOAuthCallbackHash('#access_token=a')).toBeNull()
     expect(parseOAuthCallbackHash('#refresh_token=r')).toBeNull()
+  })
+})
+
+describe('parseOAuthCallbackError', () => {
+  it('returns null for an ordinary boot with no hash', () => {
+    expect(parseOAuthCallbackError('')).toBeNull()
+  })
+
+  it('returns null when the hash carries tokens, not an error', () => {
+    expect(parseOAuthCallbackError('#access_token=a&refresh_token=r')).toBeNull()
+  })
+
+  it('extracts the human-readable description from a cancelled-consent redirect', () => {
+    const message = parseOAuthCallbackError(
+      '#error=access_denied&error_code=user_cancelled&error_description=User+denied+access',
+    )
+    expect(message).toBe('User denied access')
+  })
+
+  it('falls back to a generic message keyed by the error code when no description is present', () => {
+    expect(parseOAuthCallbackError('#error=server_error')).toBe('Sign-in failed (server_error).')
   })
 })
 

@@ -7,9 +7,9 @@
  */
 
 /** OAuth providers wired for account sign-in (docs/ARCHITECTURE.md §4). */
-export type OAuthProvider = 'google' | 'github'
+export type OAuthProvider = 'google' | 'microsoft'
 
-export const OAUTH_PROVIDERS: readonly OAuthProvider[] = ['google', 'github']
+export const OAUTH_PROVIDERS: readonly OAuthProvider[] = ['google', 'microsoft']
 
 export interface AuthUser {
   id: string

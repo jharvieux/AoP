@@ -26,6 +26,22 @@ export function parseOAuthCallbackHash(
 }
 
 /**
+ * Detects GoTrue's OAuth error redirect fragment
+ * (`#error=access_denied&error_description=...`) — what comes back instead of
+ * tokens when the user cancels the provider's consent screen, or the
+ * provider/exchange fails upstream. Returns a readable message, or null when
+ * the hash carries no OAuth error (#307: previously this case fell straight
+ * through the token parse and landed silently back at the guest menu).
+ */
+export function parseOAuthCallbackError(hash: string): string | null {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash
+  const params = new URLSearchParams(raw)
+  const error = params.get('error')
+  if (!error) return null
+  return params.get('error_description') || `Sign-in failed (${error}).`
+}
+
+/**
  * Boot-time entry point: if `location.hash` carries an OAuth implicit-flow
  * callback, exchanges it for a full session via `backend`. Returns null
  * (a no-op) when there's nothing to parse. Does not touch history or
