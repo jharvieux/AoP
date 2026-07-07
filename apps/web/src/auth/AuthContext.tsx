@@ -198,7 +198,9 @@ export function AuthProvider({
         }
       } catch (err) {
         if (!cancelled) {
-          setOauthError(err instanceof AuthError ? err.message : 'Sign-in failed. Please try again.')
+          setOauthError(
+            err instanceof AuthError ? err.message : 'Sign-in failed. Please try again.',
+          )
         }
       } finally {
         if (!cancelled) {

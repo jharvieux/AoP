@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { completeOAuthCallback, parseOAuthCallbackError, parseOAuthCallbackHash } from './oauthCallback'
+import {
+  completeOAuthCallback,
+  parseOAuthCallbackError,
+  parseOAuthCallbackHash,
+} from './oauthCallback'
 import type { AuthBackend, AuthSession } from './types'
 
 const SESSION: AuthSession = {
