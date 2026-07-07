@@ -1,5 +1,6 @@
 import type { Action, GameConfig } from '@aop/engine'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { BattleBoardSheet } from '../BattleBoardSheet'
 import { MapCanvas } from '../MapCanvas'
 import { useReplayCursor } from './useReplayCursor'
 
@@ -16,11 +17,19 @@ interface ReplayScreenProps {
  * forward/back, seek by round, speed control, reusing MapCanvas as the view.
  * Full visibility — every tile is always "explored" and "visible" regardless
  * of any player's real fog, since a finished game (or its multiplayer replay,
- * #147) carries no anti-cheat concern once the match is over.
+ * #147) carries no anti-cheat concern once the match is over. When the
+ * action just stepped past was a battle, a "View Battle" button opens the
+ * same `BattleBoardSheet` the live game uses (#304) — replay previously had
+ * no battle playback of any kind, boarding or gunnery.
  */
 export function ReplayScreen({ config, actions, onClose }: ReplayScreenProps) {
   const cursor = useReplayCursor(config, actions)
   const { state } = cursor
+  const [viewingBattle, setViewingBattle] = useState(false)
+  // A step/seek elsewhere in the log invalidates whatever battle was showing.
+  useEffect(() => {
+    setViewingBattle(false)
+  }, [cursor.actionIndex])
   // Arbitrary perspective for MapCanvas's own-vs-enemy color coding — a
   // replay has no single "viewer", so seat 0 anchors the palette.
   const viewer = state.players[0]!
@@ -111,8 +120,21 @@ export function ReplayScreen({ config, actions, onClose }: ReplayScreenProps) {
               </option>
             ))}
           </select>
+          {cursor.battleReport && (
+            <button className="secondary" onClick={() => setViewingBattle(true)}>
+              View Battle
+            </button>
+          )}
         </div>
       </div>
+
+      {viewingBattle && cursor.battleReport && (
+        <BattleBoardSheet
+          report={cursor.battleReport}
+          playerName={(id) => state.players.find((p) => p.id === id)?.name ?? id}
+          onClose={() => setViewingBattle(false)}
+        />
+      )}
     </div>
   )
 }

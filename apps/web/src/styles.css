@@ -1234,6 +1234,32 @@ button.primary.secondary {
   margin-top: 8px;
 }
 
+/* Naval-battle round-by-round playback for non-boarding battles (#304) */
+
+.gunnery-round {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0;
+}
+
+.gunnery-round__side {
+  flex: 1;
+}
+
+.gunnery-hp-bar {
+  display: flex;
+  height: 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #3a2a1a;
+}
+
+.gunnery-hp-bar__fill {
+  background: #a33c2e;
+}
+
 .map-editor-screen {
   padding: 16px;
   overflow: hidden;

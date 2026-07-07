@@ -1,8 +1,10 @@
 import {
   applyAction,
+  applyActionWithOutcome,
   createGame,
   replay,
   type Action,
+  type BattleReport,
   type GameConfig,
   type GameState,
 } from '@aop/engine'
@@ -78,4 +80,26 @@ export function actionIndexForRound(
     found = checkpoint
   }
   return found.actionIndex
+}
+
+/**
+ * The `BattleReport` produced by the action that led to `actionIndex`, or
+ * `null` if that action wasn't an `attackCaptain` (or `actionIndex` is 0,
+ * before any action ran). Reports aren't stored in the log or in checkpoint
+ * state — only the resulting `GameState` is — so this replays that one action
+ * again with {@link applyActionWithOutcome} from the state just before it.
+ * Fully derived from the pre-action RNG state, so it reproduces the report
+ * that was shown live, bit-exactly (#304: Watch Replay had no battle
+ * playback at all because nothing recovered this).
+ */
+export function battleReportAtActionIndex(
+  checkpoints: readonly ReplayCheckpoint[],
+  actions: readonly Action[],
+  actionIndex: number,
+): BattleReport | null {
+  if (actionIndex <= 0 || actionIndex > actions.length) return null
+  const action = actions[actionIndex - 1]!
+  if (action.type !== 'attackCaptain') return null
+  const before = stateAtActionIndex(checkpoints, actions, actionIndex - 1)
+  return applyActionWithOutcome(before, action).battleReport ?? null
 }
