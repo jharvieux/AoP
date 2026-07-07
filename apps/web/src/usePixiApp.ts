@@ -1,5 +1,14 @@
-import { Application } from 'pixi.js'
+import { Application, TextureSource } from 'pixi.js'
 import { useEffect, useRef, useState, type RefObject } from 'react'
+
+// Explicit scaling policy for the stylized-2D map/battle art (#300 — a repo grep for
+// scaleMode/roundPixels/nearest/pixelArt previously had zero hits, meaning Pixi's own
+// defaults were doing this by accident). This is painterly generated art, not pixel art, so
+// 'linear' — Pixi's existing default — is the correct filter; set explicitly so the choice
+// reads as deliberate and survives a future Pixi default change. `TextureSource.defaultOptions`
+// is a process-global applied to every texture loaded afterward, so this is set once here
+// rather than per-texture at each call site.
+TextureSource.defaultOptions.scaleMode = 'linear'
 
 export interface UsePixiAppOptions {
   background?: string
@@ -58,6 +67,10 @@ export function usePixiApp(options: UsePixiAppOptions = {}): UsePixiApp {
         antialias: true,
         resolution: Math.min(window.devicePixelRatio, 2),
         autoDensity: true,
+        // Snaps every sprite/container's final screen position to a whole device pixel
+        // (#300) — panning/zooming the map otherwise lands stylized sprites at sub-pixel
+        // offsets that shimmer frame to frame as the linear-filtered sample point drifts.
+        roundPixels: true,
       })
       .then(() => {
         if (destroyed) {

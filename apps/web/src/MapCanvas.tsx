@@ -1,4 +1,5 @@
 import {
+  findPath,
   tileIndex,
   type Captain,
   type CityState,
@@ -7,11 +8,12 @@ import {
   type GameMap,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import type { Coord, FactionId } from '@aop/shared'
-import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js'
+import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
+import { Assets, Container, Graphics, Sprite, Texture, type Ticker } from 'pixi.js'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import { easeInOutCubic, pathPointAt, shipAnimDurationMs } from './shipAnimation'
 import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
@@ -78,6 +80,42 @@ const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
   brigantine: 0.75,
   frigate: 0.85,
   galleon: 0.95,
+}
+
+// A single move spends at most `captain.movementPoints` (default 5 — see
+// startingCaptainMovement in @aop/content's tuning) tiles of path, so any detected jump
+// longer than this is a fogged-reappearance or a state snapshot, not a move to animate
+// (#297) — sail the ordinary case, snap instantly for anything this large.
+const MAX_ANIMATED_PATH_TILES = 40
+
+/** Every default (non-theme-pack-override) sprite URL the map can draw, so they can be
+ * warmed into the texture cache before first paint (#300) instead of popping in tile by
+ * tile as the camera first reaches them. Theme-pack overrides are `data:` URLs decided at
+ * runtime and are out of scope here — they're already in memory, just not yet decoded. */
+function defaultArtUrls(): string[] {
+  const urls = new Set<string>()
+  for (const url of Object.values(TILE_SPRITE_URL)) {
+    if (url) urls.add(url)
+  }
+  urls.add(CITY_SPRITE_URL.own)
+  urls.add(CITY_SPRITE_URL.enemy)
+  for (const url of Object.values(ENCOUNTER_SPRITE_URL)) urls.add(url)
+  for (const faction of Object.values(FACTIONS)) {
+    if (faction.shipSpriteUrl) urls.add(faction.shipSpriteUrl)
+    for (const url of Object.values(faction.shipSpriteUrlsByClass ?? {})) {
+      if (url) urls.add(url)
+    }
+  }
+  return [...urls]
+}
+
+/** One ship's in-flight sail animation (#297): `path` is the tile-by-tile route from
+ * `findPath`, `elapsedMs` accumulates ticker delta time, and rendering interpolates along
+ * `path` by `elapsedMs / durationMs` (eased) rather than snapping straight to the last tile. */
+interface ShipAnim {
+  path: Coord[]
+  elapsedMs: number
+  durationMs: number
 }
 
 /** Get-or-create a pooled Sprite by a stable key, and drop any pool entries not
@@ -261,6 +299,10 @@ export function MapCanvas(props: MapCanvasProps) {
       dirtyRef.current = true
     })
     textureLoaderRef.current = textureLoader
+    // Warm the whole default art set up front (#300) so the common case — panning into a
+    // tile/city/encounter/ship whose texture was never requested before — is already a
+    // cache hit instead of a flat-color-then-pop.
+    void textureLoader.preload(defaultArtUrls())
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const cityPool = new SpritePool(citySprites)
@@ -272,6 +314,14 @@ export function MapCanvas(props: MapCanvasProps) {
     let dragStart: { x: number; y: number; viewX: number; viewY: number } | undefined
     let pinchPrevDist: number | undefined
     let moved = false
+
+    // Ship-sail animation state (#297), keyed by captain id. `lastCaptainPos` is the last
+    // authoritative (GameState) tile seen for that captain, used to detect a move and
+    // reconstruct its path; `shipAnims` holds the in-flight interpolation for captains
+    // currently mid-sail. Both are plain closure state (like `pointers` above), not React
+    // refs — this effect only re-runs when `app` changes.
+    const lastCaptainPos = new Map<string, Coord>()
+    const shipAnims = new Map<string, ShipAnim>()
 
     const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
 
@@ -285,7 +335,12 @@ export function MapCanvas(props: MapCanvasProps) {
       dirtyRef.current = true
     }
 
-    function draw() {
+    function draw(deltaMs: number) {
+      // Advance in-flight sail animations before this frame's ship loop reads them, so a
+      // freshly created one below (from a position change detected this same frame) starts
+      // at elapsedMs=0 instead of already-advanced.
+      for (const anim of shipAnims.values()) anim.elapsedMs += deltaMs
+
       const {
         map,
         captains,
@@ -430,12 +485,44 @@ export function MapCanvas(props: MapCanvasProps) {
       cityPool.end()
 
       shipPool.begin()
+      const liveCaptainIds = new Set<string>()
       for (const cap of captains) {
+        liveCaptainIds.add(cap.id)
         const key = `${cap.position.x},${cap.position.y}`
         const own = cap.ownerId === viewerId
         if (!own && !visibleKeys.has(key)) continue
-        const cx = cap.position.x * TILE + TILE / 2
-        const cy = cap.position.y * TILE + TILE / 2
+
+        // Detect a move since the last draw (#297): reconstruct the sea path just
+        // travelled and animate along it instead of snapping straight to the new tile.
+        // A missing/oversized path (fogged reappearance far away, first sighting, etc.)
+        // falls back to an instant snap — see MAX_ANIMATED_PATH_TILES.
+        const lastPos = lastCaptainPos.get(cap.id)
+        if (lastPos && !coordsEqual(lastPos, cap.position)) {
+          const path = findPath(map, lastPos, cap.position)
+          if (path && path.length >= 2 && path.length <= MAX_ANIMATED_PATH_TILES) {
+            shipAnims.set(cap.id, { path, elapsedMs: 0, durationMs: shipAnimDurationMs(path) })
+          } else {
+            shipAnims.delete(cap.id)
+          }
+        }
+        lastCaptainPos.set(cap.id, cap.position)
+
+        let renderX = cap.position.x
+        let renderY = cap.position.y
+        const anim = shipAnims.get(cap.id)
+        if (anim) {
+          const t = anim.durationMs > 0 ? anim.elapsedMs / anim.durationMs : 1
+          if (t >= 1) {
+            shipAnims.delete(cap.id)
+          } else {
+            const point = pathPointAt(anim.path, easeInOutCubic(t))
+            renderX = point.x
+            renderY = point.y
+          }
+        }
+
+        const cx = renderX * TILE + TILE / 2
+        const cy = renderY * TILE + TILE / 2
         const faction = FACTIONS[factionOf(cap.ownerId)]
         const defaultShipSpriteUrl =
           faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
@@ -459,6 +546,14 @@ export function MapCanvas(props: MapCanvasProps) {
         }
         entities.circle(cx, cy, TILE / 2.6)
         entities.fill(own ? OWN_SHIP : ENEMY_SHIP)
+      }
+      // Drop tracking for captains that no longer exist at all (sunk, eliminated seat, …) —
+      // mirrors SpritePool's own end()-time cleanup so this doesn't grow unbounded over a
+      // long session.
+      for (const id of [...lastCaptainPos.keys()]) {
+        if (liveCaptainIds.has(id)) continue
+        lastCaptainPos.delete(id)
+        shipAnims.delete(id)
       }
       shipPool.end()
 
@@ -565,11 +660,15 @@ export function MapCanvas(props: MapCanvasProps) {
     // (camera moved or game state updated) instead of every ticker frame
     // (#27) — on mid-range phones a redraw is real work (fill + culling loop
     // over every visible tile), and most frames while idle have nothing new
-    // to show.
-    function tick() {
-      if (!dirtyRef.current) return
+    // to show. A ship mid-sail (#297) is an exception: nothing else about the
+    // scene changed, but the animation still needs a redraw every frame to
+    // progress, so an in-flight `shipAnims` entry keeps ticking even when
+    // `dirtyRef` is clean.
+    function tick(ticker: Ticker) {
+      const animating = shipAnims.size > 0
+      if (!dirtyRef.current && !animating) return
       dirtyRef.current = false
-      draw()
+      draw(ticker.deltaMS)
     }
     pixiApp.ticker.add(tick)
 
