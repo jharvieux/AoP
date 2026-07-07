@@ -102,12 +102,18 @@
   --color-battle-ink-a16: rgb(243 233 210 / 16%);
   --color-battle-ink-a45: rgb(243 233 210 / 45%);
   --color-battle-attacker: #a33c2e;
+  --color-battle-attacker-highlight: #e0715c;
   --color-battle-defender: #2e5da3;
+  --color-battle-defender-highlight: #6b95d6;
   --color-battle-token-stroke: #0e1c26;
   --color-terrain-open: #1d3345;
+  --color-terrain-open-accent: #3f6c8f;
   --color-terrain-rough: #4a3c22;
+  --color-terrain-rough-accent: #8a7038;
   --color-terrain-cover: #1f4a2a;
+  --color-terrain-cover-accent: #3f8a52;
   --color-terrain-blocked: #3a3f45;
+  --color-terrain-blocked-accent: #767c85;
 
   /* World map (Pixi canvas + map editor). Port/own-city, own-ship, enemy-ship,
      fog and the merchant encounter reuse the app-chrome tokens above — they
@@ -1119,6 +1125,87 @@ button.primary.secondary {
 .battle-board-svg__ghost {
   opacity: 0.55;
   pointer-events: none;
+}
+
+/* Token movement interpolation + attack feedback (#303) */
+
+.battle-board-svg__token-pos {
+  transition: transform 450ms ease;
+}
+
+.battle-board-svg__hit {
+  animation: board-token-shake 380ms ease;
+}
+
+@keyframes board-token-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  20% {
+    transform: translate(-2px, 1px);
+  }
+
+  40% {
+    transform: translate(2px, -1px);
+  }
+
+  60% {
+    transform: translate(-1.5px, 0);
+  }
+
+  80% {
+    transform: translate(1.5px, 0.5px);
+  }
+}
+
+.battle-board-svg__hit-flash {
+  fill: #ff5c4d;
+  opacity: 0;
+  pointer-events: none;
+  animation: board-token-flash 380ms ease;
+}
+
+@keyframes board-token-flash {
+  0% {
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.75;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.battle-board-svg__damage {
+  font-size: 13px;
+  font-weight: 800;
+  fill: #ffdca8;
+  stroke: #241407;
+  stroke-width: 2px;
+  paint-order: stroke;
+  pointer-events: none;
+  animation: board-damage-float 750ms ease-out forwards;
+}
+
+@keyframes board-damage-float {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
 }
 
 .battle-board-svg__move-line {

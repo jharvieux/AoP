@@ -7,13 +7,13 @@ import {
 } from '@aop/engine'
 import { useState } from 'react'
 import {
+  BoardDefs,
   boardSvgSize,
   hexCenter,
   hexPoints,
   HEX_SIZE,
   StackToken,
-  TERRAIN_FILL,
-  TOKEN_STROKE,
+  TerrainHex,
   unitDefinition,
 } from './battleBoardSvg'
 import {
@@ -194,18 +194,11 @@ export function BoardingCommandSheet({
               role="img"
               aria-label="Boarding melee — awaiting your order"
             >
+              <BoardDefs />
               {view.terrain.map((t, i) => {
                 const hex = { col: i % view.width, row: Math.floor(i / view.width) }
-                const { x, y } = hexCenter(hex)
                 return (
-                  <polygon
-                    key={i}
-                    points={hexPoints(x, y)}
-                    fill={TERRAIN_FILL[t] ?? TERRAIN_FILL.open}
-                    stroke={TOKEN_STROKE}
-                    strokeWidth="1"
-                    onClick={() => handleHexClick(hex)}
-                  />
+                  <TerrainHex key={i} hex={hex} terrain={t} onClick={() => handleHexClick(hex)} />
                 )
               })}
               {view.reachable.map((r) => {
