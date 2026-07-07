@@ -1,3 +1,42 @@
+## D-025 — 2026-07-07 — First real prod deploy attempt: DB live, edge functions vendor edge functions' `@aop/*` deps, blocked by local colima bug
+
+**Decision.** First-ever deploy attempt against the real prod Supabase project
+(`udsuxdoavlvosvbjwmud`). Pushed all 23 migrations — DB now has its full schema (was
+completely empty; the project had existed but nothing had ever been deployed to it).
+
+**Bug found and fixed (#339, PR #340).** `supabase/functions/deno.json` mapped
+`@aop/shared`/`@aop/engine`/`@aop/content` to `../../packages/*/src`, outside
+`supabase/functions/`. `supabase functions deploy`'s bundler (Docker- or API-based) can
+only see files under `supabase/functions/`, so every function deploy failed on "module not
+found" — never caught before because deploy had never been run for real; local `supabase
+start` masked it since those containers mount the whole repo. Fix: `scripts/
+vendor-function-deps.mjs` copies the three packages into a gitignored `supabase/functions/
+_vendor/` and rewrites their extensionless relative imports to add `.ts` (Deno requires
+explicit extensions; the rest of the repo uses bundler-style resolution). `deno.json` now
+points at the vendored copies. Confirmed via `--debug`: full `@aop/*` module graph now
+resolves cleanly.
+
+**Second bug found, not fixed (#341).** Even with the above fix, `supabase functions
+deploy` still fails locally — for any function, including an empty one with zero imports —
+with an opaque `Effect.tryPromise` error right after "Building vfs". Ruled out: bundle
+size (swapped `@sentry/deno` for a zero-dep stub, same failure), Docker daemon health
+(colima's dockerd logs show the bundler container running and exiting cleanly), colima
+resources (bumped to 4 CPU/8GB, no change), stale CLI (same on both v2.102.0 and the
+pinned v2.109.0). Looks like a CLI/colima Docker incompatibility, not a code issue.
+
+**Why stopped here.** Operator chose to stop for the day rather than set up the
+`deploy.yml` GitHub Actions path (which runs on real Ubuntu Docker and likely sidesteps the
+colima issue) — that path needs minting a new `VERCEL_TOKEN` and provisioning the
+`production` environment's 6 secrets, an operator-facing step. PR #340 (vendoring fix) is
+open, `pnpm verify` green, not yet merged. #341 tracks the remaining local-deploy blocker.
+
+**State the prod project is in right now.** DB fully migrated and live. 0 edge functions
+deployed. Vercel web deploy not attempted (deploying the client against a functionless
+backend would ship a broken app) — Vercel CLI is authenticated and the `age-of-plunder`
+project exists, just not yet linked from `apps/web`.
+
+---
+
 ## D-024 — 2026-07-06 — Issue sweep (14 issues) + title emblem sourced CC0, not AI-generated
 
 **Decision.** Ran a full `/issue-sweep`: triaged the open backlog, executed 14 issues
