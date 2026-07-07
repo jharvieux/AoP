@@ -152,10 +152,14 @@ seq)` primary key rejecting a duplicate append, and the `action_count` guard on 
 
 Requires a provisioned Supabase project (an **operator action** — see
 [`../README.md`](../README.md) § Environments). Functions resolve `@aop/*` via the import
-map in `deno.json`, which points at the workspace TypeScript sources.
+map in `deno.json`, which points at the generated (gitignored) `_vendor/` copies of the
+workspace sources — the deploy bundler can't see files outside `supabase/functions/`
+(#339). Regenerate `_vendor/` before any `deno check`/`deno test`, `supabase start`, or
+deploy (CI and `deploy.yml` run this step automatically):
 
 ```bash
-supabase functions deploy   # deploys every function in this directory
+node scripts/vendor-function-deps.mjs   # from the repo root
+supabase functions deploy               # deploys every function in this directory
 ```
 
 Injected at runtime by the platform: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
