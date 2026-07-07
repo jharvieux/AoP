@@ -150,6 +150,33 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     expect(JSON.stringify(view)).not.toContain('broadside')
   })
 
+  it('discloses captured status for an enemy captain in vision, unlike the rest of its manifest (#309)', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    const withCapturedEnemyInView: GameState = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.ownerId === 'seat-1'
+          ? {
+              ...c,
+              position: { ...mine.position },
+              captured: true,
+              capturedBy: 'seat-0',
+              captivityReturnRound: state.round + 5,
+              troops: [],
+            }
+          : c,
+      ),
+    }
+    const view = playerView(withCapturedEnemyInView, 'seat-0')
+    const seen = view.captains.find((c) => c.ownerId === 'seat-1')!
+    expect(seen.captured).toBe(true)
+    expect(seen.capturedBy).toBe('seat-0')
+    expect(seen.captivityReturnRound).toBe(state.round + 5)
+    // Still no troops/orders/XP — captured status is the one disclosure exception.
+    expect(seen.troops).toBeUndefined()
+  })
+
   it('exposes the viewer’s own captain in full', () => {
     const view = playerView(createGame(matchConfig()), 'seat-0')
     const mine = view.captains.find((c) => c.ownerId === 'seat-0')!
