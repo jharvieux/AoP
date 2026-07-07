@@ -37,22 +37,19 @@ const FALLBACK_ENGAGE_MIN_RATIO = 0.9
 const FALLBACK_ATTACK_SCORE_BASE = 100
 const FALLBACK_ADVANCE_SCORE_BASE = 10
 const FALLBACK_ADVANCE_DISTANCE_BONUS = 10
-
 /**
  * Recruiting a replacement captain (#308) is existential once a seat has
  * none left — comfortably outscores any economy action so the AI doesn't sit
- * on a full treasury while captain-less. Not gated behind `aiTuning`/content:
- * `recruitCaptain`'s cost comes from `GameConfig.setup`, which every match
- * carries, so the AI can always recover from the coin-flip loss #308 fixed.
+ * on a full treasury while captain-less.
  */
-const RECRUIT_CAPTAIN_SCORE = 500
+const FALLBACK_RECRUIT_CAPTAIN_SCORE_BASE = 500
 /**
  * Ransom policy (#309): "always ransom when affordable and outnumbered, else
  * wait" — the simple single-player AI policy the issue calls for. Scored
  * between the advance and attack bands: worth doing over idling, but never
  * preferred over a favorable fight.
  */
-const RANSOM_SCORE = 50
+const FALLBACK_RANSOM_SCORE_BASE = 50
 
 /**
  * Weights and thresholds the AI uses to score candidate actions. Balance data —
@@ -80,6 +77,14 @@ export interface AiTuning {
   garrisonReserveFraction: number
   upgradeScoreBase: number
   skillPickScoreBase: number
+  /**
+   * Score for recruiting a replacement captain when captain-less (#308).
+   * Not folded into any personality/economy overlay — recovering from zero
+   * captains is treated as existential regardless of behavior profile.
+   */
+  recruitCaptainScoreBase: number
+  /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
+  ransomScoreBase: number
 }
 
 /**
@@ -215,6 +220,9 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     (baseTuning?.advanceScoreBase ?? FALLBACK_ADVANCE_SCORE_BASE) * weights.combatScoreMult
   const advanceDistanceBonus =
     (baseTuning?.advanceDistanceBonus ?? FALLBACK_ADVANCE_DISTANCE_BONUS) * weights.combatScoreMult
+  const recruitCaptainScoreBase =
+    baseTuning?.recruitCaptainScoreBase ?? FALLBACK_RECRUIT_CAPTAIN_SCORE_BASE
+  const ransomScoreBase = baseTuning?.ransomScoreBase ?? FALLBACK_RANSOM_SCORE_BASE
 
   const candidates: ScoredAction[] = [{ action: { type: 'endTurn', playerId }, score: 0 }]
   const consider = (candidate: ScoredAction | null): void => {
@@ -227,10 +235,12 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   const pathCache = new Map<string, Coord[] | null>()
 
   // Captain-recovery verbs (#308/#309): unlike the economy verbs below, these
-  // only need `GameConfig.setup`, which every match carries, so they run
-  // regardless of whether a content catalog/aiTuning is configured.
-  consider(planRecruitCaptain(state, playerId))
-  consider(planRansomCaptain(state, playerId))
+  // only need `GameConfig.setup` (not a content catalog) to price their
+  // action, so they run regardless of whether `aiTuning` is configured —
+  // their *scores* still come from it, falling back like every other score
+  // above when it isn't.
+  consider(planRecruitCaptain(state, playerId, recruitCaptainScoreBase))
+  consider(planRansomCaptain(state, playerId, ransomScoreBase))
 
   for (const cap of myCaptains) {
     if (cap.movementPoints < 1) continue
@@ -373,7 +383,11 @@ function requirePlayer(state: GameState, playerId: string): PlayerState {
  * a seat with a live captain builds its fleet through combat/advance scoring
  * instead of proactively stacking captains.
  */
-function planRecruitCaptain(state: GameState, playerId: string): ScoredAction | null {
+function planRecruitCaptain(
+  state: GameState,
+  playerId: string,
+  scoreBase: number,
+): ScoredAction | null {
   const liveCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
   if (liveCaptains.length > 0) return null
   const city = state.cities.find((c) => c.ownerId === playerId)
@@ -397,7 +411,7 @@ function planRecruitCaptain(state: GameState, playerId: string): ScoredAction | 
     action: eligibleCaptive
       ? { type: 'recruitCaptain', playerId, cityId: city.id, captainId: eligibleCaptive.id }
       : { type: 'recruitCaptain', playerId, cityId: city.id },
-    score: RECRUIT_CAPTAIN_SCORE,
+    score: scoreBase,
   }
 }
 
@@ -407,7 +421,11 @@ function planRecruitCaptain(state: GameState, playerId: string): ScoredAction | 
  * the cheapest-to-free captive (lowest XP) when this seat fields fewer live
  * captains than the best-fielded living rival.
  */
-function planRansomCaptain(state: GameState, playerId: string): ScoredAction | null {
+function planRansomCaptain(
+  state: GameState,
+  playerId: string,
+  scoreBase: number,
+): ScoredAction | null {
   const myCaptives = state.captains.filter((c) => c.ownerId === playerId && c.captured)
   if (myCaptives.length === 0) return null
 
@@ -428,7 +446,7 @@ function planRansomCaptain(state: GameState, playerId: string): ScoredAction | n
 
   return {
     action: { type: 'ransomCaptain', playerId, captainId: cheapest.id },
-    score: RANSOM_SCORE,
+    score: scoreBase,
   }
 }
 

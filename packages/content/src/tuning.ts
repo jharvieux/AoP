@@ -144,6 +144,14 @@ export interface AiTuning {
   upgradeScoreBase: number
   /** Score for spending an available captain skill pick. */
   skillPickScoreBase: number
+  /**
+   * Score for recruiting a replacement captain when captain-less (#308).
+   * Tuned to comfortably outscore any economy action — recovering from zero
+   * captains is existential, not a discretionary investment.
+   */
+  recruitCaptainScoreBase: number
+  /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
+  ransomScoreBase: number
 }
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
@@ -325,6 +333,8 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+  recruitCaptainScoreBase: 500,
+  ransomScoreBase: 50,
 }
 
 /**

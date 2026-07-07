@@ -602,11 +602,21 @@ function ownedCaptain(state: GameState, captainId: string, action: Action): Capt
   return captain
 }
 
-/** First water tile adjacent to `coord`, in the map's fixed neighbour order (#308/#309)
- *  — used to place a freshly (re)recruited captain next to the port it was hired at. */
-function adjacentWaterTile(map: GameMap, coord: Coord): Coord {
+/**
+ * First water tile adjacent to `coord`, in the map's fixed neighbour order
+ * (#308/#309) — used to place a freshly (re)recruited captain next to the
+ * port it was hired at. Every city sits on a port tile, and mapgen
+ * guarantees a home island's port always borders open water (map.ts), so
+ * this never actually fails for a real city — but it takes `action` and
+ * fails loud via `InvalidActionError`, like every other reducer rejection,
+ * rather than a bare `Error` that would crash the caller instead of
+ * bouncing cleanly.
+ */
+function adjacentWaterTile(map: GameMap, coord: Coord, action: Action): Coord {
   const water = neighbors8(map, coord).find((n) => isWaterTile(tileAt(map, n)))
-  if (!water) throw new Error(`No water tile adjacent to ${coord.x},${coord.y}`)
+  if (!water) {
+    throw new InvalidActionError(`No water tile adjacent to ${coord.x},${coord.y}`, action)
+  }
   return water
 }
 
@@ -638,7 +648,7 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
   const crew: TroopStack[] = tierOneUnit
     ? [{ unitId: tierOneUnit[0], count: setup.recruitCaptainStartingCrew }]
     : []
-  const spawnPosition = adjacentWaterTile(state.map, city.position)
+  const spawnPosition = adjacentWaterTile(state.map, city.position, action)
 
   let captains: Captain[]
   if (action.captainId) {
