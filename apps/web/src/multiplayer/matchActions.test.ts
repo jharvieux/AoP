@@ -292,4 +292,26 @@ describe('matchAction builders (playerId always the viewer seat)', () => {
       matchAction.setStandingOrders(v, 'cap-own', [], [{ when: 'always', doctrine: 'holdLine' }]),
     ).toMatchObject({ boardOrders: [{ when: 'always', doctrine: 'holdLine' }] })
   })
+
+  it('recruitCaptain omits captainId to mint new, includes it to rehire a captive (#326)', () => {
+    expect(matchAction.recruitCaptain(v, 'city-own')).toEqual({
+      type: 'recruitCaptain',
+      playerId: 'seat-0',
+      cityId: 'city-own',
+    })
+    expect(matchAction.recruitCaptain(v, 'city-own', 'cap-own')).toEqual({
+      type: 'recruitCaptain',
+      playerId: 'seat-0',
+      cityId: 'city-own',
+      captainId: 'cap-own',
+    })
+  })
+
+  it('ransomCaptain stamps the viewer id and target captain (#326)', () => {
+    expect(matchAction.ransomCaptain(v, 'cap-own')).toEqual({
+      type: 'ransomCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-own',
+    })
+  })
 })

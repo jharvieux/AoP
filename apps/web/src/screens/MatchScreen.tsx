@@ -599,6 +599,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           captains={myCaptains}
           faction={viewer.faction}
           resources={viewer.resources}
+          setup={view.rules.setup}
+          round={view.round}
+          playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
           onClose={() => setOpenCityId(null)}
           onBuild={(buildingId) =>
             void submit(matchAction.construct(view, openCity.id, buildingId))
@@ -635,6 +638,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             if (!captainAtOpenCity) return
             void submit(matchAction.upgradeShip(view, openCity.id, captainAtOpenCity.id, track))
           }}
+          onRecruitCaptain={(captainId) =>
+            void submit(matchAction.recruitCaptain(view, openCity.id, captainId))
+          }
+          onRansomCaptain={(captainId) => void submit(matchAction.ransomCaptain(view, captainId))}
         />
       )}
 

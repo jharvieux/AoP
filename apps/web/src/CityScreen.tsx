@@ -15,6 +15,7 @@ import {
   type BoardOrder,
   type Captain,
   type CityState,
+  type GameSetup,
   type StandingOrder,
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
@@ -32,6 +33,12 @@ interface CityScreenProps {
   captains: Captain[]
   faction: FactionId
   resources: ResourcePool
+  /** Balance knobs for the recruit/ransom-captain cost formulas (#308/#309). */
+  setup: GameSetup
+  /** Current match round, to tell a captive that's past `captivityReturnRound` from one that isn't. */
+  round: number
+  /** Resolves a seat id to a display name, for "captured by …" (matches BattleBoardSheet's convention). */
+  playerName: (id: string) => string
   onClose: () => void
   onBuild: (buildingId: string) => void
   onRecruit: (unitId: string) => void
@@ -40,6 +47,9 @@ interface CityScreenProps {
   onSetBoardOrders: (orders: BoardOrder[]) => void
   onChooseCaptainSkill: (skillId: string) => void
   onUpgradeShip: (track: string) => void
+  /** Omit `captainId` to mint a brand-new captain; pass an eligible captive's id to rehire it instead. */
+  onRecruitCaptain: (captainId?: string) => void
+  onRansomCaptain: (captainId: string) => void
 }
 
 const UPGRADE_TRACK_LABELS: Record<string, string> = {
@@ -115,6 +125,9 @@ export function CityScreen({
   captains,
   faction,
   resources,
+  setup,
+  round,
+  playerName,
   onClose,
   onBuild,
   onRecruit,
@@ -123,6 +136,8 @@ export function CityScreen({
   onSetBoardOrders,
   onChooseCaptainSkill,
   onUpgradeShip,
+  onRecruitCaptain,
+  onRansomCaptain,
 }: CityScreenProps) {
   const { unitName, shipName } = useTheme()
   const portraitUrl = FACTIONS[faction].captainPortraitUrl
@@ -139,6 +154,14 @@ export function CityScreen({
   const aboardTotal = captain ? captain.troops.reduce((sum, t) => sum + t.count, 0) : 0
   const troopsAboard = (unitId: string) =>
     captain?.troops.find((t) => t.unitId === unitId)?.count ?? 0
+
+  // Mirrors the reducer's recruitCaptain cost formula exactly (#308/#309) so the
+  // button's price never drifts from what the engine actually charges.
+  const liveCaptainCount = captains.filter((c) => !c.captured).length
+  const recruitCost = Math.ceil(
+    setup.recruitCaptainBaseCost * setup.recruitCaptainCostGrowth ** liveCaptainCount,
+  )
+  const canRecruitCaptain = canAfford(resources, { gold: recruitCost })
 
   // Every committed action gets a light tap so the sheet's dense button rows
   // (recruit/load/unload/build/upgrade) feel responsive on touch (#27).
@@ -165,6 +188,14 @@ export function CityScreen({
   function upgradeShip(track: string) {
     tapFeedback()
     onUpgradeShip(track)
+  }
+  function recruitCaptain(captainId?: string) {
+    tapFeedback()
+    onRecruitCaptain(captainId)
+  }
+  function ransomCaptain(captainId: string) {
+    tapFeedback()
+    onRansomCaptain(captainId)
   }
 
   return (
@@ -210,6 +241,17 @@ export function CityScreen({
 
         <section>
           <h3>Fleet ({captains.length})</h3>
+          <div className="garrison-row">
+            <span className="garrison-row__name">New captain</span>
+            <span className="garrison-row__counts">
+              {setup.recruitCaptainStartingCrew} starting crew
+            </span>
+            <div className="garrison-row__actions">
+              <button disabled={!canRecruitCaptain} onClick={() => recruitCaptain()}>
+                Recruit ({recruitCost}g)
+              </button>
+            </div>
+          </div>
           {captains.length === 0 && (
             <p className="building-option__hint">No captains commissioned yet.</p>
           )}
@@ -221,6 +263,14 @@ export function CityScreen({
                 cap.troops.length > 0
                   ? cap.troops.map((t) => `${unitName(t.unitId, t.unitId)} x${t.count}`).join(', ')
                   : 'No troops aboard'
+              // A captive is naturally eligible for rehire once `round` reaches
+              // its captivityReturnRound; ransomCaptain only pulls that round
+              // forward to now, it never rehires by itself (reducer.ts).
+              const eligibleNow =
+                cap.captured &&
+                cap.captivityReturnRound !== undefined &&
+                round >= cap.captivityReturnRound
+              const ransomCost = Math.ceil(setup.ransomBaseCost + cap.xp * setup.ransomXpMultiplier)
               return (
                 <li key={cap.id} className="garrison-row captain-row">
                   {portraitUrl && (
@@ -234,9 +284,34 @@ export function CityScreen({
                       Level {levelForXp(cap.xp, CAPTAIN_XP_THRESHOLDS)}
                     </span>
                     <span className="garrison-row__counts">
-                      {troopsTotal} troop{troopsTotal === 1 ? '' : 's'} — {troopsSummary}
+                      {cap.captured
+                        ? `Captured by ${cap.capturedBy ? playerName(cap.capturedBy) : 'an eliminated seat'}${
+                            eligibleNow
+                              ? ' — eligible for rehire'
+                              : ` — held until round ${cap.captivityReturnRound}`
+                          }`
+                        : `${troopsTotal} troop${troopsTotal === 1 ? '' : 's'} — ${troopsSummary}`}
                     </span>
                   </div>
+                  {cap.captured && (
+                    <div className="garrison-row__actions">
+                      {eligibleNow ? (
+                        <button
+                          disabled={!canAfford(resources, { gold: recruitCost })}
+                          onClick={() => recruitCaptain(cap.id)}
+                        >
+                          Rehire ({recruitCost}g)
+                        </button>
+                      ) : (
+                        <button
+                          disabled={!canAfford(resources, { gold: ransomCost })}
+                          onClick={() => ransomCaptain(cap.id)}
+                        >
+                          Ransom ({ransomCost}g)
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               )
             })}
