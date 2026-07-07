@@ -9,6 +9,7 @@ import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BottomSheet } from '../components/BottomSheet'
 import { DiplomacyPanel } from '../components/DiplomacyPanel'
 import { MatchChatPanel } from '../components/MatchChatPanel'
+import { Spinner } from '../components/Spinner'
 import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
@@ -272,7 +273,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     return (
       <div className="screen menu-screen">
         <div className="menu-content">
-          <h1 className="game-title">Loading match…</h1>
+          <h1 className="game-title">
+            <Spinner label="Loading match" /> Loading match…
+          </h1>
           <button className="back-button" onClick={onBack}>
             Back
           </button>

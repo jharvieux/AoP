@@ -3,6 +3,7 @@ import type { OpenMatchSummary } from '@aop/shared'
 import { useAuth } from '../auth'
 import { resolveSupabaseConfig } from '../auth/config'
 import { OpenMatchesClient, OpenMatchesError } from '../multiplayer/openMatchesClient'
+import { Spinner } from '../components/Spinner'
 
 interface MatchBrowserScreenProps {
   onBack: () => void
@@ -138,7 +139,7 @@ export function MatchBrowserScreen({ onBack, onPlayMatch, onSignIn }: MatchBrows
           <>
             <div className="button-group">
               <button className="secondary" onClick={() => void loadFirstPage()} disabled={loading}>
-                {loading && matches.length === 0 ? 'Loading…' : 'Refresh'}
+                {loading && matches.length === 0 ? <Spinner label="Loading" /> : 'Refresh'}
               </button>
             </div>
 
@@ -168,7 +169,7 @@ export function MatchBrowserScreen({ onBack, onPlayMatch, onSignIn }: MatchBrows
                       disabled={joiningId !== null}
                       onClick={() => void handleJoin(m.matchId)}
                     >
-                      {joiningId === m.matchId ? 'Joining…' : 'Join'}
+                      {joiningId === m.matchId ? <Spinner label="Joining" /> : 'Join'}
                     </button>
                   </div>
                 </li>
@@ -182,7 +183,7 @@ export function MatchBrowserScreen({ onBack, onPlayMatch, onSignIn }: MatchBrows
                   onClick={() => void loadNextPage()}
                   disabled={loading}
                 >
-                  {loading && matches.length > 0 ? 'Loading…' : 'Load more'}
+                  {loading && matches.length > 0 ? <Spinner label="Loading" /> : 'Load more'}
                 </button>
               </div>
             )}

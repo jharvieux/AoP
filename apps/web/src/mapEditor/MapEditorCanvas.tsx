@@ -1,6 +1,7 @@
 import type { Coord } from '@aop/shared'
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { ENCOUNTER_COLOR, TILE_COLOR } from '../MapCanvas'
+import { cssToken } from '../colorTokens'
 import type { EditorDraft } from './types'
 
 /**
@@ -14,14 +15,15 @@ import type { EditorDraft } from './types'
  */
 
 const TILE = 22
-const START_COLOR = '#3be2a1'
+const START_COLOR = cssToken('--color-success', '#3be2a1')
 const RESOURCE_COLOR = {
-  gold: '#c9a227',
-  timber: '#8a5a2b',
-  iron: '#9aa0a6',
-  rum: '#b23bd8',
+  gold: cssToken('--color-gold', '#c9a227'),
+  timber: cssToken('--map-resource-timber', '#8a5a2b'),
+  iron: cssToken('--map-enemy-city', '#9aa0a6'),
+  rum: cssToken('--map-resource-rum', '#b23bd8'),
 } as const
 const RESOURCE_LABEL = { gold: 'G', timber: 'T', iron: 'I', rum: 'R' } as const
+const MARKER_TEXT_COLOR = cssToken('--color-text-on-gold', '#1a1408')
 
 export interface MapEditorCanvasProps {
   draft: EditorDraft
@@ -76,7 +78,7 @@ export function MapEditorCanvas({ draft, onTileAt, onRightClickTile }: MapEditor
       const cy = marker.position.y * TILE + TILE / 2
       ctx.fillStyle = RESOURCE_COLOR[marker.kind]
       ctx.fillRect(cx - TILE / 3, cy - TILE / 3, (TILE / 3) * 2, (TILE / 3) * 2)
-      ctx.fillStyle = '#1a1408'
+      ctx.fillStyle = MARKER_TEXT_COLOR
       ctx.font = `${TILE / 2.2}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -110,7 +112,7 @@ export function MapEditorCanvas({ draft, onTileAt, onRightClickTile }: MapEditor
       ctx.arc(cx, cy, TILE / 2.6, 0, Math.PI * 2)
       ctx.fillStyle = START_COLOR
       ctx.fill()
-      ctx.fillStyle = '#1a1408'
+      ctx.fillStyle = MARKER_TEXT_COLOR
       ctx.font = `bold ${TILE / 2.2}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'

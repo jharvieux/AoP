@@ -6,6 +6,7 @@ import {
   hexPoints,
   StackToken,
   TERRAIN_FILL,
+  TOKEN_STROKE,
   unitDefinition,
 } from './battleBoardSvg'
 import { useTheme } from './theme/ThemeContext'
@@ -140,7 +141,7 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                       key={i}
                       points={hexPoints(x, y)}
                       fill={TERRAIN_FILL[t] ?? TERRAIN_FILL.open}
-                      stroke="#0e1c26"
+                      stroke={TOKEN_STROKE}
                       strokeWidth="1"
                     />
                   )

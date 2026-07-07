@@ -17,6 +17,7 @@ import { easeInOutCubic, pathPointAt, shipAnimDurationMs } from './shipAnimation
 import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
+import { cssToken } from './colorTokens'
 
 /**
  * Renders the seeded world map (#6) and captains (#8) with a pan/zoom/pinch +
@@ -31,22 +32,27 @@ const MAX_SCALE = 3
 
 // Exported so the map editor canvas (#41) renders tiles/encounters with the
 // same palette as gameplay — one visual vocabulary for "what a tile means".
+// Resolved from the styles.css design tokens (#301) rather than hardcoded —
+// Pixi/Canvas2D can't consume `var()`, so cssToken() reads the same
+// custom properties the DOM uses.
 export const TILE_COLOR = {
-  deep: '#1b4a6b',
-  shallows: '#2a6a8f',
-  land: '#4a7c3f',
-  port: '#c9a227',
+  deep: cssToken('--color-deep-water', '#1b4a6b'),
+  shallows: cssToken('--map-shallows', '#2a6a8f'),
+  land: cssToken('--map-land', '#4a7c3f'),
+  port: cssToken('--color-gold', '#c9a227'),
 } as const
 
-const FOG_COLOR = '#0b1a26'
-const OWN_SHIP = '#3be2a1'
-const ENEMY_SHIP = '#e23b3b'
-const OWN_CITY = '#c9a227'
-const ENEMY_CITY = '#9aa0a6'
+const FOG_COLOR = cssToken('--color-fog', '#0b1a26')
+const OWN_SHIP = cssToken('--color-success', '#3be2a1')
+const ENEMY_SHIP = cssToken('--color-alert-border', '#e23b3b')
+const OWN_CITY = cssToken('--color-gold', '#c9a227')
+const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')
+const HIGHLIGHT_COLOR = cssToken('--color-white', '#ffffff')
+const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
 export const ENCOUNTER_COLOR = {
-  merchant: '#e0b64f',
-  natives: '#6fbf73',
-  settlers: '#c98bdb',
+  merchant: cssToken('--color-merchant', '#e0b64f'),
+  natives: cssToken('--map-encounter-natives', '#6fbf73'),
+  settlers: cssToken('--map-encounter-settlers', '#c98bdb'),
 } as const
 
 // Generated art (#26). All four tile types now have usable art (#108's retry pass shipped
@@ -563,14 +569,14 @@ export function MapCanvas(props: MapCanvasProps) {
         : undefined
       if (selected) {
         highlight.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
-        highlight.stroke({ width: 3, color: '#ffffff' })
+        highlight.stroke({ width: 3, color: HIGHLIGHT_COLOR })
       }
       // Keyboard tile cursor (#247) — only drawn while the map has keyboard
       // focus, so pointer-only play isn't cluttered with a cursor no one asked for.
       if (hasFocusRef.current) {
         const c = cursorRef.current
         highlight.rect(c.x * TILE, c.y * TILE, TILE, TILE)
-        highlight.stroke({ width: 2, color: '#ffe66d' })
+        highlight.stroke({ width: 2, color: CURSOR_COLOR })
       }
     }
 

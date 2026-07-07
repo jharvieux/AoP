@@ -67,6 +67,59 @@
   --skull-socket: #1a1006;
   --font-display: 'Pirata One', 'Times New Roman', serif;
   --font-body: Cabin, system-ui, -apple-system, sans-serif;
+
+  /* App chrome (blue steel & gold) — the in-game HUD/menu palette. Was three
+     independently-hardcoded color forks (this file, MapCanvas.tsx,
+     battleBoardSvg.tsx) with overlapping values drifting out of sync (#301);
+     this is now the single palette source both the DOM and the Pixi/SVG
+     render layers read from (see cssToken() in colorTokens.ts for the canvas
+     side, which can't consume var() directly). */
+  --color-bg: #0b2239;
+  --color-bg-panel: #122f4d;
+  --color-bg-panel-alt: #0e2740;
+  --color-bg-input: #0b1d2d;
+  --color-bg-raised: #163a5c;
+  --color-border: #2a5580;
+  --color-gold: #c9a227;
+  --color-text: #e8dcc0;
+  --color-text-on-gold: #1a1408;
+  --color-danger: #a5352b;
+  --color-danger-text: #f6e9dd;
+  --color-defeat: #e74c3c;
+  --color-warn: #e0685a;
+  --color-success: #3be2a1;
+  --color-alert-bg: #5c1616;
+  --color-alert-border: #e23b3b;
+  --color-fog: #0b1a26;
+  --color-deep-water: #1b4a6b;
+  --color-white: #fff;
+  --color-muted-light: #eee;
+  --color-target-ring: #e8a33c;
+  --color-merchant: #e0b64f;
+
+  /* Battle board (hex grid) */
+  --color-battle-ink: #f3e9d2;
+  --color-battle-ink-a16: rgb(243 233 210 / 16%);
+  --color-battle-ink-a45: rgb(243 233 210 / 45%);
+  --color-battle-attacker: #a33c2e;
+  --color-battle-defender: #2e5da3;
+  --color-battle-token-stroke: #0e1c26;
+  --color-terrain-open: #1d3345;
+  --color-terrain-rough: #4a3c22;
+  --color-terrain-cover: #1f4a2a;
+  --color-terrain-blocked: #3a3f45;
+
+  /* World map (Pixi canvas + map editor). Port/own-city, own-ship, enemy-ship,
+     fog and the merchant encounter reuse the app-chrome tokens above — they
+     were literally the same hex values duplicated across files. */
+  --map-shallows: #2a6a8f;
+  --map-land: #4a7c3f;
+  --map-enemy-city: #9aa0a6;
+  --map-encounter-natives: #6fbf73;
+  --map-encounter-settlers: #c98bdb;
+  --map-cursor: #ffe66d;
+  --map-resource-timber: #8a5a2b;
+  --map-resource-rum: #b23bd8;
 }
 
 * {
@@ -83,8 +136,8 @@ body,
 
 body {
   font-family: var(--font-body);
-  background: #0b2239;
-  color: #e8dcc0;
+  background: var(--color-bg);
+  color: var(--color-text);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
@@ -104,8 +157,8 @@ body {
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 10px 14px;
-  background: #122f4d;
-  border-bottom: 2px solid #2a5580;
+  background: var(--color-bg-panel);
+  border-bottom: 2px solid var(--color-border);
 }
 
 .hud h1 {
@@ -125,7 +178,7 @@ body {
 }
 
 .turn-countdown--urgent {
-  color: #e0685a;
+  color: var(--color-warn);
   font-weight: 700;
 }
 
@@ -156,15 +209,19 @@ button.primary {
   padding: 0 18px;
   border: none;
   border-radius: 8px;
-  background: #c9a227;
-  color: #1a1408;
+  background: var(--color-gold);
+  color: var(--color-text-on-gold);
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
 }
 
 button.primary:active {
   filter: brightness(0.85);
+  transform: scale(0.98);
 }
 
 button.primary:disabled {
@@ -175,17 +232,21 @@ button.primary:disabled {
 button.secondary {
   min-height: 44px;
   padding: 0 18px;
-  border: 2px solid #c9a227;
+  border: 2px solid var(--color-gold);
   border-radius: 8px;
   background: transparent;
-  color: #c9a227;
+  color: var(--color-gold);
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
 }
 
 button.secondary:active {
   filter: brightness(1.2);
+  transform: scale(0.98);
 }
 
 button.danger {
@@ -193,15 +254,36 @@ button.danger {
   padding: 0 18px;
   border: none;
   border-radius: 8px;
-  background: #a5352b;
-  color: #f6e9dd;
+  background: var(--color-danger);
+  color: var(--color-danger-text);
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
 }
 
 button.danger:active {
   filter: brightness(0.85);
+  transform: scale(0.98);
+}
+
+/* Pointer-precise input only (#301) — a phone's :active/tap already gives
+   feedback; hover-simulating that on touch would leave a stuck "hovered"
+   state after tap since touch devices report a hover that never un-hovers. */
+@media (hover: hover) and (pointer: fine) {
+  button.primary:not(:disabled):hover {
+    filter: brightness(1.08);
+  }
+
+  button.secondary:not(:disabled):hover {
+    filter: brightness(1.15);
+  }
+
+  button.danger:not(:disabled):hover {
+    filter: brightness(1.1);
+  }
 }
 
 button.large {
@@ -240,7 +322,7 @@ button.large {
   margin-bottom: 8px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #c9a227;
+  color: var(--color-gold);
 }
 
 .game-subtitle {
@@ -293,9 +375,20 @@ button.large {
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #c9a227;
+  color: var(--color-gold);
   font-size: 1rem;
   cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+.back-button:active {
+  filter: brightness(1.3);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .back-button:hover {
+    filter: brightness(1.2);
+  }
 }
 
 .setup-section {
@@ -323,10 +416,10 @@ button.large {
   min-width: 60px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 2px solid #2a5580;
+  border: 2px solid var(--color-border);
   border-radius: 6px;
-  background: #122f4d;
-  color: #e8dcc0;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -337,9 +430,16 @@ button.large {
 .player-count-button:active,
 .size-button.active,
 .player-count-button.active {
-  background: #c9a227;
-  color: #1a1408;
-  border-color: #c9a227;
+  background: var(--color-gold);
+  color: var(--color-text-on-gold);
+  border-color: var(--color-gold);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .size-button:not(.active):hover,
+  .player-count-button:not(.active):hover {
+    border-color: var(--color-gold);
+  }
 }
 
 .player-list {
@@ -353,9 +453,9 @@ button.large {
   gap: 12px;
   align-items: center;
   padding: 12px;
-  background: #122f4d;
+  background: var(--color-bg-panel);
   border-radius: 6px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
 }
 
 .player-info {
@@ -375,17 +475,18 @@ button.large {
   flex: 1;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #0b1d2d;
-  color: #e8dcc0;
+  background: var(--color-bg-input);
+  color: var(--color-text);
   font-size: 0.9rem;
   cursor: pointer;
+  transition: border-color 150ms ease;
 }
 
 .faction-select:focus {
   outline: none;
-  border-color: #c9a227;
+  border-color: var(--color-gold);
 }
 
 .play-button {
@@ -405,8 +506,8 @@ button.large {
    overlaps the map. */
 .bottom-action-bar {
   padding: 10px 14px;
-  background: #122f4d;
-  border-top: 2px solid #2a5580;
+  background: var(--color-bg-panel);
+  border-top: 2px solid var(--color-border);
 }
 
 .bottom-action-bar .button-group {
@@ -441,11 +542,11 @@ button.large {
 }
 
 .game-over-header.victory {
-  color: #c9a227;
+  color: var(--color-gold);
 }
 
 .game-over-header.defeat {
-  color: #e74c3c;
+  color: var(--color-defeat);
 }
 
 /* Generated match-outcome icon art (#89 item 4), replacing the raw emoji fallback. */
@@ -494,7 +595,7 @@ button.large {
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #c9a227;
+  color: var(--color-gold);
 }
 
 .game-over-actions {
@@ -522,9 +623,9 @@ button.large {
 .speed-select {
   min-height: 44px;
   border-radius: 8px;
-  border: 1px solid #2a5580;
-  background: #0b2239;
-  color: #e8dcc0;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
   padding: 0 8px;
 }
 
@@ -605,8 +706,8 @@ button.large {
 }
 
 button.primary.secondary {
-  background: #2a5580;
-  color: #e8dcc0;
+  background: var(--color-border);
+  color: var(--color-text);
 }
 
 .sheet-backdrop {
@@ -616,6 +717,7 @@ button.primary.secondary {
   display: flex;
   align-items: flex-end;
   z-index: 10;
+  animation: sheet-backdrop-enter 200ms ease-out;
 }
 
 .sheet {
@@ -624,10 +726,33 @@ button.primary.secondary {
   max-height: 80vh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #122f4d;
-  border-top: 2px solid #2a5580;
+  background: var(--color-bg-panel);
+  border-top: 2px solid var(--color-border);
   border-radius: 16px 16px 0 0;
   padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+  animation: sheet-enter 200ms ease-out;
+}
+
+@keyframes sheet-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-enter {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .sheet__header {
@@ -650,7 +775,7 @@ button.primary.secondary {
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background: #2a5580;
+  background: var(--color-border);
 }
 
 .sheet__close {
@@ -685,16 +810,25 @@ button.primary.secondary {
   justify-content: space-between;
   gap: 12px;
   padding: 0 14px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #0e2740;
+  background: var(--color-bg-panel-alt);
   color: inherit;
   cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
 }
 
 .building-option:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .building-option:not(:disabled):hover {
+    border-color: var(--color-gold);
+  }
 }
 
 .building-option__cost {
@@ -713,9 +847,9 @@ button.primary.secondary {
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #0e2740;
+  background: var(--color-bg-panel-alt);
 }
 
 .garrison-row__name {
@@ -735,17 +869,24 @@ button.primary.secondary {
 .garrison-row__actions button {
   min-height: 40px;
   flex: 1;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #163a5c;
+  background: var(--color-bg-raised);
   color: inherit;
   font-size: 0.78rem;
   cursor: pointer;
+  transition: border-color 150ms ease;
 }
 
 .garrison-row__actions button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .garrison-row__actions button:not(:disabled):hover {
+    border-color: var(--color-gold);
+  }
 }
 
 /* Per-captain fleet rows and the attack-confirmation portraits (#114). */
@@ -810,17 +951,18 @@ button.primary.secondary {
 .text-input {
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #0b1d2d;
-  color: #e8dcc0;
+  background: var(--color-bg-input);
+  color: var(--color-text);
   font-size: 0.9rem;
   width: 100%;
+  transition: border-color 150ms ease;
 }
 
 .text-input:focus {
   outline: none;
-  border-color: #c9a227;
+  border-color: var(--color-gold);
 }
 
 .theme-editor h3 {
@@ -837,11 +979,11 @@ button.primary.secondary {
   height: 32px;
   object-fit: contain;
   border-radius: 4px;
-  background: #0b1d2d;
+  background: var(--color-bg-input);
 }
 
 .theme-error {
-  color: #e0685a;
+  color: var(--color-warn);
   font-size: 0.85rem;
   margin-bottom: 12px;
 }
@@ -852,18 +994,30 @@ button.primary.secondary {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  background: #122f4d;
-  border-bottom: 2px solid #c9a227;
+  background: var(--color-bg-panel);
+  border-bottom: 2px solid var(--color-gold);
   font-size: 0.9rem;
 }
 
 .update-banner button {
-  background: #c9a227;
-  color: #1a1408;
+  background: var(--color-gold);
+  color: var(--color-text-on-gold);
   border: none;
   border-radius: 4px;
   padding: 6px 14px;
   font-weight: 600;
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+.update-banner button:active {
+  filter: brightness(0.85);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .update-banner button:hover {
+    filter: brightness(1.08);
+  }
 }
 
 /* AdSlot (docs/ARCHITECTURE.md §9): sized so a loaded ad doesn't reflow the
@@ -894,7 +1048,7 @@ button.primary.secondary {
 .battle-board-scroll {
   overflow-x: auto;
   border-radius: 6px;
-  background: #0b1d2d;
+  background: var(--color-bg-input);
   padding: 6px;
 }
 
@@ -906,28 +1060,33 @@ button.primary.secondary {
 }
 
 .battle-board-svg__unit {
-  fill: #f3e9d2;
+  fill: var(--color-battle-ink);
   font-size: 11px;
   font-weight: 700;
 }
 
 .battle-board-svg__count {
-  fill: #f3e9d2;
+  fill: var(--color-battle-ink);
   font-size: 10px;
 }
 
 /* Interactive boarding command sheet (#93) */
 
 .battle-board-svg__reach {
-  fill: rgb(243 233 210 / 16%);
-  stroke: rgb(243 233 210 / 45%);
+  fill: var(--color-battle-ink-a16);
+  stroke: var(--color-battle-ink-a45);
   stroke-width: 1;
   cursor: pointer;
+  transition: fill 150ms ease;
+}
+
+.battle-board-svg__reach:hover {
+  fill: var(--color-battle-ink-a45);
 }
 
 .battle-board-svg__active-ring {
   fill: none;
-  stroke: #f3e9d2;
+  stroke: var(--color-battle-ink);
   stroke-width: 2;
   pointer-events: none;
   animation: board-ring-pulse 1.4s ease-in-out infinite;
@@ -946,7 +1105,7 @@ button.primary.secondary {
 
 .battle-board-svg__target-ring {
   fill: none;
-  stroke: #e8a33c;
+  stroke: var(--color-target-ring);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
   pointer-events: none;
@@ -963,7 +1122,7 @@ button.primary.secondary {
 }
 
 .battle-board-svg__move-line {
-  stroke: #f3e9d2;
+  stroke: var(--color-battle-ink);
   stroke-width: 1.5;
   stroke-dasharray: 5 4;
   opacity: 0.7;
@@ -976,11 +1135,11 @@ button.primary.secondary {
   margin: 8px 0;
   border-radius: 3px;
   overflow: hidden;
-  background: #2e5da3;
+  background: var(--color-battle-defender);
 }
 
 .boarding-strength__own {
-  background: #a33c2e;
+  background: var(--color-battle-attacker);
 }
 
 .boarding-auto {
@@ -1011,9 +1170,9 @@ button.primary.secondary {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  background: #0b1d2d;
+  background: var(--color-bg-input);
   border-radius: 8px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
 }
 
 .map-editor-canvas {
@@ -1027,17 +1186,17 @@ button.primary.secondary {
   flex-shrink: 0;
   overflow-y: auto;
   padding-left: 8px;
-  border-left: 1px solid #2a5580;
+  border-left: 1px solid var(--color-border);
 }
 
 .map-editor-name-input {
   width: 100%;
   min-height: 40px;
   padding: 0 10px;
-  border: 2px solid #2a5580;
+  border: 2px solid var(--color-border);
   border-radius: 6px;
-  background: #122f4d;
-  color: #e8dcc0;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
@@ -1052,27 +1211,27 @@ button.primary.secondary {
   min-height: 70px;
   margin: 8px 0;
   padding: 8px;
-  border: 2px solid #2a5580;
+  border: 2px solid var(--color-border);
   border-radius: 6px;
-  background: #0b1d2d;
-  color: #e8dcc0;
+  background: var(--color-bg-input);
+  color: var(--color-text);
   font-family: monospace;
   font-size: 0.75rem;
   resize: vertical;
 }
 
 .map-editor-error {
-  color: #e0685a;
+  color: var(--color-warn);
   font-size: 0.8rem;
 }
 
 .map-editor-status {
-  color: #3be2a1;
+  color: var(--color-success);
   font-size: 0.8rem;
 }
 
 .map-editor-valid {
-  color: #3be2a1;
+  color: var(--color-success);
   font-size: 0.85rem;
 }
 
@@ -1080,7 +1239,7 @@ button.primary.secondary {
   list-style: disc;
   padding-left: 18px;
   font-size: 0.8rem;
-  color: #e0b64f;
+  color: var(--color-merchant);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1119,9 +1278,9 @@ button.primary.secondary {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid #2a5580;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #0e2740;
+  background: var(--color-bg-panel-alt);
 }
 
 .diplomacy-row__name {
@@ -1163,12 +1322,12 @@ button.primary.secondary {
   gap: 2px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: #0e2740;
+  background: var(--color-bg-panel-alt);
   font-size: 0.85rem;
 }
 
 .chat-message--own {
-  background: #163a5c;
+  background: var(--color-bg-raised);
   align-self: flex-end;
 }
 
@@ -1206,7 +1365,7 @@ button.primary.secondary {
 }
 
 .map-canvas-root:focus-visible {
-  outline: 2px solid #3be2a1;
+  outline: 2px solid var(--color-success);
   outline-offset: -2px;
 }
 
@@ -1222,8 +1381,8 @@ button.primary.secondary {
   height: 100vh;
   padding: 24px;
   text-align: center;
-  background: #0b1a26;
-  color: #eee;
+  background: var(--color-fog);
+  color: var(--color-muted-light);
 }
 
 /* Fallback shown in place of the map canvas when Pixi's Application.init()
@@ -1238,8 +1397,8 @@ button.primary.secondary {
   height: 100%;
   padding: 24px;
   text-align: center;
-  color: #eee;
-  background: #1b4a6b;
+  color: var(--color-muted-light);
+  background: var(--color-deep-water);
 }
 
 .map-canvas-error__detail {
@@ -1252,15 +1411,15 @@ button.primary.secondary {
   margin: 0 0 12px;
   padding: 8px 12px;
   border-radius: 6px;
-  background: #5c1616;
-  border: 1px solid #e23b3b;
+  background: var(--color-alert-bg);
+  border: 1px solid var(--color-alert-border);
   font-size: 0.85rem;
 }
 
 .autosave-failing-banner {
   padding: 6px 14px;
-  background: #5c1616;
-  border-bottom: 2px solid #e23b3b;
+  background: var(--color-alert-bg);
+  border-bottom: 2px solid var(--color-alert-border);
   font-size: 0.85rem;
   text-align: center;
 }
@@ -1440,10 +1599,14 @@ button.primary.secondary {
   letter-spacing: 1px;
   cursor: pointer;
   box-shadow: 0 6px 18px var(--accent-glow);
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
 }
 
 .main-menu__new-game:active {
   filter: brightness(0.85);
+  transform: scale(0.98);
 }
 
 .main-menu__outlined {
@@ -1457,10 +1620,24 @@ button.primary.secondary {
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
 }
 
 .main-menu__outlined:active {
   filter: brightness(1.2);
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-menu__new-game:hover {
+    filter: brightness(1.08);
+  }
+
+  .main-menu__outlined:hover {
+    filter: brightness(1.15);
+  }
 }
 
 .main-menu__more-toggle {
@@ -1504,10 +1681,17 @@ button.primary.secondary {
   font-family: var(--font-body);
   font-size: 0.8rem;
   cursor: pointer;
+  transition: filter 150ms ease;
 }
 
 .main-menu__secondary:active {
   filter: brightness(1.15);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-menu__secondary:hover {
+    filter: brightness(1.1);
+  }
 }
 
 .main-menu__secondary--wide {
@@ -1557,8 +1741,104 @@ button.primary.secondary {
   z-index: 20;
   padding: 8px 16px;
   border-radius: 6px;
-  background: #5c1616;
-  border: 1px solid #e23b3b;
-  color: #fff;
+  background: var(--color-alert-bg);
+  border: 1px solid var(--color-alert-border);
+  color: var(--color-white);
   font-size: 0.85rem;
+  animation: toast-enter 200ms ease-out;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* --- Screen transitions + loading feedback (#301) ---------------------------
+   App.tsx mounts exactly one screen at a time; wrapping the active one in
+   this element and keying it on the screen name forces React to remount on
+   every navigation, replaying the fade/slide below instead of an instant
+   cut. flex:1 keeps it filling the same space its unwrapped children used
+   to claim directly under .app. */
+.screen-transition {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  animation: screen-enter 200ms ease-out;
+}
+
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Small inline loading indicator (Spinner.tsx) — a bounded set of sizes,
+   currentColor so it picks up whatever button/text color it's dropped into. */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 0.15em solid rgb(0 0 0 / 20%);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: spinner-spin 700ms linear infinite;
+  vertical-align: -0.15em;
+}
+
+@keyframes spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton placeholder block (Skeleton.tsx) — content-shaped loading state
+   for list rows / cards that are still fetching (#301), instead of a bare
+   "Loading…" string with nothing to look at. */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-panel-alt) 25%,
+    var(--color-bg-raised) 50%,
+    var(--color-bg-panel-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-transition,
+  .title-screen,
+  .main-menu__panel,
+  .sheet,
+  .sheet-backdrop,
+  .action-toast,
+  .spinner,
+  .skeleton {
+    animation: none;
+  }
 }

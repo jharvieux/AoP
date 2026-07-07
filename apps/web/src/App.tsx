@@ -252,98 +252,106 @@ export function App() {
         </div>
       )}
       <CheckoutPendingBanner />
-      {screen === 'title' && <TitleScreen onDone={handleTitleDone} />}
-      {screen === 'menu' && (
-        <MainMenu
-          onStart={() => setScreen('setup')}
-          onThemePacks={() => setScreen('theme-packs')}
-          onAccount={() => setScreen('account')}
-          onMapEditor={() => setScreen('map-editor')}
-          onWatchReplay={() => setScreen('watch-replay')}
-          onSpectate={() => setScreen('spectate')}
-          onDesignateSpectator={() => setScreen('designate-spectator')}
-          onMatchBrowser={() => setScreen('match-browser')}
-          onQuickMatch={() => setScreen('quick-match')}
-          onLeaderboard={() => setScreen('leaderboard')}
-        />
-      )}
-      {screen === 'watch-replay' && (
-        <WatchReplayScreen
-          onBack={() => setScreen('menu')}
-          onLoaded={(data) => openReplay(data, 'menu')}
-        />
-      )}
-      {screen === 'spectate' && <SpectateScreen onBack={() => setScreen('menu')} />}
-      {screen === 'designate-spectator' && (
-        <DesignateSpectatorScreen onBack={() => setScreen('menu')} />
-      )}
-      {screen === 'match-browser' && (
-        <MatchBrowserScreen
-          onBack={() => setScreen('menu')}
-          onPlayMatch={(matchId) => {
-            setActiveMatchId(matchId)
-            setScreen('match')
-          }}
-          onSignIn={() => setScreen('account')}
-        />
-      )}
-      {screen === 'quick-match' && (
-        <QuickMatchScreen
-          onBack={() => setScreen('menu')}
-          onPlayMatch={(matchId) => {
-            setActiveMatchId(matchId)
-            setScreen('match')
-          }}
-          onSignIn={() => setScreen('account')}
-        />
-      )}
-      {screen === 'match' && activeMatchId && (
-        <MatchScreen
-          matchId={activeMatchId}
-          onBack={() => {
-            setActiveMatchId(null)
-            setScreen('menu')
-          }}
-        />
-      )}
-      {screen === 'leaderboard' && (
-        <LeaderboardScreen onBack={() => setScreen('menu')} onSignIn={() => setScreen('account')} />
-      )}
-      {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
-      {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
-      {screen === 'setup' && (
-        <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
-      )}
-      {screen === 'map-editor' && (
-        <MapEditorScreen onBack={() => setScreen('menu')} onTestPlay={handleTestPlay} />
-      )}
-      {screen === 'game' && game && (
-        <GameScreen
-          game={game}
-          battleReport={battleReport}
-          onDismissBattleReport={handleDismissBattleReport}
-          onAction={handleAction}
-          onSaveSlot={handleSaveSlot}
-          onLoadSlot={handleLoadSlot}
-          onWatchSlot={handleWatchSlot}
-          autosaveFailing={autosaveFailing}
-        />
-      )}
-      {screen === 'game-over' && game && (
-        <GameOverScreen
-          game={game}
-          onRematch={handleRematch}
-          onMenuClick={handleReturnToMenu}
-          onWatchReplay={handleWatchReplay}
-        />
-      )}
-      {screen === 'replay' && replayData && (
-        <ReplayScreen
-          config={replayData.config}
-          actions={replayData.actions}
-          onClose={handleCloseReplay}
-        />
-      )}
+      {/* Keying on `screen` remounts this wrapper on every navigation, which
+          replays its CSS enter animation instead of the previous instant cut
+          between menu/game/battle/multiplayer screens (#301). */}
+      <div className="screen-transition" key={screen}>
+        {screen === 'title' && <TitleScreen onDone={handleTitleDone} />}
+        {screen === 'menu' && (
+          <MainMenu
+            onStart={() => setScreen('setup')}
+            onThemePacks={() => setScreen('theme-packs')}
+            onAccount={() => setScreen('account')}
+            onMapEditor={() => setScreen('map-editor')}
+            onWatchReplay={() => setScreen('watch-replay')}
+            onSpectate={() => setScreen('spectate')}
+            onDesignateSpectator={() => setScreen('designate-spectator')}
+            onMatchBrowser={() => setScreen('match-browser')}
+            onQuickMatch={() => setScreen('quick-match')}
+            onLeaderboard={() => setScreen('leaderboard')}
+          />
+        )}
+        {screen === 'watch-replay' && (
+          <WatchReplayScreen
+            onBack={() => setScreen('menu')}
+            onLoaded={(data) => openReplay(data, 'menu')}
+          />
+        )}
+        {screen === 'spectate' && <SpectateScreen onBack={() => setScreen('menu')} />}
+        {screen === 'designate-spectator' && (
+          <DesignateSpectatorScreen onBack={() => setScreen('menu')} />
+        )}
+        {screen === 'match-browser' && (
+          <MatchBrowserScreen
+            onBack={() => setScreen('menu')}
+            onPlayMatch={(matchId) => {
+              setActiveMatchId(matchId)
+              setScreen('match')
+            }}
+            onSignIn={() => setScreen('account')}
+          />
+        )}
+        {screen === 'quick-match' && (
+          <QuickMatchScreen
+            onBack={() => setScreen('menu')}
+            onPlayMatch={(matchId) => {
+              setActiveMatchId(matchId)
+              setScreen('match')
+            }}
+            onSignIn={() => setScreen('account')}
+          />
+        )}
+        {screen === 'match' && activeMatchId && (
+          <MatchScreen
+            matchId={activeMatchId}
+            onBack={() => {
+              setActiveMatchId(null)
+              setScreen('menu')
+            }}
+          />
+        )}
+        {screen === 'leaderboard' && (
+          <LeaderboardScreen
+            onBack={() => setScreen('menu')}
+            onSignIn={() => setScreen('account')}
+          />
+        )}
+        {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
+        {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
+        {screen === 'setup' && (
+          <NewGameSetup onPlay={handleStartNewGame} onBack={() => setScreen('menu')} />
+        )}
+        {screen === 'map-editor' && (
+          <MapEditorScreen onBack={() => setScreen('menu')} onTestPlay={handleTestPlay} />
+        )}
+        {screen === 'game' && game && (
+          <GameScreen
+            game={game}
+            battleReport={battleReport}
+            onDismissBattleReport={handleDismissBattleReport}
+            onAction={handleAction}
+            onSaveSlot={handleSaveSlot}
+            onLoadSlot={handleLoadSlot}
+            onWatchSlot={handleWatchSlot}
+            autosaveFailing={autosaveFailing}
+          />
+        )}
+        {screen === 'game-over' && game && (
+          <GameOverScreen
+            game={game}
+            onRematch={handleRematch}
+            onMenuClick={handleReturnToMenu}
+            onWatchReplay={handleWatchReplay}
+          />
+        )}
+        {screen === 'replay' && replayData && (
+          <ReplayScreen
+            config={replayData.config}
+            actions={replayData.actions}
+            onClose={handleCloseReplay}
+          />
+        )}
+      </div>
     </div>
   )
 }
