@@ -1,12 +1,12 @@
 import type { BattleReport, BoardBattleLog, BoardEvent, HexCoord } from '@aop/engine'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  BoardDefs,
   boardSvgSize,
+  HEX_SIZE,
   hexCenter,
-  hexPoints,
   StackToken,
-  TERRAIN_FILL,
-  TOKEN_STROKE,
+  TerrainHex,
   unitDefinition,
 } from './battleBoardSvg'
 import { useTheme } from './theme/ThemeContext'
@@ -69,6 +69,23 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
   }, [playing, step, totalSteps, board])
 
   const stacks = useMemo(() => (board ? stacksAtStep(board, step) : []), [board, step])
+
+  // The event that just played (#303): drives the hit flash/shake on the
+  // target's token and the floating damage number below. `step` itself is
+  // enough of a key — it only advances forward, so it's always fresh even
+  // when the same stack is struck on consecutive steps.
+  const lastEvent = board?.events[step - 1]
+  const hit =
+    lastEvent && (lastEvent.type === 'attack' || lastEvent.type === 'retaliation')
+      ? { targetId: lastEvent.targetId, damage: lastEvent.damage }
+      : null
+  // Looked up a step earlier than `stacks` above: a killing blow removes the
+  // target from `stacksAtStep(step)` entirely (count reaches 0), which would
+  // otherwise swallow the floating damage number on exactly the hits players
+  // most want to see.
+  const hitStack = hit
+    ? stacksAtStep(board!, step - 1).find((s) => s.id === hit.targetId)
+    : undefined
 
   const displayUnitName = (unitId: string) =>
     unitName(unitId, unitDefinition(unitId)?.name ?? unitId)
@@ -133,19 +150,14 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                 role="img"
                 aria-label="Boarding melee on the battle board"
               >
-                {board.terrain.map((t, i) => {
-                  const hex = { col: i % board.width, row: Math.floor(i / board.width) }
-                  const { x, y } = hexCenter(hex)
-                  return (
-                    <polygon
-                      key={i}
-                      points={hexPoints(x, y)}
-                      fill={TERRAIN_FILL[t] ?? TERRAIN_FILL.open}
-                      stroke={TOKEN_STROKE}
-                      strokeWidth="1"
-                    />
-                  )
-                })}
+                <BoardDefs />
+                {board.terrain.map((t, i) => (
+                  <TerrainHex
+                    key={i}
+                    hex={{ col: i % board.width, row: Math.floor(i / board.width) }}
+                    terrain={t}
+                  />
+                ))}
                 {stacks.map((s) => (
                   <StackToken
                     key={s.id}
@@ -154,8 +166,20 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                     count={s.count}
                     position={s.position}
                     label={displayUnitName(s.unitId)}
+                    hitKey={hit?.targetId === s.id ? `hit-${step}` : undefined}
                   />
                 ))}
+                {hit && hitStack && (
+                  <text
+                    key={`dmg-${step}`}
+                    x={hexCenter(hitStack.position).x}
+                    y={hexCenter(hitStack.position).y - HEX_SIZE}
+                    textAnchor="middle"
+                    className="battle-board-svg__damage"
+                  >
+                    -{hit.damage}
+                  </text>
+                )}
               </svg>
             </div>
 
