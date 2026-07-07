@@ -943,11 +943,12 @@ async function mirrorAllianceIds(db: Db, matchId: string, state: GameState): Pro
 }
 
 async function resetActorTurnState(db: Db, matchId: string, seat: number): Promise<void> {
-  await db
+  const { error } = await db
     .from('match_players')
     .update({ missed_turns: 0, last_seen_at: new Date().toISOString(), status: 'active' })
     .eq('match_id', matchId)
     .eq('seat', seat)
+  if (error) throw new AppError('INTERNAL', error.message)
 }
 
 /**
