@@ -312,6 +312,21 @@ export function sanitizeAction(action: Action): Action {
         unitId: reqString(action.unitId, 'unitId'),
         count: reqInt(action.count, 'count'),
       }
+    case 'recruitCaptain':
+      return {
+        type: action.type,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+        ...(action.captainId !== undefined
+          ? { captainId: reqString(action.captainId, 'captainId') }
+          : {}),
+      }
+    case 'ransomCaptain':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+      }
     case 'transferTroops':
       return {
         type: action.type,
