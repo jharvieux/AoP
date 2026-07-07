@@ -229,6 +229,13 @@ export interface GameSetup {
    * (#309) — a veteran captain costs more to buy back.
    */
   ransomXpMultiplier: number
+  /**
+   * Battle resolution mode (#305): `'auto'` instant-resolves every naval
+   * battle (the pre-#305 behavior); `'tactical'` routes the human attacker's
+   * battles through the interactive round-by-round planner instead. A purely
+   * client-side UI gate — the engine itself never reads this field.
+   */
+  battleResolution?: 'tactical' | 'auto'
 }
 
 export const COMBAT_TUNING: CombatTuning = {
@@ -311,6 +318,7 @@ export const GAME_SETUP: GameSetup = {
   captainCaptivityRounds: 5,
   ransomBaseCost: 200,
   ransomXpMultiplier: 2,
+  battleResolution: 'auto',
 }
 
 export const AI_TUNING: AiTuning = {

@@ -22,7 +22,9 @@ import {
   type BoardTerrain,
   type GameState,
   type HexCoord,
+  type TacticContext,
   type TacticDriver,
+  type TacticId,
   type TacticsTuning,
 } from '@aop/engine'
 
@@ -126,6 +128,97 @@ export function probeBoardingBattle(
     )
     return { kind: 'resolved', report: result.report }
   } catch (err) {
+    if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }
+    throw err
+  }
+}
+
+/**
+ * Interactive naval-tactics planner (#305). Extends the boarding probe one
+ * phase earlier, to the gunnery rounds themselves: same probe-and-record
+ * contract as {@link probeBoardingBattle}, but the attacker's per-round
+ * tactic is what's recorded (`AttackCaptainAction.attackerOrders`) instead of
+ * (or in addition to) the boarding commands. Every round the player has
+ * already committed replays instantly; the first round without one throws
+ * the {@link AwaitingTactic} sentinel with the engine's own {@link
+ * TacticContext} — strength, HP, speed, the enemy's last pick — so the UI can
+ * render the decision and nothing else. If gunnery alone decides the battle,
+ * or a boarding melee starts, the caller gets a resolved report or the
+ * existing {@link BoardingProbeOutcome}'s `awaitingCommand` view respectively
+ * — the melee UI keeps working unchanged.
+ *
+ * `tacticOrders.length` only ever grows to exactly the number of rounds the
+ * battle actually fights (the sentinel guarantees every fought round has a
+ * recorded pick before the probe resolves), so `tacticPlanDriver`'s cyclic
+ * fallback — the reducer's replay driver — is never exercised on the wrap:
+ * probe and reducer agree round for round.
+ */
+export type TacticalProbeOutcome =
+  | { kind: 'resolved'; report: BattleReport }
+  | { kind: 'awaitingTactic'; ctx: TacticContext }
+  | { kind: 'awaitingCommand'; view: BoardActivationView }
+
+/** Sentinel thrown by the recording tactic driver to halt the probe at the next undecided round. */
+class AwaitingTactic {
+  constructor(readonly ctx: TacticContext) {}
+}
+
+function recordingTacticDriver(commands: readonly TacticId[]): TacticDriver {
+  return {
+    choose(ctx) {
+      if (ctx.round - 1 < commands.length) {
+        const pick = commands[ctx.round - 1]!
+        return ctx.available.includes(pick) ? pick : 'broadside'
+      }
+      throw new AwaitingTactic(ctx)
+    },
+  }
+}
+
+export function probeTacticalBattle(
+  game: GameState,
+  action: Pick<AttackCaptainAction, 'captainId' | 'targetCaptainId'>,
+  tacticOrders: readonly TacticId[],
+  boardCommands: readonly BoardCommand[],
+): TacticalProbeOutcome {
+  const attacker = game.captains.find((c) => c.id === action.captainId)
+  const target = game.captains.find((c) => c.id === action.targetCaptainId)
+  if (!attacker || !target) throw new Error('Attacker or target captain not found')
+  if (!game.config.combatStats) throw new Error('No combat stats configured for this match')
+
+  const stats = createCombatStats(game.config.combatStats)
+  const content = game.config.content
+
+  let cursor = 0
+  const boardRecorder: BoardDriver = {
+    choose(view) {
+      if (cursor < boardCommands.length) return boardCommands[cursor++]!
+      throw new AwaitingCommand(view)
+    },
+  }
+
+  try {
+    const result = resolveTacticalCombat(
+      {
+        attacker: captainToCombatant(attacker, content),
+        defender: captainToCombatant(target, content),
+      },
+      stats,
+      game.rngState,
+      {
+        attacker: recordingTacticDriver(tacticOrders),
+        defender: target.standingOrders?.length
+          ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
+          : navalAiDriverFor(game, target.ownerId, stats.tactics),
+        attackerBoard: boardRecorder,
+        ...(target.boardOrders?.length
+          ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
+          : {}),
+      },
+    )
+    return { kind: 'resolved', report: result.report }
+  } catch (err) {
+    if (err instanceof AwaitingTactic) return { kind: 'awaitingTactic', ctx: err.ctx }
     if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }
     throw err
   }

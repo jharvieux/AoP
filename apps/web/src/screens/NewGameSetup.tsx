@@ -7,7 +7,7 @@ import {
   combatStatsData,
 } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
-import type { AiDifficulty, AiPersonality, AiProfile, PlayerConfig } from '@aop/engine'
+import type { AiDifficulty, AiPersonality, AiProfile, GameSetup, PlayerConfig } from '@aop/engine'
 import { buildCatalog } from '../catalog'
 import { createDefaultPlayer, FACTIONS_ARRAY, starterTroops } from '../players'
 import { useTheme } from '../theme/ThemeContext'
@@ -48,6 +48,9 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const [betrayalPenalty, setBetrayalPenalty] = useState(GAME_SETUP.betrayalReputationPenalty)
   const [truceRounds, setTruceRounds] = useState(GAME_SETUP.betrayalTruceRounds)
   const [captivityRounds, setCaptivityRounds] = useState(GAME_SETUP.captainCaptivityRounds)
+  const [battleResolution, setBattleResolution] = useState<
+    NonNullable<GameSetup['battleResolution']>
+  >(GAME_SETUP.battleResolution ?? 'auto')
   const [players, setPlayers] = useState<PlayerConfig[]>(
     Array.from({ length: 2 }, (_, i) => createDefaultPlayer(i)),
   )
@@ -96,6 +99,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
         betrayalReputationPenalty: betrayalPenalty,
         betrayalTruceRounds: truceRounds,
         captainCaptivityRounds: captivityRounds,
+        battleResolution,
       },
       combatStats: combatStatsData(),
       content: buildCatalog(),
@@ -171,6 +175,29 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
             onChange={(e) => setCaptivityRounds(Number(e.target.value))}
             aria-label="Captain captivity window in rounds"
           />
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">Battle resolution</label>
+          <div className="button-group">
+            <button
+              className={`size-button ${battleResolution === 'auto' ? 'active' : ''}`}
+              onClick={() => setBattleResolution('auto')}
+            >
+              Auto
+            </button>
+            <button
+              className={`size-button ${battleResolution === 'tactical' ? 'active' : ''}`}
+              onClick={() => setBattleResolution('tactical')}
+            >
+              Tactical
+            </button>
+          </div>
+          <p className="building-option__hint">
+            {battleResolution === 'tactical'
+              ? 'Fight your own battles round by round — auto-resolve stays one tap away.'
+              : 'Every battle resolves instantly. Switch to Tactical to fight them out by hand.'}
+          </p>
         </div>
 
         <div className="setup-section">

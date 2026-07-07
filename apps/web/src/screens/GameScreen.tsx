@@ -15,6 +15,8 @@ import {
   type EncounterKind,
   type GameState,
   type StandingOrder,
+  type TacticContext,
+  type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { chebyshevDistance } from '@aop/shared'
@@ -24,14 +26,17 @@ import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   probeBoardingBattle,
+  probeTacticalBattle,
   stackLosses,
   type BoardingProbeOutcome,
   type StackLoss,
+  type TacticalProbeOutcome,
 } from '../boardingPlanner'
 import { MapCanvas } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
+import { TacticalRoundSheet } from '../TacticalRoundSheet'
 import { BottomSheet } from '../components/BottomSheet'
 import { useTheme } from '../theme/ThemeContext'
 import { audioManager } from '../audio/audioManager'
@@ -59,13 +64,30 @@ const ODDS_TRIALS = 120
  * An attack that reached the boarding melee, mid-command (#93). The action has
  * not been dispatched yet: the fight is simulated locally, one recorded command
  * per attacker activation, and dispatched with the full plan once it resolves.
+ * `gunneryOrders` carries whatever naval-round tactics Tactical mode (#305)
+ * already recorded before the melee started — empty when the boarding follows
+ * an auto-resolved gunnery duel.
  */
 interface BoardingState {
   captainId: string
   targetCaptainId: string
+  gunneryOrders: TacticId[]
   commands: BoardCommand[]
   view: BoardActivationView
   losses: StackLoss[]
+}
+
+/**
+ * An attack being fought round-by-round in Tactical mode (#305), still ahead
+ * of the boarding melee (if any). `ctx` is the engine's own `TacticContext`
+ * for the next undecided round, from the live probe; picking a tactic
+ * extends `gunneryOrders` and re-probes for the round after.
+ */
+interface TacticalRoundState {
+  captainId: string
+  targetCaptainId: string
+  gunneryOrders: TacticId[]
+  ctx: TacticContext
 }
 
 interface GameScreenProps {
@@ -105,13 +127,17 @@ export function GameScreen({
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
   const [encounterId, setEncounterId] = useState<string | null>(null)
   const [boarding, setBoarding] = useState<BoardingState | null>(null)
+  const [tacticalRound, setTacticalRound] = useState<TacticalRoundState | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
 
-  // Ambient during normal play, battle theme while a battle report or boarding
-  // melee sheet is open.
+  // Ambient during normal play, battle theme while a battle report, boarding
+  // melee, or Tactical-mode round sheet is open.
   useBackgroundMusic(
-    selectGameplayMusicContext({ battleReportOpen: !!battleReport, boardingOpen: !!boarding }),
+    selectGameplayMusicContext({
+      battleReportOpen: !!battleReport,
+      boardingOpen: !!boarding || !!tacticalRound,
+    }),
   )
 
   // Combat-resolved feedback, once per battle report shown.
@@ -246,16 +272,24 @@ export function GameScreen({
   }, [selectedCaptain, attackTarget, game])
 
   /**
-   * Launch the attack (#93). The battle is first simulated locally from the
-   * current RNG state: if it reaches a boarding melee, the command sheet opens
-   * and the player drives their stacks by hand; the action is dispatched with
-   * the recorded plan once the fight resolves. A battle decided at sea (or a
-   * pre-#39 match without battle tuning) dispatches immediately, unchanged —
-   * the naval tactic rounds themselves stay auto-resolved for now. Committed
-   * either way: the deterministic sim already revealed the naval outcome, so
-   * there is no backing out once the probe has run.
+   * Engage the target (#93, #305). Auto mode (the default) is unchanged:
+   * the battle is simulated locally from the current RNG state, and only a
+   * boarding melee stops for the player's hand — a naval decision alone
+   * dispatches immediately. Tactical mode instead routes the whole battle
+   * through the round-by-round planner first. Committed either way: the
+   * deterministic sim already revealed the outcome, so there is no backing
+   * out once a probe has run.
    */
   function confirmAttack() {
+    if (game.config.setup.battleResolution === 'tactical') {
+      startTacticalAttack()
+    } else {
+      autoResolveAttack()
+    }
+  }
+
+  /** Auto-resolve: the pre-#305 attack flow, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolveAttack() {
     if (!selectedCaptain || !attackTarget) return
     impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
@@ -263,6 +297,7 @@ export function GameScreen({
     const targetCaptainId = attackTarget.id
     setAttackTargetId(null)
     setSelectedCaptainId(null)
+    setTacticalRound(null)
 
     let probe: BoardingProbeOutcome | null = null
     try {
@@ -273,9 +308,103 @@ export function GameScreen({
       console.error('Boarding simulation failed; falling back to auto-resolve', err)
     }
     if (probe?.kind === 'awaitingCommand') {
-      setBoarding({ captainId, targetCaptainId, commands: [], view: probe.view, losses: [] })
+      setBoarding({
+        captainId,
+        targetCaptainId,
+        gunneryOrders: [],
+        commands: [],
+        view: probe.view,
+        losses: [],
+      })
       return
     }
+    onAction({ type: 'attackCaptain', playerId: viewer.id, captainId, targetCaptainId })
+  }
+
+  /** Tactical mode (#305): probe the first gunnery round instead of resolving outright. */
+  function startTacticalAttack() {
+    if (!selectedCaptain || !attackTarget) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const captainId = selectedCaptain.id
+    const targetCaptainId = attackTarget.id
+    setAttackTargetId(null)
+    setSelectedCaptainId(null)
+
+    let probe: TacticalProbeOutcome | null = null
+    try {
+      probe = probeTacticalBattle(game, { captainId, targetCaptainId }, [], [])
+    } catch (err) {
+      console.error('Tactical simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingTactic') {
+      setTacticalRound({ captainId, targetCaptainId, gunneryOrders: [], ctx: probe.ctx })
+      return
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setBoarding({
+        captainId,
+        targetCaptainId,
+        gunneryOrders: [],
+        commands: [],
+        view: probe.view,
+        losses: [],
+      })
+      return
+    }
+    onAction({ type: 'attackCaptain', playerId: viewer.id, captainId, targetCaptainId })
+  }
+
+  /** One round's tactic, from the Tactical round sheet: extend the plan and re-probe for the next round. */
+  function chooseTactic(tactic: TacticId) {
+    if (!tacticalRound) return
+    const { captainId, targetCaptainId } = tacticalRound
+    const gunneryOrders = [...tacticalRound.gunneryOrders, tactic]
+
+    let probe: TacticalProbeOutcome | null = null
+    try {
+      probe = probeTacticalBattle(game, { captainId, targetCaptainId }, gunneryOrders, [])
+    } catch (err) {
+      console.error('Tactical simulation failed mid-battle; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingTactic') {
+      setTacticalRound({ ...tacticalRound, gunneryOrders, ctx: probe.ctx })
+      return
+    }
+    setTacticalRound(null)
+    if (probe?.kind === 'awaitingCommand') {
+      setBoarding({
+        captainId,
+        targetCaptainId,
+        gunneryOrders,
+        commands: [],
+        view: probe.view,
+        losses: [],
+      })
+      return
+    }
+    // Resolved with the recorded gunnery plan — or the sim failed, in which
+    // case dropping the plan and dispatching plain-auto never blocks the attack.
+    onAction({
+      type: 'attackCaptain',
+      playerId: viewer.id,
+      captainId,
+      targetCaptainId,
+      ...(probe?.kind === 'resolved' && gunneryOrders.length > 0
+        ? { attackerOrders: gunneryOrders }
+        : {}),
+    })
+  }
+
+  /**
+   * The Tactical round sheet's own auto-resolve (#305, D-002): drop whatever
+   * rounds were already picked and dispatch plain — "submit with no orders"
+   * is auto-resolve's exact definition, always available mid-battle too.
+   */
+  function autoResolveTactical() {
+    if (!tacticalRound) return
+    const { captainId, targetCaptainId } = tacticalRound
+    setTacticalRound(null)
     onAction({ type: 'attackCaptain', playerId: viewer.id, captainId, targetCaptainId })
   }
 
@@ -287,6 +416,7 @@ export function GameScreen({
       playerId: viewer.id,
       captainId: current.captainId,
       targetCaptainId: current.targetCaptainId,
+      ...(current.gunneryOrders.length > 0 ? { attackerOrders: current.gunneryOrders } : {}),
       ...(commands.length > 0 ? { boardCommands: commands } : {}),
     })
   }
@@ -299,7 +429,11 @@ export function GameScreen({
     try {
       probe = probeBoardingBattle(
         game,
-        { captainId: boarding.captainId, targetCaptainId: boarding.targetCaptainId },
+        {
+          captainId: boarding.captainId,
+          targetCaptainId: boarding.targetCaptainId,
+          attackerOrders: boarding.gunneryOrders,
+        },
         commands,
       )
     } catch (err) {
@@ -506,6 +640,15 @@ export function GameScreen({
         <AdSlot placement="between-turns" />
       )}
 
+      {tacticalRound && (
+        <TacticalRoundSheet
+          key={tacticalRound.gunneryOrders.length}
+          ctx={tacticalRound.ctx}
+          onChoose={chooseTactic}
+          onAutoResolve={autoResolveTactical}
+        />
+      )}
+
       {boarding && (
         <BoardingCommandSheet
           key={boarding.commands.length}
@@ -557,12 +700,21 @@ export function GameScreen({
               {Math.round(odds.defenderWinProbability * 100)}% · A side breaks off{' '}
               {Math.round(odds.escapeProbability * 100)}% ({odds.trials}-battle estimate)
             </p>
-            <button className="primary" onClick={confirmAttack}>
-              {UI_ICON.attack && (
-                <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+            <div className="button-group">
+              <button className="primary" onClick={confirmAttack}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                {game.config.setup.battleResolution === 'tactical' ? 'Fight tactically' : 'Attack'}
+              </button>
+              {/* D-002: auto-resolve stays available from the battle screen even in
+                  Tactical mode — in Auto mode, "Attack" already is auto-resolve. */}
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolveAttack}>
+                  Auto-resolve
+                </button>
               )}
-              Attack
-            </button>
+            </div>
           </section>
         </BottomSheet>
       )}

@@ -37,6 +37,8 @@ export interface MatchSetupOverrides {
   betrayalTruceRounds?: number | undefined
   /** Host-chosen captivity window in rounds (#309); overrides `GAME_SETUP.captainCaptivityRounds`. */
   captainCaptivityRounds?: number | undefined
+  /** Host preference (#305). Multiplayer's interactive Tactical UI doesn't exist yet — see #321. */
+  battleResolution?: 'tactical' | 'auto' | undefined
 }
 
 /**
@@ -70,6 +72,7 @@ export function buildMatchConfig(
       betrayalTruceRounds: setupOverrides.betrayalTruceRounds ?? GAME_SETUP.betrayalTruceRounds,
       captainCaptivityRounds:
         setupOverrides.captainCaptivityRounds ?? GAME_SETUP.captainCaptivityRounds,
+      battleResolution: setupOverrides.battleResolution ?? GAME_SETUP.battleResolution ?? 'auto',
     },
     combatStats: combatStatsData(),
     content: buildCatalog(),

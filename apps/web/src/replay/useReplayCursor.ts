@@ -1,6 +1,11 @@
-import type { Action, GameConfig, GameState } from '@aop/engine'
+import type { Action, BattleReport, GameConfig, GameState } from '@aop/engine'
 import { useEffect, useMemo, useState } from 'react'
-import { actionIndexForRound, buildReplayCheckpoints, stateAtActionIndex } from './replayCursor'
+import {
+  actionIndexForRound,
+  battleReportAtActionIndex,
+  buildReplayCheckpoints,
+  stateAtActionIndex,
+} from './replayCursor'
 
 /** Base tick at 1x speed; `speed` divides this, so 2x plays twice as fast. */
 const BASE_TICK_MS = 350
@@ -13,6 +18,8 @@ export interface ReplayControls {
   maxRound: number
   isPlaying: boolean
   speed: number
+  /** The battle fought by the action just stepped past, if any (#304). */
+  battleReport: BattleReport | null
   play(): void
   pause(): void
   stepForward(): void
@@ -58,6 +65,10 @@ export function useReplayCursor(config: GameConfig, actions: Action[]): ReplayCo
     () => stateAtActionIndex(checkpoints, actions, actionIndex),
     [checkpoints, actions, actionIndex],
   )
+  const battleReport = useMemo(
+    () => battleReportAtActionIndex(checkpoints, actions, actionIndex),
+    [checkpoints, actions, actionIndex],
+  )
 
   return {
     state,
@@ -67,6 +78,7 @@ export function useReplayCursor(config: GameConfig, actions: Action[]): ReplayCo
     maxRound,
     isPlaying,
     speed,
+    battleReport,
     play() {
       if (actionIndex >= totalActions) setActionIndex(0)
       setIsPlaying(true)

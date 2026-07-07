@@ -14,6 +14,7 @@ import {
   type CombatStatsData,
   type GameConfig,
   type GameState,
+  type TacticId,
   type TroopStack,
 } from '@aop/engine'
 import { describe, expect, it } from 'vitest'
@@ -22,6 +23,7 @@ import {
   planAttack,
   planMove,
   probeBoardingBattle,
+  probeTacticalBattle,
   stackLosses,
 } from './boardingPlanner'
 
@@ -266,6 +268,83 @@ describe('probeBoardingBattle', () => {
     })
     expect(JSON.stringify(battleReport)).toBe(JSON.stringify(report))
     expect(report.board!.events.some((e) => e.type === 'attack' && e.ranged)).toBe(true)
+  })
+})
+
+/** Exactly what GameScreen's Tactical mode sends: no attackerOrders yet. */
+function baseAction(state: GameState) {
+  return {
+    captainId: captainsOf(state, 'p1')[0]!.id,
+    targetCaptainId: captainsOf(state, 'p2')[0]!.id,
+  }
+}
+
+describe('probeTacticalBattle (#305)', () => {
+  it('halts at round 1 with the engine-computed tactic context', () => {
+    const state = adjacentBattleState()
+    const probe = probeTacticalBattle(state, baseAction(state), [], [])
+    expect(probe.kind).toBe('awaitingTactic')
+    if (probe.kind !== 'awaitingTactic') return
+    expect(probe.ctx.round).toBe(1)
+    expect(probe.ctx.available).toContain('broadside')
+  })
+
+  it('is deterministic: the same recorded rounds always probe to the same pending round', () => {
+    const state = adjacentBattleState()
+    const a = probeTacticalBattle(state, baseAction(state), [], [])
+    const b = probeTacticalBattle(state, baseAction(state), [], [])
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+  })
+
+  it('a pure-gunnery plan (no battle tuning) resolves round by round and replays bit-identically', () => {
+    const state = adjacentBattleState([{ unitId: 'grunt', count: 12 }], null)
+    const action = baseAction(state)
+    const tacticOrders: TacticId[] = []
+    let probe = probeTacticalBattle(state, action, tacticOrders, [])
+    let guard = 0
+    while (probe.kind === 'awaitingTactic') {
+      if (++guard > 100) throw new Error('gunnery duel did not resolve')
+      const pick = probe.ctx.available.includes('broadside') ? 'broadside' : probe.ctx.available[0]!
+      tacticOrders.push(pick)
+      probe = probeTacticalBattle(state, action, tacticOrders, [])
+    }
+    expect(probe.kind).toBe('resolved')
+    if (probe.kind !== 'resolved') return
+    expect(probe.report.board).toBeUndefined()
+    const { battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      ...action,
+      attackerOrders: tacticOrders,
+    })
+    expect(JSON.stringify(battleReport)).toBe(JSON.stringify(probe.report))
+  })
+
+  it('a plan that boards hands off to the boarding probe, and the combined plan replays bit-identically', () => {
+    const state = adjacentBattleState()
+    const action = baseAction(state)
+    const tacticOrders: TacticId[] = ['board']
+    let probe = probeTacticalBattle(state, action, tacticOrders, [])
+    expect(probe.kind).toBe('awaitingCommand')
+
+    const commands: BoardCommand[] = []
+    let guard = 0
+    while (probe.kind === 'awaitingCommand') {
+      if (++guard > 500) throw new Error('boarding melee did not resolve')
+      commands.push(scriptedCommand(probe.view))
+      probe = probeTacticalBattle(state, action, tacticOrders, commands)
+    }
+    expect(probe.kind).toBe('resolved')
+    if (probe.kind !== 'resolved') return
+    const { battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      ...action,
+      attackerOrders: tacticOrders,
+      boardCommands: commands,
+    })
+    expect(battleReport?.board).toBeDefined()
+    expect(JSON.stringify(battleReport)).toBe(JSON.stringify(probe.report))
   })
 })
 

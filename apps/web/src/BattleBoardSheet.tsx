@@ -1,4 +1,4 @@
-import type { BattleReport, BoardBattleLog, BoardEvent, HexCoord } from '@aop/engine'
+import type { BattleReport, BoardBattleLog, BoardEvent, HexCoord, RoundReport } from '@aop/engine'
 import { useEffect, useMemo, useState } from 'react'
 import {
   BoardDefs,
@@ -12,18 +12,65 @@ import {
 import { useTheme } from './theme/ThemeContext'
 
 /**
- * Post-battle report sheet (#39). Naval battles show the round-by-round
- * gunnery exchange; when the fight went to the hex battle board (a boarding
- * melee), the board itself is rendered as an SVG hex grid and the melee log
- * plays back blow by blow. The board is small (11×8 hexes, ≤14 stacks), so
- * plain SVG stays comfortably past 60fps on phones — the world map keeps the
- * Pixi canvas; UI chrome like this stays in the DOM per the architecture.
+ * Post-battle report sheet (#39). A boarding melee (the fight went to the hex
+ * battle board) plays back blow by blow on an SVG hex grid. Every other naval
+ * battle — the common case — now gets its own round-by-round playback (#304)
+ * instead of a static one-line summary: the same Back/Play/Next transport,
+ * stepping through each round's tactic choices, damage, and remaining hit
+ * points from {@link BattleReport.rounds}. The board is small (11×8 hexes,
+ * ≤14 stacks), so plain SVG stays comfortably past 60fps on phones — the
+ * world map keeps the Pixi canvas; UI chrome like this stays in the DOM per
+ * the architecture.
  */
 
 interface BattleBoardSheetProps {
   report: BattleReport
   playerName: (id: string) => string
   onClose: () => void
+}
+
+const TACTIC_LABEL: Record<string, string> = {
+  broadside: 'broadside',
+  board: 'boarding action',
+  ram: 'ram',
+  evade: 'evasive maneuvers',
+}
+
+function tacticLabel(tactic: string | null): string {
+  return tactic ? (TACTIC_LABEL[tactic] ?? tactic) : 'auto-resolve'
+}
+
+/** Caption for the gunnery playback at `step` (0 = pre-battle, else `rounds[step - 1]`). */
+function roundCaption(rounds: RoundReport[], step: number): string {
+  if (step === 0) return 'The fleets close to gun range.'
+  const r = rounds[step - 1]
+  if (!r) return ''
+  return (
+    `Round ${r.round}: ${tacticLabel(r.attackerTactic)} vs ${tacticLabel(r.defenderTactic)} — ` +
+    `${Math.round(r.attackerDamage)} damage dealt, ${Math.round(r.defenderDamage)} damage taken ` +
+    `(${Math.round(r.attackerHp)} hp vs ${Math.round(r.defenderHp)} hp)`
+  )
+}
+
+/**
+ * HP-bar fill percentage for `side` at `step`. `BattleReport` only carries HP
+ * *after* each round, not the true starting HP, so the highest HP any round
+ * reports stands in for "full" — round 1's post-damage figure is always the
+ * highest point in the sequence, which is a close approximation for a bar and
+ * needs no engine change to compute.
+ */
+function gunneryHpShare(
+  rounds: RoundReport[],
+  step: number,
+  side: 'attacker' | 'defender',
+): number {
+  if (rounds.length === 0) return 100
+  const hpOf = (r: RoundReport) => (side === 'attacker' ? r.attackerHp : r.defenderHp)
+  const maxHp = Math.max(...rounds.map(hpOf), 1)
+  if (step === 0) return 100
+  const round = rounds[step - 1]
+  const hp = round ? hpOf(round) : maxHp
+  return Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100)))
 }
 
 interface PlaybackStack {
@@ -56,17 +103,20 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(true)
 
-  const totalSteps = board?.events.length ?? 0
+  // Boarding melees step through the board event log; every other battle
+  // steps through its gunnery rounds instead (#304) — same transport, a
+  // different source of truth for how many steps there are.
+  const totalSteps = board ? board.events.length : report.rounds.length
 
   useEffect(() => {
-    if (!playing || !board) return
+    if (!playing) return
     if (step >= totalSteps) {
       setPlaying(false)
       return
     }
     const id = setTimeout(() => setStep((s) => Math.min(s + 1, totalSteps)), 600)
     return () => clearTimeout(id)
-  }, [playing, step, totalSteps, board])
+  }, [playing, step, totalSteps])
 
   const stacks = useMemo(() => (board ? stacksAtStep(board, step) : []), [board, step])
 
@@ -141,8 +191,8 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
           </p>
         </section>
 
-        {board && (
-          <section>
+        <section>
+          {board ? (
             <div className="battle-board-scroll">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -182,46 +232,69 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
                 )}
               </svg>
             </div>
-
-            <p className="building-option__hint">{eventCaption(board.events[step - 1])}</p>
-
-            <div className="button-group">
-              <button
-                className="secondary"
-                onClick={() => {
-                  setPlaying(false)
-                  setStep((s) => Math.max(0, s - 1))
-                }}
-                disabled={step === 0}
-              >
-                ◀ Back
-              </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  if (step >= totalSteps) {
-                    setStep(0)
-                    setPlaying(true)
-                  } else {
-                    setPlaying((p) => !p)
-                  }
-                }}
-              >
-                {playing ? 'Pause' : step >= totalSteps ? '⟲ Replay' : 'Play'}
-              </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setPlaying(false)
-                  setStep((s) => Math.min(totalSteps, s + 1))
-                }}
-                disabled={step >= totalSteps}
-              >
-                Next ▶
-              </button>
+          ) : (
+            <div className="gunnery-round" role="img" aria-label="Naval gunnery exchange">
+              <div className="gunnery-round__side">
+                <strong>{playerName(report.attacker.ownerId)}</strong>
+                <div className="gunnery-hp-bar">
+                  <div
+                    className="gunnery-hp-bar__fill"
+                    style={{ width: `${gunneryHpShare(report.rounds, step, 'attacker')}%` }}
+                  />
+                </div>
+              </div>
+              <div className="gunnery-round__side">
+                <strong>{playerName(report.defender.ownerId)}</strong>
+                <div className="gunnery-hp-bar">
+                  <div
+                    className="gunnery-hp-bar__fill"
+                    style={{ width: `${gunneryHpShare(report.rounds, step, 'defender')}%` }}
+                  />
+                </div>
+              </div>
             </div>
-          </section>
-        )}
+          )}
+
+          <p className="building-option__hint">
+            {board ? eventCaption(board.events[step - 1]) : roundCaption(report.rounds, step)}
+          </p>
+
+          <div className="button-group">
+            <button
+              className="secondary"
+              onClick={() => {
+                setPlaying(false)
+                setStep((s) => Math.max(0, s - 1))
+              }}
+              disabled={step === 0}
+            >
+              ◀ Back
+            </button>
+            <button
+              className="secondary"
+              onClick={() => {
+                if (step >= totalSteps) {
+                  setStep(0)
+                  setPlaying(true)
+                } else {
+                  setPlaying((p) => !p)
+                }
+              }}
+            >
+              {playing ? 'Pause' : step >= totalSteps ? '⟲ Replay' : 'Play'}
+            </button>
+            <button
+              className="secondary"
+              onClick={() => {
+                setPlaying(false)
+                setStep((s) => Math.min(totalSteps, s + 1))
+              }}
+              disabled={step >= totalSteps}
+            >
+              Next ▶
+            </button>
+          </div>
+        </section>
 
         <section>
           <button className="primary" onClick={onClose}>
