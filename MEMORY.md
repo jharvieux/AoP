@@ -1,3 +1,49 @@
+## D-026 — 2026-07-07 — Quality triage: six operator-reported issues investigated, decisions made, tracked as #342–#348
+
+**Decision.** The operator reported six quality problems (blocky map, no way to attack a
+city/win, no visible combat tactics, lost title music, unsignposted navigation, parchment
+palette stopping at the menu). Investigated all six in parallel, made the product calls
+with the operator, and — per operator direction — filed tracked issues instead of
+implementing this session:
+
+- **Map visuals (#347, P1):** polish the square-grid rendering now (coastline autotiling,
+  tile variety, gradient fog, crisper scaling). Hex conversion deliberately deferred to an
+  evaluation issue (#348, P3) — the blockiness is a rendering problem, not a grid-shape
+  problem, and hex is a deep engine change (adjacency/pathfinding/AI/replay contract).
+- **Navigation (#346, P1):** minimap with viewport rect + click-to-jump, zoom buttons,
+  center-on-fleet, and a turn-event feed. Rejected native scrollbars — impossible on the
+  Pixi world-transform camera — and rejected scrollbar-style gutters as inferior to a
+  minimap for a 2-D map.
+- **Combat tactics (#343, P1):** the tactical system is fully built (naval rounds + hex
+  boarding, #18/#39/#93/#305) but hidden behind `battleResolution` defaulting to `'auto'`
+  (`packages/content/src/tuning.ts`). Decision: default new single-player games to
+  `'tactical'`; Auto stays selectable. Multiplayer tactical remains #321.
+- **City assault (#344, P0):** confirmed no attack-city action exists, making conquest
+  victory unreachable (resign is the only game end). Scoped to plug into
+  `resolveBoardCombat`'s existing land-combat entry point with `city.garrison` as
+  defenders; ownership flips on a win; AI gets basic assault usage.
+- **Title music (#342, P1):** root cause is the #302 title splash auto-advancing with no
+  user gesture + `audioManager` swallowing the browser autoplay rejection. Fix scoped:
+  title plays the menu theme, advances on tap too, and a one-time gesture listener retries
+  playback.
+- **Palette (#345, P2):** parchment goes to **UI chrome only**; world-map sea and battle
+  board keep their diegetic colors (resolves D-023's open boundary question). The two gold
+  tokens (`--color-gold #c9a227` vs `--accent #c8962c`) unify to the parchment gold —
+  resolves the #319 two-gold question.
+
+**Also this session.** PR #340 (D-025's vendoring fix) was red because CI never generates
+the gitignored `_vendor/`; with explicit operator approval (supervised path), added the
+vendor-script step to `ci.yml`'s edge-functions job and `deploy.yml`, fixed the stale
+functions README, ran the pre-pr-reviewer audit (0 blockers), and squash-merged (`4f65ab1`).
+Operator also granted blanket permission this session to install skills/dependencies as
+needed for this work (none ended up required).
+
+**Rejected.** Implementing all six fixes as five feature PRs this session (operator chose
+issues-only); hex-now (see #348); scrollbar gutters (see above); keeping Auto as the
+combat default.
+
+---
+
 ## D-025 — 2026-07-07 — First real prod deploy attempt: DB live, edge functions vendor edge functions' `@aop/*` deps, blocked by local colima bug
 
 **Decision.** First-ever deploy attempt against the real prod Supabase project
