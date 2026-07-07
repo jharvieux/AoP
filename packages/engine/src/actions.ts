@@ -99,6 +99,32 @@ export interface RecruitUnitAction {
   count: number
 }
 
+/**
+ * Recruit a new captain (#308/#309) at an owned port city — gold cost, scaled
+ * by how many live captains this seat already fields, buys a starting ship
+ * and a small crew. Omit `captainId` to mint a brand-new captain; supply the
+ * id of one of your own captive captains — past its `captivityReturnRound`
+ * — to rehire it instead, preserving its name/XP/skills.
+ */
+export interface RecruitCaptainAction {
+  type: 'recruitCaptain'
+  playerId: string
+  cityId: string
+  captainId?: string
+}
+
+/**
+ * Pay to free one of your own captured captains early (#309). A unilateral,
+ * fixed gold price paid straight to the capturing seat — no offer/accept
+ * round-trip. The captive becomes immediately eligible for `recruitCaptain`
+ * (still at the normal gold cost); ransom itself does not put it back to sea.
+ */
+export interface RansomCaptainAction {
+  type: 'ransomCaptain'
+  playerId: string
+  captainId: string
+}
+
 /** Move troops between a city's garrison and a visiting captain's ship hold. */
 export interface TransferTroopsAction {
   type: 'transferTroops'
@@ -193,6 +219,8 @@ export type Action =
   | SetStandingOrdersAction
   | ConstructBuildingAction
   | RecruitUnitAction
+  | RecruitCaptainAction
+  | RansomCaptainAction
   | TransferTroopsAction
   | GainCaptainXpAction
   | ChooseCaptainSkillAction

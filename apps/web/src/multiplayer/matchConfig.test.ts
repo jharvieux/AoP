@@ -59,6 +59,18 @@ describe('buildMatchConfig', () => {
     expect(config.setup.betrayalTruceRounds).toBe(GAME_SETUP.betrayalTruceRounds)
   })
 
+  // #309: the host's captivity window must survive the config rebuild the same
+  // way the diplomacy knobs do.
+  it('threads a host-configured captivity window into config.setup', () => {
+    const config = buildMatchConfig(7, 'small', SEATS, { captainCaptivityRounds: 10 })
+    expect(config.setup.captainCaptivityRounds).toBe(10)
+  })
+
+  it('falls back to the content default when the captivity window is omitted', () => {
+    const config = buildMatchConfig(7, 'small', SEATS)
+    expect(config.setup.captainCaptivityRounds).toBe(GAME_SETUP.captainCaptivityRounds)
+  })
+
   it('leaves the rest of GAME_SETUP untouched while overriding only the two knobs', () => {
     const config = buildMatchConfig(7, 'small', SEATS, { betrayalTruceRounds: 5 })
     expect(config.setup).toEqual({

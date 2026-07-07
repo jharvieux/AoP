@@ -144,6 +144,14 @@ export interface AiTuning {
   upgradeScoreBase: number
   /** Score for spending an available captain skill pick. */
   skillPickScoreBase: number
+  /**
+   * Score for recruiting a replacement captain when captain-less (#308).
+   * Tuned to comfortably outscore any economy action — recovering from zero
+   * captains is existential, not a discretionary investment.
+   */
+  recruitCaptainScoreBase: number
+  /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
+  ransomScoreBase: number
 }
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
@@ -189,6 +197,38 @@ export interface GameSetup {
    * betrayal leaves diplomacy open; a second closes it for the match.
    */
   allianceReputationMin: number
+  /**
+   * Base gold cost of the `recruitCaptain` action (#308/#309) — minting a
+   * brand-new captain, or rehiring an eligible captive, at an owned port.
+   */
+  recruitCaptainBaseCost: number
+  /**
+   * Multiplier applied to `recruitCaptainBaseCost` per live (non-captured)
+   * captain this seat already owns, so a snowballing fleet gets steadily
+   * pricier instead of unbounded (#309). Recovering from zero captains
+   * always costs the base price.
+   */
+  recruitCaptainCostGrowth: number
+  /**
+   * Tier-1 troops a freshly recruited (or rehired) captain starts crewed
+   * with (#308) — deliberately smaller than a match's starting roster so an
+   * early rush can't field full-strength replacements for free.
+   */
+  recruitCaptainStartingCrew: number
+  /**
+   * Rounds a captured captain (#309) stays in captivity before its owner may
+   * spend `recruitCaptain` to rehire it from the recruitment pool.
+   * Host-configurable per match; the default here is the slider's opening
+   * value.
+   */
+  captainCaptivityRounds: number
+  /** Base gold cost of the `ransomCaptain` action (#309) — freeing a captive early. */
+  ransomBaseCost: number
+  /**
+   * Gold added to `ransomBaseCost` per XP point the captive has earned
+   * (#309) — a veteran captain costs more to buy back.
+   */
+  ransomXpMultiplier: number
 }
 
 export const COMBAT_TUNING: CombatTuning = {
@@ -259,6 +299,18 @@ export const GAME_SETUP: GameSetup = {
   // attacker who left just before the victim's turn strike almost immediately.
   betrayalTruceRounds: 2,
   allianceReputationMin: 30,
+  // Recovering from zero captains costs the base price; each additional live
+  // captain beyond that raises the next one's cost by 50% (#309), so fleets
+  // stay bounded without a hard cap.
+  recruitCaptainBaseCost: 400,
+  recruitCaptainCostGrowth: 1.5,
+  recruitCaptainStartingCrew: 3,
+  // Five rounds: long enough that a captured captain is genuinely off the
+  // board for a while (the point of capture over instant re-recruitment),
+  // short enough that a slow game doesn't strand a captor's prize forever.
+  captainCaptivityRounds: 5,
+  ransomBaseCost: 200,
+  ransomXpMultiplier: 2,
 }
 
 export const AI_TUNING: AiTuning = {
@@ -281,6 +333,8 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+  recruitCaptainScoreBase: 500,
+  ransomScoreBase: 50,
 }
 
 /**

@@ -316,6 +316,25 @@ describe('economy & cities', () => {
     expect(state.players[0]!.resources.gold).toBe(startGold + 100)
   })
 
+  it('does not let a captured captain keep yielding a resource node for its former owner (#309)', () => {
+    const base = createGame(econConfig())
+    const captain = captainsOf(base, 'p1')[0]!
+    const captured: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === captain.id ? { ...c, captured: true, capturedBy: 'p2' } : c,
+      ),
+      resourceNodes: [{ id: 'res-0', kind: 'gold', position: { ...captain.position } }],
+    }
+    const startGold = captured.players[0]!.resources.gold
+    let state = applyAction(captured, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+    // Only the townhall's 100 gold — the captured captain sitting on the node
+    // no longer counts as an occupant, so the node yields to no one (neutral,
+    // no ownerSeat authored).
+    expect(state.players[0]!.resources.gold).toBe(startGold + 100)
+  })
+
   it('grants the resource-node bonus to whichever owner currently occupies the tile, not a fixed owner', () => {
     const base = createGame(econConfig())
     const p2Captain = captainsOf(base, 'p2')[0]!

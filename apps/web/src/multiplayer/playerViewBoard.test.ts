@@ -44,6 +44,7 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
         position: { x: 0, y: 0 },
         shipClassId: 'sloop',
         troops: [{ unitId: 'swashbuckler', count: 6 }],
+        captured: false,
       },
     ],
     encounters: [{ id: 'enc-0', kind: 'merchant', position: { x: 1, y: 0 }, active: true }],
@@ -89,6 +90,7 @@ describe('boardFromPlayerView', () => {
         xp: 0,
         skills: [],
         shipUpgrades: {},
+        captured: false,
       },
     ])
     expect(cities).toEqual([
@@ -114,6 +116,7 @@ describe('boardFromPlayerView', () => {
           name: 'Bart',
           position: { x: 1, y: 0 },
           shipClassId: 'sloop',
+          captured: false,
         },
       ],
       cities: [{ id: 'city-1', ownerId: 'seat-1', name: 'Tortuga', position: { x: 1, y: 0 } }],
