@@ -4,6 +4,7 @@ import {
   applyAction,
   captainsOf,
   createGame,
+  currentlyVisibleTiles,
   currentPlayer,
   findPath,
   generateMap,
@@ -12,12 +13,47 @@ import {
   pathCost,
   replay,
   tileAt,
+  tileKey,
+  tilesInRadius,
   type Action,
+  type ContentCatalog,
   type GameConfig,
   type GameMap,
   type GameState,
+  type MapDefinition,
+  type Tile,
 } from '../src'
 import { GAME_SETUP } from './fixtures'
+
+/** Minimal content catalog so recruitCaptain can assign a faction-appropriate crew. */
+const CAPTAIN_CATALOG: ContentCatalog = {
+  buildings: {},
+  units: {
+    deckhand: {
+      factionId: 'pirates',
+      tier: 1,
+      goldCost: 25,
+      weeklyGrowth: 8,
+      attack: 2,
+      defense: 1,
+      health: 6,
+    },
+    sailor: {
+      factionId: 'british',
+      tier: 1,
+      goldCost: 30,
+      weeklyGrowth: 8,
+      attack: 2,
+      defense: 2,
+      health: 7,
+    },
+  },
+  ships: {
+    sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 8, upgrades: {} },
+  },
+  skills: {},
+  captainXpThresholds: [0, 100, 250],
+}
 
 const STARTING_CAPTAIN_MOVEMENT = GAME_SETUP.startingCaptainMovement
 
@@ -236,5 +272,338 @@ describe('moveCaptain action', () => {
     state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
     expect(currentPlayer(state).id).toBe('p1')
     expect(captainsOf(state, 'p1')[0]!.movementPoints).toBe(STARTING_CAPTAIN_MOVEMENT)
+  })
+})
+
+/** Directly marks a captain captive (#309) without going through combat — cheaper setup for reducer-level tests. */
+function withCapturedCaptain(
+  state: GameState,
+  captainId: string,
+  capturedBy: string,
+  roundsFromNow: number,
+): GameState {
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captainId
+        ? {
+            ...c,
+            captured: true,
+            capturedBy,
+            troops: [],
+            movementPoints: 0,
+            maxMovementPoints: 0,
+            captivityReturnRound: state.round + roundsFromNow,
+          }
+        : c,
+    ),
+  }
+}
+
+describe('recruitCaptain action (#308/#309)', () => {
+  it('mints a brand-new captain at an owned port for the scaled gold cost', () => {
+    const state = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const goldBefore = state.players.find((p) => p.id === 'p1')!.resources.gold
+    const cost = Math.ceil(
+      GAME_SETUP.recruitCaptainBaseCost * GAME_SETUP.recruitCaptainCostGrowth ** 1,
+    )
+    const next = applyAction(state, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+    })
+    expect(captainsOf(next, 'p1')).toHaveLength(2)
+    const original = captainsOf(state, 'p1')[0]!.id
+    const minted = captainsOf(next, 'p1').find((c) => c.id !== original)!
+    expect(minted.captured).toBe(false)
+    expect(minted.shipClassId).toBe(GAME_SETUP.startingShipClass)
+    expect(minted.troops).toEqual([
+      { unitId: 'deckhand', count: GAME_SETUP.recruitCaptainStartingCrew },
+    ])
+    expect(next.players.find((p) => p.id === 'p1')!.resources.gold).toBe(goldBefore - cost)
+  })
+
+  it('scales the cost up with each additional live captain (#309)', () => {
+    let state = createGame({
+      ...testConfig(2),
+      content: CAPTAIN_CATALOG,
+      setup: { ...GAME_SETUP, startingGold: 5000 },
+    })
+    state = applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
+    const goldAfterFirst = state.players.find((p) => p.id === 'p1')!.resources.gold
+    state = applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
+    const secondCost = Math.ceil(
+      GAME_SETUP.recruitCaptainBaseCost * GAME_SETUP.recruitCaptainCostGrowth ** 2,
+    )
+    expect(state.players.find((p) => p.id === 'p1')!.resources.gold).toBe(
+      goldAfterFirst - secondCost,
+    )
+    expect(captainsOf(state, 'p1')).toHaveLength(3)
+  })
+
+  it('rejects recruiting a captain without enough gold', () => {
+    const state = createGame({
+      ...testConfig(2),
+      content: CAPTAIN_CATALOG,
+      setup: { ...GAME_SETUP, startingGold: 10 },
+    })
+    expect(() =>
+      applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects recruiting at a city you do not own', () => {
+    const state = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    expect(() =>
+      applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p2-capital' }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects rehiring a captive before its captivity round arrives', () => {
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state = withCapturedCaptain(base, p1cap.id, 'p2', 3)
+    expect(() =>
+      applyAction(state, {
+        type: 'recruitCaptain',
+        playerId: 'p1',
+        cityId: 'p1-capital',
+        captainId: p1cap.id,
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rehires an eligible captive, preserving its identity, xp, and skills', () => {
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const withHistory: GameState = {
+      ...base,
+      captains: base.captains.map((c) => (c.id === p1cap.id ? { ...c, xp: 55, skills: ['x'] } : c)),
+    }
+    // 0 rounds from now: captivityReturnRound === the current round, so it's
+    // eligible immediately (ransomCaptain achieves the same by pulling the
+    // round forward — see the ransom tests below).
+    const state = withCapturedCaptain(withHistory, p1cap.id, 'p2', 0)
+    const next = applyAction(state, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      captainId: p1cap.id,
+    })
+    const revived = next.captains.find((c) => c.id === p1cap.id)!
+    expect(revived.captured).toBe(false)
+    expect(revived.capturedBy).toBeUndefined()
+    expect(revived.captivityReturnRound).toBeUndefined()
+    expect(revived.xp).toBe(55)
+    expect(revived.skills).toEqual(['x'])
+    expect(revived.troops).toEqual([
+      { unitId: 'deckhand', count: GAME_SETUP.recruitCaptainStartingCrew },
+    ])
+    expect(captainsOf(next, 'p1')).toHaveLength(1)
+  })
+
+  it('replays a recruitCaptain log to an identical state', () => {
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const log: Action[] = [{ type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+  })
+})
+
+describe('captured captains (#309)', () => {
+  it('cannot move or take orders while captured', () => {
+    const base = createGame(testConfig(2))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state = withCapturedCaptain(base, p1cap.id, 'p2', 3)
+    expect(() =>
+      applyAction(state, {
+        type: 'moveCaptain',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        to: p1cap.position,
+      }),
+    ).toThrow(InvalidActionError)
+    expect(() =>
+      applyAction(state, {
+        type: 'setStandingOrders',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        orders: [],
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it("releases a captor's captives immediately when the captor resigns", () => {
+    const base = createGame(testConfig(3))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    let state = withCapturedCaptain(base, p1cap.id, 'p2', 5)
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'resign', playerId: 'p2' })
+    const released = state.captains.find((c) => c.id === p1cap.id)!
+    expect(released.captured).toBe(true)
+    expect(released.capturedBy).toBeUndefined()
+    expect(released.captivityReturnRound).toBe(state.round)
+  })
+})
+
+describe('ransomCaptain action (#309)', () => {
+  it('pays the captor and makes the captive immediately eligible for recruitment', () => {
+    const base = createGame(testConfig(2))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const withXp: GameState = {
+      ...base,
+      captains: base.captains.map((c) => (c.id === p1cap.id ? { ...c, xp: 20 } : c)),
+    }
+    const state = withCapturedCaptain(withXp, p1cap.id, 'p2', 5)
+    const p1GoldBefore = state.players.find((p) => p.id === 'p1')!.resources.gold
+    const p2GoldBefore = state.players.find((p) => p.id === 'p2')!.resources.gold
+    const cost = Math.ceil(GAME_SETUP.ransomBaseCost + 20 * GAME_SETUP.ransomXpMultiplier)
+
+    const next = applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p1cap.id })
+    expect(next.players.find((p) => p.id === 'p1')!.resources.gold).toBe(p1GoldBefore - cost)
+    expect(next.players.find((p) => p.id === 'p2')!.resources.gold).toBe(p2GoldBefore + cost)
+    // Ransom alone doesn't reactivate the captain — recruitCaptain still does that.
+    const ransomed = next.captains.find((c) => c.id === p1cap.id)!
+    expect(ransomed.captured).toBe(true)
+    expect(ransomed.captivityReturnRound).toBe(next.round)
+  })
+
+  it('rejects ransoming a captain that is not captured', () => {
+    const state = createGame(testConfig(2))
+    const p1cap = captainsOf(state, 'p1')[0]!
+    expect(() =>
+      applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p1cap.id }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects ransoming a captain you do not own', () => {
+    const base = createGame(testConfig(2))
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const state = withCapturedCaptain(base, p2cap.id, 'p1', 5)
+    expect(() =>
+      applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p2cap.id }),
+    ).toThrow(InvalidActionError)
+  })
+})
+
+describe('fog of war along a travel path (#295)', () => {
+  // Far enough from the port row (below) that a home city's own vision disc
+  // (cityVisionRadius: 3, see fixtures.ts) never reaches the lane the captains
+  // sail along — otherwise city vision could mask the bug this suite targets.
+  const LANE_Y = 8
+
+  /**
+   * A straight, all-deep-water lane, long enough for multi-step moves, with the
+   * two players parked at either end. Gives full control over path shape and
+   * length, unlike the generated map used elsewhere in this file.
+   */
+  function laneConfig(length: number, movement = GAME_SETUP.startingCaptainMovement): GameConfig {
+    const width = length + 1
+    const height = LANE_Y + 1
+    const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+      type: 'deep',
+      island: -1,
+    }))
+    // Each seat's capital sits on a port tile (createGame looks one up per home
+    // island); tuck them onto row y=0, far from the y=LANE_Y row the captains
+    // actually sail along.
+    tiles[0 * width + 0] = { type: 'port', island: 0 }
+    tiles[0 * width + (width - 1)] = { type: 'port', island: 1 }
+    const mapDefinition: MapDefinition = {
+      width,
+      height,
+      tiles,
+      startPositions: [
+        { x: 0, y: LANE_Y },
+        { x: width - 1, y: LANE_Y },
+      ],
+    }
+    return {
+      seed: 1,
+      mapSize: 'medium',
+      mapDefinition,
+      setup: { ...GAME_SETUP, startingCaptainMovement: movement },
+      players: [
+        { id: 'p1', name: 'Player 1', faction: 'pirates', isAI: false },
+        { id: 'p2', name: 'Player 2', faction: 'british', isAI: true },
+      ],
+    }
+  }
+
+  it.each([1, 2, 3, 5])(
+    'explores every tile crossed by a %d-step move, not just the destination',
+    (steps) => {
+      const state = createGame(laneConfig(10))
+      const cap = captainsOf(state, 'p1')[0]!
+      const to = { x: cap.position.x + steps, y: cap.position.y }
+      const path = findPath(state.map, cap.position, to)!
+      expect(path).toHaveLength(steps + 1)
+
+      const next = applyAction(state, {
+        type: 'moveCaptain',
+        playerId: 'p1',
+        captainId: cap.id,
+        to,
+      })
+
+      const explored = new Set(next.exploredTiles['p1'] ?? [])
+      const { captainVisionRadius } = state.config.setup
+      for (const step of path) {
+        for (const tile of tilesInRadius(step, captainVisionRadius, state.map)) {
+          expect(explored.has(tileKey(tile))).toBe(true)
+        }
+      }
+    },
+  )
+
+  it('remembers a wake tile far from both endpoints even though it drops out of live vision', () => {
+    // A long single move (well beyond 2x vision radius) so the midpoint of the
+    // path sits outside *both* the spawn-time vision disc and the
+    // destination's vision disc — the only way to tell this fix apart from
+    // folding just the endpoints.
+    const movement = 10
+    const state = createGame(laneConfig(20, movement))
+    const cap = captainsOf(state, 'p1')[0]!
+    const start = { ...cap.position }
+    const to = { x: start.x + movement, y: start.y }
+    const path = findPath(state.map, start, to)!
+    const wake = path[Math.floor(path.length / 2)]!
+
+    // Guard: the midpoint tile is genuinely outside both endpoints' vision
+    // discs, otherwise this test wouldn't distinguish the fix from the old
+    // behaviour (which only ever folded the start and destination discs).
+    const { captainVisionRadius } = state.config.setup
+    expect(chebyshevDistance(start, wake)).toBeGreaterThan(captainVisionRadius)
+    expect(chebyshevDistance(to, wake)).toBeGreaterThan(captainVisionRadius)
+
+    const next = applyAction(state, {
+      type: 'moveCaptain',
+      playerId: 'p1',
+      captainId: cap.id,
+      to,
+    })
+
+    expect(next.exploredTiles['p1']).toContain(tileKey(wake))
+    expect(currentlyVisibleTiles(next, 'p1').map(tileKey)).not.toContain(tileKey(wake))
+  })
+
+  it('replays identically across moves of varying length, with the full wake explored', () => {
+    const log: Action[] = [
+      { type: 'moveCaptain', playerId: 'p1', captainId: 'cap-p1', to: { x: 2, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'moveCaptain', playerId: 'p2', captainId: 'cap-p2', to: { x: 8, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'moveCaptain', playerId: 'p1', captainId: 'cap-p1', to: { x: 5, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(createGame(laneConfig(10)), log)
+    const b = replay(createGame(laneConfig(10)), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+
+    for (let x = 0; x <= 5; x++) {
+      expect(a.exploredTiles['p1']).toContain(tileKey({ x, y: LANE_Y }))
+    }
   })
 })

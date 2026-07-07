@@ -28,13 +28,35 @@ import type { Db } from './client.ts'
 const base = { mapSize: 'small', maxPlayers: 4 }
 
 Deno.test(
-  'parseSettings: defaults the betrayal knobs to the GAME_SETUP values when omitted',
+  'parseSettings: defaults the betrayal/captivity knobs to the GAME_SETUP values when omitted',
   () => {
     const settings = parseSettings(base)
     assertEquals(settings.betrayalReputationPenalty, 40)
     assertEquals(settings.betrayalTruceRounds, 2)
+    assertEquals(settings.captainCaptivityRounds, 5)
   },
 )
+
+Deno.test('parseSettings: carries a valid in-range captivity knob through unchanged', () => {
+  assertEquals(parseSettings({ ...base, captainCaptivityRounds: 0 }).captainCaptivityRounds, 0)
+  assertEquals(parseSettings({ ...base, captainCaptivityRounds: 20 }).captainCaptivityRounds, 20)
+})
+
+Deno.test('parseSettings: rejects out-of-range or non-integer captivity knobs', () => {
+  const bad = [
+    { captainCaptivityRounds: -1 },
+    { captainCaptivityRounds: 21 },
+    { captainCaptivityRounds: 2.5 },
+  ]
+  for (const override of bad) {
+    assertThrows(
+      () => parseSettings({ ...base, ...override }),
+      AppError,
+      undefined,
+      `expected ${JSON.stringify(override)} to be rejected`,
+    )
+  }
+})
 
 Deno.test('parseSettings: carries valid in-range betrayal knobs through unchanged', () => {
   const settings = parseSettings({
@@ -101,6 +123,7 @@ const START_MATCH_SETTINGS: MatchSettings = {
   missedTurnThreshold: 3,
   betrayalReputationPenalty: 40,
   betrayalTruceRounds: 2,
+  captainCaptivityRounds: 5,
 }
 
 Deno.test(

@@ -65,6 +65,7 @@ export function createGame(config: GameConfig): GameState {
     xp: 0,
     skills: [],
     shipUpgrades: {},
+    captured: false,
   }))
 
   const cities: CityState[] = config.players.map((p, i): CityState => {

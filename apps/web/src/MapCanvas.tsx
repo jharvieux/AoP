@@ -278,9 +278,11 @@ export function MapCanvas(props: MapCanvasProps) {
     const citySprites = new Container()
     const encounterSprites = new Container()
     const shipSprites = new Container()
+    const fog = new Graphics() // Feathered fog overlay (#299)
     const highlight = new Graphics()
     // Draw order: flat-color fallback first, then sprite layers on top, so a
     // texture that finishes loading later simply covers its own fallback tile.
+    // Fog overlay drawn after entities so it can feather over all content.
     world.addChild(
       tiles,
       tileSprites,
@@ -288,6 +290,7 @@ export function MapCanvas(props: MapCanvasProps) {
       citySprites,
       encounterSprites,
       shipSprites,
+      fog,
       highlight,
     )
     pixiApp.stage.addChild(world)
@@ -360,6 +363,7 @@ export function MapCanvas(props: MapCanvasProps) {
       const maxY = Math.min(map.height - 1, Math.ceil((h - view.y) / view.scale / TILE) + 1)
 
       tiles.clear()
+      fog.clear()
       tilePool.begin()
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
@@ -384,14 +388,45 @@ export function MapCanvas(props: MapCanvasProps) {
             sprite.width = TILE
             sprite.height = TILE
             sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
-            sprite.alpha = visibleNow ? 1 : 0.5
+            sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming
             continue
           }
           tiles.rect(x * TILE, y * TILE, TILE, TILE)
-          tiles.fill({ color: TILE_COLOR[tile.type], alpha: visibleNow ? 1 : 0.5 })
+          tiles.fill({ color: TILE_COLOR[tile.type], alpha: 1 }) // Full alpha; fog applies dimming
         }
       }
       tilePool.end()
+
+      // Render feathered fog overlay (#299): soft edges between unexplored/explored/visible.
+      // For each explored tile, render a dimming layer if it's not currently visible.
+      // We check neighboring tiles to feather the fog boundary — tiles at the edge of
+      // the fog region render with decreased alpha for a smooth transition.
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const key = `${x},${y}`
+          const explored = exploredKeys.has(key)
+          const visibleNow = visibleKeys.has(key)
+
+          if (!visibleNow && explored) {
+            // Tile is explored but not currently visible: render dimming fog.
+            // Count how many neighboring tiles are currently visible to determine edge proximity.
+            let visibleNeighbors = 0
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue
+                const nkey = `${x + dx},${y + dy}`
+                if (visibleKeys.has(nkey)) visibleNeighbors++
+              }
+            }
+            // At fog edges (adjacent to visible tiles), fade the fog alpha for a soft boundary.
+            // Tiles surrounded by other explored tiles get full dimming (alpha ~0.5),
+            // tiles at the edge get lighter dimming (alpha ~0.3) for smooth gradient.
+            const edgeAlpha = visibleNeighbors > 0 ? 0.3 : 0.5
+            fog.rect(x * TILE, y * TILE, TILE, TILE)
+            fog.fill({ color: FOG_COLOR, alpha: edgeAlpha })
+          }
+        }
+      }
 
       entities.clear()
       encounterPool.begin()

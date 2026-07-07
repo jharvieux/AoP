@@ -114,6 +114,12 @@ function gameConfig(p1Troops: TroopStack[], battle: BattleTuning | null): GameCo
       betrayalReputationPenalty: 40,
       allianceReputationMin: 30,
       betrayalTruceRounds: 2,
+      recruitCaptainBaseCost: 400,
+      recruitCaptainCostGrowth: 1.5,
+      recruitCaptainStartingCrew: 3,
+      captainCaptivityRounds: 5,
+      ransomBaseCost: 200,
+      ransomXpMultiplier: 2,
     },
     players: [
       { id: 'p1', name: 'P1', faction: 'pirates', isAI: false, startingTroops: p1Troops },

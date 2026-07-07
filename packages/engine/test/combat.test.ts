@@ -191,7 +191,7 @@ function adjacentBattleState(): GameState {
 }
 
 describe('attackCaptain action', () => {
-  it('resolves combat, returns a report, and sinks the loser', () => {
+  it('resolves combat, returns a report, and captures the loser (#309)', () => {
     const state = adjacentBattleState()
     const p1cap = captainsOf(state, 'p1')[0]!
     const p2cap = captainsOf(state, 'p2')[0]!
@@ -203,10 +203,51 @@ describe('attackCaptain action', () => {
     })
     expect(battleReport).toBeDefined()
     expect(battleReport!.winnerId).toBe('p1')
-    // p2's only captain sank -> p2 eliminated -> game finished, p1 wins.
-    expect(next.captains.some((c) => c.id === p2cap.id)).toBe(false)
+    // p2's only captain is captured, not deleted (#309) — and since p2 still
+    // holds its capital city, #308's decoupled elimination keeps it in play.
+    const captive = next.captains.find((c) => c.id === p2cap.id)
+    expect(captive).toBeDefined()
+    expect(captive!.captured).toBe(true)
+    expect(captive!.capturedBy).toBe('p1')
+    expect(captive!.captivityReturnRound).toBe(next.round + GAME_SETUP.captainCaptivityRounds)
+    expect(next.status).toBe('active')
+    expect(next.players.find((p) => p.id === 'p2')!.eliminated).toBe(false)
+  })
+
+  it('eliminates a player only once it holds no live captain and no city (#308)', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    // Strip p2's city so its only remaining foothold is the captain about to
+    // be captured — decisively different from the "captures the loser" test
+    // above, where p2 keeps its city and therefore stays in the game.
+    const cityless: GameState = { ...state, cities: state.cities.filter((c) => c.ownerId !== 'p2') }
+    const { state: next } = applyActionWithOutcome(cityless, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    expect(next.players.find((p) => p.id === 'p2')!.eliminated).toBe(true)
     expect(next.status).toBe('finished')
     expect(next.winnerId).toBe('p1')
+  })
+
+  it('replays a capture -> ransom -> recruitCaptain log to an identical state (#309)', () => {
+    const base = adjacentBattleState()
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [
+      { type: 'attackCaptain', playerId: 'p1', captainId: p1cap.id, targetCaptainId: p2cap.id },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'ransomCaptain', playerId: 'p2', captainId: p2cap.id },
+      { type: 'recruitCaptain', playerId: 'p2', cityId: 'p2-capital', captainId: p2cap.id },
+    ]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+    expect(a.captains.find((c) => c.id === p2cap.id)!.captured).toBe(false)
   })
 
   it('rejects attacking out of range', () => {

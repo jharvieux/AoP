@@ -3,6 +3,7 @@ import {
   canAfford,
   chebyshevDistance,
   subtractResources,
+  type Coord,
   type ResourcePool,
 } from '@aop/shared'
 import {
@@ -16,6 +17,8 @@ import {
   type LeaveAllianceAction,
   type MoveCaptainAction,
   type ProposeAllianceAction,
+  type RansomCaptainAction,
+  type RecruitCaptainAction,
   type RecruitUnitAction,
   type ResolveEncounterAction,
   type SetStandingOrdersAction,
@@ -51,7 +54,7 @@ import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
-import { tileAt } from './map'
+import { isWaterTile, neighbors8, tileAt, type GameMap } from './map'
 import { findPath } from './pathfinding'
 import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
@@ -69,7 +72,7 @@ import {
   type TacticDriver,
 } from './tactics'
 import type { AllianceState, Captain, CityState, GameState, PlayerState, TroopStack } from './types'
-import { accumulateExploredTiles } from './visibility'
+import { accumulateExploredTiles, tileKey, tilesInRadius } from './visibility'
 
 /**
  * What a captain learned from resolving a random encounter (#23) — the result of
@@ -150,6 +153,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
     case 'recruit':
       next = recruit(state, action)
       break
+    case 'recruitCaptain':
+      next = recruitCaptain(state, action)
+      break
+    case 'ransomCaptain':
+      next = ransomCaptain(state, action)
+      break
     case 'transferTroops':
       next = transferTroops(state, action)
       break
@@ -223,6 +232,9 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
   if (captain.ownerId !== action.playerId) {
     throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
   }
+  if (captain.captured) {
+    throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
+  }
   if (!tileAt(state.map, action.to)) {
     throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
   }
@@ -238,6 +250,18 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
     )
   }
 
+  // Reveal every tile the captain sailed over, not just the destination (#295).
+  // Only exploredTiles (persistent) accumulates the path; currentlyVisibleTiles
+  // (live vision) is derived from current positions only, via the post-action
+  // fold below — a ship doesn't retain live vision over its wake.
+  const { captainVisionRadius } = state.config.setup
+  const explored = new Set(state.exploredTiles[action.playerId] ?? [])
+  for (const step of path) {
+    for (const tile of tilesInRadius(step, captainVisionRadius, state.map)) {
+      explored.add(tileKey(tile))
+    }
+  }
+
   return {
     ...state,
     captains: state.captains.map((c) =>
@@ -245,6 +269,10 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
         ? { ...c, position: { ...action.to }, movementPoints: c.movementPoints - cost }
         : c,
     ),
+    exploredTiles: {
+      ...state.exploredTiles,
+      [action.playerId]: Array.from(explored),
+    },
   }
 }
 
@@ -258,11 +286,33 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
   return {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? { ...p, eliminated: true } : p)),
-    captains: state.captains.filter((c) => c.ownerId !== playerId),
+    // Any captives this seat was holding are released toward their owners'
+    // recruitment pools (#309) before its own (dead) captains are swept.
+    captains: releaseCaptivesHeldBy(
+      state.captains.filter((c) => c.ownerId !== playerId),
+      playerId,
+      state.round,
+    ),
     cities: state.cities.filter((c) => c.ownerId !== playerId),
     // A dead seat leaves every alliance and drops its pending proposals (#136).
     alliances: pruneAlliancesForSeats(state.alliances, new Set([playerId])),
   }
+}
+
+/**
+ * Release every captive held by `captorId` back toward its owner's
+ * recruitment pool (#309): its captor identity is gone (resigned or
+ * eliminated) so it becomes immediately eligible for `recruitCaptain`,
+ * exactly like a paid ransom, rather than being stranded with no one left to
+ * pay.
+ */
+function releaseCaptivesHeldBy(captains: Captain[], captorId: string, round: number): Captain[] {
+  return captains.map((c) => {
+    if (!c.captured || c.capturedBy !== captorId) return c
+    const released: Captain = { ...c, captivityReturnRound: round }
+    delete released.capturedBy
+    return released
+  })
 }
 
 /**
@@ -323,10 +373,16 @@ function attackCaptain(
   if (attacker.ownerId !== action.playerId) {
     throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
   }
+  if (attacker.captured) {
+    throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
+  }
   const target = state.captains.find((c) => c.id === action.targetCaptainId)
   if (!target) throw new InvalidActionError(`No captain ${action.targetCaptainId}`, action)
   if (target.ownerId === action.playerId) {
     throw new InvalidActionError('Cannot attack your own captain', action)
+  }
+  if (target.captured) {
+    throw new InvalidActionError(`Captain ${action.targetCaptainId} is already captured`, action)
   }
   if (chebyshevDistance(attacker.position, target.position) > 1) {
     throw new InvalidActionError('Target is not within attack range', action)
@@ -405,22 +461,43 @@ function attackCaptain(
   // (#209).
   const combatWinXp = report.escapedId ? 0 : state.config.setup.combatWinXp
 
-  // Write back survivors: sink defeated captains, update troops, award the winner
-  // combat XP (#21), and spend the attacker's movement for the turn.
-  const captains = state.captains
-    .filter((c) => {
-      if (c.id === attacker.id) return report.attackerSurvived
-      if (c.id === target.id) return report.defenderSurvived
-      return true
-    })
-    .map((c) => {
-      const wonXp = c.id === winnerCaptainId ? combatWinXp : 0
-      if (c.id === attacker.id) {
-        return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + wonXp }
+  // Write back survivors: a decisive loser is captured — not removed (#309) —
+  // by the winning seat, stripped of troops and movement until ransomed or
+  // its captivity round elapses. Survivors update troops/movement and the
+  // winner banks combat XP (#21).
+  const captivityReturnRound = state.round + state.config.setup.captainCaptivityRounds
+  const captains = state.captains.map((c) => {
+    const wonXp = c.id === winnerCaptainId ? combatWinXp : 0
+    if (c.id === attacker.id) {
+      if (!report.attackerSurvived) {
+        return {
+          ...c,
+          captured: true,
+          capturedBy: target.ownerId,
+          captivityReturnRound,
+          troops: [],
+          movementPoints: 0,
+          maxMovementPoints: 0,
+        }
       }
-      if (c.id === target.id) return { ...c, troops: result.defenderTroops, xp: c.xp + wonXp }
-      return c
-    })
+      return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + wonXp }
+    }
+    if (c.id === target.id) {
+      if (!report.defenderSurvived) {
+        return {
+          ...c,
+          captured: true,
+          capturedBy: attacker.ownerId,
+          captivityReturnRound,
+          troops: [],
+          movementPoints: 0,
+          maxMovementPoints: 0,
+        }
+      }
+      return { ...c, troops: result.defenderTroops, xp: c.xp + wonXp }
+    }
+    return c
+  })
 
   const players = betrayal
     ? state.players.map((p) =>
@@ -478,6 +555,9 @@ function setStandingOrders(state: GameState, action: SetStandingOrdersAction): G
   if (captain.ownerId !== action.playerId) {
     throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
   }
+  if (captain.captured) {
+    throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
+  }
   if (action.orders.length > MAX_STANDING_ORDERS) {
     throw new InvalidActionError(`At most ${MAX_STANDING_ORDERS} standing orders`, action)
   }
@@ -532,7 +612,154 @@ function ownedCaptain(state: GameState, captainId: string, action: Action): Capt
   if (!captain || captain.ownerId !== action.playerId) {
     throw new InvalidActionError(`No captain ${captainId} owned by ${action.playerId}`, action)
   }
+  if (captain.captured) {
+    throw new InvalidActionError(`Captain ${captainId} is captured and cannot act`, action)
+  }
   return captain
+}
+
+/**
+ * First water tile adjacent to `coord`, in the map's fixed neighbour order
+ * (#308/#309) — used to place a freshly (re)recruited captain next to the
+ * port it was hired at. Every city sits on a port tile, and mapgen
+ * guarantees a home island's port always borders open water (map.ts), so
+ * this never actually fails for a real city — but it takes `action` and
+ * fails loud via `InvalidActionError`, like every other reducer rejection,
+ * rather than a bare `Error` that would crash the caller instead of
+ * bouncing cleanly.
+ */
+function adjacentWaterTile(map: GameMap, coord: Coord, action: Action): Coord {
+  const water = neighbors8(map, coord).find((n) => isWaterTile(tileAt(map, n)))
+  if (!water) {
+    throw new InvalidActionError(`No water tile adjacent to ${coord.x},${coord.y}`, action)
+  }
+  return water
+}
+
+/**
+ * Recruit a new captain at an owned port (#308), or rehire one of the owner's
+ * own eligible captives from the recruitment pool (#309) — preserving its
+ * name/XP/skills. Gold cost scales with how many live captains this seat
+ * already fields, so recovering from zero always costs the base price while
+ * building a bigger fleet gets steadily pricier.
+ */
+function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameState {
+  const city = ownedCity(state, action.cityId, action)
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const setup = state.config.setup
+  const liveCount = state.captains.filter(
+    (c) => c.ownerId === action.playerId && !c.captured,
+  ).length
+  const cost = Math.ceil(setup.recruitCaptainBaseCost * setup.recruitCaptainCostGrowth ** liveCount)
+  if (!canAfford(player.resources, { gold: cost })) {
+    throw new InvalidActionError(`${action.playerId} cannot afford a new captain`, action)
+  }
+
+  const content = state.config.content
+  const tierOneUnit = content
+    ? Object.entries(content.units).find(
+        ([, def]) => def.factionId === player.faction && def.tier === 1,
+      )
+    : undefined
+  const crew: TroopStack[] = tierOneUnit
+    ? [{ unitId: tierOneUnit[0], count: setup.recruitCaptainStartingCrew }]
+    : []
+  const spawnPosition = adjacentWaterTile(state.map, city.position, action)
+
+  let captains: Captain[]
+  if (action.captainId) {
+    const captive = state.captains.find((c) => c.id === action.captainId)
+    if (!captive || captive.ownerId !== action.playerId || !captive.captured) {
+      throw new InvalidActionError(`${action.captainId} is not your captive to recruit`, action)
+    }
+    if (captive.captivityReturnRound === undefined || state.round < captive.captivityReturnRound) {
+      throw new InvalidActionError(`${captive.id} is not yet eligible for recruitment`, action)
+    }
+    captains = state.captains.map((c) => {
+      if (c.id !== captive.id) return c
+      const revived: Captain = {
+        ...c,
+        captured: false,
+        position: spawnPosition,
+        shipClassId: setup.startingShipClass,
+        movementPoints: setup.startingCaptainMovement,
+        maxMovementPoints: setup.startingCaptainMovement,
+        troops: crew,
+      }
+      delete revived.capturedBy
+      delete revived.captivityReturnRound
+      return revived
+    })
+  } else {
+    const newCaptain: Captain = {
+      id: `cap-${action.playerId}-${state.actionCount}`,
+      ownerId: action.playerId,
+      name: `${player.name}'s Captain`,
+      position: spawnPosition,
+      shipClassId: setup.startingShipClass,
+      movementPoints: setup.startingCaptainMovement,
+      maxMovementPoints: setup.startingCaptainMovement,
+      troops: crew,
+      xp: 0,
+      skills: [],
+      shipUpgrades: {},
+      captured: false,
+    }
+    captains = [...state.captains, newCaptain]
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId
+        ? { ...p, resources: subtractResources(p.resources, { gold: cost }) }
+        : p,
+    ),
+    captains,
+  }
+}
+
+/**
+ * Pay to free one of your own captured captains early (#309). A unilateral,
+ * fixed gold price paid straight to the capturing seat: base cost plus a
+ * per-XP scaling, so a veteran costs more to buy back. The captive becomes
+ * immediately eligible for `recruitCaptain` — this action alone does not put
+ * it back to sea.
+ */
+function ransomCaptain(state: GameState, action: RansomCaptainAction): GameState {
+  const captive = state.captains.find((c) => c.id === action.captainId)
+  if (!captive || captive.ownerId !== action.playerId) {
+    throw new InvalidActionError(
+      `No captain ${action.captainId} owned by ${action.playerId}`,
+      action,
+    )
+  }
+  if (!captive.captured || !captive.capturedBy) {
+    throw new InvalidActionError(`${captive.id} is not held captive`, action)
+  }
+  const owner = state.players.find((p) => p.id === action.playerId)!
+  const captor = state.players.find((p) => p.id === captive.capturedBy)
+  if (!captor) {
+    throw new InvalidActionError(`Captor ${captive.capturedBy} no longer exists`, action)
+  }
+  const setup = state.config.setup
+  const cost = Math.ceil(setup.ransomBaseCost + captive.xp * setup.ransomXpMultiplier)
+  if (!canAfford(owner.resources, { gold: cost })) {
+    throw new InvalidActionError(`${action.playerId} cannot afford this ransom`, action)
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) => {
+      if (p.id === owner.id)
+        return { ...p, resources: subtractResources(p.resources, { gold: cost }) }
+      if (p.id === captor.id) return { ...p, resources: addResources(p.resources, { gold: cost }) }
+      return p
+    }),
+    captains: state.captains.map((c) =>
+      c.id === captive.id ? { ...c, captivityReturnRound: state.round } : c,
+    ),
+  }
 }
 
 function construct(state: GameState, action: ConstructBuildingAction): GameState {
@@ -925,23 +1152,40 @@ function leaveAlliance(state: GameState, action: LeaveAllianceAction): GameState
 }
 
 /**
- * After a battle: any player with no captains left is eliminated, the game ends
- * if one (or none) remains, and if the acting player was just eliminated the turn
- * advances so play can continue.
+ * After a battle: a player is eliminated only once they hold no live captain
+ * AND no city (#308) — a captured captain doesn't count as "having a
+ * captain" (it can't act), but a city alone keeps a seat alive even at zero
+ * live captains, exactly the "rehire at the tavern while you hold a town"
+ * recovery #308 was written to enable. The game ends if one (or none)
+ * remains, and if the acting player was just eliminated the turn advances so
+ * play can continue.
  */
 function settleEliminations(state: GameState): GameState {
   const players = state.players.map((p) =>
-    !p.eliminated && !state.captains.some((c) => c.ownerId === p.id)
+    !p.eliminated &&
+    !state.captains.some((c) => c.ownerId === p.id && !c.captured) &&
+    !state.cities.some((c) => c.ownerId === p.id)
       ? { ...p, eliminated: true }
       : p,
   )
-  // Every seat that just died leaves its alliances and drops its proposals
-  // (#136), and its cities come off the board with it (#208) — a battle
-  // elimination already removed its last captain.
   const eliminatedIds = new Set(players.filter((p) => p.eliminated).map((p) => p.id))
+  const newlyEliminatedIds = state.players
+    .filter((p) => !p.eliminated && eliminatedIds.has(p.id))
+    .map((p) => p.id)
+
+  // A newly-eliminated captor's captives return toward their owners'
+  // recruitment pools immediately (#309), then every seat that just died
+  // leaves its alliances and drops its proposals (#136), and its own
+  // (now-dead) captains and cities come off the board with it (#208).
+  let captains = state.captains.filter((c) => !eliminatedIds.has(c.ownerId))
+  for (const captorId of newlyEliminatedIds) {
+    captains = releaseCaptivesHeldBy(captains, captorId, state.round)
+  }
+
   const withElims: GameState = {
     ...state,
     players,
+    captains,
     cities: state.cities.filter((c) => !eliminatedIds.has(c.ownerId)),
     alliances: pruneAlliancesForSeats(state.alliances, eliminatedIds),
   }

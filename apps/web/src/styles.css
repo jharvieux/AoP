@@ -19,7 +19,8 @@
 :root {
   /* Weathered Parchment & Rope design tokens
      (docs/design_handoff_start_screen). Canonical palette for the app-wide
-     theme migration (#301); today only the launch screens consume them. */
+     theme migration (#301); today only the launch screens consume them.
+     Enhanced texture with multi-layer painted/scanned parchment appearance. */
   --parchment-bg: radial-gradient(
     120% 100% at 50% -10%,
     #cbb17a 0%,
@@ -27,13 +28,33 @@
     #7d5f3d 75%,
     #5c4429 100%
   );
-  --parchment-grain: repeating-linear-gradient(
-    115deg,
-    rgb(60 40 20 / 6%) 0,
-    rgb(60 40 20 / 6%) 2px,
-    transparent 2px,
-    transparent 6px
-  );
+  --parchment-grain:
+    repeating-linear-gradient(
+      115deg,
+      rgb(60 40 20 / 6%) 0,
+      rgb(60 40 20 / 6%) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    repeating-linear-gradient(
+      25deg,
+      rgb(40 25 10 / 4%) 0,
+      rgb(40 25 10 / 4%) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      200deg,
+      rgb(100 70 30 / 3%) 0,
+      transparent 3px,
+      transparent 8px,
+      rgb(100 70 30 / 2%) 8px,
+      rgb(100 70 30 / 2%) 9px,
+      transparent 9px,
+      transparent 16px
+    ),
+    radial-gradient(ellipse 600px 400px at 20% 10%, rgb(60 40 20 / 5%), transparent),
+    radial-gradient(ellipse 800px 600px at 80% 90%, rgb(40 20 5 / 4%), transparent);
   --panel-bg: rgb(48 32 17 / 85%);
   --accent: #c8962c;
   --accent-2: #7a2e1a;
