@@ -143,6 +143,12 @@ export interface GameSetup {
   startingCaptainMovement: number
   startingShipClass: string
   homeIslandRadius: number
+  /**
+   * Fraction of map size used as the ring radius for placing home island centers
+   * around the map centre. Larger values push starts farther apart, delaying first
+   * contact and mitigating early rush meta (#322).
+   */
+  homeIslandRingRadiusFactor: number
   /** Building ids every player's capital begins with. */
   startingBuildings: string[]
   /** Tiles within this Chebyshev radius of an owned city are visible (fog of war, #14). */

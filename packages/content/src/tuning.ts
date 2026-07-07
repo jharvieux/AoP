@@ -164,6 +164,12 @@ export interface GameSetup {
   startingShipClass: string
   /** Radius (in tiles) of each identical home-island disc. */
   homeIslandRadius: number
+  /**
+   * Fraction of map size used as the ring radius for placing home island centers
+   * around the map centre. Larger values push starts farther apart, delaying first
+   * contact and mitigating early rush meta (#322).
+   */
+  homeIslandRingRadiusFactor: number
   /** Building ids every player's capital begins with. */
   startingBuildings: string[]
   /** Tiles within this Chebyshev radius of an owned city are visible (fog of war, #14). */
@@ -294,6 +300,9 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
+  // Increased from 0.34 to 0.40 to slow first contact (#322); home islands now
+  // sit ~2 tiles farther apart, reducing early rush timing pressure.
+  homeIslandRingRadiusFactor: 0.4,
   startingBuildings: [...STARTING_BUILDINGS],
   cityVisionRadius: 3,
   captainVisionRadius: 2,

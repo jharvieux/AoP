@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { validateMapDefinition } from '@aop/engine'
-import { MAP_VALIDATION_LIMITS } from '@aop/content'
+import { GAME_SETUP, MAP_VALIDATION_LIMITS } from '@aop/content'
 import {
   addStartPosition,
   blankDraft,
@@ -31,19 +31,40 @@ describe('blankDraft', () => {
 
 describe('draftFromGenerated', () => {
   it('captures a seeded generateMap() output as a sculptable draft', () => {
-    const draft = draftFromGenerated(7, 'medium', 3, 2, 'Rolled Seed 7')
+    const draft = draftFromGenerated(
+      7,
+      'medium',
+      3,
+      2,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+      'Rolled Seed 7',
+    )
     expect(draft.width).toBe(32)
     expect(draft.startPositions).toHaveLength(3)
     expect(draft.encounters).toEqual([])
     expect(draft.resourceMarkers).toEqual([])
     // Deterministic: same seed/size/playerCount produces the same geometry.
-    const again = draftFromGenerated(7, 'medium', 3, 2, 'Rolled Seed 7')
+    const again = draftFromGenerated(
+      7,
+      'medium',
+      3,
+      2,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+      'Rolled Seed 7',
+    )
     expect(again.tiles).toEqual(draft.tiles)
     expect(again.startPositions).toEqual(draft.startPositions)
   })
 
   it('validates clean against the engine validator', () => {
-    const draft = draftFromGenerated(11, 'medium', 4, 2, 'Valid Draft')
+    const draft = draftFromGenerated(
+      11,
+      'medium',
+      4,
+      2,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+      'Valid Draft',
+    )
     const result = validateMapDefinition(draftToMapDefinition(draft), MAP_VALIDATION_LIMITS)
     expect(result).toEqual({ valid: true, errors: [] })
   })

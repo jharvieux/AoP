@@ -53,9 +53,12 @@ export function draftFromGenerated(
   size: MapSize,
   playerCount: number,
   homeIslandRadius: number,
+  homeIslandRingRadiusFactor: number,
   name: string,
 ): EditorDraft {
-  const def = mapToDefinition(generateMap(seed, size, playerCount, homeIslandRadius))
+  const def = mapToDefinition(
+    generateMap(seed, size, playerCount, homeIslandRadius, homeIslandRingRadiusFactor),
+  )
   return {
     id: newDraftId(),
     name,

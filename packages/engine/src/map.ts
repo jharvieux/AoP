@@ -92,6 +92,7 @@ export function generateMap(
   mapSize: MapSize,
   playerCount: number,
   homeIslandRadius: number,
+  homeIslandRingRadiusFactor: number,
 ): GameMap {
   if (playerCount < 2 || playerCount > 8) {
     throw new Error(`playerCount must be 2-8, got ${playerCount}`)
@@ -109,7 +110,7 @@ export function generateMap(
   let rng = seedForMap(seed, mapSize, playerCount)
 
   const center: Coord = { x: (width - 1) / 2, y: (height - 1) / 2 }
-  const ringRadius = Math.min(width, height) * 0.34
+  const ringRadius = Math.min(width, height) * homeIslandRingRadiusFactor
 
   // A seeded phase rotation so different seeds orient the ring differently while
   // keeping every seat symmetric within a single map.
