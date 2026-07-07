@@ -46,7 +46,13 @@ function testConfig(playerCount = 2): GameConfig {
 
 describe('mapToDefinition', () => {
   it('captures a generated map as an equal but independent copy', () => {
-    const map = generateMap(7, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      7,
+      'medium',
+      4,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const def = mapToDefinition(map)
     expect(def).toEqual(map)
     def.tiles[0]!.type = 'land'
@@ -56,7 +62,13 @@ describe('mapToDefinition', () => {
 
 describe('validateMapDefinition', () => {
   it('accepts a generated map with no errors', () => {
-    const map = generateMap(11, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      11,
+      'medium',
+      4,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
     expect(result).toEqual({ valid: true, errors: [] })
   })
@@ -162,7 +174,13 @@ describe('validateMapDefinition', () => {
 
   it('a map failing the port check is exactly one createGame would crash on (#207)', () => {
     const config = testConfig(2)
-    const map = generateMap(7, 'small', 2, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      7,
+      'small',
+      2,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const def = mapToDefinition(map)
     // Demote island 1's port to plain land: validation now rejects the map...
     const portIdx = def.tiles.findIndex((t) => t.type === 'port' && t.island === 1)
@@ -189,7 +207,13 @@ describe('validateMapDefinition', () => {
 
 describe('createGame with an authored map', () => {
   function authoredConfig(playerCount: number): GameConfig {
-    const map = generateMap(3, 'small', playerCount, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      3,
+      'small',
+      playerCount,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const config = testConfig(playerCount)
     return { ...config, mapDefinition: mapToDefinition(map) }
   }

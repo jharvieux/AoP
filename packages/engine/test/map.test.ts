@@ -12,9 +12,15 @@ import {
 } from '../src'
 import { GAME_SETUP } from './fixtures'
 
-/** Wrap the generator with the home-island radius the engine now receives from content. */
+/** Wrap the generator with the home-island radius and ring factor the engine now receives from content. */
 const generateMap = (seed: number, mapSize: MapSize, playerCount: number): GameMap =>
-  generateMapRaw(seed, mapSize, playerCount, GAME_SETUP.homeIslandRadius)
+  generateMapRaw(
+    seed,
+    mapSize,
+    playerCount,
+    GAME_SETUP.homeIslandRadius,
+    GAME_SETUP.homeIslandRingRadiusFactor,
+  )
 
 function landCount(map: GameMap): number {
   return map.tiles.filter((t) => t.type === 'land' || t.type === 'port').length
@@ -113,5 +119,19 @@ describe('start positions', () => {
         expect(chebyshevDistance(map.startPositions[i]!, map.startPositions[j]!)).toBeGreaterThan(4)
       }
     }
+  })
+
+  it('respects the ring radius factor for home island placement', () => {
+    // At 0.40 factor, a 32-tile medium map should have ring radius ~12.8 tiles.
+    // Start positions are water tiles adjacent to ports at the island edge, so they sit
+    // roughly homeIslandRadius closer to center: ~12.8 - 2 = ~10.8 tiles away.
+    // Account for rounding, grid quantization, and phase rotation: ±2.5 tiles tolerance.
+    const map = generateMap(11, 'medium', 4)
+    const center = { x: (map.width - 1) / 2, y: (map.height - 1) / 2 }
+    const expectedRadius = map.width * GAME_SETUP.homeIslandRingRadiusFactor
+    const dists = map.startPositions.map((s) => Math.hypot(s.x - center.x, s.y - center.y))
+    const avgDist = dists.reduce((a, b) => a + b, 0) / dists.length
+    expect(avgDist).toBeGreaterThan(expectedRadius - GAME_SETUP.homeIslandRadius - 2.5)
+    expect(avgDist).toBeLessThan(expectedRadius - GAME_SETUP.homeIslandRadius + 2.5)
   })
 })

@@ -141,7 +141,13 @@ describe('naval pathfinding', () => {
     // Pins the binary-heap implementation's output to a fixed, hand-checked route so
     // a future change to the heap's tie-break can't silently reorder ties (f, then h,
     // then tile index) without a test catching it.
-    const map = generateMap(42, 'medium', 4, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      42,
+      'medium',
+      4,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const from = map.startPositions[0]!
     const to = map.startPositions[1]!
     const path = findPath(map, from, to)
@@ -177,7 +183,13 @@ describe('naval pathfinding', () => {
     // Not a precise benchmark (CI hardware varies), just a generous ceiling that a
     // reintroduced linear open-list scan or whole-ocean flood would blow through:
     // ~1600 tiles, 8 corner-to-corner-ish queries, repeated 25x.
-    const map = generateMap(7, 'large', 8, GAME_SETUP.homeIslandRadius)
+    const map = generateMap(
+      7,
+      'large',
+      8,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+    )
     const starts = map.startPositions
 
     const startedAt = Date.now()

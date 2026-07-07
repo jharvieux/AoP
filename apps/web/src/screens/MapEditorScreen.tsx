@@ -196,6 +196,7 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
           genSize,
           genPlayerCount,
           GAME_SETUP.homeIslandRadius,
+          GAME_SETUP.homeIslandRingRadiusFactor,
           draft.name,
         ),
       )
