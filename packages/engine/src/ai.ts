@@ -4,8 +4,9 @@ import { combatantStrength, createCombatStats, type CombatStats } from './combat
 import type { ContentCatalog } from './content'
 import { unlockedRecruitTier } from './economy'
 import { areAllied, captainsOf, currentPlayer } from './game'
+import { isWaterTile, neighbors8, tileAt } from './map'
 import { findPath } from './pathfinding'
-import { applyAction } from './reducer'
+import { applyAction, cityToCombatant } from './reducer'
 import { nextFloat, seedRng } from './rng'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, levelForXp } from './skills'
@@ -204,6 +205,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   const enemies = state.captains.filter(
     (c) => c.ownerId !== playerId && !areAllied(state, playerId, c.ownerId) && !c.captured,
   )
+  // Conquest targets (#344): enemy cities the AI may assault or advance on.
+  // Allied seats' cities are never targeted — the AI does not betray (#25).
+  const enemyCities = state.cities.filter(
+    (c) => c.ownerId !== playerId && !areAllied(state, playerId, c.ownerId),
+  )
 
   // Personality overlay (#25): fold the seat's weights into the tuning so the
   // scorers stay personality-agnostic. Combat scalars are folded here directly
@@ -279,6 +285,43 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         }
       }
     }
+
+    // Conquest (#344): a captain carrying troops storms a beatable enemy city
+    // when adjacent, or sails toward the nearest one it can beat. A landing
+    // force is required — an empty ship can never win an assault — and a city
+    // assault is a land board battle, so it only applies when the match has
+    // board tuning (matches without it resolve combat naval-only).
+    if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
+      for (const city of enemyCities) {
+        const ratio = cityAssaultRatio(cap, city, stats, catalog)
+        if (chebyshevDistance(cap.position, city.position) <= 1) {
+          if (ratio >= engageMinRatio) {
+            consider({
+              action: {
+                type: 'attackCity',
+                playerId,
+                captainId: cap.id,
+                targetCityId: city.id,
+              },
+              score: attackScoreBase * ratio,
+            })
+          }
+          continue
+        }
+        if (ratio >= engageMinRatio) {
+          const step = approachCity(state, cap, city, pathCache)
+          if (step) {
+            const score =
+              advanceScoreBase +
+              (1 / (1 + chebyshevDistance(cap.position, city.position))) * advanceDistanceBonus
+            consider({
+              action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
+              score,
+            })
+          }
+        }
+      }
+    }
   }
 
   // Economy verbs (#67) all need the content catalog and its tuning; without
@@ -342,6 +385,59 @@ function strengthRatio(mine: Captain, enemy: Captain, stats: CombatStats | null)
 
 function toCombatant(c: Captain) {
   return { captainId: c.id, ownerId: c.ownerId, shipClassId: c.shipClassId, troops: c.troops }
+}
+
+/**
+ * A captain's assault strength against a city's garrison (#344), including the
+ * city's fortification defense bonus via {@link cityToCombatant} so the AI
+ * respects walls. Infinity when there are no stats to judge by, or the garrison
+ * is empty (a free capture). The caller has already verified the captain carries
+ * troops.
+ */
+function cityAssaultRatio(
+  cap: Captain,
+  city: CityState,
+  stats: CombatStats | null,
+  content: ContentCatalog | undefined,
+): number {
+  if (!stats) return Infinity
+  const mine = combatantStrength(toCombatant(cap), stats)
+  const garrison = combatantStrength(cityToCombatant(city, content), stats)
+  if (garrison <= 0) return Infinity
+  return mine / garrison
+}
+
+/**
+ * The farthest tile a captain can reach this turn along the sea route toward the
+ * nearest water tile bordering `city` — the staging square from which it can
+ * assault next turn. Unlike {@link stepToward} (which stops a tile short, to end
+ * adjacent to a water target), this lands the captain on the shore tile itself.
+ * Returns null when no water borders the city or none is reachable.
+ */
+function approachCity(
+  state: GameState,
+  cap: Captain,
+  city: CityState,
+  cache: Map<string, Coord[] | null>,
+): Coord | null {
+  let best: { step: Coord; dist: number } | null = null
+  for (const shore of neighbors8(state.map, city.position)) {
+    if (!isWaterTile(tileAt(state.map, shore))) continue
+    if (chebyshevDistance(cap.position, shore) === 0) continue
+    const key = `${cap.position.x},${cap.position.y}:${shore.x},${shore.y}`
+    let path = cache.get(key)
+    if (path === undefined) {
+      path = findPath(state.map, cap.position, shore)
+      cache.set(key, path)
+    }
+    if (!path || path.length < 2) continue
+    const idx = Math.min(cap.movementPoints, path.length - 1)
+    if (idx < 1) continue
+    const step = path[idx]!
+    const dist = chebyshevDistance(step, city.position)
+    if (!best || dist < best.dist) best = { step, dist }
+  }
+  return best?.step ?? null
 }
 
 /**

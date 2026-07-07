@@ -11,6 +11,7 @@ import {
   type AcceptAllianceAction,
   type Action,
   type AttackCaptainAction,
+  type AttackCityAction,
   type ChooseCaptainSkillAction,
   type ConstructBuildingAction,
   type GainCaptainXpAction,
@@ -40,6 +41,7 @@ import {
   BOARD_ORDER_CONDITIONS,
   boardOrdersDriver,
   boardPlanDriver,
+  resolveBoardCombat,
   type BoardCommand,
 } from './battleBoard'
 import {
@@ -140,6 +142,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       break
     case 'attackCaptain': {
       const result = attackCaptain(state, action)
+      next = result.state
+      battleReport = result.battleReport
+      break
+    }
+    case 'attackCity': {
+      const result = attackCity(state, action)
       next = result.state
       battleReport = result.battleReport
       break
@@ -342,6 +350,49 @@ export function captainToCombatant(
   return combatant
 }
 
+/** A city's garrison as an ordered troop list — sorted by unit id so the board
+ * deployment (and thus the whole battle) is deterministic regardless of the
+ * garrison record's key-insertion order. */
+export function garrisonToTroops(garrison: Record<string, number>): TroopStack[] {
+  return Object.entries(garrison)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([unitId, count]) => ({ unitId, count }))
+}
+
+/** Fold a surviving troop list back into a garrison record. */
+function troopsToGarrison(troops: TroopStack[]): Record<string, number> {
+  const garrison: Record<string, number> = {}
+  for (const t of troops) if (t.count > 0) garrison[t.unitId] = t.count
+  return garrison
+}
+
+/**
+ * Build the defending combatant for a city assault (#344): the garrison as
+ * troops, no ship (a city has none — zeroed ship stats keep it out of the
+ * strength math), and a fortification defense bonus summed from the city's
+ * standing buildings. Fortification numbers are balance data — they live in
+ * @aop/content's building defs (`defenseBonus`), never hardcoded here. Exported
+ * so the AI can score an assault against the same defender the reducer resolves.
+ */
+export function cityToCombatant(city: CityState, content: ContentCatalog | undefined): Combatant {
+  const combatant: Combatant = {
+    captainId: city.id,
+    ownerId: city.ownerId,
+    shipClassId: '',
+    troops: garrisonToTroops(city.garrison),
+    shipStats: { hull: 0, cannons: 0, speed: 0 },
+  }
+  if (content) {
+    const bonus = city.buildings.reduce(
+      (sum, b) => sum + (content.buildings[b]?.defenseBonus ?? 0),
+      0,
+    )
+    if (bonus > 0) combatant.defenseBonusPct = bonus
+  }
+  return combatant
+}
+
 /**
  * The combat AI driver a seat fights with when it has no player-supplied orders
  * (#25). Human seats and unprofiled AIs use the default; profiled AIs get a
@@ -529,6 +580,149 @@ function attackCaptain(
     players,
     alliances,
     captains,
+    rngState: result.rng,
+  })
+  return { state: settled, battleReport: report }
+}
+
+/**
+ * Assault an adjacent enemy city (#344): the attacker's embarked troops storm
+ * the garrison on the tactical board's land entry point ({@link resolveBoardCombat}).
+ * A decisive attacker win flips the city's ownership — and the elimination check
+ * that {@link settleEliminations} already runs turns a seat's last-city loss into
+ * a conquest victory, the win condition that was previously unreachable. A failed
+ * assault captures the attacking captain, exactly like a lost ship duel (#309).
+ */
+function attackCity(
+  state: GameState,
+  action: AttackCityAction,
+): { state: GameState; battleReport: BattleReport } {
+  const attacker = state.captains.find((c) => c.id === action.captainId)
+  if (!attacker) throw new InvalidActionError(`No captain ${action.captainId}`, action)
+  if (attacker.ownerId !== action.playerId) {
+    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
+  }
+  if (attacker.captured) {
+    throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
+  }
+  const target = state.cities.find((c) => c.id === action.targetCityId)
+  if (!target) throw new InvalidActionError(`No city ${action.targetCityId}`, action)
+  if (target.ownerId === action.playerId) {
+    throw new InvalidActionError('Cannot assault your own city', action)
+  }
+  if (chebyshevDistance(attacker.position, target.position) > 1) {
+    throw new InvalidActionError('City is not within assault range', action)
+  }
+  if (attacker.movementPoints < 1) {
+    throw new InvalidActionError('Captain has no movement left to assault', action)
+  }
+  if (attacker.troops.reduce((sum, t) => sum + t.count, 0) <= 0) {
+    throw new InvalidActionError('Captain has no troops to land for an assault', action)
+  }
+  if (!state.config.combatStats) {
+    throw new InvalidActionError('No combat stats configured for this match', action)
+  }
+  // A city assault is a land board battle; without board tuning there is no
+  // board to fight it on (matches configured naval-only, or pre-#39 saves).
+  if (!state.config.combatStats.battle) {
+    throw new InvalidActionError('No board tuning configured — city assault is unavailable', action)
+  }
+  for (const command of action.boardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
+
+  // Betrayal (#138/#177): assaulting an ally's city breaks the alliance and
+  // costs reputation in the same action as the battle, keyed on the city's
+  // owner — the same rule as a ship duel against an ally (attackCaptain).
+  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
+  const betrayal =
+    areAllied(state, attacker.ownerId, target.ownerId) ||
+    wasAllyWithinTruce(state.alliances, attacker.ownerId, target.ownerId, state.round, truceRounds)
+
+  const stats = createCombatStats(state.config.combatStats)
+  const content = state.config.content
+
+  // The attacker plays its recorded land-melee plan, or its saved board doctrine,
+  // or the board AI — the same fallback chain as a boarding melee (#39/#93). The
+  // garrison has no owner-supplied board orders, so it is always the board AI.
+  const result = resolveBoardCombat(
+    {
+      attacker: captainToCombatant(attacker, content),
+      defender: cityToCombatant(target, content),
+    },
+    stats,
+    state.rngState,
+    action.boardCommands?.length
+      ? { attacker: boardPlanDriver(action.boardCommands) }
+      : attacker.boardOrders?.length
+        ? { attacker: boardOrdersDriver(attacker.boardOrders) }
+        : {},
+    'land',
+  )
+  const { report } = result
+  const attackerWon = report.attackerSurvived
+  const combatWinXp = state.config.setup.combatWinXp
+  const captivityReturnRound = state.round + state.config.setup.captainCaptivityRounds
+
+  const captains = state.captains.map((c) => {
+    if (c.id !== attacker.id) return c
+    if (attackerWon) {
+      return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + combatWinXp }
+    }
+    return {
+      ...c,
+      captured: true,
+      capturedBy: target.ownerId,
+      captivityReturnRound,
+      troops: [],
+      movementPoints: 0,
+      maxMovementPoints: 0,
+    }
+  })
+
+  const cities = state.cities.map((c) => {
+    if (c.id !== target.id) return c
+    if (attackerWon) {
+      // The city changes hands with a wiped garrison, its build spent for the
+      // round (so the captor can't also build with it this turn), and its stale
+      // recruit pool cleared — next round replenishes it for the new owner's
+      // faction.
+      return { ...c, ownerId: attacker.ownerId, garrison: {}, builtThisRound: true, unitAvailability: {} }
+    }
+    return { ...c, garrison: troopsToGarrison(result.defenderTroops) }
+  })
+
+  const players = betrayal
+    ? state.players.map((p) =>
+        p.id === attacker.ownerId
+          ? {
+              ...p,
+              reputation: Math.max(0, p.reputation - state.config.setup.betrayalReputationPenalty),
+            }
+          : p,
+      )
+    : state.players
+  const alliances = betrayal
+    ? clearBrokenAlliance(
+        {
+          ...state.alliances,
+          pairs: state.alliances.pairs.filter(
+            (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
+          ),
+        },
+        attacker.ownerId,
+        target.ownerId,
+      )
+    : state.alliances
+
+  const settled = settleEliminations({
+    ...state,
+    players,
+    alliances,
+    captains,
+    cities,
     rngState: result.rng,
   })
   return { state: settled, battleReport: report }
