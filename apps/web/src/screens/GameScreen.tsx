@@ -1,5 +1,7 @@
 import {
   captainToCombatant,
+  cityToCombatant,
+  combatantStrength,
   createCombatStats,
   currentPlayer,
   estimateOdds,
@@ -26,6 +28,7 @@ import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   probeBoardingBattle,
+  probeCityAssault,
   probeTacticalBattle,
   stackLosses,
   type BoardingProbeOutcome,
@@ -78,6 +81,21 @@ interface BoardingState {
 }
 
 /**
+ * A city assault (#344) that reached the land melee, mid-command. Like
+ * {@link BoardingState} but the target is a city, so there is no naval gunnery
+ * phase — the embarked troops fight the garrison on the land board directly.
+ * Dispatched as an `attackCity` action with the recorded `boardCommands` once
+ * the probe resolves.
+ */
+interface AssaultBoardingState {
+  captainId: string
+  targetCityId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
  * An attack being fought round-by-round in Tactical mode (#305), still ahead
  * of the boarding melee (if any). `ctx` is the engine's own `TacticContext`
  * for the next undecided round, from the live probe; picking a tactic
@@ -115,7 +133,7 @@ export function GameScreen({
   onWatchSlot,
   autosaveFailing,
 }: GameScreenProps) {
-  const { factionName } = useTheme()
+  const { factionName, unitName } = useTheme()
   const player = currentPlayer(game)
   // Fog and interaction are anchored to the human seat, so the view stays stable
   // while AI seats take their turns.
@@ -128,6 +146,11 @@ export function GameScreen({
   const [encounterId, setEncounterId] = useState<string | null>(null)
   const [boarding, setBoarding] = useState<BoardingState | null>(null)
   const [tacticalRound, setTacticalRound] = useState<TacticalRoundState | null>(null)
+  // Enemy-city assault (#344): the city awaiting the assault-confirm sheet, the
+  // in-progress land melee, and the read-only enemy-city info view.
+  const [assaultCityId, setAssaultCityId] = useState<string | null>(null)
+  const [assaultBoarding, setAssaultBoarding] = useState<AssaultBoardingState | null>(null)
+  const [enemyCityInfoId, setEnemyCityInfoId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
 
@@ -136,7 +159,7 @@ export function GameScreen({
   useBackgroundMusic(
     selectGameplayMusicContext({
       battleReportOpen: !!battleReport,
-      boardingOpen: !!boarding || !!tacticalRound,
+      boardingOpen: !!boarding || !!tacticalRound || !!assaultBoarding,
     }),
   )
 
@@ -171,6 +194,12 @@ export function GameScreen({
     : null
   const attackTarget = attackTargetId
     ? (game.captains.find((c) => c.id === attackTargetId) ?? null)
+    : null
+  const assaultCity = assaultCityId
+    ? (game.cities.find((c) => c.id === assaultCityId) ?? null)
+    : null
+  const enemyCityInfo = enemyCityInfoId
+    ? (game.cities.find((c) => c.id === enemyCityInfoId) ?? null)
     : null
   const encounter = encounterId
     ? (game.encounters.find((e) => e.id === encounterId && e.active) ?? null)
@@ -231,6 +260,23 @@ export function GameScreen({
       return
     }
 
+    // Enemy city (#344): a landing force adjacent to it opens the assault
+    // confirm; otherwise (no eligible captain) the read-only enemy-city info.
+    const cityHere = game.cities.find((c) => c.position.x === x && c.position.y === y)
+    if (cityHere && cityHere.ownerId !== viewer.id) {
+      if (
+        selectedCaptain &&
+        chebyshevDistance(selectedCaptain.position, cityHere.position) <= 1 &&
+        selectedCaptain.movementPoints >= 1 &&
+        selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0
+      ) {
+        setAssaultCityId(cityHere.id)
+      } else {
+        setEnemyCityInfoId(cityHere.id)
+      }
+      return
+    }
+
     const encounterHere = game.encounters.find(
       (e) => e.active && e.position.x === x && e.position.y === y,
     )
@@ -270,6 +316,18 @@ export function GameScreen({
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaptain, attackTarget, game])
+
+  // Assault strength preview (#344): the landing force vs the garrison, walls
+  // included (cityToCombatant folds in the fortification defense bonus).
+  const assaultStrength = useMemo(() => {
+    if (!selectedCaptain || !assaultCity || !game.config.combatStats) return null
+    const stats = createCombatStats(game.config.combatStats)
+    return {
+      attacker: combatantStrength(captainToCombatant(selectedCaptain, game.config.content), stats),
+      garrison: combatantStrength(cityToCombatant(assaultCity, game.config.content), stats),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCaptain, assaultCity, game])
 
   /**
    * Engage the target (#93, #305). Auto mode (the default) is unchanged:
@@ -451,6 +509,90 @@ export function GameScreen({
     // Resolved (or the sim failed): submit the recorded plan — the engine
     // re-derives the identical fight from the action log.
     dispatchBoarding(boarding, commands)
+  }
+
+  /**
+   * Assault the pending enemy city (#344). Tactical mode routes the land melee
+   * through the interactive board planner (probeCityAssault); Auto mode
+   * dispatches straight to the reducer, where the board AI fights the garrison.
+   */
+  function confirmAssault() {
+    if (game.config.setup.battleResolution === 'tactical') startTacticalAssault()
+    else autoResolveAssault()
+  }
+
+  /** Auto-resolve the assault, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolveAssault() {
+    if (!selectedCaptain || !assaultCity) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const captainId = selectedCaptain.id
+    const targetCityId = assaultCity.id
+    setAssaultCityId(null)
+    setSelectedCaptainId(null)
+    setAssaultBoarding(null)
+    onAction({ type: 'attackCity', playerId: viewer.id, captainId, targetCityId })
+  }
+
+  /** Tactical mode (#344/#305): probe the land board instead of resolving outright. */
+  function startTacticalAssault() {
+    if (!selectedCaptain || !assaultCity) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const captainId = selectedCaptain.id
+    const targetCityId = assaultCity.id
+    setAssaultCityId(null)
+    setSelectedCaptainId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probeCityAssault(game, { captainId, targetCityId }, [])
+    } catch (err) {
+      console.error('City-assault simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setAssaultBoarding({ captainId, targetCityId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'attackCity', playerId: viewer.id, captainId, targetCityId })
+  }
+
+  /** Dispatch the assault with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchAssault(current: AssaultBoardingState, commands: BoardCommand[]) {
+    setAssaultBoarding(null)
+    onAction({
+      type: 'attackCity',
+      playerId: viewer.id,
+      captainId: current.captainId,
+      targetCityId: current.targetCityId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+  }
+
+  /** One confirmed land-melee order: extend the plan and re-probe for the next activation. */
+  function orderAssaultCommand(command: BoardCommand) {
+    if (!assaultBoarding) return
+    const commands = [...assaultBoarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probeCityAssault(
+        game,
+        { captainId: assaultBoarding.captainId, targetCityId: assaultBoarding.targetCityId },
+        commands,
+      )
+    } catch (err) {
+      console.error('City-assault simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setAssaultBoarding({
+        ...assaultBoarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(assaultBoarding.view, probe.view),
+      })
+      return
+    }
+    dispatchAssault(assaultBoarding, commands)
   }
 
   /** Resolution bark for the encounter sheet closing (#75); kind/choice-dependent. */
@@ -647,9 +789,13 @@ export function GameScreen({
 
       {/* Between-turns placement only (docs/ARCHITECTURE.md §9): no attack/encounter
           sheet or building modal is open, and it's never the viewer's turn to act. */}
-      {!isViewerTurn && !attackTarget && !encounter && !cityOpen && !savesOpen && (
-        <AdSlot placement="between-turns" />
-      )}
+      {!isViewerTurn &&
+        !attackTarget &&
+        !assaultCity &&
+        !enemyCityInfo &&
+        !encounter &&
+        !cityOpen &&
+        !savesOpen && <AdSlot placement="between-turns" />}
 
       {tacticalRound && (
         <TacticalRoundSheet
@@ -667,6 +813,16 @@ export function GameScreen({
           losses={boarding.losses}
           onCommand={orderBoardingCommand}
           onAutoResolve={() => dispatchBoarding(boarding, boarding.commands)}
+        />
+      )}
+
+      {assaultBoarding && (
+        <BoardingCommandSheet
+          key={assaultBoarding.commands.length}
+          view={assaultBoarding.view}
+          losses={assaultBoarding.losses}
+          onCommand={orderAssaultCommand}
+          onAutoResolve={() => dispatchAssault(assaultBoarding, assaultBoarding.commands)}
         />
       )}
 
@@ -726,6 +882,83 @@ export function GameScreen({
                 </button>
               )}
             </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {assaultCity && selectedCaptain && (
+        <BottomSheet
+          title={`Assault ${assaultCity.name}?`}
+          onClose={() => setAssaultCityId(null)}
+        >
+          <section>
+            <p className="building-option__hint">
+              {factionName(factionOf(assaultCity.ownerId), FACTIONS[factionOf(assaultCity.ownerId)].name)}{' '}
+              stronghold. Your landing force storms the garrison — win it and the city is yours;
+              lose and your captain is taken captive.
+            </p>
+            {assaultStrength && (
+              <p className="building-option__hint">
+                Your force {Math.round(assaultStrength.attacker)} vs garrison{' '}
+                {Math.round(assaultStrength.garrison)}
+                {assaultCity.buildings.some(
+                  (b) => (game.config.content?.buildings[b]?.defenseBonus ?? 0) > 0,
+                )
+                  ? ' (fortified)'
+                  : ''}
+              </p>
+            )}
+            <div className="button-group">
+              <button className="primary" onClick={confirmAssault}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                {game.config.setup.battleResolution === 'tactical' ? 'Assault tactically' : 'Assault'}
+              </button>
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolveAssault}>
+                  Auto-resolve
+                </button>
+              )}
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {enemyCityInfo && (
+        <BottomSheet title={enemyCityInfo.name} onClose={() => setEnemyCityInfoId(null)}>
+          <section>
+            <p className="building-option__hint">
+              Held by{' '}
+              {factionName(
+                factionOf(enemyCityInfo.ownerId),
+                FACTIONS[factionOf(enemyCityInfo.ownerId)].name,
+              )}
+              .
+            </p>
+            {visibleKeys.has(`${enemyCityInfo.position.x},${enemyCityInfo.position.y}`) ? (
+              <>
+                <p className="building-option__hint">
+                  Garrison:{' '}
+                  {Object.entries(enemyCityInfo.garrison).filter(([, n]) => n > 0).length > 0
+                    ? Object.entries(enemyCityInfo.garrison)
+                        .filter(([, n]) => n > 0)
+                        .map(([unitId, n]) => `${unitName(unitId, unitId)} x${n}`)
+                        .join(', ')
+                    : 'undefended'}
+                </p>
+                {enemyCityInfo.buildings.some(
+                  (b) => (game.config.content?.buildings[b]?.defenseBonus ?? 0) > 0,
+                ) && <p className="building-option__hint">Fortified with walls.</p>}
+                <p className="building-option__hint">
+                  Sail a captain carrying troops alongside it, then tap it to assault.
+                </p>
+              </>
+            ) : (
+              <p className="building-option__hint">
+                Out of sight — move a captain closer to scout its garrison.
+              </p>
+            )}
           </section>
         </BottomSheet>
       )}
