@@ -44,7 +44,11 @@ jobs:
       # the existing source convention instead of rewriting every import in three
       # packages just to satisfy Deno.
       #
-      # Typechecks every function entrypoint against the workspace @aop/* sources via
+      # The @aop/* import map in supabase/functions/deno.json points at the generated
+      # (gitignored) _vendor/ tree (#339), so it must be built before any deno command.
+      - name: Vendor @aop/* workspace deps
+        run: node scripts/vendor-function-deps.mjs
+      # Typechecks every function entrypoint against the vendored @aop/* sources via
       # the import map in supabase/functions/deno.json (same invocation pattern as the
       # comment atop supabase/functions/_shared/match.test.ts).
       - name: deno check (every function entrypoint)

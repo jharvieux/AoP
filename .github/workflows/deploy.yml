@@ -43,6 +43,10 @@ jobs:
       # --- 2. Edge functions: deploy every function in supabase/functions (README.md
       # § Deploy & run). Function-scoped secrets (STRIPE_SECRET_KEY, CRON_SECRET, etc.)
       # are configured on the Supabase project directly, not passed through this workflow.
+      # deno.json's @aop/* import map points at the generated (gitignored) _vendor/
+      # tree (#339) — the bundler can't see packages/*/src, so vendor first.
+      - name: Vendor @aop/* workspace deps
+        run: node scripts/vendor-function-deps.mjs
       - name: Deploy edge functions
         run: pnpm exec supabase functions deploy
         env:

@@ -12,7 +12,7 @@ blocked, MEMORY D-025)._
     empty going in — the project existed but nothing had ever been deployed to it).
   - **Edge functions: still 0 deployed**, but made real progress. Found and fixed the
     actual blocking bug (#339, PR #340 open, not yet merged): `supabase/functions/
-    deno.json`'s import map pointed `@aop/shared`/`@aop/engine`/`@aop/content` at
+deno.json`'s import map pointed `@aop/shared`/`@aop/engine`/`@aop/content` at
     `../../packages/*/src`, which `supabase functions deploy`'s bundler can't reach
     (only sees `supabase/functions/`). Added `scripts/vendor-function-deps.mjs` to copy
     those packages into a gitignored `supabase/functions/_vendor/` with `.ts` extensions

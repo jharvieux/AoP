@@ -8,8 +8,9 @@
 // `supabase/functions/_vendor/`, which deno.json points at instead, so both paths resolve
 // the same files.
 //
-// Usage: `node scripts/vendor-function-deps.mjs`. Run before `supabase start` and before
-// `supabase functions deploy` (wired into both in package.json / deploy.yml).
+// Usage: `node scripts/vendor-function-deps.mjs`. Run before any deno check/test, before
+// `supabase start`, and before `supabase functions deploy` (CI and deploy.yml run it as a
+// step; local runs invoke it manually).
 
 import { cpSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
