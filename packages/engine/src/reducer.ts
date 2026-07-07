@@ -69,7 +69,7 @@ import {
   type TacticDriver,
 } from './tactics'
 import type { AllianceState, Captain, CityState, GameState, PlayerState, TroopStack } from './types'
-import { accumulateExploredTiles } from './visibility'
+import { accumulateExploredTiles, tileKey, tilesInRadius } from './visibility'
 
 /**
  * What a captain learned from resolving a random encounter (#23) — the result of
@@ -238,6 +238,18 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
     )
   }
 
+  // Reveal every tile the captain sailed over, not just the destination (#295).
+  // Only exploredTiles (persistent) accumulates the path; currentlyVisibleTiles
+  // (live vision) is derived from current positions only, via the post-action
+  // fold below — a ship doesn't retain live vision over its wake.
+  const { captainVisionRadius } = state.config.setup
+  const explored = new Set(state.exploredTiles[action.playerId] ?? [])
+  for (const step of path) {
+    for (const tile of tilesInRadius(step, captainVisionRadius, state.map)) {
+      explored.add(tileKey(tile))
+    }
+  }
+
   return {
     ...state,
     captains: state.captains.map((c) =>
@@ -245,6 +257,10 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
         ? { ...c, position: { ...action.to }, movementPoints: c.movementPoints - cost }
         : c,
     ),
+    exploredTiles: {
+      ...state.exploredTiles,
+      [action.playerId]: Array.from(explored),
+    },
   }
 }
 
