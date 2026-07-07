@@ -21,6 +21,7 @@ function config(): GameConfig {
       startingCaptainMovement: 5,
       startingShipClass: 'sloop',
       homeIslandRadius: 2,
+      homeIslandRingRadiusFactor: 0.4,
       startingBuildings: ['townhall'],
       cityVisionRadius: 3,
       captainVisionRadius: 2,

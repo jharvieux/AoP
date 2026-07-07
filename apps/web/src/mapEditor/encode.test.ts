@@ -12,7 +12,14 @@ import { decodeMapCode, encodeMapCode } from './encode'
 
 describe('map code encode/decode', () => {
   it('round-trips a sculpted draft (tiles, start positions, encounters, markers)', () => {
-    let draft = draftFromGenerated(42, 'small', 2, 2, 'Sculpted Isle ⚓')
+    let draft = draftFromGenerated(
+      42,
+      'small',
+      2,
+      2,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+      'Sculpted Isle ⚓',
+    )
     draft = placeEncounter(draft, { x: 1, y: 1 }, 'merchant')
     draft = placeResourceMarker(draft, { x: 2, y: 2 }, 'gold')
 
@@ -33,13 +40,23 @@ describe('map code encode/decode', () => {
   })
 
   it('preserves non-Latin1 characters in the map name', () => {
-    const draft = renameDraft(draftFromGenerated(1, 'small', 2, 2, 'x'), 'Île au Trésor 海')
+    const draft = renameDraft(
+      draftFromGenerated(1, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor, 'x'),
+      'Île au Trésor 海',
+    )
     const decoded = decodeMapCode(encodeMapCode(draft))
     expect(decoded.name).toBe('Île au Trésor 海')
   })
 
   it('a generated map survives export → import → engine validation end to end', () => {
-    const draft = draftFromGenerated(7, 'small', 2, GAME_SETUP.homeIslandRadius, 'Round Trip')
+    const draft = draftFromGenerated(
+      7,
+      'small',
+      2,
+      GAME_SETUP.homeIslandRadius,
+      GAME_SETUP.homeIslandRingRadiusFactor,
+      'Round Trip',
+    )
     const decoded = decodeMapCode(encodeMapCode(draft))
     const result = validateMapDefinition(draftToMapDefinition(decoded), MAP_VALIDATION_LIMITS)
     expect(result.errors).toEqual([])
@@ -47,7 +64,7 @@ describe('map code encode/decode', () => {
   })
 
   it('tolerates whitespace and line wrapping injected by chat/forum pastes', () => {
-    const draft = draftFromGenerated(1, 'small', 2, 2, 'x')
+    const draft = draftFromGenerated(1, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor, 'x')
     const code = encodeMapCode(draft)
     const wrapped = `  ${code.slice(0, 40)}\n${code.slice(40, 100)} \n ${code.slice(100)}\t`
     expect(decodeMapCode(wrapped).tiles).toEqual(draft.tiles)
@@ -62,7 +79,9 @@ describe('map code encode/decode', () => {
   })
 
   it('rejects a v1-prefixed code whose payload declares a different version', () => {
-    const code = encodeMapCode(draftFromGenerated(1, 'small', 2, 2, 'x'))
+    const code = encodeMapCode(
+      draftFromGenerated(1, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor, 'x'),
+    )
     const payload = JSON.parse(atob(code.replace('AOPMAP1:', ''))) as { v: number }
     payload.v = 2
     expect(() => decodeMapCode(`AOPMAP1:${btoa(JSON.stringify(payload))}`)).toThrow(
@@ -75,7 +94,7 @@ describe('map code encode/decode', () => {
   })
 
   it('rejects a tile-run count that does not match the declared dimensions', () => {
-    const draft = draftFromGenerated(1, 'small', 2, 2, 'x')
+    const draft = draftFromGenerated(1, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor, 'x')
     const code = encodeMapCode(draft)
     const payload = JSON.parse(atob(code.replace('AOPMAP1:', ''))) as {
       width: number

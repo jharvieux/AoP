@@ -45,7 +45,13 @@ export function createGame(config: GameConfig): GameState {
   // defensively so mutating the caller's object can't leak into GameState.
   const map = config.mapDefinition
     ? mapToDefinition(config.mapDefinition)
-    : generateMap(config.seed, config.mapSize, config.players.length, setup.homeIslandRadius)
+    : generateMap(
+        config.seed,
+        config.mapSize,
+        config.players.length,
+        setup.homeIslandRadius,
+        setup.homeIslandRingRadiusFactor,
+      )
 
   if (map.startPositions.length !== config.players.length) {
     throw new Error(

@@ -24,7 +24,7 @@ import {
   validateMapDefinition,
   type EncounterPlacement,
 } from '../src'
-import { MAP_VALIDATION_LIMITS } from './fixtures'
+import { GAME_SETUP, MAP_VALIDATION_LIMITS } from './fixtures'
 
 // Available in every test runtime (Node >= 20); declared locally because the
 // engine's tsconfig lib is pure ES2022 by design (no host APIs).
@@ -47,7 +47,9 @@ function summary(overrides: Partial<CommunityMapSummary>): CommunityMapSummary {
 
 describe('server-side publish re-validation path (#63 Tier 2)', () => {
   it('a generated map survives encode -> decode -> engine validation, as publish-map runs it', () => {
-    const def = mapToDefinition(generateMap(7, 'small', 2, 2))
+    const def = mapToDefinition(
+      generateMap(7, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor),
+    )
     const payload: MapCodePayload = {
       name: 'Round Trip',
       width: def.width,
@@ -111,7 +113,9 @@ describe('server-side publish re-validation path (#63 Tier 2)', () => {
   })
 
   it('unknown entity kinds decode structurally but fail engine validation (the publish gate)', () => {
-    const def = mapToDefinition(generateMap(7, 'small', 2, 2))
+    const def = mapToDefinition(
+      generateMap(7, 'small', 2, 2, GAME_SETUP.homeIslandRingRadiusFactor),
+    )
     const payload: MapCodePayload = {
       name: 'Sneaky',
       width: def.width,
