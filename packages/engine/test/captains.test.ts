@@ -4,6 +4,7 @@ import {
   applyAction,
   captainsOf,
   createGame,
+  currentlyVisibleTiles,
   currentPlayer,
   findPath,
   generateMap,
@@ -12,11 +13,15 @@ import {
   pathCost,
   replay,
   tileAt,
+  tileKey,
+  tilesInRadius,
   type Action,
   type ContentCatalog,
   type GameConfig,
   type GameMap,
   type GameState,
+  type MapDefinition,
+  type Tile,
 } from '../src'
 import { GAME_SETUP } from './fixtures'
 
@@ -480,5 +485,125 @@ describe('ransomCaptain action (#309)', () => {
     expect(() =>
       applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p2cap.id }),
     ).toThrow(InvalidActionError)
+  })
+})
+
+describe('fog of war along a travel path (#295)', () => {
+  // Far enough from the port row (below) that a home city's own vision disc
+  // (cityVisionRadius: 3, see fixtures.ts) never reaches the lane the captains
+  // sail along — otherwise city vision could mask the bug this suite targets.
+  const LANE_Y = 8
+
+  /**
+   * A straight, all-deep-water lane, long enough for multi-step moves, with the
+   * two players parked at either end. Gives full control over path shape and
+   * length, unlike the generated map used elsewhere in this file.
+   */
+  function laneConfig(length: number, movement = GAME_SETUP.startingCaptainMovement): GameConfig {
+    const width = length + 1
+    const height = LANE_Y + 1
+    const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+      type: 'deep',
+      island: -1,
+    }))
+    // Each seat's capital sits on a port tile (createGame looks one up per home
+    // island); tuck them onto row y=0, far from the y=LANE_Y row the captains
+    // actually sail along.
+    tiles[0 * width + 0] = { type: 'port', island: 0 }
+    tiles[0 * width + (width - 1)] = { type: 'port', island: 1 }
+    const mapDefinition: MapDefinition = {
+      width,
+      height,
+      tiles,
+      startPositions: [
+        { x: 0, y: LANE_Y },
+        { x: width - 1, y: LANE_Y },
+      ],
+    }
+    return {
+      seed: 1,
+      mapSize: 'medium',
+      mapDefinition,
+      setup: { ...GAME_SETUP, startingCaptainMovement: movement },
+      players: [
+        { id: 'p1', name: 'Player 1', faction: 'pirates', isAI: false },
+        { id: 'p2', name: 'Player 2', faction: 'british', isAI: true },
+      ],
+    }
+  }
+
+  it.each([1, 2, 3, 5])(
+    'explores every tile crossed by a %d-step move, not just the destination',
+    (steps) => {
+      const state = createGame(laneConfig(10))
+      const cap = captainsOf(state, 'p1')[0]!
+      const to = { x: cap.position.x + steps, y: cap.position.y }
+      const path = findPath(state.map, cap.position, to)!
+      expect(path).toHaveLength(steps + 1)
+
+      const next = applyAction(state, {
+        type: 'moveCaptain',
+        playerId: 'p1',
+        captainId: cap.id,
+        to,
+      })
+
+      const explored = new Set(next.exploredTiles['p1'] ?? [])
+      const { captainVisionRadius } = state.config.setup
+      for (const step of path) {
+        for (const tile of tilesInRadius(step, captainVisionRadius, state.map)) {
+          expect(explored.has(tileKey(tile))).toBe(true)
+        }
+      }
+    },
+  )
+
+  it('remembers a wake tile far from both endpoints even though it drops out of live vision', () => {
+    // A long single move (well beyond 2x vision radius) so the midpoint of the
+    // path sits outside *both* the spawn-time vision disc and the
+    // destination's vision disc — the only way to tell this fix apart from
+    // folding just the endpoints.
+    const movement = 10
+    const state = createGame(laneConfig(20, movement))
+    const cap = captainsOf(state, 'p1')[0]!
+    const start = { ...cap.position }
+    const to = { x: start.x + movement, y: start.y }
+    const path = findPath(state.map, start, to)!
+    const wake = path[Math.floor(path.length / 2)]!
+
+    // Guard: the midpoint tile is genuinely outside both endpoints' vision
+    // discs, otherwise this test wouldn't distinguish the fix from the old
+    // behaviour (which only ever folded the start and destination discs).
+    const { captainVisionRadius } = state.config.setup
+    expect(chebyshevDistance(start, wake)).toBeGreaterThan(captainVisionRadius)
+    expect(chebyshevDistance(to, wake)).toBeGreaterThan(captainVisionRadius)
+
+    const next = applyAction(state, {
+      type: 'moveCaptain',
+      playerId: 'p1',
+      captainId: cap.id,
+      to,
+    })
+
+    expect(next.exploredTiles['p1']).toContain(tileKey(wake))
+    expect(currentlyVisibleTiles(next, 'p1').map(tileKey)).not.toContain(tileKey(wake))
+  })
+
+  it('replays identically across moves of varying length, with the full wake explored', () => {
+    const log: Action[] = [
+      { type: 'moveCaptain', playerId: 'p1', captainId: 'cap-p1', to: { x: 2, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'moveCaptain', playerId: 'p2', captainId: 'cap-p2', to: { x: 8, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'moveCaptain', playerId: 'p1', captainId: 'cap-p1', to: { x: 5, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(createGame(laneConfig(10)), log)
+    const b = replay(createGame(laneConfig(10)), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+
+    for (let x = 0; x <= 5; x++) {
+      expect(a.exploredTiles['p1']).toContain(tileKey({ x, y: LANE_Y }))
+    }
   })
 })

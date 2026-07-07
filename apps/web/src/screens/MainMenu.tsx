@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '../auth'
 import { useAudioSettings } from '../audio/useAudioSettings'
 import { useBackgroundMusic } from '../audio/useBackgroundMusic'
 import { tapFeedback } from '../audio/feedback'
@@ -40,6 +41,7 @@ export function MainMenu({
   onQuickMatch,
   onLeaderboard,
 }: MainMenuProps) {
+  const auth = useAuth()
   const {
     muted,
     volume,
@@ -61,9 +63,15 @@ export function MainMenu({
     }
   }
 
+  // Show auth state on the Account button for discoverability (#296)
+  const accountLabel =
+    auth.state.status === 'authenticated'
+      ? `Account — ${auth.state.user.email || 'Signed in'}`
+      : 'Sign In / Account'
+
   const secondaryActions: Array<{ label: string; onClick: () => void; wide?: boolean }> = [
     { label: 'Theme Packs', onClick: onThemePacks },
-    { label: 'Account', onClick: onAccount },
+    { label: accountLabel, onClick: onAccount },
     { label: 'Watch Replay', onClick: onWatchReplay },
     { label: 'Spectate', onClick: onSpectate },
     { label: 'Grant Spectator Access', onClick: onDesignateSpectator },
