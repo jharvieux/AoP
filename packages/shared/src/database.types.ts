@@ -574,7 +574,7 @@ export type Database = {
         Returns: undefined
       }
       match_seed: { Args: { p_match_id: string }; Returns: number }
-      user_match_ids: { Args: { uid: string }; Returns: string[] }
+      user_match_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
