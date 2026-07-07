@@ -208,6 +208,15 @@ export function MapCanvas(props: MapCanvasProps) {
   // Shared with the pack-switch effect below so it can release the previous
   // pack's decoded textures without tearing down the whole Pixi scene (#245).
   const textureLoaderRef = useRef<TextureLoader<Texture> | null>(null)
+  // Living map (#298): sprites and their "rest" position/kind recorded during
+  // the last full draw(), so the always-on ambient tick below can nudge
+  // alpha/position every frame — cheap property writes, no Graphics rebuild —
+  // without waiting for the next dirty redraw.
+  const ambientTileSpritesRef = useRef(
+    new Map<string, { sprite: Sprite; kind: 'water' | 'port' }>(),
+  )
+  const shipSpritesRef = useRef(new Map<string, { sprite: Sprite; baseX: number; baseY: number }>())
+  const hasSelectionRef = useRef(false)
 
   // Keyboard-only path onto the map (#247): the arrow-key tile cursor and its
   // offscreen announcement live in React state (driven by a plain onKeyDown
@@ -286,6 +295,10 @@ export function MapCanvas(props: MapCanvasProps) {
     const shipSprites = new Container()
     const fog = new Graphics() // Feathered fog overlay (#299)
     const highlight = new Graphics()
+    // Living map (#298): a dedicated layer for the selected-captain/city
+    // pulse, kept separate from `highlight`'s static keyboard-cursor rect so
+    // the pulse's per-frame alpha animation doesn't also dim the cursor.
+    const selectionPulse = new Graphics()
     // Draw order: flat-color fallback first, then sprite layers on top, so a
     // texture that finishes loading later simply covers its own fallback tile.
     // Fog overlay drawn after entities so it can feather over all content.
@@ -298,6 +311,7 @@ export function MapCanvas(props: MapCanvasProps) {
       shipSprites,
       fog,
       highlight,
+      selectionPulse,
     )
     pixiApp.stage.addChild(world)
 
@@ -368,6 +382,12 @@ export function MapCanvas(props: MapCanvasProps) {
       const maxX = Math.min(map.width - 1, Math.ceil((w - view.x) / view.scale / TILE) + 1)
       const maxY = Math.min(map.height - 1, Math.ceil((h - view.y) / view.scale / TILE) + 1)
 
+      // Living map (#298): repopulated below as textured tile/ship sprites
+      // are (re)assigned this pass, so the ambient tick always nudges exactly
+      // what's currently on screen.
+      ambientTileSpritesRef.current.clear()
+      shipSpritesRef.current.clear()
+
       tiles.clear()
       fog.clear()
       tilePool.begin()
@@ -394,7 +414,12 @@ export function MapCanvas(props: MapCanvasProps) {
             sprite.width = TILE
             sprite.height = TILE
             sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
-            sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming
+            sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming (#299)
+            if (tile.type === 'deep' || tile.type === 'shallows') {
+              ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
+            } else if (tile.type === 'port') {
+              ambientTileSpritesRef.current.set(key, { sprite, kind: 'port' })
+            }
             continue
           }
           tiles.rect(x * TILE, y * TILE, TILE, TILE)
@@ -548,6 +573,7 @@ export function MapCanvas(props: MapCanvasProps) {
           sprite.width = size
           sprite.height = size
           sprite.position.set(cx, cy)
+          shipSpritesRef.current.set(cap.id, { sprite, baseX: cx, baseY: cy })
           continue
         }
         entities.circle(cx, cy, TILE / 2.6)
@@ -564,12 +590,16 @@ export function MapCanvas(props: MapCanvasProps) {
       shipPool.end()
 
       highlight.clear()
+      selectionPulse.clear()
       const selected = selectedCaptainId
         ? captains.find((c) => c.id === selectedCaptainId)
         : undefined
+      hasSelectionRef.current = !!selected
       if (selected) {
-        highlight.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
-        highlight.stroke({ width: 3, color: HIGHLIGHT_COLOR })
+        // Geometry only — the ambient tick below animates this layer's alpha
+        // into a pulse (#298) every frame, not just on a dirty redraw.
+        selectionPulse.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
+        selectionPulse.stroke({ width: 3, color: HIGHLIGHT_COLOR })
       }
       // Keyboard tile cursor (#247) — only drawn while the map has keyboard
       // focus, so pointer-only play isn't cluttered with a cursor no one asked for.
@@ -662,6 +692,33 @@ export function MapCanvas(props: MapCanvasProps) {
     canvas.addEventListener('wheel', onWheel, { passive: false })
     pixiApp.renderer.on('resize', onResize)
 
+    // Living map (#298): a small always-on layer, independent of the
+    // dirty-redraw guard below — subtle water/port shimmer, gentle ship bob,
+    // and a pulse on the selected captain/city. Every frame it only mutates
+    // already-created sprites' `alpha`/`position` (never rebuilds Graphics
+    // fill commands), so it stays cheap enough for the mobile budget even
+    // though — unlike `draw()` — it runs whether or not anything is dirty.
+    let ambientMs = 0
+    function animateAmbient(deltaMs: number) {
+      ambientMs += deltaMs
+      const t = ambientMs / 1000
+      for (const [key, { sprite, kind }] of ambientTileSpritesRef.current) {
+        const [xs, ys] = key.split(',')
+        const phase = Number(xs) * 0.6 + Number(ys) * 0.4
+        const base = propsRef.current.visibleKeys.has(key) ? 1 : 0.5
+        const swing = kind === 'water' ? 0.12 : 0.06
+        const speed = kind === 'water' ? 1.6 : 0.8
+        sprite.alpha = base * (1 - swing + swing * (0.5 + 0.5 * Math.sin(t * speed + phase)))
+      }
+      for (const [id, { sprite, baseX, baseY }] of shipSpritesRef.current) {
+        let hash = 0
+        for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
+        const phase = (hash % 628) / 100
+        sprite.position.set(baseX, baseY + Math.sin(t * 2 + phase) * 1.4)
+      }
+      selectionPulse.alpha = hasSelectionRef.current ? 0.5 + 0.5 * Math.sin(t * 3.4) : 0
+    }
+
     // Only rebuild the tile/entity Graphics when something actually changed
     // (camera moved or game state updated) instead of every ticker frame
     // (#27) — on mid-range phones a redraw is real work (fill + culling loop
@@ -669,8 +726,10 @@ export function MapCanvas(props: MapCanvasProps) {
     // to show. A ship mid-sail (#297) is an exception: nothing else about the
     // scene changed, but the animation still needs a redraw every frame to
     // progress, so an in-flight `shipAnims` entry keeps ticking even when
-    // `dirtyRef` is clean.
+    // `dirtyRef` is clean. The ambient tick above is exempt from this guard
+    // entirely by design — that's the whole point of #298.
     function tick(ticker: Ticker) {
+      animateAmbient(ticker.deltaMS)
       const animating = shipAnims.size > 0
       if (!dirtyRef.current && !animating) return
       dirtyRef.current = false
