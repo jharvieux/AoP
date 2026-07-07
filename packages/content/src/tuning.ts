@@ -327,7 +327,10 @@ export const GAME_SETUP: GameSetup = {
   captainCaptivityRounds: 5,
   ransomBaseCost: 200,
   ransomXpMultiplier: 2,
-  battleResolution: 'auto',
+  // Default single-player games to interactive tactical combat so the tactical
+  // systems are visible by default (#343); auto stays selectable in New Game
+  // Setup. Config is captured per-game at setup, so saves/replays are unaffected.
+  battleResolution: 'tactical',
 }
 
 export const AI_TUNING: AiTuning = {
