@@ -197,6 +197,14 @@ export interface GameSetup {
    * (#309) — a veteran captain costs more to buy back.
    */
   ransomXpMultiplier: number
+  /**
+   * Battle resolution mode (#305): `'auto'` (the default) instant-resolves
+   * every naval battle exactly as before; `'tactical'` has the client route
+   * the human attacker's battles through the interactive round-by-round
+   * planner instead. Purely a client UI gate — the engine never reads this
+   * field, so it's optional and absent-safe for pre-#305 saves/replays.
+   */
+  battleResolution?: 'tactical' | 'auto'
 }
 
 export interface GameConfig {
