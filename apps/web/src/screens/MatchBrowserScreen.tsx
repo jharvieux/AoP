@@ -8,6 +8,8 @@ interface MatchBrowserScreenProps {
   onBack: () => void
   /** Open the live match screen (#261) for a match the caller just joined. */
   onPlayMatch: (matchId: string) => void
+  /** Navigate to AccountScreen to sign in (#296) */
+  onSignIn?: () => void
 }
 
 /** A rough, no-dependency "time ago" label — good enough for a lobby list refreshed on demand. */
@@ -39,7 +41,7 @@ function turnTimerLabel(seconds: number | null): string {
  * not a stable feed to page backwards through); "Refresh" just restarts from
  * the newest page.
  */
-export function MatchBrowserScreen({ onBack, onPlayMatch }: MatchBrowserScreenProps) {
+export function MatchBrowserScreen({ onBack, onPlayMatch, onSignIn }: MatchBrowserScreenProps) {
   const auth = useAuth()
   const [matches, setMatches] = useState<OpenMatchSummary[]>([])
   const [nextBefore, setNextBefore] = useState<string | null>(null)
@@ -121,7 +123,16 @@ export function MatchBrowserScreen({ onBack, onPlayMatch }: MatchBrowserScreenPr
         <h1 className="game-title">Match Browser</h1>
         <p className="game-subtitle">Browse open lobbies looking for players</p>
 
-        {!authed && <p className="theme-error">Sign in from Account to browse matches.</p>}
+        {!authed && (
+          <>
+            <p className="theme-error">Sign in to browse matches.</p>
+            {onSignIn && (
+              <button className="primary large" onClick={onSignIn}>
+                Sign In
+              </button>
+            )}
+          </>
+        )}
 
         {authed && (
           <>

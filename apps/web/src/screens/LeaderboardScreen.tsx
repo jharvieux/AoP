@@ -5,6 +5,8 @@ import { LeaderboardClient, type LeaderboardEntry } from '../multiplayer/leaderb
 
 interface LeaderboardScreenProps {
   onBack: () => void
+  /** Navigate to AccountScreen to sign in (#296) */
+  onSignIn?: () => void
 }
 
 /** One fetch covers the whole board; `get-leaderboard` has no keyset cursor
@@ -20,7 +22,7 @@ const PAGE_SIZE = 20
  * `get-leaderboard`'s own `rank` field (`buildLeaderboard`'s numbering across
  * the whole candidate set), never recomputed from the page slice.
  */
-export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
+export function LeaderboardScreen({ onBack, onSignIn }: LeaderboardScreenProps) {
   const auth = useAuth()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [page, setPage] = useState(0)
@@ -60,7 +62,16 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
         <h1 className="game-title">Leaderboard</h1>
         <p className="game-subtitle">Top-rated pirates</p>
 
-        {!authed && <p className="theme-error">Sign in from Account to view the leaderboard.</p>}
+        {!authed && (
+          <>
+            <p className="theme-error">Sign in to view the leaderboard.</p>
+            {onSignIn && (
+              <button className="primary large" onClick={onSignIn}>
+                Sign In
+              </button>
+            )}
+          </>
+        )}
 
         {authed && (
           <>

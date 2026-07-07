@@ -284,6 +284,7 @@ export function App() {
             setActiveMatchId(matchId)
             setScreen('match')
           }}
+          onSignIn={() => setScreen('account')}
         />
       )}
       {screen === 'quick-match' && (
@@ -293,6 +294,7 @@ export function App() {
             setActiveMatchId(matchId)
             setScreen('match')
           }}
+          onSignIn={() => setScreen('account')}
         />
       )}
       {screen === 'match' && activeMatchId && (
@@ -304,7 +306,9 @@ export function App() {
           }}
         />
       )}
-      {screen === 'leaderboard' && <LeaderboardScreen onBack={() => setScreen('menu')} />}
+      {screen === 'leaderboard' && (
+        <LeaderboardScreen onBack={() => setScreen('menu')} onSignIn={() => setScreen('account')} />
+      )}
       {screen === 'theme-packs' && <ThemePacksScreen onBack={() => setScreen('menu')} />}
       {screen === 'account' && <AccountScreen onBack={() => setScreen('menu')} />}
       {screen === 'setup' && (

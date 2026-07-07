@@ -13,6 +13,8 @@ interface QuickMatchScreenProps {
   onBack: () => void
   /** Open the live match screen (#261) for the match the queue just seated the caller into. */
   onPlayMatch: (matchId: string) => void
+  /** Navigate to AccountScreen to sign in (#296) */
+  onSignIn?: () => void
 }
 
 const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
@@ -43,7 +45,7 @@ type SearchState =
  * `match_players` that wasn't there when the search started is the match the
  * drain just seated the caller into (`knownMatchIds` below).
  */
-export function QuickMatchScreen({ onBack, onPlayMatch }: QuickMatchScreenProps) {
+export function QuickMatchScreen({ onBack, onPlayMatch, onSignIn }: QuickMatchScreenProps) {
   const auth = useAuth()
   const [matchSize, setMatchSize] = useState(4)
   const [mapSize, setMapSize] = useState<MapSize>('medium')
@@ -211,7 +213,16 @@ export function QuickMatchScreen({ onBack, onPlayMatch }: QuickMatchScreenProps)
         <h1 className="game-title">Quick Match</h1>
         <p className="game-subtitle">Join the queue and get matched automatically</p>
 
-        {!authed && <p className="theme-error">Sign in from Account to use quick match.</p>}
+        {!authed && (
+          <>
+            <p className="theme-error">Sign in to use quick match.</p>
+            {onSignIn && (
+              <button className="primary large" onClick={onSignIn}>
+                Sign In
+              </button>
+            )}
+          </>
+        )}
 
         {authed && (
           <>
