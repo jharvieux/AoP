@@ -539,14 +539,20 @@ export function MapCanvas(props: MapCanvasProps) {
     pixiApp.ticker.add(tick)
 
     return () => {
-      pixiApp.ticker.remove(tick)
+      // usePixiApp's own cleanup effect is registered before this one (it
+      // runs first inside the component), so on unmount it destroys the Pixi
+      // Application before this cleanup runs. `Application.destroy()`
+      // synchronously nulls out `ticker`, `renderer`, and `stage` (#306) —
+      // guard each before touching it, since `pixiApp` here is a stale
+      // reference to that now-torn-down instance.
+      if (pixiApp.ticker) pixiApp.ticker.remove(tick)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('pointercancel', onPointerUp)
       canvas.removeEventListener('wheel', onWheel)
-      pixiApp.renderer.off('resize', onResize)
-      pixiApp.stage.removeChild(world)
+      if (pixiApp.renderer) pixiApp.renderer.off('resize', onResize)
+      if (pixiApp.stage) pixiApp.stage.removeChild(world)
       world.destroy({ children: true })
     }
   }, [app])
