@@ -143,9 +143,37 @@ class AudioManager {
       if (this.active.get(key)?.audio === audio) this.active.delete(key)
     })
     void audio.play().catch(() => {
-      // Autoplay rejection or missing asset: silently no-op.
+      // Autoplay rejection (no user gesture yet) or missing asset. Looping
+      // background music is worth retrying on the first interaction anywhere
+      // on the page (#342) — a fresh page load has had no gesture yet, so the
+      // very first `play()` reliably gets rejected; a one-shot dialogue/SFX
+      // clip replayed out of context later would be worse than dropping it,
+      // so this only applies to loops.
+      if (opts.loop) this.retryOnNextInteraction(url, opts, audio)
     })
     return audio
+  }
+
+  /**
+   * Registers a one-time listener that retries a rejected `play()` call on
+   * the first `pointerdown`/`keydown` anywhere on the page. Only retries if
+   * `key` still points at the same (rejected) `Audio` instance — if a newer
+   * `play()` call already replaced it (e.g. the music context changed before
+   * the user interacted), this is a no-op.
+   */
+  private retryOnNextInteraction(
+    url: string,
+    opts: { key?: string; loop?: boolean; category?: AudioCategory },
+    rejectedAudio: HTMLAudioElement,
+  ): void {
+    const key = opts.key ?? url
+    const retry = () => {
+      window.removeEventListener('pointerdown', retry)
+      window.removeEventListener('keydown', retry)
+      if (this.active.get(key)?.audio === rejectedAudio) this.play(url, opts)
+    }
+    window.addEventListener('pointerdown', retry, { once: true })
+    window.addEventListener('keydown', retry, { once: true })
   }
 
   /** Stop a specific keyed clip early (e.g. an encounter's greeting closing). */
