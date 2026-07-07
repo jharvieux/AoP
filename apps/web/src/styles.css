@@ -120,6 +120,8 @@
      were literally the same hex values duplicated across files. */
   --map-shallows: #2a6a8f;
   --map-land: #4a7c3f;
+  /* Coastline surf/foam band where water meets land (#347). */
+  --map-surf: #bfe6f2;
   --map-enemy-city: #9aa0a6;
   --map-encounter-natives: #6fbf73;
   --map-encounter-settlers: #c98bdb;

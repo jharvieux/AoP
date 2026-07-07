@@ -115,6 +115,70 @@ function defaultArtUrls(): string[] {
   return [...urls]
 }
 
+// Coastline + tile-variety rendering (#347). All rendering-only: a deterministic
+// hash of integer tile coords picks each tile's variant, so two paints of the
+// same tile agree and the engine's seeded RNG is never touched.
+const SURF_COLOR = cssToken('--map-surf', '#bfe6f2')
+const SURF_BAND = TILE * 0.16
+const WATER_TYPES = new Set(['deep', 'shallows'])
+
+/** A stable [0,1) value per integer tile — the seed for that tile's rendering variant. */
+function tileHash(x: number, y: number): number {
+  let h = Math.imul(x + 1, 0x1f1f1f1f) ^ Math.imul(y + 1, 0x27d4eb2f)
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
+  h ^= h >>> 13
+  return (h >>> 0) / 0xffffffff
+}
+
+/** Parse a `#rrggbb` token to a packed 0xRRGGBB number, or null for any other format. */
+function parseHexColor(c: string): number | null {
+  if (c.length !== 7 || c[0] !== '#') return null
+  const n = Number.parseInt(c.slice(1), 16)
+  return Number.isNaN(n) ? null : n
+}
+
+/** Scale a packed color's brightness by `factor` (1 = unchanged), clamped per channel. */
+function shadeColor(color: number, factor: number): number {
+  const clamp = (v: number) => Math.min(255, Math.max(0, Math.round(v * factor)))
+  return (clamp((color >> 16) & 0xff) << 16) | (clamp((color >> 8) & 0xff) << 8) | clamp(color & 0xff)
+}
+
+/**
+ * A per-tile brightness multiplier around 1.0 (#347), so large stretches of one
+ * terrain type stop reading as identical repeating squares. Deterministic from
+ * the tile coords; the ±spread is deliberately small so the map still reads as
+ * one terrain, just not a flat fill.
+ */
+function tileBrightness(x: number, y: number, spread: number): number {
+  return 1 - spread + tileHash(x, y) * spread * 2
+}
+
+const isLandType = (t: string): boolean => t === 'land' || t === 'port'
+
+/**
+ * Paint a foam band on each edge of water tile (x,y) that borders land (#347),
+ * so the coastline reads as a shoreline instead of a hard grid seam. Orthogonal
+ * neighbours only — diagonal-only contacts don't get a band, which keeps the
+ * surf reading as edges rather than corner dots.
+ */
+function paintSurf(g: Graphics, map: GameMap, x: number, y: number): void {
+  const foam = { color: SURF_COLOR, alpha: 0.45 }
+  const px = x * TILE
+  const py = y * TILE
+  if (y > 0 && isLandType(map.tiles[tileIndex(map, x, y - 1)]!.type)) {
+    g.rect(px, py, TILE, SURF_BAND).fill(foam)
+  }
+  if (y < map.height - 1 && isLandType(map.tiles[tileIndex(map, x, y + 1)]!.type)) {
+    g.rect(px, py + TILE - SURF_BAND, TILE, SURF_BAND).fill(foam)
+  }
+  if (x > 0 && isLandType(map.tiles[tileIndex(map, x - 1, y)]!.type)) {
+    g.rect(px, py, SURF_BAND, TILE).fill(foam)
+  }
+  if (x < map.width - 1 && isLandType(map.tiles[tileIndex(map, x + 1, y)]!.type)) {
+    g.rect(px + TILE - SURF_BAND, py, SURF_BAND, TILE).fill(foam)
+  }
+}
+
 /** One ship's in-flight sail animation (#297): `path` is the tile-by-tile route from
  * `findPath`, `elapsedMs` accumulates ticker delta time, and rendering interpolates along
  * `path` by `elapsedMs / durationMs` (eased) rather than snapping straight to the last tile. */
@@ -289,6 +353,7 @@ export function MapCanvas(props: MapCanvasProps) {
     const world = new Container()
     const tiles = new Graphics()
     const tileSprites = new Container()
+    const coast = new Graphics() // Coastline surf overlay (#347)
     const entities = new Graphics()
     const citySprites = new Container()
     const encounterSprites = new Container()
@@ -305,6 +370,7 @@ export function MapCanvas(props: MapCanvasProps) {
     world.addChild(
       tiles,
       tileSprites,
+      coast,
       entities,
       citySprites,
       encounterSprites,
@@ -389,19 +455,25 @@ export function MapCanvas(props: MapCanvasProps) {
       shipSpritesRef.current.clear()
 
       tiles.clear()
+      coast.clear()
       fog.clear()
       tilePool.begin()
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
           const key = `${x},${y}`
           const explored = exploredKeys.has(key)
-          const visibleNow = visibleKeys.has(key)
           if (!explored) {
             tiles.rect(x * TILE, y * TILE, TILE, TILE)
             tiles.fill(FOG_COLOR)
             continue
           }
           const tile = map.tiles[tileIndex(map, x, y)]!
+          // Coastline (#347): a soft surf band on any explored water tile edge
+          // that meets land, so land/water boundaries read as coast, not a grid
+          // line. Drawn on its own layer above the tiles, under the fog.
+          if (WATER_TYPES.has(tile.type)) {
+            paintSurf(coast, map, x, y)
+          }
           const spriteUrl = resolveSpriteUrl(
             themeSpriteUrlRef.current,
             tileContentId(tile.type),
@@ -415,6 +487,10 @@ export function MapCanvas(props: MapCanvasProps) {
             sprite.height = TILE
             sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
             sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming (#299)
+            // Per-tile brightness variety (#347): a subtle deterministic tint so
+            // repeated terrain art doesn't read as identical squares. Ambient
+            // shimmer (#298) rides alpha, so tint here is orthogonal to it.
+            sprite.tint = shadeColor(0xffffff, tileBrightness(x, y, 0.08))
             if (tile.type === 'deep' || tile.type === 'shallows') {
               ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
             } else if (tile.type === 'port') {
@@ -422,8 +498,12 @@ export function MapCanvas(props: MapCanvasProps) {
             }
             continue
           }
+          // Flat-color fallback, varied per tile the same way (#347).
+          const base = parseHexColor(TILE_COLOR[tile.type])
+          const color =
+            base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
           tiles.rect(x * TILE, y * TILE, TILE, TILE)
-          tiles.fill({ color: TILE_COLOR[tile.type], alpha: 1 }) // Full alpha; fog applies dimming
+          tiles.fill({ color, alpha: 1 }) // Full alpha; fog applies dimming
         }
       }
       tilePool.end()
@@ -439,20 +519,18 @@ export function MapCanvas(props: MapCanvasProps) {
           const visibleNow = visibleKeys.has(key)
 
           if (!visibleNow && explored) {
-            // Tile is explored but not currently visible: render dimming fog.
-            // Count how many neighboring tiles are currently visible to determine edge proximity.
+            // Explored-but-fogged: dim it. Grade the alpha by how many of the 8
+            // neighbours are currently visible (#347/#299), so the fog fades in
+            // smoothly toward the sighted region instead of stepping in two hard
+            // bands that only reinforced the grid.
             let visibleNeighbors = 0
             for (let dy = -1; dy <= 1; dy++) {
               for (let dx = -1; dx <= 1; dx++) {
                 if (dx === 0 && dy === 0) continue
-                const nkey = `${x + dx},${y + dy}`
-                if (visibleKeys.has(nkey)) visibleNeighbors++
+                if (visibleKeys.has(`${x + dx},${y + dy}`)) visibleNeighbors++
               }
             }
-            // At fog edges (adjacent to visible tiles), fade the fog alpha for a soft boundary.
-            // Tiles surrounded by other explored tiles get full dimming (alpha ~0.5),
-            // tiles at the edge get lighter dimming (alpha ~0.3) for smooth gradient.
-            const edgeAlpha = visibleNeighbors > 0 ? 0.3 : 0.5
+            const edgeAlpha = Math.max(0.16, 0.52 - visibleNeighbors * 0.05)
             fog.rect(x * TILE, y * TILE, TILE, TILE)
             fog.fill({ color: FOG_COLOR, alpha: edgeAlpha })
           }
