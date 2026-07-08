@@ -1,5 +1,6 @@
 import type { Coord, MapSize } from '@aop/shared'
 import { chebyshevDistance } from '@aop/shared'
+import { hexDistance, hexNeighbors } from './hex'
 import { nextFloat, nextInt, seedRng, type RngState } from './rng'
 
 /**
@@ -7,7 +8,12 @@ import { nextFloat, nextInt, seedRng, type RngState } from './rng'
  *
  * Grid choice: square grid with 8-directional movement (see #6). Square tiles
  * read cleanly on small mobile screens and 8-dir movement keeps naval travel
- * feeling free without hex bookkeeping.
+ * feeling free without hex bookkeeping. The hex-grid conversion (#348) adds an
+ * opt-in `topology` field: a map may instead be a rectangle of pointy-top
+ * hexes addressed odd-r (`x` = col, `y` = row), and every adjacency/distance
+ * consumer dispatches through {@link mapNeighbors}/{@link mapDistance}. This
+ * generator still produces square maps only; hex maps arrive authored (or via
+ * the @aop/content square→hex bridge) until content migrates in Phase 3.
  *
  * The generator is a pure function of `(seed, mapSize, playerCount)` — it draws
  * exclusively from the seeded RNG, so the same inputs yield a byte-identical map
@@ -24,6 +30,15 @@ export interface Tile {
   island: number
 }
 
+/**
+ * How a map's coordinates connect (#348). `square` is the original 8-neighbor
+ * king-move grid; `hex` reinterprets the same row-major `{x, y}` coordinates
+ * as odd-r pointy-top hexes (x = col, y = row) with 6 neighbors and true hex
+ * distance. The field is optional and absent on every pre-hex map, so
+ * existing saves, replays, and serialized GameStates are byte-identical.
+ */
+export type GridTopology = 'square' | 'hex'
+
 export interface GameMap {
   width: number
   height: number
@@ -31,6 +46,8 @@ export interface GameMap {
   tiles: Tile[]
   /** One water start tile per player index; index i belongs to players[i]. */
   startPositions: Coord[]
+  /** Grid topology; absent means `square` (see {@link GridTopology}). */
+  topology?: GridTopology
 }
 
 export const MAP_DIMENSIONS: Record<MapSize, number> = {
@@ -79,6 +96,38 @@ export function neighbors8(map: GameMap, coord: Coord): Coord[] {
     if (inBounds(map, nx, ny)) out.push({ x: nx, y: ny })
   }
   return out
+}
+
+export function mapTopology(map: GameMap): GridTopology {
+  return map.topology ?? 'square'
+}
+
+/**
+ * The in-bounds neighbors of `coord` under the map's topology (#348): 8
+ * king-move squares, or 6 odd-r hexes via the same integer hex math the
+ * tactical battle board uses (hex.ts). Fixed iteration order either way, so
+ * every consumer stays deterministic.
+ */
+export function mapNeighbors(map: GameMap, coord: Coord): Coord[] {
+  if (mapTopology(map) === 'hex') {
+    return hexNeighbors({ col: coord.x, row: coord.y }, map.width, map.height).map((h) => ({
+      x: h.col,
+      y: h.row,
+    }))
+  }
+  return neighbors8(map, coord)
+}
+
+/**
+ * Grid distance between two coords under the map's topology (#348): Chebyshev
+ * on square maps (diagonals cost 1), true hex distance on hex maps. This is
+ * the metric every range/adjacency check ("within distance 1") uses.
+ */
+export function mapDistance(map: GameMap, a: Coord, b: Coord): number {
+  if (mapTopology(map) === 'hex') {
+    return hexDistance({ col: a.x, row: a.y }, { col: b.x, row: b.y })
+  }
+  return chebyshevDistance(a, b)
 }
 
 function seedForMap(seed: number, mapSize: MapSize, playerCount: number): RngState {

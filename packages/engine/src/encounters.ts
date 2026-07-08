@@ -6,9 +6,8 @@
  */
 
 import type { Coord, FactionId, ResourcePool } from '@aop/shared'
-import { chebyshevDistance } from '@aop/shared'
 import type { EncounterCatalogLike, EncounterChoiceLike, EncounterKind } from './content'
-import { isWaterTile, tileAt, type GameMap } from './map'
+import { isWaterTile, mapDistance, tileAt, type GameMap } from './map'
 import { nextFloat, nextInt, type RngState } from './rng'
 import type { EncounterState, TroopStack } from './types'
 
@@ -33,7 +32,7 @@ export function spawnEncounters(
       if (!isWaterTile(tileAt(map, coord))) continue
       water.push(coord)
       const clearOfStarts = startPositions.every(
-        (s) => chebyshevDistance(s, coord) >= catalog.minStartDistance,
+        (s) => mapDistance(map, s, coord) >= catalog.minStartDistance,
       )
       if (clearOfStarts) candidates.push(coord)
     }

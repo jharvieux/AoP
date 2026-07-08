@@ -1,14 +1,16 @@
 import type { Coord } from '@aop/shared'
-import { chebyshevDistance, coordsEqual } from '@aop/shared'
-import { isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } from './map'
+import { coordsEqual } from '@aop/shared'
+import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex, type GameMap } from './map'
 
 /**
  * Deterministic A* pathfinding for naval movement.
  *
- * Ships move over water only (deep/shallows/port-adjacent water), 8-directionally,
- * at a uniform cost of one movement point per step. The heuristic is Chebyshev
- * distance, which is admissible under uniform 8-dir cost, so A* returns a true
- * shortest path.
+ * Ships move over water only (deep/shallows/port-adjacent water) at a uniform
+ * cost of one movement point per step, along the map's topology (#348):
+ * 8-directional on square maps, 6-directional on hex maps — adjacency and the
+ * heuristic both dispatch through `mapNeighbors`/`mapDistance`. The heuristic
+ * (Chebyshev on square, true hex distance on hex) is admissible under the
+ * matching uniform-cost neighbor set, so A* returns a true shortest path.
  *
  * Determinism is load-bearing (replay + multiplayer authority): ties in the open
  * set are broken by a fixed key — lower f, then lower h, then lower tile index —
@@ -88,10 +90,10 @@ function before(a: HeapEntry, b: HeapEntry): boolean {
 }
 
 /**
- * Per-map cache of water connected-components (8-directional), so a query between
- * two tiles in different sea basins returns `null` in O(1) instead of flooding the
- * whole ocean first (#214). Terrain is immutable for the lifetime of a `GameMap`,
- * so the cache is keyed by object identity and never invalidated.
+ * Per-map cache of water connected-components (topology-aware adjacency), so a
+ * query between two tiles in different sea basins returns `null` in O(1) instead
+ * of flooding the whole ocean first (#214). Terrain is immutable for the lifetime
+ * of a `GameMap`, so the cache is keyed by object identity and never invalidated.
  */
 const waterComponentCache = new WeakMap<GameMap, Int32Array>()
 
@@ -114,7 +116,7 @@ function waterComponents(map: GameMap): Int32Array {
         const curIdx = stack.pop()!
         const cx = curIdx % map.width
         const cy = Math.floor(curIdx / map.width)
-        for (const n of neighbors8(map, { x: cx, y: cy })) {
+        for (const n of mapNeighbors(map, { x: cx, y: cy })) {
           const nIdx = tileIndex(map, n.x, n.y)
           if (components[nIdx] !== -1 || !isWaterTile(tileAt(map, n))) continue
           components[nIdx] = nextComponent
@@ -148,7 +150,7 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
   const closed = new Set<number>()
   const heap = new MinHeap()
 
-  const startH = chebyshevDistance(from, to)
+  const startH = mapDistance(map, from, to)
   nodes.set(startIdx, { coord: from, g: 0, h: startH, f: startH, parent: null })
   heap.push({ idx: startIdx, f: startH, h: startH })
 
@@ -160,7 +162,7 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
     closed.add(currentIdx)
 
     const current = nodes.get(currentIdx)!
-    for (const n of neighbors8(map, current.coord)) {
+    for (const n of mapNeighbors(map, current.coord)) {
       if (!isWaterTile(tileAt(map, n))) continue
       const nIdx = tileIndex(map, n.x, n.y)
       if (closed.has(nIdx)) continue
@@ -169,7 +171,7 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
       const existing = nodes.get(nIdx)
       if (existing && tentativeG >= existing.g) continue
 
-      const h = chebyshevDistance(n, to)
+      const h = mapDistance(map, n, to)
       const node: Node = { coord: n, g: tentativeG, h, f: tentativeG + h, parent: currentIdx }
       nodes.set(nIdx, node)
       heap.push({ idx: nIdx, f: node.f, h: node.h })

@@ -1,10 +1,10 @@
-import { canAfford, chebyshevDistance, type Coord } from '@aop/shared'
+import { canAfford, type Coord } from '@aop/shared'
 import type { Action } from './actions'
 import { combatantStrength, createCombatStats, type CombatStats } from './combat'
 import type { ContentCatalog } from './content'
 import { unlockedRecruitTier } from './economy'
 import { areAllied, captainsOf, currentPlayer } from './game'
-import { isWaterTile, neighbors8, tileAt } from './map'
+import { isWaterTile, mapDistance, mapNeighbors, tileAt } from './map'
 import { findPath } from './pathfinding'
 import { applyAction, cityToCombatant } from './reducer'
 import { nextFloat, seedRng } from './rng'
@@ -255,7 +255,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
       const ratio = strengthRatio(cap, enemy, stats)
 
       // Engage: adjacent and beatable -> attack.
-      if (chebyshevDistance(cap.position, enemy.position) <= 1) {
+      if (mapDistance(state.map, cap.position, enemy.position) <= 1) {
         if (ratio >= engageMinRatio) {
           consider({
             action: {
@@ -277,7 +277,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
           // Prefer closing on nearer targets; keep well below any attack score.
           const score =
             advanceScoreBase +
-            (1 / (1 + chebyshevDistance(cap.position, enemy.position))) * advanceDistanceBonus
+            (1 / (1 + mapDistance(state.map, cap.position, enemy.position))) * advanceDistanceBonus
           consider({
             action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
             score,
@@ -294,7 +294,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
       for (const city of enemyCities) {
         const ratio = cityAssaultRatio(cap, city, stats, catalog)
-        if (chebyshevDistance(cap.position, city.position) <= 1) {
+        if (mapDistance(state.map, cap.position, city.position) <= 1) {
           if (ratio >= engageMinRatio) {
             consider({
               action: {
@@ -313,7 +313,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
           if (step) {
             const score =
               advanceScoreBase +
-              (1 / (1 + chebyshevDistance(cap.position, city.position))) * advanceDistanceBonus
+              (1 / (1 + mapDistance(state.map, cap.position, city.position))) * advanceDistanceBonus
             consider({
               action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
               score,
@@ -421,9 +421,9 @@ function approachCity(
   cache: Map<string, Coord[] | null>,
 ): Coord | null {
   let best: { step: Coord; dist: number } | null = null
-  for (const shore of neighbors8(state.map, city.position)) {
+  for (const shore of mapNeighbors(state.map, city.position)) {
     if (!isWaterTile(tileAt(state.map, shore))) continue
-    if (chebyshevDistance(cap.position, shore) === 0) continue
+    if (mapDistance(state.map, cap.position, shore) === 0) continue
     const key = `${cap.position.x},${cap.position.y}:${shore.x},${shore.y}`
     let path = cache.get(key)
     if (path === undefined) {
@@ -434,7 +434,7 @@ function approachCity(
     const idx = Math.min(cap.movementPoints, path.length - 1)
     if (idx < 1) continue
     const step = path[idx]!
-    const dist = chebyshevDistance(step, city.position)
+    const dist = mapDistance(state.map, step, city.position)
     if (!best || dist < best.dist) best = { step, dist }
   }
   return best?.step ?? null
@@ -649,7 +649,7 @@ function planGarrisonToShip(
   for (const city of state.cities) {
     if (city.ownerId !== playerId) continue
     const captain = state.captains.find(
-      (c) => c.ownerId === playerId && chebyshevDistance(c.position, city.position) <= 1,
+      (c) => c.ownerId === playerId && mapDistance(state.map, c.position, city.position) <= 1,
     )
     if (!captain) continue
 
@@ -706,7 +706,7 @@ function planUpgrade(
     }
     for (const captain of state.captains) {
       if (captain.ownerId !== playerId) continue
-      if (chebyshevDistance(captain.position, city.position) > 1) continue
+      if (mapDistance(state.map, captain.position, city.position) > 1) continue
       const ship = catalog.ships[captain.shipClassId]
       if (!ship) continue
       for (const track of Object.keys(ship.upgrades)) {
