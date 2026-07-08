@@ -22,7 +22,7 @@ import {
   type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import { chebyshevDistance, type Coord } from '@aop/shared'
+import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
@@ -123,6 +123,23 @@ interface GameScreenProps {
   onWatchSlot: (slotId: string) => void
   /** True once autosave has failed and hasn't succeeded since (#237). */
   autosaveFailing: boolean
+}
+
+/**
+ * The viewer's own captain docked at (adjacent to) a given city, if any — gates
+ * recruit/load-troops/unload-troops/standing-order actions. Extracted as a pure
+ * function so `mapDistance` topology-awareness (#385, same hex-distance-2 bug as
+ * #370) is unit-testable without rendering the component.
+ */
+export function findViewerCaptainAtCity(
+  captains: GameState['captains'],
+  map: GameState['map'],
+  viewerId: string,
+  cityPosition: Coord,
+): GameState['captains'][number] | undefined {
+  return captains.find(
+    (c) => c.ownerId === viewerId && mapDistance(map, c.position, cityPosition) <= 1,
+  )
 }
 
 export function GameScreen({
@@ -297,9 +314,7 @@ export function GameScreen({
   const viewerCity =
     viewerCities.find((c) => c.id === selectedCityId) ?? viewerCities[0] ?? undefined
   const viewerCaptainAtCity = viewerCity
-    ? game.captains.find(
-        (c) => c.ownerId === viewer.id && chebyshevDistance(c.position, viewerCity.position) <= 1,
-      )
+    ? findViewerCaptainAtCity(game.captains, game.map, viewer.id, viewerCity.position)
     : undefined
   // Every captain the viewer owns, so the city sheet's fleet list (#114) can
   // break the army out one row per captain instead of just the docked one.
@@ -331,6 +346,38 @@ export function GameScreen({
     if (cost + 1 > selectedCaptain.movementPoints) return undefined
     return cost > 0 ? approach : null
   }
+
+  // Roster tap (#373): focus a city — select it, recenter the map on it (reusing
+  // the #346 camera controls), and open its sheet.
+  function openCity(cityId: string) {
+    tapFeedback()
+    setSelectedCityId(cityId)
+    const city = game.cities.find((c) => c.id === cityId)
+    if (city) mapControlsRef.current?.centerOn(city.position)
+    setCityOpen(true)
+  }
+
+  // End-turn nudge (#373): a subtle, non-blocking hint that an owned city hasn't
+  // built this round and can still afford a building — so a second city isn't
+  // silently left idle. Counts only cities that can actually build something now.
+  const idleCityHint = useMemo(() => {
+    if (!isViewerTurn) return null
+    const content = game.config.content
+    if (!content) return null
+    const buildableIdle = viewerCities.filter(
+      (city) =>
+        !city.builtThisRound &&
+        Object.entries(content.buildings).some(
+          ([id, def]) =>
+            !city.buildings.includes(id) &&
+            (!def.requires || city.buildings.includes(def.requires)) &&
+            canAfford(viewer.resources, def.cost),
+        ),
+    )
+    if (buildableIdle.length === 0) return null
+    const n = buildableIdle.length
+    return `${n} idle ${n === 1 ? 'city' : 'cities'} can still build`
+  }, [isViewerTurn, game.config.content, viewerCities, viewer.resources])
 
   function handleTileClick(x: number, y: number) {
     if (!isViewerTurn || game.status !== 'active') return
