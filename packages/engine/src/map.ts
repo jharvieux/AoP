@@ -11,9 +11,11 @@ import { nextFloat, nextInt, seedRng, type RngState } from './rng'
  * feeling free without hex bookkeeping. The hex-grid conversion (#348) adds an
  * opt-in `topology` field: a map may instead be a rectangle of pointy-top
  * hexes addressed odd-r (`x` = col, `y` = row), and every adjacency/distance
- * consumer dispatches through {@link mapNeighbors}/{@link mapDistance}. This
- * generator still produces square maps only; hex maps arrive authored (or via
- * the @aop/content square→hex bridge) until content migrates in Phase 3.
+ * consumer dispatches through {@link mapNeighbors}/{@link mapDistance}. The
+ * generator accepts an optional `topology` argument: pass `'hex'` and every
+ * adjacency/distance decision (coastlines, island spacing, start placement)
+ * runs on hex semantics and the result carries `topology: 'hex'`. Omitted or
+ * `'square'`, output is byte-identical to the pre-hex generator.
  *
  * The generator is a pure function of `(seed, mapSize, playerCount)` — it draws
  * exclusively from the seeded RNG, so the same inputs yield a byte-identical map
@@ -142,6 +144,7 @@ export function generateMap(
   playerCount: number,
   homeIslandRadius: number,
   homeIslandRingRadiusFactor: number,
+  topology?: GridTopology,
 ): GameMap {
   if (playerCount < 2 || playerCount > 8) {
     throw new Error(`playerCount must be 2-8, got ${playerCount}`)
@@ -155,7 +158,10 @@ export function generateMap(
     island: -1,
   }))
 
+  // Omit the field for square (explicit or defaulted) so pre-hex callers get
+  // byte-identical output — serialized square maps must not grow a stray key.
   const map: GameMap = { width, height, tiles, startPositions: [] }
+  if (topology === 'hex') map.topology = 'hex'
   let rng = seedForMap(seed, mapSize, playerCount)
 
   const center: Coord = { x: (width - 1) / 2, y: (height - 1) / 2 }
@@ -215,7 +221,7 @@ export function generateMap(
     const cy = 2 + Math.floor(fy * (height - 4))
     const radius = 1 + Math.floor(fr * homeIslandRadius)
     const c = { x: cx, y: cy }
-    const clash = placed.some((p) => chebyshevDistance(p.c, c) < p.r + radius + 2)
+    const clash = placed.some((p) => mapDistance(map, p.c, c) < p.r + radius + 2)
     if (clash) continue
     carveDisc(cx, cy, radius, nextIslandId)
     placed.push({ c, r: radius })
@@ -228,7 +234,7 @@ export function generateMap(
     for (let x = 0; x < width; x++) {
       const tile = map.tiles[tileIndex(map, x, y)]!
       if (tile.type !== 'deep') continue
-      const coastal = neighbors8(map, { x, y }).some(
+      const coastal = mapNeighbors(map, { x, y }).some(
         (n) => map.tiles[tileIndex(map, n.x, n.y)]!.type === 'land',
       )
       if (coastal) tile.type = 'shallows'
@@ -271,7 +277,7 @@ function nearestLandToCenter(
 function waterAdjacentTowardCenter(map: GameMap, port: Coord, center: Coord): Coord {
   let best: Coord | undefined
   let bestDist = Infinity
-  for (const n of neighbors8(map, port)) {
+  for (const n of mapNeighbors(map, port)) {
     if (!isWaterTile(tileAt(map, n))) continue
     const d = (n.x - center.x) ** 2 + (n.y - center.y) ** 2
     if (d < bestDist) {
