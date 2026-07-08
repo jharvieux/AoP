@@ -5,7 +5,7 @@ import {
   type GameConfig,
   type GameState,
 } from '@aop/engine'
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
@@ -24,7 +24,6 @@ import { MatchBrowserScreen } from './screens/MatchBrowserScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
-import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
@@ -33,6 +32,13 @@ import { isTestPlayAfterLoadSlot, isTestPlayAfterRematch, shouldAutosave } from 
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
 import { registerBackButtonHandler } from './plugins/androidBackButton'
+
+// Lazy-loaded screens that don't depend on pixi.js for initial load (#353).
+// Screens that use MapCanvas (GameScreen, SpectateScreen, MatchScreen) remain
+// eagerly loaded to avoid a fetch waterfall when entering gameplay.
+const ReplayScreen = lazy(() =>
+  import('./replay/ReplayScreen').then((m) => ({ default: m.ReplayScreen })),
+)
 
 type Screen =
   | 'title'
@@ -345,11 +351,13 @@ export function App() {
           />
         )}
         {screen === 'replay' && replayData && (
-          <ReplayScreen
-            config={replayData.config}
-            actions={replayData.actions}
-            onClose={handleCloseReplay}
-          />
+          <Suspense fallback={<div className="screen-loading" />}>
+            <ReplayScreen
+              config={replayData.config}
+              actions={replayData.actions}
+              onClose={handleCloseReplay}
+            />
+          </Suspense>
         )}
       </div>
     </div>
