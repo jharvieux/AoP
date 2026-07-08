@@ -414,6 +414,164 @@ describe('attackCaptain action', () => {
   })
 })
 
+describe('prize ships (#374)', () => {
+  /** A decisive battle the *attacker* loses: p1 (grunt×1) attacks p2 (elite×8). */
+  function weakAttackerBattleState(): GameState {
+    const config: GameConfig = {
+      ...combatConfig(),
+      players: combatConfig().players.map((p) => ({
+        ...p,
+        startingTroops:
+          p.id === 'p1' ? [{ unitId: 'grunt', count: 1 }] : [{ unitId: 'elite', count: 8 }],
+      })),
+    }
+    const state = createGame(config)
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const target = { x: p1cap.position.x + 1, y: p1cap.position.y }
+    return {
+      ...state,
+      captains: state.captains.map((c) => (c.id === p2cap.id ? { ...c, position: target } : c)),
+    }
+  }
+
+  it('spawns an empty-crewed prize captain for the winner on the defeated ship', () => {
+    const state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const p2Ship = p2cap.shipClassId
+    const p2Pos = { ...p2cap.position }
+
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+
+    expect(battleReport!.winnerId).toBe('p1')
+    expect(battleReport!.prizeShip).toBeDefined()
+    expect(battleReport!.prizeShip!.newOwnerId).toBe('p1')
+    expect(battleReport!.prizeShip!.shipClassId).toBe(p2Ship)
+
+    const prize = next.captains.find((c) => c.id === battleReport!.prizeShip!.captainId)!
+    expect(prize).toBeDefined()
+    expect(prize.id).toBe(`prize-${state.actionCount}`)
+    expect(prize.ownerId).toBe('p1')
+    expect(prize.shipClassId).toBe(p2Ship)
+    expect(prize.troops).toEqual([])
+    expect(prize.xp).toBe(0)
+    expect(prize.skills).toEqual([])
+    expect(prize.movementPoints).toBe(0)
+    expect(prize.captured).toBe(false)
+    expect(prize.position).toEqual(p2Pos)
+  })
+
+  it('copies the defeated ship class and upgrades onto the prize', () => {
+    const base = adjacentBattleState()
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    // Upgrades are a plain record on the loser's hull; with no content catalog
+    // wired in they don't sway the battle, but the prize must inherit them.
+    const state: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === p2cap.id ? { ...c, shipUpgrades: { hull: 2, cannons: 1 } } : c,
+      ),
+    }
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    const prize = next.captains.find((c) => c.id === battleReport!.prizeShip!.captainId)!
+    expect(prize.shipUpgrades).toEqual({ hull: 2, cannons: 1 })
+  })
+
+  it('hands the prize to the defender when the attacker is the one captured', () => {
+    const state = weakAttackerBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+    })
+    // p1 (the attacker) loses decisively and is captured.
+    expect(battleReport!.winnerId).toBe('p2')
+    expect(next.captains.find((c) => c.id === p1cap.id)!.captured).toBe(true)
+    expect(battleReport!.prizeShip!.newOwnerId).toBe('p2')
+    const prize = next.captains.find((c) => c.id === battleReport!.prizeShip!.captainId)!
+    expect(prize.ownerId).toBe('p2')
+    expect(prize.shipClassId).toBe(p1cap.shipClassId)
+  })
+
+  it('mints no prize when a battle ends in an escape (both sides afloat)', () => {
+    let state = adjacentBattleState()
+    const p1cap = captainsOf(state, 'p1')[0]!
+    const p2cap = captainsOf(state, 'p2')[0]!
+    // p2 evades on sight, so p1 wins the field but takes no ship.
+    state = applyActionWithOutcome(state, { type: 'endTurn', playerId: 'p1' }).state
+    state = applyActionWithOutcome(state, {
+      type: 'setStandingOrders',
+      playerId: 'p2',
+      captainId: p2cap.id,
+      orders: [{ when: 'always', tactic: 'evade' }],
+    }).state
+    state = applyActionWithOutcome(state, { type: 'endTurn', playerId: 'p2' }).state
+
+    const captainCountBefore = state.captains.length
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      captainId: p1cap.id,
+      targetCaptainId: p2cap.id,
+      attackerOrders: ['broadside'],
+    })
+    expect(battleReport!.escapedId).toBe('p2')
+    expect(battleReport!.prizeShip).toBeUndefined()
+    expect(next.captains).toHaveLength(captainCountBefore)
+  })
+
+  it('replays a decisive-battle log (prize spawn included) to an identical state', () => {
+    const base = adjacentBattleState()
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [
+      { type: 'attackCaptain', playerId: 'p1', captainId: p1cap.id, targetCaptainId: p2cap.id },
+    ]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    // The prize is present in the replayed state, deterministically named.
+    expect(a.captains.some((c) => c.id === `prize-${base.actionCount}`)).toBe(true)
+  })
+
+  it('resumes from a snapshot taken after a prize spawned, at every prefix (#142/#374)', () => {
+    // The server rebuilds authority by JSON-round-tripping a snapshot and
+    // replaying the tail (#142). A prize captain is plain JSON data, so a
+    // snapshot taken after it spawned must resume byte-identically at any
+    // prefix — including K=1, immediately after the capturing attack.
+    const base = adjacentBattleState()
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [
+      { type: 'attackCaptain', playerId: 'p1', captainId: p1cap.id, targetCaptainId: p2cap.id },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const fullJson = JSON.stringify(replay(base, log))
+    let stateAtK = base
+    for (let k = 0; k <= log.length; k++) {
+      const snapshot = JSON.parse(JSON.stringify(stateAtK)) as GameState
+      expect(JSON.stringify(replay(snapshot, log.slice(k)))).toBe(fullJson)
+      if (k < log.length) stateAtK = applyActionWithOutcome(stateAtK, log[k]!).state
+    }
+  })
+})
+
 describe('setStandingOrders action', () => {
   it('rejects orders for a captain you do not own', () => {
     const state = createGame(combatConfig())

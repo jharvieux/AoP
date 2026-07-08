@@ -22,9 +22,10 @@ import {
   type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import { chebyshevDistance } from '@aop/shared'
+import { chebyshevDistance, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
+import { findApproachPath } from '../approach'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
@@ -36,7 +37,7 @@ import {
   type StackLoss,
   type TacticalProbeOutcome,
 } from '../boardingPlanner'
-import { MapCanvas } from '../MapCanvas'
+import { MapCanvas, type MapControls } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
@@ -145,6 +146,13 @@ export function GameScreen({
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
   const [encounterId, setEncounterId] = useState<string | null>(null)
+  // Naval targeting (#376): when a target was engaged from beyond adjacency,
+  // the approach leg the selected captain must sail first — `findApproachPath`'s
+  // full inclusive path, or `null` when already adjacent (no leg needed). Set
+  // alongside whichever of attackTargetId/assaultCityId/encounterId opened the
+  // confirm sheet, and consumed by that sheet's confirm handler (a `moveCaptain`
+  // dispatched just before the attack/assault/encounter action).
+  const [pendingApproach, setPendingApproach] = useState<Coord[] | null>(null)
   const [boarding, setBoarding] = useState<BoardingState | null>(null)
   const [tacticalRound, setTacticalRound] = useState<TacticalRoundState | null>(null)
   // Enemy-city assault (#344): the city awaiting the assault-confirm sheet, the
@@ -154,6 +162,11 @@ export function GameScreen({
   const [enemyCityInfoId, setEnemyCityInfoId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
+  // The city the roster/City button currently targets (#373). Null falls back to
+  // the first owned city, preserving single-city behavior with zero footprint.
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null)
+  // Live map camera controls (#346) so the city roster can recenter the map.
+  const mapControlsRef = useRef<MapControls | null>(null)
 
   // Ambient during normal play, battle theme while a battle report, boarding
   // melee, or Tactical-mode round sheet is open.
@@ -274,7 +287,15 @@ export function GameScreen({
     return () => audioManager.stop(BATTLE_TAUNT_KEY)
   }, [attackTargetId])
 
-  const viewerCity = game.cities.find((c) => c.ownerId === viewer.id)
+  // Every city the viewer owns (#373) — the engine has always allowed more than
+  // one; the HUD roster and city sheet now honor that instead of always acting
+  // on whichever city sorts first.
+  const viewerCities = useMemo(
+    () => game.cities.filter((c) => c.ownerId === viewer.id),
+    [game.cities, viewer.id],
+  )
+  const viewerCity =
+    viewerCities.find((c) => c.id === selectedCityId) ?? viewerCities[0] ?? undefined
   const viewerCaptainAtCity = viewerCity
     ? game.captains.find(
         (c) => c.ownerId === viewer.id && chebyshevDistance(c.position, viewerCity.position) <= 1,
@@ -291,6 +312,26 @@ export function GameScreen({
     return game.players.find((p) => p.id === ownerId)!.faction
   }
 
+  /**
+   * Naval targeting (#376): can `selectedCaptain` engage `targetPos` *this
+   * turn*, from any distance? Already-adjacent is just the zero-cost case of
+   * the same approach-path query (`findApproachPath` returns the single-tile
+   * `[from]` path when `from` is already a neighbor of the target), so there's
+   * one code path instead of a separate adjacency special-case. `+ 1` reserves
+   * the movement point the attack/assault/encounter action itself spends —
+   * the same `movementPoints >= 1` gate the old adjacency-only checks used.
+   * Returns the approach leg to sail first (`null` if none needed) or
+   * `undefined` if the target can't be reached this turn at all.
+   */
+  function approachToEngage(targetPos: Coord): Coord[] | null | undefined {
+    if (!selectedCaptain) return undefined
+    const approach = findApproachPath(game.map, selectedCaptain.position, targetPos)
+    if (!approach) return undefined
+    const cost = approach.length - 1
+    if (cost + 1 > selectedCaptain.movementPoints) return undefined
+    return cost > 0 ? approach : null
+  }
+
   function handleTileClick(x: number, y: number) {
     if (!isViewerTurn || game.status !== 'active') return
     const ownHere = game.captains.find(
@@ -299,33 +340,45 @@ export function GameScreen({
     if (ownHere) {
       setSelectedCaptainId(ownHere.id)
       setAttackTargetId(null)
+      setPendingApproach(null)
       return
     }
     if (!selectedCaptain) return
+    const key = `${x},${y}`
 
-    const enemyHere = game.captains.find(
-      (c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y,
-    )
+    // Fog rules unchanged (#376): a target is only tappable while currently
+    // visible, same as the map itself only ever renders a captain/encounter
+    // sprite for a currently-visible tile (MapCanvas's `visibleKeys` check).
+    // Cities are exempt — they're static, explored landmarks the map already
+    // shows from outside current vision, so the read-only info fallback below
+    // keeps working exactly as before.
+    const enemyHere = visibleKeys.has(key)
+      ? game.captains.find(
+          (c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y,
+        )
+      : undefined
     if (enemyHere) {
-      if (
-        mapDistance(game.map, selectedCaptain.position, enemyHere.position) <= 1 &&
-        selectedCaptain.movementPoints >= 1
-      ) {
+      const approach = approachToEngage(enemyHere.position)
+      if (approach !== undefined) {
+        setPendingApproach(approach)
         setAttackTargetId(enemyHere.id)
       }
+      // else: out of range this turn. #372 (multi-turn sail orders) will let a
+      // `setSailOrder` dispatch here queue an automatic intercept course; until
+      // it merges, an out-of-range tap on a visible target is a no-op, same as
+      // tapping an unreachable empty tile today.
       return
     }
 
-    // Enemy city (#344): a landing force adjacent to it opens the assault
-    // confirm; otherwise (no eligible captain) the read-only enemy-city info.
+    // Enemy city (#344): a landing force that can reach it this turn opens the
+    // assault confirm; otherwise (unreachable, or no troops aboard) the
+    // read-only enemy-city info.
     const cityHere = game.cities.find((c) => c.position.x === x && c.position.y === y)
     if (cityHere && cityHere.ownerId !== viewer.id) {
-      if (
-        selectedCaptain &&
-        mapDistance(game.map, selectedCaptain.position, cityHere.position) <= 1 &&
-        selectedCaptain.movementPoints >= 1 &&
-        selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0
-      ) {
+      const hasTroops = selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0
+      const approach = hasTroops ? approachToEngage(cityHere.position) : undefined
+      if (approach !== undefined) {
+        setPendingApproach(approach)
         setAssaultCityId(cityHere.id)
       } else {
         setEnemyCityInfoId(cityHere.id)
@@ -333,14 +386,13 @@ export function GameScreen({
       return
     }
 
-    const encounterHere = game.encounters.find(
-      (e) => e.active && e.position.x === x && e.position.y === y,
-    )
+    const encounterHere = visibleKeys.has(key)
+      ? game.encounters.find((e) => e.active && e.position.x === x && e.position.y === y)
+      : undefined
     if (encounterHere) {
-      if (
-        mapDistance(game.map, selectedCaptain.position, encounterHere.position) <= 1 &&
-        selectedCaptain.movementPoints >= 1
-      ) {
+      const approach = approachToEngage(encounterHere.position)
+      if (approach !== undefined) {
+        setPendingApproach(approach)
         setEncounterId(encounterHere.id)
       }
       return
@@ -357,6 +409,23 @@ export function GameScreen({
         to: { x, y },
       })
     }
+  }
+
+  /**
+   * Sail the recorded approach leg (#376), if any, before dispatching the
+   * attack/assault/encounter action that follows. Relies on `handleAction`
+   * (App.tsx) keeping its `game` ref current synchronously, so the very next
+   * `onAction` call in the same handler validates against the post-move
+   * position instead of a stale pre-move snapshot.
+   */
+  function dispatchApproach(captainId: string) {
+    if (!pendingApproach) return
+    onAction({
+      type: 'moveCaptain',
+      playerId: viewer.id,
+      captainId,
+      to: pendingApproach.at(-1)!,
+    })
   }
 
   const odds = useMemo(() => {
@@ -409,7 +478,9 @@ export function GameScreen({
     audioManager.play(DIALOGUE.battleCharge)
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
+    dispatchApproach(captainId)
     setAttackTargetId(null)
+    setPendingApproach(null)
     setSelectedCaptainId(null)
     setTacticalRound(null)
 
@@ -442,7 +513,9 @@ export function GameScreen({
     audioManager.play(DIALOGUE.battleCharge)
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
+    dispatchApproach(captainId)
     setAttackTargetId(null)
+    setPendingApproach(null)
     setSelectedCaptainId(null)
 
     let probe: TacticalProbeOutcome | null = null
@@ -584,7 +657,9 @@ export function GameScreen({
     audioManager.play(DIALOGUE.battleCharge)
     const captainId = selectedCaptain.id
     const targetCityId = assaultCity.id
+    dispatchApproach(captainId)
     setAssaultCityId(null)
+    setPendingApproach(null)
     setSelectedCaptainId(null)
     setAssaultBoarding(null)
     onAction({ type: 'attackCity', playerId: viewer.id, captainId, targetCityId })
@@ -597,7 +672,9 @@ export function GameScreen({
     audioManager.play(DIALOGUE.battleCharge)
     const captainId = selectedCaptain.id
     const targetCityId = assaultCity.id
+    dispatchApproach(captainId)
     setAssaultCityId(null)
+    setPendingApproach(null)
     setSelectedCaptainId(null)
 
     let probe: BoardingProbeOutcome | null = null
@@ -667,6 +744,7 @@ export function GameScreen({
         ?.reward
     if (reward?.gold) coinFeedback()
     playEncounterResolutionBark(encounter.kind, choice)
+    dispatchApproach(selectedCaptain.id)
     onAction({
       type: 'resolveEncounter',
       playerId: viewer.id,
@@ -675,6 +753,7 @@ export function GameScreen({
       choice: choice as EncounterChoice,
     })
     setEncounterId(null)
+    setPendingApproach(null)
     setSelectedCaptainId(null)
   }
 
@@ -790,6 +869,7 @@ export function GameScreen({
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
           factionOf={factionOf}
+          controlsRef={mapControlsRef}
         />
         {eventFeed.length > 0 && (
           <ul className="turn-event-feed" aria-label="Recent events">
@@ -798,11 +878,42 @@ export function GameScreen({
             ))}
           </ul>
         )}
+        {/* City roster (#373): only when the viewer holds more than one city —
+            a single-city game keeps the unchanged "City" button and no strip. */}
+        {viewerCities.length > 1 && (
+          <ul className="city-roster" aria-label="Your cities">
+            {viewerCities.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className={
+                    c.id === viewerCity?.id ? 'city-roster-entry selected' : 'city-roster-entry'
+                  }
+                  onClick={() => openCity(c.id)}
+                >
+                  <span className="city-roster-name">{c.name}</span>
+                  <span
+                    className={c.builtThisRound ? 'city-roster-built done' : 'city-roster-built'}
+                    aria-label={c.builtThisRound ? 'Built this round' : 'Idle this round'}
+                    title={c.builtThisRound ? 'Built this round' : 'Idle this round'}
+                  >
+                    {c.builtThisRound ? '✓' : '•'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Primary actions live in a bottom bar, not the header, so they sit in
           the thumb-reach zone on one-handed phone use (#27). */}
       <div className="bottom-action-bar">
+        {idleCityHint && (
+          <div className="idle-city-hint" role="status">
+            {idleCityHint}
+          </div>
+        )}
         <div className="button-group">
           <button
             className="secondary"
@@ -898,7 +1009,13 @@ export function GameScreen({
       )}
 
       {attackTarget && odds && selectedCaptain && (
-        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+        <BottomSheet
+          title={`Engage ${attackTarget.name}?`}
+          onClose={() => {
+            setAttackTargetId(null)
+            setPendingApproach(null)
+          }}
+        >
           <section className="battle-intro">
             <div className="battle-intro__side">
               {FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (
@@ -950,7 +1067,13 @@ export function GameScreen({
       )}
 
       {assaultCity && selectedCaptain && (
-        <BottomSheet title={`Assault ${assaultCity.name}?`} onClose={() => setAssaultCityId(null)}>
+        <BottomSheet
+          title={`Assault ${assaultCity.name}?`}
+          onClose={() => {
+            setAssaultCityId(null)
+            setPendingApproach(null)
+          }}
+        >
           <section>
             <p className="building-option__hint">
               {factionName(
@@ -1042,7 +1165,10 @@ export function GameScreen({
               )}
             </>
           }
-          onClose={() => setEncounterId(null)}
+          onClose={() => {
+            setEncounterId(null)
+            setPendingApproach(null)
+          }}
         >
           <img
             className="encounter-portrait"

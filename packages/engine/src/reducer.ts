@@ -1,6 +1,7 @@
 import {
   addResources,
   canAfford,
+  coordsEqual,
   subtractResources,
   type Coord,
   type ResourcePool,
@@ -12,6 +13,7 @@ import {
   type AttackCaptainAction,
   type AttackCityAction,
   type ChooseCaptainSkillAction,
+  type ClearSailOrderAction,
   type ConstructBuildingAction,
   type GainCaptainXpAction,
   type LeaveAllianceAction,
@@ -21,6 +23,7 @@ import {
   type RecruitCaptainAction,
   type RecruitUnitAction,
   type ResolveEncounterAction,
+  type SetSailOrderAction,
   type SetStandingOrdersAction,
   type TransferTroopsAction,
   type UpgradeShipAction,
@@ -55,8 +58,8 @@ import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
-import { isWaterTile, mapDistance, mapNeighbors, tileAt, type GameMap } from './map'
-import { findPath } from './pathfinding'
+import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex, type GameMap } from './map'
+import { findPath, pathCost } from './pathfinding'
 import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
@@ -72,7 +75,15 @@ import {
   TACTICS,
   type TacticDriver,
 } from './tactics'
-import type { AllianceState, Captain, CityState, GameState, PlayerState, TroopStack } from './types'
+import type {
+  AllianceState,
+  Captain,
+  CityState,
+  GameSetup,
+  GameState,
+  PlayerState,
+  TroopStack,
+} from './types'
 import { accumulateExploredTiles, tileKey, tilesInRadius } from './visibility'
 
 /**
@@ -151,6 +162,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       battleReport = result.battleReport
       break
     }
+    case 'setSailOrder':
+      next = setSailOrder(state, action)
+      break
+    case 'clearSailOrder':
+      next = clearSailOrder(state, action)
+      break
     case 'setStandingOrders':
       next = setStandingOrders(state, action)
       break
@@ -273,7 +290,11 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
     ...state,
     captains: state.captains.map((c) =>
       c.id === captain.id
-        ? { ...c, position: { ...action.to }, movementPoints: c.movementPoints - cost }
+        ? // A manual move overrides any standing sail order (#372).
+          withSailOrder(
+            { ...c, position: { ...action.to }, movementPoints: c.movementPoints - cost },
+            undefined,
+          )
         : c,
     ),
     exploredTiles: {
@@ -281,6 +302,267 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
       [action.playerId]: Array.from(explored),
     },
   }
+}
+
+// --- Multi-turn sail orders (#372) -------------------------------------------
+
+/** Set or drop a captain's sail order, leaving no stray `undefined` key when dropped. */
+function withSailOrder(captain: Captain, order: SailOrder | undefined): Captain {
+  if (order) return { ...captain, sailOrder: order }
+  if (captain.sailOrder === undefined) return captain
+  const next = { ...captain }
+  delete next.sailOrder
+  return next
+}
+
+function clearSailOrderOn(state: GameState, captainId: string): GameState {
+  return {
+    ...state,
+    captains: state.captains.map((c) => (c.id === captainId ? withSailOrder(c, undefined) : c)),
+  }
+}
+
+/**
+ * The live position of a sail order's target, or `null` if it is no longer a
+ * valid quarry: a captured/sunk captain, a captured-back or self-owned city, a
+ * consumed encounter. A `null` here voids the order (#372: target lost → clear).
+ */
+function sailTargetPosition(state: GameState, order: SailOrder, playerId: string): Coord | null {
+  if (order.targetKind === 'captain') {
+    const c = state.captains.find((c) => c.id === order.targetId)
+    return c && !c.captured && c.ownerId !== playerId ? c.position : null
+  }
+  if (order.targetKind === 'city') {
+    const city = state.cities.find((c) => c.id === order.targetId)
+    return city && city.ownerId !== playerId ? city.position : null
+  }
+  if (order.targetKind === 'encounter') {
+    const e = state.encounters.find((e) => e.id === order.targetId)
+    return e && e.active ? e.position : null
+  }
+  return null
+}
+
+/** Has the captain reached its order — the destination tile, or within striking range of a target? */
+function sailArrived(map: GameMap, position: Coord, order: SailOrder, targetPos: Coord): boolean {
+  return order.targetId
+    ? mapDistance(map, position, targetPos) <= 1
+    : coordsEqual(position, order.destination)
+}
+
+/**
+ * The lowest-cost reachable water tile *beside* `targetPos` — where an intercept
+ * stops, one tile short of the quarry, so arrival never auto-attacks (D-027).
+ * `null` if no water neighbour is reachable this position. Ties break by tile
+ * index for determinism.
+ */
+function approachTile(map: GameMap, from: Coord, targetPos: Coord): Coord | null {
+  let best: Coord | null = null
+  let bestCost = Infinity
+  let bestIdx = Infinity
+  for (const n of mapNeighbors(map, targetPos)) {
+    if (!isWaterTile(tileAt(map, n))) continue
+    const cost = pathCost(map, from, n)
+    if (cost === null) continue
+    const idx = tileIndex(map, n.x, n.y)
+    if (cost < bestCost || (cost === bestCost && idx < bestIdx)) {
+      best = n
+      bestCost = cost
+      bestIdx = idx
+    }
+  }
+  return best
+}
+
+/**
+ * Advance one captain's standing sail order (#372) as far as this turn's
+ * movement allows. Re-aims at the live target each call (intercept
+ * recomputation), then walks the water route one tile at a time — revealing
+ * tiles as it goes — and stops the instant it arrives, runs out of movement or
+ * navigable water, or a NEW contact comes into view. In that last case the order
+ * pauses (`interrupted`) and waits for the player; otherwise its `knownContactIds`
+ * baseline is refreshed so the same contacts don't re-trigger next turn. On
+ * arrival (or a vanished target) the order is cleared. Pure — returns new state.
+ *
+ * Used both for the first leg at set-order time and for every turn-start
+ * continuation, so both paths share one code path (and one replay contract).
+ */
+function advanceSailOrder(state: GameState, captainId: string, playerId: string): GameState {
+  const captain = state.captains.find((c) => c.id === captainId)
+  if (!captain?.sailOrder || captain.captured) return state
+  const order = captain.sailOrder
+
+  const targetPos = order.targetId ? sailTargetPosition(state, order, playerId) : order.destination
+  if (targetPos === null) return clearSailOrderOn(state, captainId) // target lost → void
+  if (sailArrived(state.map, captain.position, order, targetPos)) {
+    return clearSailOrderOn(state, captainId)
+  }
+
+  const { captainVisionRadius } = state.config.setup
+  const known = new Set(order.knownContactIds)
+  const explored = new Set(state.exploredTiles[playerId] ?? [])
+
+  let position = captain.position
+  let movementPoints = captain.movementPoints
+  // Pre-move: a new contact already in view at turn start pauses without a stray
+  // step (an enemy that moved adjacent while this captain sat still).
+  let contactsHere = currentContacts(state, playerId)
+  let interrupted = contactsHere.some((id) => !known.has(id))
+
+  if (!interrupted && movementPoints > 0) {
+    const legDest = order.targetId ? approachTile(state.map, position, targetPos) : targetPos
+    const path = legDest && findPath(state.map, position, legDest)
+    if (path && path.length >= 2) {
+      for (const coord of tilesInRadius(position, captainVisionRadius, state.map)) {
+        explored.add(tileKey(coord))
+      }
+      // Walk one tile at a time so a new sighting stops us AT the tile it appeared.
+      for (let i = 1; i < path.length && movementPoints > 0; i++) {
+        position = path[i]!
+        movementPoints -= 1
+        for (const coord of tilesInRadius(position, captainVisionRadius, state.map)) {
+          explored.add(tileKey(coord))
+        }
+        // Recompute from a state where only this captain has advanced, so a
+        // sighting this very step (own movement uncovering an enemy) counts.
+        const scouted = withCaptainProgress(state, captainId, position, explored, playerId)
+        contactsHere = currentContacts(scouted, playerId)
+        if (contactsHere.some((id) => !known.has(id))) {
+          interrupted = true
+          break
+        }
+        if (sailArrived(state.map, position, order, targetPos)) break
+      }
+    }
+  }
+
+  const arrived = !interrupted && sailArrived(state.map, position, order, targetPos)
+  const nextOrder: SailOrder | undefined = arrived
+    ? undefined
+    : interrupted
+      ? { ...order, knownContactIds: contactsHere, interrupted: true }
+      : { ...order, knownContactIds: contactsHere }
+
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captainId ? withSailOrder({ ...c, position, movementPoints }, nextOrder) : c,
+    ),
+    exploredTiles: { ...state.exploredTiles, [playerId]: Array.from(explored) },
+  }
+}
+
+/** State with just `captainId` moved to `position` and `playerId`'s explored set updated — for the per-step contact scan. */
+function withCaptainProgress(
+  state: GameState,
+  captainId: string,
+  position: Coord,
+  explored: Set<string>,
+  playerId: string,
+): GameState {
+  return {
+    ...state,
+    captains: state.captains.map((c) => (c.id === captainId ? { ...c, position } : c)),
+    exploredTiles: { ...state.exploredTiles, [playerId]: Array.from(explored) },
+  }
+}
+
+/**
+ * Give a captain a standing sail order (#372) and immediately sail this turn's
+ * leg. `destination` must be reachable water (fixed-tile order) or an intercept
+ * whose target is a live enemy with a reachable approach tile.
+ */
+function setSailOrder(state: GameState, action: SetSailOrderAction): GameState {
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
+  if (captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
+  }
+  if (captain.captured) {
+    throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
+  }
+  if (!tileAt(state.map, action.destination)) {
+    throw new InvalidActionError(
+      `Destination ${action.destination.x},${action.destination.y} is off-map`,
+      action,
+    )
+  }
+
+  let order: SailOrder
+  if (action.targetId !== undefined) {
+    if (action.targetKind === undefined) {
+      throw new InvalidActionError('A sail order target requires a targetKind', action)
+    }
+    const probe: SailOrder = {
+      destination: action.destination,
+      targetId: action.targetId,
+      targetKind: action.targetKind,
+      knownContactIds: [],
+    }
+    const targetPos = sailTargetPosition(state, probe, action.playerId)
+    if (targetPos === null) {
+      throw new InvalidActionError(
+        `Sail target ${action.targetId} is not a valid ${action.targetKind}`,
+        action,
+      )
+    }
+    if (mapDistance(state.map, captain.position, targetPos) <= 1) {
+      throw new InvalidActionError('Sail target is already within reach', action)
+    }
+    if (!approachTile(state.map, captain.position, targetPos)) {
+      throw new InvalidActionError('Sail target is not reachable by sea', action)
+    }
+    order = {
+      destination: { ...action.destination },
+      targetId: action.targetId,
+      targetKind: action.targetKind,
+      knownContactIds: currentContacts(state, action.playerId),
+    }
+  } else {
+    if (!isWaterTile(tileAt(state.map, action.destination))) {
+      throw new InvalidActionError('Sail destination is not water', action)
+    }
+    if (coordsEqual(captain.position, action.destination)) {
+      throw new InvalidActionError('Sail destination is already the current tile', action)
+    }
+    if (!findPath(state.map, captain.position, action.destination)) {
+      throw new InvalidActionError('Sail destination is not reachable by sea', action)
+    }
+    order = {
+      destination: { ...action.destination },
+      knownContactIds: currentContacts(state, action.playerId),
+    }
+  }
+
+  const withOrder: GameState = {
+    ...state,
+    captains: state.captains.map((c) => (c.id === captain.id ? withSailOrder(c, order) : c)),
+  }
+  return advanceSailOrder(withOrder, captain.id, action.playerId)
+}
+
+/** Cancel a captain's standing sail order (#372). Idempotent — valid with none set. */
+function clearSailOrder(state: GameState, action: ClearSailOrderAction): GameState {
+  const captain = state.captains.find((c) => c.id === action.captainId)
+  if (!captain) throw new InvalidActionError(`No captain ${action.captainId}`, action)
+  if (captain.ownerId !== action.playerId) {
+    throw new InvalidActionError(`Captain ${action.captainId} is not yours`, action)
+  }
+  return clearSailOrderOn(state, action.captainId)
+}
+
+/**
+ * At the start of `playerId`'s turn (after movement refresh), continue every one
+ * of their captains' standing sail orders (#372). A paused (interrupted) order
+ * is skipped — it waits for the player to re-issue or clear it.
+ */
+function autoContinueSailOrders(state: GameState, playerId: string): GameState {
+  const ids = state.captains
+    .filter((c) => c.ownerId === playerId && !c.captured && c.sailOrder && !c.sailOrder.interrupted)
+    .map((c) => c.id)
+  let working = state
+  for (const id of ids) working = advanceSailOrder(working, id, playerId)
+  return working
 }
 
 /**
@@ -320,6 +602,81 @@ function releaseCaptivesHeldBy(captains: Captain[], captorId: string, round: num
     delete released.capturedBy
     return released
   })
+}
+
+/** A prize captain (#374) plus the {@link BattleReport.prizeShip} metadata it produces. */
+export interface PrizeSpawn {
+  captain: Captain
+  report: NonNullable<BattleReport['prizeShip']>
+}
+
+/**
+ * The prize a decisive naval victory (#374) hands the winner: the defeated
+ * captain's hull as a fresh, empty-crewed "prize captain" (level 1, no skills,
+ * no troops, copied ship class + upgrades), spawned on the defeated ship's tile.
+ * Null on any non-decisive result — an escape or a mutual-survival draw leaves
+ * both sides afloat (both `*Survived`), so no capture and no prize. Pure and
+ * shared by the reducer (which spawns the captain) and the client battle probe
+ * (which previews the report), so both agree on the report's prizeShip byte for
+ * byte. The prize id keys off `actionCount`, so it stays deterministic and
+ * replay-stable.
+ */
+export function prizeSpawnFor(
+  report: BattleReport,
+  attacker: Captain,
+  defender: Captain,
+  actionCount: number,
+  setup: GameSetup,
+): PrizeSpawn | null {
+  const loser = !report.attackerSurvived ? attacker : !report.defenderSurvived ? defender : null
+  if (!loser) return null
+  const captain: Captain = {
+    id: `prize-${actionCount}`,
+    ownerId: report.winnerId,
+    name: `Prize of the ${loser.shipClassId.charAt(0).toUpperCase()}${loser.shipClassId.slice(1)}`,
+    position: { ...loser.position },
+    shipClassId: loser.shipClassId,
+    // No movement the turn it is taken; refreshes to a full allowance on the
+    // winner's next turn like any other captain.
+    movementPoints: 0,
+    maxMovementPoints: setup.startingCaptainMovement,
+    troops: [],
+    xp: 0,
+    skills: [],
+    shipUpgrades: { ...loser.shipUpgrades },
+    captured: false,
+  }
+  return {
+    captain,
+    report: {
+      captainId: captain.id,
+      shipClassId: captain.shipClassId,
+      newOwnerId: captain.ownerId,
+    },
+  }
+}
+
+/**
+ * Turn a decisively-beaten captain into a captive of `capturedBy` (#309): held,
+ * stripped of troops and movement, and — since a captive cannot act — with any
+ * standing sail order (#372) dropped. Shared by ship duels and city assaults.
+ */
+function captureCaptain(
+  captain: Captain,
+  capturedBy: string,
+  captivityReturnRound: number,
+): Captain {
+  const captured: Captain = {
+    ...captain,
+    captured: true,
+    capturedBy,
+    captivityReturnRound,
+    troops: [],
+    movementPoints: 0,
+    maxMovementPoints: 0,
+  }
+  delete captured.sailOrder
+  return captured
 }
 
 /**
@@ -520,34 +877,25 @@ function attackCaptain(
     const wonXp = c.id === winnerCaptainId ? combatWinXp : 0
     if (c.id === attacker.id) {
       if (!report.attackerSurvived) {
-        return {
-          ...c,
-          captured: true,
-          capturedBy: target.ownerId,
-          captivityReturnRound,
-          troops: [],
-          movementPoints: 0,
-          maxMovementPoints: 0,
-        }
+        return captureCaptain(c, target.ownerId, captivityReturnRound)
       }
       return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + wonXp }
     }
     if (c.id === target.id) {
       if (!report.defenderSurvived) {
-        return {
-          ...c,
-          captured: true,
-          capturedBy: attacker.ownerId,
-          captivityReturnRound,
-          troops: [],
-          movementPoints: 0,
-          maxMovementPoints: 0,
-        }
+        return captureCaptain(c, attacker.ownerId, captivityReturnRound)
       }
       return { ...c, troops: result.defenderTroops, xp: c.xp + wonXp }
     }
     return c
   })
+
+  // Prize ship (#374): a decisive naval victory hands the defeated captain's
+  // hull to the winner as a fresh, empty-crewed "prize captain". Built by the
+  // shared pure helper the client battle probe also uses, so the previewed
+  // report and the authoritative one carry the same prizeShip.
+  const prize = prizeSpawnFor(report, attacker, target, state.actionCount, state.config.setup)
+  const captainsWithPrize = prize ? [...captains, prize.captain] : captains
 
   const players = betrayal
     ? state.players.map((p) =>
@@ -578,10 +926,10 @@ function attackCaptain(
     ...state,
     players,
     alliances,
-    captains,
+    captains: captainsWithPrize,
     rngState: result.rng,
   })
-  return { state: settled, battleReport: report }
+  return { state: settled, battleReport: prize ? { ...report, prizeShip: prize.report } : report }
 }
 
 /**
@@ -670,15 +1018,7 @@ function attackCity(
     if (attackerWon) {
       return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + combatWinXp }
     }
-    return {
-      ...c,
-      captured: true,
-      capturedBy: target.ownerId,
-      captivityReturnRound,
-      troops: [],
-      movementPoints: 0,
-      maxMovementPoints: 0,
-    }
+    return captureCaptain(c, target.ownerId, captivityReturnRound)
   })
 
   const cities = state.cities.map((c) => {
@@ -880,7 +1220,11 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
         ...c,
         captured: false,
         position: spawnPosition,
-        shipClassId: setup.startingShipClass,
+        // A rehired captive comes back on a starter hull (#374): its old ship
+        // was handed to whoever captured it as a prize, so its upgrades go with
+        // it — the returning captain buys refits afresh.
+        shipClassId: setup.ransomReturnShipClassId ?? setup.startingShipClass,
+        shipUpgrades: {},
         movementPoints: setup.startingCaptainMovement,
         maxMovementPoints: setup.startingCaptainMovement,
         troops: crew,
@@ -1448,9 +1792,15 @@ function advanceTurn(state: GameState): GameState {
     ? reactivateEncounters(state.encounters, round)
     : state.encounters
 
-  return refreshMovement(
-    { ...state, currentPlayerIndex: index, round, players, cities, encounters },
-    state.players[index]!.id,
+  const newPlayerId = state.players[index]!.id
+  // Refresh the incoming seat's movement, then auto-continue any standing sail
+  // orders (#372) with the points they just regained.
+  return autoContinueSailOrders(
+    refreshMovement(
+      { ...state, currentPlayerIndex: index, round, players, cities, encounters },
+      newPlayerId,
+    ),
+    newPlayerId,
   )
 }
 

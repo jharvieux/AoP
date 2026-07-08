@@ -131,6 +131,21 @@ describe('captain recovery (#308/#309)', () => {
     expect(action).toEqual({ type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
   })
 
+  it('recruits at the owned city closest to the front, not the first one (#373)', () => {
+    // p1 owns two cities and has no captain. Its far capital sorts first, but
+    // p2's capital — now p1's second city — sits right next to p2's captain,
+    // the only enemy on the board. The AI must launch the replacement from the
+    // front city, not whichever city happens to lead the array.
+    const base = createGame(config(5, 5))
+    const twoCity: GameState = {
+      ...base,
+      cities: base.cities.map((c) => (c.id === 'p2-capital' ? { ...c, ownerId: 'p1' } : c)),
+      captains: base.captains.filter((c) => c.ownerId !== 'p1'),
+    }
+    const action = nextAiAction(twoCity, 'p1')
+    expect(action).toEqual({ type: 'recruitCaptain', playerId: 'p1', cityId: 'p2-capital' })
+  })
+
   it('ransoms an eligible captive when outnumbered and affordable', () => {
     // p1 keeps one live captain (so the higher-scoring planRecruitCaptain
     // stays out of the running — it only fires when captain-less) plus one

@@ -5,7 +5,7 @@ import {
   type GameConfig,
   type GameState,
 } from '@aop/engine'
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
@@ -72,6 +72,15 @@ export function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
+  // Mirrors `game`/`actionLog` synchronously (see handleAction below) so a
+  // second handleAction call in the same tick — e.g. naval targeting's
+  // approach-then-attack (#376), which dispatches `moveCaptain` immediately
+  // followed by the attack action — sees the just-applied state instead of
+  // the stale pre-move snapshot React hasn't re-rendered yet.
+  const gameRef = useRef(game)
+  gameRef.current = game
+  const actionLogRef = useRef(actionLog)
+  actionLogRef.current = actionLog
   // Structured result of the last combat, for the battle report sheet (#39).
   // Derived output, never part of the replayable state or the saved log.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
@@ -128,8 +137,9 @@ export function App() {
   // skip autosave so sculpting a draft map never clobbers a real save slot.
   // See dispatchAction (#240) for why a rejected action doesn't just throw.
   function handleAction(action: Action) {
-    if (!game || !config) return
-    const result = dispatchAction(game, action)
+    const current = gameRef.current
+    if (!current || !config) return
+    const result = dispatchAction(current, action)
     if (result.kind === 'rejected') {
       console.error('Rejected action', action, result.message)
       setActionError(result.message)
@@ -147,7 +157,9 @@ export function App() {
     }
     const { appliedAction, outcome } = result
     const next = outcome.state
-    const nextLog = [...actionLog, appliedAction]
+    const nextLog = [...actionLogRef.current, appliedAction]
+    gameRef.current = next
+    actionLogRef.current = nextLog
     setGame(next)
     setActionLog(nextLog)
     if (outcome.battleReport) setBattleReport(outcome.battleReport)

@@ -236,6 +236,13 @@ export interface GameSetup {
    */
   ransomXpMultiplier: number
   /**
+   * Ship class a rehired captive returns to sea on (#374). Its own ship was
+   * handed to its captor as a prize the moment it was captured, so on release
+   * it comes back on this hull (upgrades cleared). Omit to fall back to
+   * `startingShipClass`.
+   */
+  ransomReturnShipClassId?: string
+  /**
    * Battle resolution mode (#305): `'auto'` instant-resolves every naval
    * battle (the pre-#305 behavior); `'tactical'` routes the human attacker's
    * battles through the interactive round-by-round planner instead. A purely
@@ -327,6 +334,9 @@ export const GAME_SETUP: GameSetup = {
   captainCaptivityRounds: 5,
   ransomBaseCost: 200,
   ransomXpMultiplier: 2,
+  // Rehired captives return on the same starter hull a fresh captain gets
+  // (#374); the captured ship itself became the captor's prize.
+  ransomReturnShipClassId: 'sloop',
   // Default single-player games to interactive tactical combat so the tactical
   // systems are visible by default (#343); auto stays selectable in New Game
   // Setup. Config is captured per-game at setup, so saves/replays are unaffected.

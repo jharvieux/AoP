@@ -414,6 +414,45 @@ describe('recruitCaptain action (#308/#309)', () => {
     expect(captainsOf(next, 'p1')).toHaveLength(1)
   })
 
+  it('returns a rehired captive on a starter hull with upgrades cleared (#374)', () => {
+    // The captive's own ship was handed to its captor as a prize the moment it
+    // was captured, so on release it comes back on the starter hull, upgrades
+    // wiped — never the veteran hull it lost.
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const upgraded: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === p1cap.id ? { ...c, shipClassId: 'galleon', shipUpgrades: { hull: 3 } } : c,
+      ),
+    }
+    const state = withCapturedCaptain(upgraded, p1cap.id, 'p2', 0)
+    const next = applyAction(state, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      captainId: p1cap.id,
+    })
+    const revived = next.captains.find((c) => c.id === p1cap.id)!
+    // Falls back to startingShipClass when ransomReturnShipClassId is unset.
+    expect(revived.shipClassId).toBe(GAME_SETUP.startingShipClass)
+    expect(revived.shipUpgrades).toEqual({})
+  })
+
+  it('honors an explicit ransomReturnShipClassId for the returning hull (#374)', () => {
+    const setup = { ...GAME_SETUP, ransomReturnShipClassId: 'brigantine' }
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG, setup })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state = withCapturedCaptain(base, p1cap.id, 'p2', 0)
+    const next = applyAction(state, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      captainId: p1cap.id,
+    })
+    expect(next.captains.find((c) => c.id === p1cap.id)!.shipClassId).toBe('brigantine')
+  })
+
   it('replays a recruitCaptain log to an identical state', () => {
     const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
     const log: Action[] = [{ type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }]

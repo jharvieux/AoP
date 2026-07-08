@@ -473,6 +473,40 @@ function requirePlayer(state: GameState, playerId: string): PlayerState {
 }
 
 /**
+ * Pick which owned city to recruit a captain at (#373): the one closest to the
+ * front — the nearest enemy city or live enemy captain — so replacements spawn
+ * where the fighting is, not at whichever city happened to sort first. Ties
+ * break on lowest city id for replay-stable determinism. Only cities that
+ * border open water are eligible, since `recruitCaptain` spawns the hull on an
+ * adjacent water tile; a landlocked conquest can't launch one. Returns null
+ * when the seat owns no water-bordering city.
+ */
+function bestRecruitCity(state: GameState, playerId: string): CityState | null {
+  const eligible = state.cities.filter(
+    (c) =>
+      c.ownerId === playerId &&
+      mapNeighbors(state.map, c.position).some((n) => isWaterTile(tileAt(state.map, n))),
+  )
+  if (eligible.length === 0) return null
+
+  const frontPoints = [
+    ...state.cities.filter((c) => c.ownerId !== playerId).map((c) => c.position),
+    ...state.captains.filter((c) => c.ownerId !== playerId && !c.captured).map((c) => c.position),
+  ]
+  const distToFront = (city: CityState): number =>
+    frontPoints.length === 0
+      ? 0
+      : Math.min(...frontPoints.map((p) => mapDistance(state.map, city.position, p)))
+
+  return [...eligible].sort((a, b) => {
+    const da = distToFront(a)
+    const db = distToFront(b)
+    if (da !== db) return da - db
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  })[0]!
+}
+
+/**
  * Recruit-when-desperate (#308): once a seat has no live captain left, mint
  * (or, if one is eligible, rehire) one from an owned port — the AI's own
  * escape from the coin-flip loss #308 fixed. Only fires while captain-less;
@@ -486,7 +520,7 @@ function planRecruitCaptain(
 ): ScoredAction | null {
   const liveCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
   if (liveCaptains.length > 0) return null
-  const city = state.cities.find((c) => c.ownerId === playerId)
+  const city = bestRecruitCity(state, playerId)
   if (!city) return null
 
   const player = requirePlayer(state, playerId)

@@ -1,24 +1,32 @@
 import { describe, expect, it } from 'vitest'
+import type { Coord } from '@aop/shared'
 import {
   applyAction,
   availableSkillPicks,
   captainsOf,
   createGame,
   createCombatStats,
+  currentlyVisibleTiles,
   currentPlayer,
   estimateOdds,
   InvalidActionError,
   levelForXp,
+  mapDistance,
   nextFloat,
   nextInt,
   replay,
+  RULES_VERSION,
   seedRng,
+  tileKey,
   visibleState,
   type Action,
+  type Captain,
   type CombatStatsData,
   type Combatant,
   type ContentCatalog,
   type GameConfig,
+  type GameMap,
+  type GameSetup,
   type GameState,
 } from '../src'
 import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
@@ -475,6 +483,68 @@ describe('economy & cities', () => {
       }),
     ).toThrow(InvalidActionError)
   })
+
+  it('sums income, resets builds, and unions vision across every owned city (#373)', () => {
+    const base = createGame(econConfig())
+    // Hand p2's capital to p1 so p1 fields two cities. p2 keeps its captain, so
+    // it stays in play — this isolates the multi-city economy from elimination.
+    const twoCity: GameState = {
+      ...base,
+      cities: base.cities.map((c) => (c.id === 'p2-capital' ? { ...c, ownerId: 'p1' } : c)),
+    }
+    const cityA = twoCity.cities.find((c) => c.id === 'p1-capital')!
+    const cityB = twoCity.cities.find((c) => c.id === 'p2-capital')!
+
+    // Vision is the union of both cities' discs, not just the first.
+    const visible = new Set(currentlyVisibleTiles(twoCity, 'p1').map(tileKey))
+    expect(visible.has(tileKey(cityA.position))).toBe(true)
+    expect(visible.has(tileKey(cityB.position))).toBe(true)
+
+    // Both cities can build in the same turn (the one-build rule is per city).
+    let state = applyAction(twoCity, {
+      type: 'construct',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      buildingId: 'sawmill',
+    })
+    state = applyAction(state, {
+      type: 'construct',
+      playerId: 'p1',
+      cityId: 'p2-capital',
+      buildingId: 'sawmill',
+    })
+    expect(state.cities.filter((c) => c.ownerId === 'p1').every((c) => c.builtThisRound)).toBe(true)
+
+    const startGold = state.players.find((p) => p.id === 'p1')!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+
+    // Two townhalls' income (100 gold each) is counted, not one.
+    expect(state.players.find((p) => p.id === 'p1')!.resources.gold).toBe(startGold + 200)
+    // The round wrap clears builtThisRound on every owned city, not just one.
+    expect(state.cities.filter((c) => c.ownerId === 'p1').every((c) => !c.builtThisRound)).toBe(
+      true,
+    )
+  })
+
+  it('replays two-city builds and income identically (#373)', () => {
+    const base = createGame(econConfig())
+    const twoCity: GameState = {
+      ...base,
+      cities: base.cities.map((c) => (c.id === 'p2-capital' ? { ...c, ownerId: 'p1' } : c)),
+    }
+    const log: Action[] = [
+      { type: 'construct', playerId: 'p1', cityId: 'p1-capital', buildingId: 'sawmill' },
+      { type: 'construct', playerId: 'p1', cityId: 'p2-capital', buildingId: 'sawmill' },
+      { type: 'recruit', playerId: 'p1', cityId: 'p1-capital', unitId: 'deckhand', count: 2 },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const a = replay(twoCity, log)
+    const b = replay(twoCity, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+  })
 })
 
 describe('captain progression', () => {
@@ -627,5 +697,399 @@ describe('replay determinism', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     // Two round wraps, each granting the gold node's 50 on top of the 100 from townhall.
     expect(a.players[0]!.resources.gold).toBe(withNode.players[0]!.resources.gold + 2 * (100 + 50))
+  })
+})
+
+// --- Multi-turn sail orders (#372) -------------------------------------------
+
+/** A 14×5 sheet of open deep water — no land, so every water path is unobstructed. */
+function openSea(width: number, height: number): GameMap {
+  const tiles = Array.from({ length: width * height }, () => ({
+    type: 'deep' as const,
+    island: -1,
+  }))
+  return { width, height, tiles, startPositions: [] }
+}
+
+interface CapSpec {
+  id: string
+  ownerId: string
+  position: Coord
+}
+
+/**
+ * A handcrafted two-seat GameState on open water for sail-order tests: precise
+ * captain placement (which the procedural generator can't give us) with p1 as
+ * the human seat to act. `setup` defaults to GAME_SETUP (vision radius 2).
+ */
+function sailState(
+  caps: CapSpec[],
+  currentPlayerIndex = 0,
+  setup: GameSetup = GAME_SETUP,
+  map: GameMap = openSea(14, 5),
+): GameState {
+  const seats = [
+    { id: 'p1', name: 'One', faction: 'pirates' as const, isAI: false },
+    { id: 'p2', name: 'Two', faction: 'british' as const, isAI: true },
+  ]
+  const captains: Captain[] = caps.map((c) => ({
+    id: c.id,
+    ownerId: c.ownerId,
+    name: c.id,
+    position: { ...c.position },
+    shipClassId: 'sloop',
+    movementPoints: setup.startingCaptainMovement,
+    maxMovementPoints: setup.startingCaptainMovement,
+    troops: [],
+    xp: 0,
+    skills: [],
+    shipUpgrades: {},
+    captured: false,
+  }))
+  return {
+    config: { seed: 1, mapSize: 'small', setup, players: seats, rulesVersion: RULES_VERSION },
+    map,
+    round: 1,
+    currentPlayerIndex,
+    players: seats.map((s) => ({
+      id: s.id,
+      name: s.name,
+      faction: s.faction,
+      isAI: s.isAI,
+      resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
+      eliminated: false,
+      reputation: 100,
+    })),
+    alliances: { pairs: [], proposals: [] },
+    cities: [],
+    captains,
+    encounters: [],
+    resourceNodes: [],
+    exploredTiles: {},
+    rngState: seedRng(1),
+    actionCount: 0,
+    status: 'active',
+    winnerId: null,
+  }
+}
+
+const captainById = (state: GameState, id: string): Captain =>
+  state.captains.find((c) => c.id === id)!
+
+/** End p1's then p2's turn, returning to p1 with its sail orders auto-continued. */
+function roundTripTurn(state: GameState): GameState {
+  const afterP1 = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+  return applyAction(afterP1, { type: 'endTurn', playerId: 'p2' })
+}
+
+describe('multi-turn sail orders (#372)', () => {
+  it('auto-continues across turns and clears the order on arrival', () => {
+    let state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 13, y: 0 } }, // far, never sighted
+    ])
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 9, y: 2 },
+    })
+    // First leg spends all 5 movement points (cost is 8) — still under way.
+    const afterLeg1 = captainById(state, 'p1cap')
+    expect(afterLeg1.movementPoints).toBe(0)
+    expect(afterLeg1.position.x).toBe(6)
+    expect(afterLeg1.sailOrder?.destination).toEqual({ x: 9, y: 2 })
+    expect(afterLeg1.sailOrder?.interrupted).toBeUndefined()
+
+    // Next turn it finishes the remaining 3 tiles and the order is consumed.
+    state = roundTripTurn(state)
+    const arrived = captainById(state, 'p1cap')
+    expect(arrived.position).toEqual({ x: 9, y: 2 })
+    expect(arrived.sailOrder).toBeUndefined()
+  })
+
+  it('pauses mid-sail the step an unseen enemy comes into view (own movement reveals it)', () => {
+    let state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 6, y: 2 } }, // ahead, unseen at start
+    ])
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 11, y: 2 },
+    })
+    const cap = captainById(state, 'p1cap')
+    // The enemy at (6,2) enters vision-2 range exactly when the ship reaches x=4
+    // (3 steps), so it stops there, paused, having spent 3 of 5 points.
+    expect(cap.position.x).toBe(4)
+    expect(cap.movementPoints).toBe(2)
+    expect(cap.sailOrder?.interrupted).toBe(true)
+    expect(cap.sailOrder?.knownContactIds).toContain('p2cap')
+  })
+
+  it('does not pause for a contact already sighted when the order was set', () => {
+    let state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 2, y: 2 } }, // adjacent, already in view
+    ])
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 11, y: 2 },
+    })
+    // A known contact never triggers the pause — it sails the full 5-tile leg
+    // (its knownContactIds then reflect the end-of-leg view, where p2 is behind).
+    const cap = captainById(state, 'p1cap')
+    expect(cap.position.x).toBe(6)
+    expect(cap.movementPoints).toBe(0)
+    expect(cap.sailOrder?.interrupted).toBeUndefined()
+  })
+
+  it('pauses when an enemy moves into view between turns (no stray step)', () => {
+    let state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 10, y: 2 } },
+    ])
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 11, y: 2 },
+    })
+    const stopped = { ...captainById(state, 'p1cap').position }
+    expect(captainById(state, 'p1cap').sailOrder?.interrupted).toBeUndefined()
+
+    // p2 sails its ship within vision range of p1's paused-for-the-turn position.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, {
+      type: 'moveCaptain',
+      playerId: 'p2',
+      captainId: 'p2cap',
+      to: { x: 7, y: 2 },
+    })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+
+    // On p1's new turn the fresh contact pauses the order before moving a tile.
+    const cap = captainById(state, 'p1cap')
+    expect(cap.position).toEqual(stopped)
+    expect(cap.movementPoints).toBe(GAME_SETUP.startingCaptainMovement)
+    expect(cap.sailOrder?.interrupted).toBe(true)
+    expect(cap.sailOrder?.knownContactIds).toContain('p2cap')
+  })
+
+  it('re-aims an intercept at the target’s live position each turn', () => {
+    // Wide vision: the target is always in sight (hence always a known contact),
+    // so the ship never pauses and we can watch it track a moving quarry.
+    const setup: GameSetup = { ...GAME_SETUP, captainVisionRadius: 20 }
+    let state = sailState(
+      [
+        { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+        { id: 'p2cap', ownerId: 'p2', position: { x: 11, y: 2 } },
+      ],
+      0,
+      setup,
+    )
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 11, y: 2 },
+      targetId: 'p2cap',
+      targetKind: 'captain',
+    })
+    // The quarry relocates before p1 closes in.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, {
+      type: 'moveCaptain',
+      playerId: 'p2',
+      captainId: 'p2cap',
+      to: { x: 11, y: 4 },
+    })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+
+    // Give the chase enough turns to close; it ends adjacent to the NEW position
+    // (never auto-attacking) and the order is consumed on arrival.
+    for (let i = 0; i < 4 && captainById(state, 'p1cap').sailOrder; i++) {
+      state = roundTripTurn(state)
+    }
+    const chaser = captainById(state, 'p1cap')
+    expect(chaser.sailOrder).toBeUndefined()
+    expect(mapDistance(state.map, chaser.position, { x: 11, y: 4 })).toBeLessThanOrEqual(1)
+  })
+
+  it('clears an intercept whose target is captured', () => {
+    let state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 11, y: 2 } },
+    ])
+    state = applyAction(state, {
+      type: 'setSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      destination: { x: 11, y: 2 },
+      targetId: 'p2cap',
+      targetKind: 'captain',
+    })
+    expect(captainById(state, 'p1cap').sailOrder?.targetId).toBe('p2cap')
+
+    // Simulate the quarry being captured by someone else, then advance p1's turn.
+    state = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === 'p2cap' ? { ...c, captured: true, capturedBy: 'p1' } : c,
+      ),
+    }
+    state = roundTripTurn(state)
+    expect(captainById(state, 'p1cap').sailOrder).toBeUndefined()
+  })
+
+  it('clearSailOrder and a manual move both cancel a standing order', () => {
+    // clearSailOrder cancels an order set this turn (no movement needed).
+    const withOrder = applyAction(
+      sailState([
+        { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+        { id: 'p2cap', ownerId: 'p2', position: { x: 13, y: 0 } },
+      ]),
+      { type: 'setSailOrder', playerId: 'p1', captainId: 'p1cap', destination: { x: 9, y: 2 } },
+    )
+    const cleared = applyAction(withOrder, {
+      type: 'clearSailOrder',
+      playerId: 'p1',
+      captainId: 'p1cap',
+    })
+    expect(captainById(cleared, 'p1cap').sailOrder).toBeUndefined()
+
+    // A manual move overrides a paused order while movement remains (the mid-sail
+    // interrupt leaves points unspent).
+    const paused = applyAction(
+      sailState([
+        { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+        { id: 'p2cap', ownerId: 'p2', position: { x: 6, y: 2 } },
+      ]),
+      { type: 'setSailOrder', playerId: 'p1', captainId: 'p1cap', destination: { x: 11, y: 2 } },
+    )
+    const pausedCap = captainById(paused, 'p1cap')
+    expect(pausedCap.sailOrder?.interrupted).toBe(true)
+    expect(pausedCap.movementPoints).toBeGreaterThan(0)
+    const moved = applyAction(paused, {
+      type: 'moveCaptain',
+      playerId: 'p1',
+      captainId: 'p1cap',
+      to: { x: pausedCap.position.x - 1, y: pausedCap.position.y },
+    })
+    expect(captainById(moved, 'p1cap').sailOrder).toBeUndefined()
+  })
+
+  it('rejects malformed sail orders', () => {
+    const state = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 2, y: 2 } },
+    ])
+    // Off-map destination.
+    expect(() =>
+      applyAction(state, {
+        type: 'setSailOrder',
+        playerId: 'p1',
+        captainId: 'p1cap',
+        destination: { x: 99, y: 0 },
+      }),
+    ).toThrow(InvalidActionError)
+    // Destination is the captain's own tile.
+    expect(() =>
+      applyAction(state, {
+        type: 'setSailOrder',
+        playerId: 'p1',
+        captainId: 'p1cap',
+        destination: { x: 1, y: 2 },
+      }),
+    ).toThrow(InvalidActionError)
+    // A target id without a target kind.
+    expect(() =>
+      applyAction(state, {
+        type: 'setSailOrder',
+        playerId: 'p1',
+        captainId: 'p1cap',
+        destination: { x: 2, y: 2 },
+        targetId: 'p2cap',
+      }),
+    ).toThrow(InvalidActionError)
+    // Intercepting an already-adjacent target.
+    expect(() =>
+      applyAction(state, {
+        type: 'setSailOrder',
+        playerId: 'p1',
+        captainId: 'p1cap',
+        destination: { x: 2, y: 2 },
+        targetId: 'p2cap',
+        targetKind: 'captain',
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects a destination in an unreachable sea basin', () => {
+    // A solid land wall down column 3 splits the sheet into two seas.
+    const walled = openSea(7, 5)
+    for (let y = 0; y < 5; y++) walled.tiles[y * 7 + 3] = { type: 'land', island: 0 }
+    const state = sailState(
+      [
+        { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+        { id: 'p2cap', ownerId: 'p2', position: { x: 5, y: 2 } },
+      ],
+      0,
+      GAME_SETUP,
+      walled,
+    )
+    expect(() =>
+      applyAction(state, {
+        type: 'setSailOrder',
+        playerId: 'p1',
+        captainId: 'p1cap',
+        destination: { x: 5, y: 2 },
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('replays a sail-order log to a byte-identical state', () => {
+    const base = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 0, y: 4 } },
+    ])
+    const log: Action[] = [
+      { type: 'setSailOrder', playerId: 'p1', captainId: 'p1cap', destination: { x: 13, y: 2 } },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    expect(JSON.stringify(replay(base, log))).toBe(JSON.stringify(replay(base, log)))
+  })
+
+  it('resumes an in-flight sail order from a JSON snapshot at every prefix', () => {
+    const base = sailState([
+      { id: 'p1cap', ownerId: 'p1', position: { x: 1, y: 2 } },
+      { id: 'p2cap', ownerId: 'p2', position: { x: 0, y: 4 } }, // sighted at start → stays known
+    ])
+    const log: Action[] = [
+      { type: 'setSailOrder', playerId: 'p1', captainId: 'p1cap', destination: { x: 13, y: 2 } },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const fullJson = JSON.stringify(replay(base, log))
+    const roundTrip = (s: GameState): GameState => JSON.parse(JSON.stringify(s)) as GameState
+
+    let stateAtK = base
+    for (let k = 0; k <= log.length; k++) {
+      const resumed = replay(roundTrip(stateAtK), log.slice(k))
+      expect(JSON.stringify(resumed)).toBe(fullJson)
+      if (k < log.length) stateAtK = applyAction(stateAtK, log[k]!)
+    }
   })
 })

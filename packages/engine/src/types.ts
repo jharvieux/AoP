@@ -52,6 +52,43 @@ export interface PlayerConfig {
   team?: string
 }
 
+/** What a {@link SailOrder} is chasing, so continuation re-aims at a live target. */
+export type SailTargetKind = 'captain' | 'city' | 'encounter'
+
+/**
+ * A standing multi-turn sail order (#372). A captain given a destination beyond
+ * its remaining movement keeps sailing toward it at the start of each of its
+ * owner's turns until it arrives, runs out of water, or a *new* contact comes
+ * into view (fog-of-war interrupt) — at which point it pauses (`interrupted`)
+ * and waits for the player instead of blundering blind into a fresh enemy.
+ *
+ * Plain JSON so it serializes and replays with the rest of GameState. Absent on
+ * a captain with no standing order (never `undefined`-valued) — so pre-#372
+ * saves and every idle captain are byte-identical.
+ */
+export interface SailOrder {
+  /** The tile being sailed to. For a target order, its position at set time (informational — continuation re-reads the live target). */
+  destination: Coord
+  /** The entity being intercepted, if this order chases one rather than a fixed tile. */
+  targetId?: string
+  /** Which of the id spaces {@link targetId} lives in; required whenever `targetId` is set. */
+  targetKind?: SailTargetKind
+  /**
+   * Contacts (enemy captains/cities/encounters) the owner had already sighted
+   * when the leg began — the baseline against which a *new* sighting is
+   * detected. Refreshed each turn the order advances without interruption, so
+   * an already-known contact never re-triggers the pause. Sorted, from
+   * {@link currentContacts}.
+   */
+  knownContactIds: string[]
+  /**
+   * True once the order paused because a new contact appeared. A paused order
+   * stays put (does not auto-advance) until the player re-issues or clears it.
+   * Omitted while the order is still actively sailing.
+   */
+  interrupted?: boolean
+}
+
 /**
  * A captain — the hero analog. Sails a flagship over water, carries troops, and
  * fights ship-to-ship. Lives in GameState as plain data.
@@ -112,6 +149,12 @@ export interface Captain {
    * normal recruit fee to rejoin the fleet. Present iff `captured`.
    */
   captivityReturnRound?: number
+  /**
+   * Standing multi-turn sail order (#372): the captain auto-continues toward it
+   * at the start of each of its owner's turns. Absent when the captain has no
+   * standing order. Cleared on manual move/capture. See {@link SailOrder}.
+   */
+  sailOrder?: SailOrder
 }
 
 /**
@@ -203,6 +246,13 @@ export interface GameSetup {
    * (#309) — a veteran captain costs more to buy back.
    */
   ransomXpMultiplier: number
+  /**
+   * Ship class a rehired captive returns to sea on (#374). Its own ship was
+   * handed to its captor as a prize the moment it was captured, so on release
+   * it comes back on this hull (upgrades cleared). Omit to fall back to
+   * `startingShipClass`.
+   */
+  ransomReturnShipClassId?: string
   /**
    * Battle resolution mode (#305): `'auto'` (the default) instant-resolves
    * every naval battle exactly as before; `'tactical'` has the client route

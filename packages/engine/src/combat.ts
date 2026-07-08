@@ -234,6 +234,14 @@ export interface BattleReport {
   }
   /** Full hex-board melee record when the battle went to the board (#39). */
   board?: BoardBattleLog
+  /**
+   * Prize ship (#374): on a decisive naval victory the defeated captain's hull
+   * joins the winner's fleet as a new empty-crewed "prize captain". Carries the
+   * minted captain's id, its copied ship class, and the winning seat. Absent on
+   * an escape or a mutual-survival draw — a prize is minted iff a capture
+   * happened.
+   */
+  prizeShip?: { captainId: string; shipClassId: string; newOwnerId: string }
 }
 
 export interface CombatResult {
