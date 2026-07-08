@@ -180,13 +180,14 @@ export function nextMissedTurnStatus(missedTurns: number, threshold: number): Mi
 const TERMINAL_SEAT_STATUSES: readonly string[] = ['eliminated', 'resigned']
 
 /**
- * Whether a returning human may reclaim their seat from `status` (#134, §8:
- * "the mechanism protects the other seven players, it doesn't punish the
- * returner" — so active/skipped/ai_takeover all reclaim; only a terminal
- * eliminated/resigned seat cannot). Pure so the guard is unit-testable.
+ * Whether a returning human may reclaim their seat from `status` (#335, §8:
+ * only `ai_takeover` seats can reclaim. Prevents a grief vector where the seat
+ * holder can periodically call reclaim-seat to reset missed_turns without
+ * submitting an action, defeating AFK protection forever). Pure so the guard
+ * is unit-testable.
  */
 export function canReclaimSeat(status: string | null | undefined): boolean {
-  return !TERMINAL_SEAT_STATUSES.includes(status ?? '')
+  return status === 'ai_takeover'
 }
 
 /**

@@ -128,17 +128,10 @@ describe('seat reclaim (#134, §8: a returning human flips back to active)', () 
     expect(update.missed_turns).toBe(0)
   })
 
-  it('allows reclaim from every non-terminal status, and never from a terminal one', () => {
-    for (const status of ['active', 'skipped', 'ai_takeover']) {
-      expect(canReclaimSeat(status)).toBe(true)
-    }
-    for (const status of ['eliminated', 'resigned']) {
+  it('allows reclaim only from ai_takeover status (#335)', () => {
+    expect(canReclaimSeat('ai_takeover')).toBe(true)
+    for (const status of ['active', 'skipped', 'eliminated', 'resigned', null, undefined]) {
       expect(canReclaimSeat(status)).toBe(false)
     }
-  })
-
-  it('treats a missing seat status as reclaimable (guarded elsewhere, never terminal)', () => {
-    expect(canReclaimSeat(null)).toBe(true)
-    expect(canReclaimSeat(undefined)).toBe(true)
   })
 })

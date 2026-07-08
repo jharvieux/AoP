@@ -33,6 +33,7 @@ as $$
   select match_id
   from public.match_players
   where user_id = uid
+    and uid = auth.uid()
 $$;
 
 revoke execute on function user_match_ids(uuid) from public;

@@ -12,7 +12,7 @@ add column if not exists is_guest boolean not null default false;
 create or replace function handle_new_user()
 returns trigger
 language plpgsql
-security definer set search_path = public
+security definer set search_path = ''
 as $$
 begin
   insert into public.profiles (id, display_name, is_guest)
@@ -27,7 +27,7 @@ begin
   )
   on conflict (id) do update
   set is_guest = excluded.is_guest
-  where profiles.is_guest is null;
+  where public.profiles.is_guest is null;
   return new;
 end;
 $$;
