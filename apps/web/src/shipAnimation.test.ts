@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { easeInOutCubic, pathArcLength, pathPointAt, shipAnimDurationMs } from './shipAnimation'
+import {
+  easeInOutCubic,
+  pathArcLength,
+  pathPixelAt,
+  pathPointAt,
+  shipAnimDurationMs,
+} from './shipAnimation'
 
 describe('easeInOutCubic', () => {
   it('anchors the endpoints and is monotonic increasing', () => {
@@ -110,5 +116,50 @@ describe('pathPointAt', () => {
     const corner = pathPointAt(mixed, cornerT)
     expect(corner.x).toBeCloseTo(1)
     expect(corner.y).toBeCloseTo(1)
+  })
+})
+
+describe('pathPixelAt', () => {
+  const path = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 2, y: 0 },
+  ]
+
+  it('for a linear (square) centre map, equals projecting pathPointAt', () => {
+    // Square tile centres are linear in the tile coords, so interpolating the
+    // projected centres must match projecting the interpolated tile point — this
+    // is what keeps square ship animation byte-identical after the hex rewrite.
+    const T = 32
+    const squareCenter = (c: { x: number; y: number }) => ({
+      x: c.x * T + T / 2,
+      y: c.y * T + T / 2,
+    })
+    for (let t = 0; t <= 1.0001; t += 0.1) {
+      const viaPixel = pathPixelAt(path, t, squareCenter)
+      const viaTile = squareCenter(pathPointAt(path, t))
+      expect(viaPixel.x).toBeCloseTo(viaTile.x)
+      expect(viaPixel.y).toBeCloseTo(viaTile.y)
+    }
+  })
+
+  it('interpolates non-linear (hex-like) centres in pixel space, not tile space', () => {
+    // A centre map that jumps in x on odd rows (the odd-r stagger, in miniature):
+    // pixel-space interpolation must trace a straight line between the projected
+    // endpoints, independent of how the coords map non-linearly.
+    const centers: Record<string, { x: number; y: number }> = {
+      '0,0': { x: 0, y: 0 },
+      '1,0': { x: 10, y: 0 },
+      '2,0': { x: 20, y: 0 },
+    }
+    const centerOf = (c: { x: number; y: number }) => centers[`${c.x},${c.y}`]!
+    const mid = pathPixelAt(path, 0.5, centerOf)
+    expect(mid.x).toBeCloseTo(10)
+    expect(mid.y).toBeCloseTo(0)
+  })
+
+  it('returns the sole point for a single-node path', () => {
+    const centerOf = (c: { x: number; y: number }) => ({ x: c.x + 5, y: c.y + 7 })
+    expect(pathPixelAt([{ x: 3, y: 4 }], 0.5, centerOf)).toEqual({ x: 8, y: 11 })
   })
 })

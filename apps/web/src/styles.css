@@ -125,6 +125,8 @@
   --map-encounter-natives: #6fbf73;
   --map-encounter-settlers: #c98bdb;
   --map-cursor: #ffe66d;
+  /* Cosmetic hexagon tile boundary on hex-topology maps (#348). */
+  --map-hex-grid: #0b1a26;
   --map-resource-timber: #8a5a2b;
   --map-resource-rum: #b23bd8;
 }
