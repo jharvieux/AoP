@@ -143,4 +143,16 @@ describe('boardFromPlayerView', () => {
       { id: 'enc-0', kind: 'merchant', position: { x: 1, y: 0 }, active: true, respawnRound: null },
     ])
   })
+
+  it('reconstructs a hex match as hex, so client distance/adjacency/rendering dispatch hex (#379)', () => {
+    const { map } = boardFromPlayerView(view({ topology: 'hex' }))
+    expect(map.topology).toBe('hex')
+  })
+
+  it('defaults to square when the view omits topology (old snapshots) (#379)', () => {
+    // GameMap treats an absent topology as square (mapTopology), so leaving it
+    // unset here is correct — not a bug to paper over with an explicit 'square'.
+    const { map } = boardFromPlayerView(view())
+    expect(map.topology).toBeUndefined()
+  })
 })

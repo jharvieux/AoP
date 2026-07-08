@@ -3,7 +3,7 @@ import type { AiTuning } from './ai'
 import type { BoardOrder } from './battleBoard'
 import type { BattleReport, CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
-import type { TileType } from './map'
+import type { GridTopology, TileType } from './map'
 import type { StandingOrder } from './tactics'
 import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
@@ -52,6 +52,13 @@ export interface PlayerView {
   /** Map extent, so the client can size its grid without seeing unexplored terrain. */
   mapWidth: number
   mapHeight: number
+  /**
+   * Grid topology (#348/#379), so the client reconstructs `GameMap` with the
+   * right adjacency/distance model. Absent means `square` — matching
+   * `GameMap.topology`'s own default and keeping old snapshots valid. Public
+   * information (the lobby already picked it); no fog concern.
+   */
+  topology?: GridTopology
   /** Only tiles this seat has ever explored; unexplored tiles are omitted entirely. */
   tiles: ViewTile[]
   players: ViewPlayer[]
@@ -338,6 +345,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     rules,
     mapWidth: state.map.width,
     mapHeight: state.map.height,
+    ...(state.map.topology ? { topology: state.map.topology } : {}),
     tiles,
     players,
     cities,
