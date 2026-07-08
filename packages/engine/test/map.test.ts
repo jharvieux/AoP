@@ -5,21 +5,31 @@ import {
   generateMap as generateMapRaw,
   isWaterTile,
   MAP_DIMENSIONS,
+  mapNeighbors,
+  mapToDefinition,
   neighbors8,
   tileAt,
   tileIndex,
+  validateMapDefinition,
   type GameMap,
+  type GridTopology,
 } from '../src'
-import { GAME_SETUP } from './fixtures'
+import { GAME_SETUP, MAP_VALIDATION_LIMITS } from './fixtures'
 
 /** Wrap the generator with the home-island radius and ring factor the engine now receives from content. */
-const generateMap = (seed: number, mapSize: MapSize, playerCount: number): GameMap =>
+const generateMap = (
+  seed: number,
+  mapSize: MapSize,
+  playerCount: number,
+  topology?: GridTopology,
+): GameMap =>
   generateMapRaw(
     seed,
     mapSize,
     playerCount,
     GAME_SETUP.homeIslandRadius,
     GAME_SETUP.homeIslandRingRadiusFactor,
+    topology,
   )
 
 function landCount(map: GameMap): number {
@@ -121,6 +131,14 @@ describe('start positions', () => {
     }
   })
 
+  it('places every hex-map start hex-adjacent to a port (not merely square-diagonal)', () => {
+    const map = generateMap(11, 'medium', 4, 'hex')
+    for (const s of map.startPositions) {
+      const nextToPort = mapNeighbors(map, s).some((n) => tileAt(map, n)?.type === 'port')
+      expect(nextToPort).toBe(true)
+    }
+  })
+
   it('respects the ring radius factor for home island placement', () => {
     // At 0.40 factor, a 32-tile medium map should have ring radius ~12.8 tiles.
     // Start positions are water tiles adjacent to ports at the island edge, so they sit
@@ -133,5 +151,64 @@ describe('start positions', () => {
     const avgDist = dists.reduce((a, b) => a + b, 0) / dists.length
     expect(avgDist).toBeGreaterThan(expectedRadius - GAME_SETUP.homeIslandRadius - 2.5)
     expect(avgDist).toBeLessThan(expectedRadius - GAME_SETUP.homeIslandRadius + 2.5)
+  })
+})
+
+describe('generation topology (#348)', () => {
+  const SEEDS = [1, 2, 3, 5, 7, 11, 42, 99, 123, 999]
+
+  it('generates valid square maps across seeds', () => {
+    for (const seed of SEEDS) {
+      const map = generateMap(seed, 'medium', 4, 'square')
+      const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
+      expect(result.errors).toEqual([])
+    }
+  })
+
+  it('generates valid hex maps across seeds', () => {
+    for (const seed of SEEDS) {
+      const map = generateMap(seed, 'medium', 4, 'hex')
+      const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
+      expect(result.errors).toEqual([])
+    }
+  })
+
+  it('stamps topology: hex on hex maps and omits the field on square maps', () => {
+    expect(generateMap(7, 'small', 2, 'hex').topology).toBe('hex')
+    // Omission (not `undefined`) keeps serialized square maps byte-identical.
+    expect('topology' in generateMap(7, 'small', 2)).toBe(false)
+    expect('topology' in generateMap(7, 'small', 2, 'square')).toBe(false)
+  })
+
+  it('square output is byte-identical whether topology is omitted or explicit', () => {
+    expect(generateMap(11, 'large', 6, 'square')).toEqual(generateMap(11, 'large', 6))
+  })
+
+  it('hex generation is deterministic per seed', () => {
+    expect(generateMap(42, 'medium', 4, 'hex')).toEqual(generateMap(42, 'medium', 4, 'hex'))
+  })
+
+  it('hex maps have water starts for every player count', () => {
+    for (const count of [2, 3, 4, 6, 8]) {
+      const map = generateMap(11, 'large', count, 'hex')
+      expect(map.startPositions).toHaveLength(count)
+      for (const s of map.startPositions) {
+        expect(isWaterTile(tileAt(map, s))).toBe(true)
+      }
+    }
+  })
+
+  it('hex coastlines follow hex adjacency: no land hex touches deep water', () => {
+    const map = generateMap(5, 'medium', 4, 'hex')
+    for (let y = 0; y < map.height; y++) {
+      for (let x = 0; x < map.width; x++) {
+        const tile = map.tiles[tileIndex(map, x, y)]!
+        if (tile.type !== 'land') continue
+        const touchesDeep = mapNeighbors(map, { x, y }).some(
+          (n) => map.tiles[tileIndex(map, n.x, n.y)]!.type === 'deep',
+        )
+        expect(touchesDeep).toBe(false)
+      }
+    }
   })
 })
