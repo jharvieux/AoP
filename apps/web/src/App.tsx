@@ -5,7 +5,7 @@ import {
   type GameConfig,
   type GameState,
 } from '@aop/engine'
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
 import { stateFromSave } from './loadSave'
@@ -24,15 +24,23 @@ import { MatchBrowserScreen } from './screens/MatchBrowserScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
-import { ReplayScreen } from './replay/ReplayScreen'
 import { loadGame, saveGame } from './storage'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
+import { Spinner } from './components/Spinner'
 import type { GameSetupConfig } from './types'
 import { isTestPlayAfterLoadSlot, isTestPlayAfterRematch, shouldAutosave } from './gameSession'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
 import { registerBackButtonHandler } from './plugins/androidBackButton'
+
+// Lazy-loaded screens (#353). ReplayScreen does use MapCanvas/pixi.js but is
+// accessed infrequently (only after a match ends). Eager screens (GameScreen,
+// SpectateScreen, MatchScreen) keep pixi.js resident, so this split doesn't
+// waterfall — it just defers loading replay-specific code until needed.
+const ReplayScreen = lazy(() =>
+  import('./replay/ReplayScreen').then((m) => ({ default: m.ReplayScreen })),
+)
 
 type Screen =
   | 'title'
@@ -345,11 +353,13 @@ export function App() {
           />
         )}
         {screen === 'replay' && replayData && (
-          <ReplayScreen
-            config={replayData.config}
-            actions={replayData.actions}
-            onClose={handleCloseReplay}
-          />
+          <Suspense fallback={<Spinner label="Loading replay…" />}>
+            <ReplayScreen
+              config={replayData.config}
+              actions={replayData.actions}
+              onClose={handleCloseReplay}
+            />
+          </Suspense>
         )}
       </div>
     </div>
