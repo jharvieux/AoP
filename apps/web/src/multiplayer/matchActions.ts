@@ -1,4 +1,5 @@
 import {
+  mapDistance,
   pathCost,
   type Action,
   type BoardOrder,
@@ -11,7 +12,6 @@ import {
   type ViewCaptain,
   type ViewCity,
 } from '@aop/engine'
-import { chebyshevDistance } from '@aop/shared'
 
 /**
  * The PlayerView-shaped action surface for the multiplayer match screen
@@ -126,7 +126,7 @@ export function interpretTileClick(
     (c) => c.ownerId !== view.viewerId && c.position.x === x && c.position.y === y,
   )
   if (enemyHere) {
-    if (chebyshevDistance(selected.position, enemyHere.position) <= 1 && movement >= 1) {
+    if (mapDistance(map, selected.position, enemyHere.position) <= 1 && movement >= 1) {
       return { kind: 'attack', targetCaptainId: enemyHere.id }
     }
     return null
@@ -136,7 +136,7 @@ export function interpretTileClick(
     (e) => e.active && e.position.x === x && e.position.y === y,
   )
   if (encounterHere) {
-    if (chebyshevDistance(selected.position, encounterHere.position) <= 1 && movement >= 1) {
+    if (mapDistance(map, selected.position, encounterHere.position) <= 1 && movement >= 1) {
       return { kind: 'encounter', encounterId: encounterHere.id }
     }
     return null

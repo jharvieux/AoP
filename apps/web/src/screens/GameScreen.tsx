@@ -5,6 +5,7 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
+  mapDistance,
   nextAiAction,
   pathCost,
   visibleState,
