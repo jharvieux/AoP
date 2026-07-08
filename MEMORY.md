@@ -1,3 +1,47 @@
+## D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)
+
+**Decision.** The operator reported that naval navigation is hard to understand and
+requested six improvements; per the request, they were filed as ready-to-execute designs
+(model-labeled per the triage rubric) rather than implemented this session:
+
+- **#371 (P1, opus)** — movement-range shading on ship selection (green empty/ally, red
+  enemy, yellow neutral). Adds the engine's first `reachableTiles` helper (BFS, topology-
+  aware, deterministic ordering) — the opus trigger.
+- **#375 (P1, sonnet)** — dotted course preview with arrowhead; dot colors split the
+  this-turn leg from later-turn legs, ring dots at turn boundaries; defines the two-tap
+  preview→confirm pattern for touch.
+- **#376 (P1, sonnet)** — target ships/cities/encounters from any distance: client composes
+  approach `moveCaptain` + attack when affordable this turn, otherwise sets an intercept
+  course via #372. Engine adjacency validation unchanged (stays the authority).
+- **#372 (P1, opus)** — engine multi-turn sail orders: `sailOrder` field on `Captain`,
+  `setSailOrder`/`clearSailOrder` actions, auto-continuation inside `advanceTurn`, pausing
+  when contacts not in the order's `knownContactIds` snapshot become visible (covers both
+  "they sailed into view" and "our other units revealed them").
+- **#373 (P2, sonnet)** — multi-city ownership audit: AI `planRecruitCaptain` first-city
+  bug (`ai.ts:489`), owned-city roster strip in the HUD, income/upkeep/vision multi-city
+  tests. Settler-founded cities explicitly out of scope (no `foundCity` action exists).
+- **#374 (P2, opus)** — decisive naval win spawns the loser's hull as a prize: new level-1
+  prize captain with the captured ship class/upgrades and zero troops; ransomed captains
+  return on a starter hull (new content field).
+- **#370 (P1, sonnet, bug)** — found during exploration: client adjacency gates use
+  `chebyshevDistance` while the engine validates with hex-aware `mapDistance`, so on hex
+  maps the client offers targets the engine rejects — likely part of the operator's
+  "can only target when right next to it" complaint. Ship this small fix first.
+
+**Embedded product defaults (flagged in-issue; operator can veto):** no auto-attack when a
+sail order reaches its intercept target (halt adjacent, player confirms); prize ships join
+empty-crewed as the built-in anti-snowball lever (given the #308 rush history); failed city
+assaults award no prize; allied contacts don't pause sail orders.
+
+**Sequencing.** #370 → #371 + #372 (engine foundations) → #375 + #376 (build on both);
+#373 and #374 are independent.
+
+**Rejected.** Implementing directly this session (operator asked for issues); placing the
+approach-path helper in the engine now (kept client-side so #376 stays sonnet-tier;
+revisit if #372's intercept work grows an equivalent engine helper).
+
+---
+
 ## D-026 — 2026-07-07 — Quality triage: six operator-reported issues investigated, decisions made, tracked as #342–#348
 
 **Decision.** The operator reported six quality problems (blocky map, no way to attack a
