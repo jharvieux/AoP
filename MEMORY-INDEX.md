@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)
 - D-026 — 2026-07-07 — Quality triage: six operator-reported issues investigated, decisions made, tracked as #342–#348
 - D-025 — 2026-07-07 — First real prod deploy: DB pushed live (was empty); fixed edge-fn `@aop/*` vendoring (#339/PR #340); blocked by colima Docker bug (#341)
 - D-024 — 2026-07-06 — Issue sweep (14 issues); title emblem sourced CC0 (SD couldn't meet brief), shipped as static asset for #253 bundle budget
