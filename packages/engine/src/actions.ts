@@ -64,6 +64,30 @@ export interface AttackCaptainAction {
 }
 
 /**
+ * Assault an adjacent enemy city (#344), pitting the attacker's embarked troops
+ * against the city's garrison on the tactical board's land entry point. A
+ * captain must be within one tile of the target city (its ship sits off the
+ * port) and carry troops. On a decisive attacker win the city changes hands —
+ * the seat that loses its last city (with no live captain) is eliminated, which
+ * is what finally makes conquest victory reachable. On a loss the attacking
+ * captain is captured by the defending seat, exactly like a lost ship duel.
+ *
+ * `boardCommands` is the attacker's recorded per-activation melee plan, mirroring
+ * {@link AttackCaptainAction.boardCommands}: an interactive client simulates the
+ * land board locally and records the player's commands here; omitted means the
+ * board AI fights the assault (auto-resolve). The defender's garrison never
+ * fights by anything the attacker submits — a city has no owner-supplied board
+ * orders, so its garrison is always driven by the board AI.
+ */
+export interface AttackCityAction {
+  type: 'attackCity'
+  playerId: string
+  captainId: string
+  targetCityId: string
+  boardCommands?: BoardCommand[]
+}
+
+/**
  * Set (or clear, with an empty array) a captain's standing orders: the
  * conditional defence plan used whenever this captain is attacked — the Phase 3
  * offline-defence mechanism (D-002), e.g. "evade if outgunned, else broadside".
@@ -216,6 +240,7 @@ export type Action =
   | ResignAction
   | MoveCaptainAction
   | AttackCaptainAction
+  | AttackCityAction
   | SetStandingOrdersAction
   | ConstructBuildingAction
   | RecruitUnitAction

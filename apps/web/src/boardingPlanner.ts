@@ -4,16 +4,19 @@ import {
   boardOrdersDriver,
   captainToCombatant,
   cautiousTacticDriver,
+  cityToCombatant,
   createCombatStats,
   hexDistance,
   hexEquals,
   hexIndex,
   hexLineOfSight,
   plainTacticDriver,
+  resolveBoardCombat,
   resolveTacticalCombat,
   standingOrdersDriver,
   tacticPlanDriver,
   type AttackCaptainAction,
+  type AttackCityAction,
   type BattleReport,
   type BoardActivationView,
   type BoardCommand,
@@ -125,6 +128,57 @@ export function probeBoardingBattle(
           ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
           : {}),
       },
+    )
+    return { kind: 'resolved', report: result.report }
+  } catch (err) {
+    if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }
+    throw err
+  }
+}
+
+/**
+ * Interactive city-assault planner (#344). The land analog of
+ * {@link probeBoardingBattle}: re-simulates the pending `attackCity` from the
+ * current GameState RNG with the player's recorded land-melee commands so far,
+ * pausing at the first un-commanded attacker activation to hand the UI the
+ * board view. Mirrors the reducer's `attackCity` board invocation exactly —
+ * the attacker's embarked troops vs the city's garrison on the `'land'` board,
+ * the garrison always driven by the board AI — so the recorded commands replay
+ * bit-for-bit when submitted as `AttackCityAction.boardCommands`.
+ */
+export function probeCityAssault(
+  game: GameState,
+  action: Pick<AttackCityAction, 'captainId' | 'targetCityId'>,
+  commands: readonly BoardCommand[],
+): BoardingProbeOutcome {
+  const attacker = game.captains.find((c) => c.id === action.captainId)
+  const city = game.cities.find((c) => c.id === action.targetCityId)
+  if (!attacker || !city) throw new Error('Attacker or target city not found')
+  if (!game.config.combatStats?.battle) {
+    throw new Error('No board tuning configured for a city assault')
+  }
+
+  const stats = createCombatStats(game.config.combatStats)
+  const content = game.config.content
+
+  let cursor = 0
+  const recorder: BoardDriver = {
+    choose(view) {
+      if (cursor < commands.length) return commands[cursor++]!
+      throw new AwaitingCommand(view)
+    },
+  }
+
+  try {
+    const result = resolveBoardCombat(
+      {
+        attacker: captainToCombatant(attacker, content),
+        defender: cityToCombatant(city, content),
+      },
+      stats,
+      game.rngState,
+      { attacker: recorder },
+      'land',
     )
     return { kind: 'resolved', report: result.report }
   } catch (err) {
