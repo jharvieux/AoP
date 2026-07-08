@@ -1,7 +1,8 @@
-import type { Captain, CityState, GameMap } from '@aop/engine'
+import { mapTopology, type Captain, type CityState, type GameMap } from '@aop/engine'
 import type { Coord } from '@aop/shared'
 import { useEffect, useRef, type RefObject } from 'react'
 import { cssToken } from './colorTokens'
+import { cellCenter, cellPolygon, mapPixelExtent, pixelToCell } from './mapLayout'
 import { TILE_COLOR } from './MapCanvas'
 
 /**
@@ -10,6 +11,14 @@ import { TILE_COLOR } from './MapCanvas'
  * main camera's viewport. Click to recenter the camera. Purely a navigation aid
  * — it reads the same props the map does and the shared camera ref, and never
  * touches the engine.
+ *
+ * Topology-aware (#348): square maps render as a grid of cells exactly as before
+ * (positions computed in unit tile space via mapLayout, which reproduces the
+ * prior `x*scale` arithmetic); hex maps render scaled pointy-top hexagons over
+ * the same layout the main canvas uses. The viewport-rectangle math is
+ * topology-independent — it maps main-camera world pixels through `worldPx /
+ * tileSize` into the same unit space the minimap scales — so it needed no change
+ * beyond taking the layout-derived scale/height.
  */
 
 const MINIMAP_W = 150
@@ -49,8 +58,13 @@ export function Minimap({
 }: MinimapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = MINIMAP_W / map.width
-  const height = map.height * scale
+  const topology = mapTopology(map)
+  // Everything is laid out in "unit" tile space (tileSize = 1) and then scaled
+  // into MINIMAP_W. For a square map this yields `scale = MINIMAP_W / map.width`
+  // and `height = map.height * scale`, exactly as before.
+  const extent = mapPixelExtent(topology, map.width, map.height, 1)
+  const scale = MINIMAP_W / extent.width
+  const height = extent.height * scale
 
   // Repaint the base map + markers whenever the world or fog changes.
   useEffect(() => {
@@ -66,14 +80,26 @@ export function Minimap({
         const explored = exploredKeys.has(`${x},${y}`)
         const tile = map.tiles[y * map.width + x]!
         ctx.fillStyle = explored ? TILE_COLOR[tile.type] : FOG
-        // +0.75 overdraw closes the sub-pixel seams that would otherwise grid it.
-        ctx.fillRect(x * scale, y * scale, scale + 0.75, scale + 0.75)
+        if (topology === 'hex') {
+          const poly = cellPolygon('hex', x, y, 1)
+          ctx.beginPath()
+          ctx.moveTo(poly[0]! * scale, poly[1]! * scale)
+          for (let i = 2; i < poly.length; i += 2) {
+            ctx.lineTo(poly[i]! * scale, poly[i + 1]! * scale)
+          }
+          ctx.closePath()
+          ctx.fill()
+        } else {
+          // +0.75 overdraw closes the sub-pixel seams that would otherwise grid it.
+          ctx.fillRect(x * scale, y * scale, scale + 0.75, scale + 0.75)
+        }
       }
     }
     const dot = (pos: Coord, color: string, r: number) => {
+      const c = cellCenter(topology, pos.x, pos.y, 1)
       ctx.fillStyle = color
       ctx.beginPath()
-      ctx.arc(pos.x * scale + scale / 2, pos.y * scale + scale / 2, r, 0, Math.PI * 2)
+      ctx.arc(c.x * scale, c.y * scale, r, 0, Math.PI * 2)
       ctx.fill()
     }
     for (const city of cities) {
@@ -86,7 +112,7 @@ export function Minimap({
       if (!own && !visibleKeys.has(`${cap.position.x},${cap.position.y}`)) continue
       dot(cap.position, own ? OWN_SHIP : ENEMY_SHIP, 2)
     }
-  }, [map, cities, captains, viewerId, exploredKeys, visibleKeys, scale, height])
+  }, [map, topology, cities, captains, viewerId, exploredKeys, visibleKeys, scale, height])
 
   // Track the main camera every frame and position the viewport rectangle.
   useEffect(() => {
@@ -117,11 +143,13 @@ export function Minimap({
     const canvas = canvasRef.current
     if (!canvas) return
     const r = canvas.getBoundingClientRect()
-    const pxPerTile = r.width / map.width
-    const tx = Math.floor((e.clientX - r.left) / pxPerTile)
-    const ty = Math.floor((e.clientY - r.top) / pxPerTile)
-    if (tx < 0 || ty < 0 || tx >= map.width || ty >= map.height) return
-    onJump({ x: tx, y: ty })
+    // CSS-displayed size may differ from the canvas's internal MINIMAP_W×height,
+    // so rescale the click into canvas-internal px, then invert the layout.
+    const sx = ((e.clientX - r.left) * (MINIMAP_W / r.width)) / scale
+    const sy = ((e.clientY - r.top) * (height / r.height)) / scale
+    const cell = pixelToCell(topology, sx, sy, 1)
+    if (cell.x < 0 || cell.y < 0 || cell.x >= map.width || cell.y >= map.height) return
+    onJump({ x: cell.x, y: cell.y })
   }
 
   return (

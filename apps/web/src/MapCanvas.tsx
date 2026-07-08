@@ -1,5 +1,6 @@
 import {
   findPath,
+  mapTopology,
   tileIndex,
   type Captain,
   type CityState,
@@ -9,12 +10,22 @@ import {
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
-import { Assets, Container, Graphics, Sprite, Texture, type Ticker } from 'pixi.js'
+import {
+  Assets,
+  Container,
+  Graphics,
+  Sprite,
+  Texture,
+  type FillInput,
+  type StrokeInput,
+  type Ticker,
+} from 'pixi.js'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
+import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
-import { easeInOutCubic, pathPointAt, shipAnimDurationMs } from './shipAnimation'
+import { easeInOutCubic, pathPixelAt, shipAnimDurationMs } from './shipAnimation'
 import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
@@ -50,6 +61,9 @@ const OWN_CITY = cssToken('--color-gold', '#c9a227')
 const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')
 const HIGHLIGHT_COLOR = cssToken('--color-white', '#ffffff')
 const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
+// Cosmetic hexagon tile boundary, hex maps only (#348). A faint hairline so the
+// hex layout reads as a grid without competing with terrain art or the surf/fog.
+const HEX_GRID_COLOR = cssToken('--map-hex-grid', '#0b1a26')
 export const ENCOUNTER_COLOR = {
   merchant: cssToken('--color-merchant', '#e0b64f'),
   natives: cssToken('--map-encounter-natives', '#6fbf73'),
@@ -481,8 +495,9 @@ export function MapCanvas(props: MapCanvasProps) {
     })
     function centerOn(tile: Coord) {
       const { w, h } = viewportSize()
-      view.x = w / 2 - (tile.x * TILE + TILE / 2) * view.scale
-      view.y = h / 2 - (tile.y * TILE + TILE / 2) * view.scale
+      const c = cellCenter(mapTopology(propsRef.current.map), tile.x, tile.y, TILE)
+      view.x = w / 2 - c.x * view.scale
+      view.y = h / 2 - c.y * view.scale
       dirtyRef.current = true
     }
     controlsRef.current = {
@@ -521,12 +536,25 @@ export function MapCanvas(props: MapCanvasProps) {
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
 
+      // Topology dispatch (#348): `centerOf`/`fillCell`/`strokeCell` are the one
+      // geometry seam the whole draw pass flows through. For a square map they
+      // reproduce the exact prior arithmetic (`x*TILE + TILE/2`, an axis-aligned
+      // `rect`), so square rendering is byte-identical; for a hex map they place
+      // and outline pointy-top hexes via mapLayout.
+      const topology = mapTopology(map)
+      const centerOf = (x: number, y: number) => cellCenter(topology, x, y, TILE)
+      const fillCell = (g: Graphics, x: number, y: number, style: FillInput) => {
+        if (topology === 'hex') g.poly(cellPolygon('hex', x, y, TILE)).fill(style)
+        else g.rect(x * TILE, y * TILE, TILE, TILE).fill(style)
+      }
+      const strokeCell = (g: Graphics, x: number, y: number, style: StrokeInput) => {
+        if (topology === 'hex') g.poly(cellPolygon('hex', x, y, TILE)).stroke(style)
+        else g.rect(x * TILE, y * TILE, TILE, TILE).stroke(style)
+      }
+
       const w = pixiApp.renderer.width
       const h = pixiApp.renderer.height
-      const minX = Math.max(0, Math.floor(-view.x / view.scale / TILE) - 1)
-      const minY = Math.max(0, Math.floor(-view.y / view.scale / TILE) - 1)
-      const maxX = Math.min(map.width - 1, Math.ceil((w - view.x) / view.scale / TILE) + 1)
-      const maxY = Math.min(map.height - 1, Math.ceil((h - view.y) / view.scale / TILE) + 1)
+      const { minX, minY, maxX, maxY } = visibleCellBounds(topology, map, view, w, h, TILE)
 
       // Living map (#298): repopulated below as textured tile/ship sprites
       // are (re)assigned this pass, so the ambient tick always nudges exactly
@@ -543,21 +571,23 @@ export function MapCanvas(props: MapCanvasProps) {
           const key = `${x},${y}`
           const explored = exploredKeys.has(key)
           if (!explored) {
-            tiles.rect(x * TILE, y * TILE, TILE, TILE)
-            tiles.fill(FOG_COLOR)
+            fillCell(tiles, x, y, FOG_COLOR)
             continue
           }
           const tile = map.tiles[tileIndex(map, x, y)]!
           // Coastline (#347): a soft surf band on any explored water tile edge
           // that meets land, so land/water boundaries read as coast, not a grid
-          // line. Drawn on its own layer above the tiles, under the fog.
-          if (WATER_TYPES.has(tile.type)) {
+          // line. Drawn on its own layer above the tiles, under the fog. Square
+          // only — paintSurf/autotiling key off the 4 orthogonal square neighbors
+          // and the axis-aligned tile box, neither of which maps to a hex cell;
+          // hex maps get the cosmetic hex-boundary pass below instead (#348).
+          if (topology === 'square' && WATER_TYPES.has(tile.type)) {
             paintSurf(coast, map, x, y)
           }
           // Autotile variant selection (#354): land tiles bordering water get an
           // edge-pattern ID (0-15) via marching squares; used to pick edge-mask art
           // when autotile sprites are available (see mapSprites.tileAutotileId).
-          const autotileVariant = getAutotileVariant(map, x, y)
+          const autotileVariant = topology === 'square' ? getAutotileVariant(map, x, y) : 0
           const spriteUrl = resolveSpriteUrl(
             themeSpriteUrlRef.current,
             autotileVariant > 0
@@ -575,7 +605,8 @@ export function MapCanvas(props: MapCanvasProps) {
             // keeping world coordinates and culling math unchanged.
             sprite.width = TILE * TILE_TEXTURE_SCALE
             sprite.height = TILE * TILE_TEXTURE_SCALE
-            sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
+            const tc = centerOf(x, y)
+            sprite.position.set(tc.x, tc.y)
             sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming (#299)
             // Per-tile brightness variety (#347): a subtle deterministic tint so
             // repeated terrain art doesn't read as identical squares. Ambient
@@ -592,8 +623,21 @@ export function MapCanvas(props: MapCanvasProps) {
           const base = parseHexColor(TILE_COLOR[tile.type])
           const color =
             base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
-          tiles.rect(x * TILE, y * TILE, TILE, TILE)
-          tiles.fill({ color, alpha: 1 }) // Full alpha; fog applies dimming
+          fillCell(tiles, x, y, { color, alpha: 1 }) // Full alpha; fog applies dimming
+        }
+      }
+      // Cosmetic hex tile boundary (#348), hex maps only: a faint hairline around
+      // each explored hex so the layout reads as a hex grid. Square maps deliberately
+      // draw no such lines (their grid reads from the terrain art / surf bands).
+      // Drawn on the `coast` layer — above the tile sprites (so terrain art doesn't
+      // hide it) but below entities/fog — which is otherwise unused on hex maps
+      // (paintSurf is square-only), so it needs no extra layer.
+      if (topology === 'hex') {
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            if (!exploredKeys.has(`${x},${y}`)) continue
+            strokeCell(coast, x, y, { width: 1, color: HEX_GRID_COLOR, alpha: 0.25 })
+          }
         }
       }
       tilePool.end()
@@ -621,8 +665,7 @@ export function MapCanvas(props: MapCanvasProps) {
               }
             }
             const edgeAlpha = Math.max(0.16, 0.52 - visibleNeighbors * 0.05)
-            fog.rect(x * TILE, y * TILE, TILE, TILE)
-            fog.fill({ color: FOG_COLOR, alpha: edgeAlpha })
+            fillCell(fog, x, y, { color: FOG_COLOR, alpha: edgeAlpha })
           }
         }
       }
@@ -635,8 +678,9 @@ export function MapCanvas(props: MapCanvasProps) {
         if (!enc.active) continue
         const key = `${enc.position.x},${enc.position.y}`
         if (!visibleKeys.has(key)) continue
-        const cx = enc.position.x * TILE + TILE / 2
-        const cy = enc.position.y * TILE + TILE / 2
+        const ec = centerOf(enc.position.x, enc.position.y)
+        const cx = ec.x
+        const cy = ec.y
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           encounterContentId(enc.kind),
@@ -662,8 +706,9 @@ export function MapCanvas(props: MapCanvasProps) {
         const key = `${city.position.x},${city.position.y}`
         const own = city.ownerId === viewerId
         if (!own && !exploredKeys.has(key)) continue
-        const cx = city.position.x * TILE + TILE / 2
-        const cy = city.position.y * TILE + TILE / 2
+        const cc = centerOf(city.position.x, city.position.y)
+        const cx = cc.x
+        const cy = cc.y
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           cityContentId(own),
@@ -678,7 +723,7 @@ export function MapCanvas(props: MapCanvasProps) {
           sprite.position.set(cx, cy)
           continue
         }
-        entities.rect(city.position.x * TILE + 6, city.position.y * TILE + 6, TILE - 12, TILE - 12)
+        entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
         entities.fill(own ? OWN_CITY : ENEMY_CITY)
       }
       cityPool.end()
@@ -706,22 +751,22 @@ export function MapCanvas(props: MapCanvasProps) {
         }
         lastCaptainPos.set(cap.id, cap.position)
 
-        let renderX = cap.position.x
-        let renderY = cap.position.y
+        let center = centerOf(cap.position.x, cap.position.y)
         const anim = shipAnims.get(cap.id)
         if (anim) {
           const t = anim.durationMs > 0 ? anim.elapsedMs / anim.durationMs : 1
           if (t >= 1) {
             shipAnims.delete(cap.id)
           } else {
-            const point = pathPointAt(anim.path, easeInOutCubic(t))
-            renderX = point.x
-            renderY = point.y
+            // Interpolate in pixel space so a hex sail traces a straight visual
+            // path across the row-parity stagger (#348); on a square map this is
+            // identical to projecting pathPointAt's tile-space point.
+            center = pathPixelAt(anim.path, easeInOutCubic(t), (c) => centerOf(c.x, c.y))
           }
         }
 
-        const cx = renderX * TILE + TILE / 2
-        const cy = renderY * TILE + TILE / 2
+        const cx = center.x
+        const cy = center.y
         const faction = FACTIONS[factionOf(cap.ownerId)]
         const defaultShipSpriteUrl =
           faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
@@ -766,15 +811,16 @@ export function MapCanvas(props: MapCanvasProps) {
       if (selected) {
         // Geometry only — the ambient tick below animates this layer's alpha
         // into a pulse (#298) every frame, not just on a dirty redraw.
-        selectionPulse.rect(selected.position.x * TILE, selected.position.y * TILE, TILE, TILE)
-        selectionPulse.stroke({ width: 3, color: HIGHLIGHT_COLOR })
+        strokeCell(selectionPulse, selected.position.x, selected.position.y, {
+          width: 3,
+          color: HIGHLIGHT_COLOR,
+        })
       }
       // Keyboard tile cursor (#247) — only drawn while the map has keyboard
       // focus, so pointer-only play isn't cluttered with a cursor no one asked for.
       if (hasFocusRef.current) {
         const c = cursorRef.current
-        highlight.rect(c.x * TILE, c.y * TILE, TILE, TILE)
-        highlight.stroke({ width: 2, color: CURSOR_COLOR })
+        strokeCell(highlight, c.x, c.y, { width: 2, color: CURSOR_COLOR })
       }
     }
 
@@ -788,10 +834,16 @@ export function MapCanvas(props: MapCanvasProps) {
 
     function selectTileAt(screenX: number, screenY: number) {
       const map = propsRef.current.map
-      const tileX = Math.floor((screenX - view.x) / view.scale / TILE)
-      const tileY = Math.floor((screenY - view.y) / view.scale / TILE)
-      if (tileX < 0 || tileX >= map.width || tileY < 0 || tileY >= map.height) return
-      propsRef.current.onTileClick(tileX, tileY)
+      // Screen → world px → grid coord under the map's topology (#348). Square is
+      // the prior floor-divide; hex inverts the pointy-top layout via mapLayout.
+      const cell = pixelToCell(
+        mapTopology(map),
+        (screenX - view.x) / view.scale,
+        (screenY - view.y) / view.scale,
+        TILE,
+      )
+      if (cell.x < 0 || cell.x >= map.width || cell.y < 0 || cell.y >= map.height) return
+      propsRef.current.onTileClick(cell.x, cell.y)
     }
 
     function onPointerDown(e: PointerEvent) {
