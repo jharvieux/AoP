@@ -20,11 +20,12 @@ import {
   type StrokeInput,
   type Ticker,
 } from 'pixi.js'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
 import { easeInOutCubic, pathPixelAt, shipAnimDurationMs } from './shipAnimation'
 import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
@@ -61,6 +62,10 @@ const OWN_CITY = cssToken('--color-gold', '#c9a227')
 const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')
 const HIGHLIGHT_COLOR = cssToken('--color-white', '#ffffff')
 const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
+// Dotted course preview (#375): this-turn legs vs. legs that only happen on a
+// later turn, once movement refreshes.
+const COURSE_NOW_COLOR = cssToken('--map-course-now', '#e0b64f')
+const COURSE_LATER_COLOR = cssToken('--map-course-later', '#5c7a94')
 // Cosmetic hexagon tile boundary, hex maps only (#348). A faint hairline so the
 // hex layout reads as a grid without competing with terrain art or the surf/fog.
 const HEX_GRID_COLOR = cssToken('--map-hex-grid', '#0b1a26')
@@ -293,6 +298,18 @@ function midpoint(a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
+/**
+ * Imperative camera controls (#346) the Pixi effect assigns once the scene is
+ * live. Exposed to the parent via {@link MapCanvasProps.controlsRef} so out-of-
+ * canvas UI (the city roster, #373) can recenter without reaching into the draw
+ * loop.
+ */
+export interface MapControls {
+  zoomBy: (factor: number) => void
+  centerOn: (tile: Coord) => void
+  centerOnFleet: () => void
+}
+
 export interface MapCanvasProps {
   map: GameMap
   captains: Captain[]
@@ -305,6 +322,8 @@ export interface MapCanvasProps {
   onTileClick: (x: number, y: number) => void
   /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
   factionOf: (ownerId: string) => FactionId
+  /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
+  controlsRef?: MutableRefObject<MapControls | null>
 }
 
 export function MapCanvas(props: MapCanvasProps) {
@@ -324,11 +343,7 @@ export function MapCanvas(props: MapCanvasProps) {
   // Navigation controls (#346) the overlay buttons + minimap drive. Assigned by
   // the Pixi effect (which owns the camera math) so React handlers can pan/zoom
   // without reaching into the imperative draw loop.
-  const controlsRef = useRef<{
-    zoomBy: (factor: number) => void
-    centerOn: (tile: Coord) => void
-    centerOnFleet: () => void
-  } | null>(null)
+  const controlsRef = useRef<MapControls | null>(null)
   // Flipped on every render (a new action, fog reveal, selection change, …)
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
   const dirtyRef = useRef(true)
@@ -358,6 +373,18 @@ export function MapCanvas(props: MapCanvasProps) {
   // Only draw the cursor highlight while the map actually has keyboard focus
   // (see draw()'s use of this below), so mouse/touch play isn't cluttered.
   const hasFocusRef = useRef(false)
+
+  // Naval course preview (#375): the tile a dotted route preview should sail
+  // to, from whichever selected captain owns the current turn. Mouse hover
+  // (`hoverCellRef`) is live and mouse-only; touch has no hover, so a tap sets
+  // a sticky `touchPreviewRef` instead — tapping the same tile again clears it
+  // (a real "confirm" arrives once #372's sail orders exist to dispatch).
+  // Keyboard's existing `cursor` above doubles as a third preview source when
+  // the map has focus — see draw()'s previewTarget pick, which prioritizes
+  // live mouse hover, then the keyboard cursor, then a sticky touch tap.
+  const hoverCellRef = useRef<Coord | null>(null)
+  const touchPreviewRef = useRef<Coord | null>(null)
+  const [touchPreviewHint, setTouchPreviewHint] = useState<string | null>(null)
 
   function announceTile(tile: Coord) {
     const { map, captains, cities, encounters, viewerId } = props
@@ -423,6 +450,10 @@ export function MapCanvas(props: MapCanvasProps) {
     const encounterSprites = new Container()
     const shipSprites = new Container()
     const fog = new Graphics() // Feathered fog overlay (#299)
+    // Dotted course preview (#375), above fog so it reads clearly over dimmed
+    // explored-but-not-visible water — the preview is a planning aid, not
+    // something that should itself respect the viewer's live fog of war.
+    const pathPreview = new Graphics()
     const highlight = new Graphics()
     // Living map (#298): a dedicated layer for the selected-captain/city
     // pulse, kept separate from `highlight`'s static keyboard-cursor rect so
@@ -440,6 +471,7 @@ export function MapCanvas(props: MapCanvasProps) {
       encounterSprites,
       shipSprites,
       fog,
+      pathPreview,
       highlight,
       selectionPulse,
     )
@@ -515,6 +547,8 @@ export function MapCanvas(props: MapCanvasProps) {
         centerOn(target.position)
       },
     }
+    // Mirror to the parent's ref (#373) so out-of-canvas UI can recenter too.
+    if (propsRef.current.controlsRef) propsRef.current.controlsRef.current = controlsRef.current
 
     function draw(deltaMs: number) {
       // Advance in-flight sail animations before this frame's ship loop reads them, so a
@@ -802,12 +836,71 @@ export function MapCanvas(props: MapCanvasProps) {
       }
       shipPool.end()
 
+      pathPreview.clear()
       highlight.clear()
       selectionPulse.clear()
       const selected = selectedCaptainId
         ? captains.find((c) => c.id === selectedCaptainId)
         : undefined
       hasSelectionRef.current = !!selected
+
+      // Dotted course preview (#375): mouse hover wins live, else the keyboard
+      // cursor while the map has focus, else a sticky touch tap — see the
+      // hoverCellRef/touchPreviewRef doc comment above for why there are three.
+      const previewTarget =
+        hoverCellRef.current ??
+        (hasFocusRef.current ? cursorRef.current : null) ??
+        touchPreviewRef.current
+      if (
+        selected &&
+        previewTarget &&
+        !coordsEqual(previewTarget, selected.position) &&
+        previewTarget.x >= 0 &&
+        previewTarget.x < map.width &&
+        previewTarget.y >= 0 &&
+        previewTarget.y < map.height
+      ) {
+        const path = findPath(map, selected.position, previewTarget)
+        if (path && path.length >= 2) {
+          const segments = pathToDotSegments(
+            path,
+            selected.movementPoints,
+            selected.maxMovementPoints,
+          )
+          const boundaries = new Set(
+            turnBoundaryIndices(path.length, selected.movementPoints, selected.maxMovementPoints),
+          )
+          for (const seg of segments) {
+            const tile = path[seg.index]!
+            const c = centerOf(tile.x, tile.y)
+            const color = seg.thisTurn ? COURSE_NOW_COLOR : COURSE_LATER_COLOR
+            pathPreview.circle(c.x, c.y, TILE * 0.09).fill({ color, alpha: 0.9 })
+            if (boundaries.has(seg.index)) {
+              pathPreview.circle(c.x, c.y, TILE * 0.18).stroke({ width: 1.5, color, alpha: 0.9 })
+            }
+          }
+          // Arrowhead (#375): a filled triangle at the destination, pointing
+          // along the final leg's direction.
+          const lastTile = path[path.length - 1]!
+          const prevTile = path[path.length - 2]!
+          const tip = centerOf(lastTile.x, lastTile.y)
+          const tail = centerOf(prevTile.x, prevTile.y)
+          const angle = arrowheadAngle(tail, tip)
+          const arrowLen = TILE * 0.4
+          const arrowWidth = TILE * 0.28
+          const baseX = tip.x - Math.cos(angle) * arrowLen
+          const baseY = tip.y - Math.sin(angle) * arrowLen
+          const perpX = -Math.sin(angle) * (arrowWidth / 2)
+          const perpY = Math.cos(angle) * (arrowWidth / 2)
+          const arrowColor = segments[segments.length - 1]!.thisTurn
+            ? COURSE_NOW_COLOR
+            : COURSE_LATER_COLOR
+          pathPreview
+            .poly([tip.x, tip.y, baseX + perpX, baseY + perpY, baseX - perpX, baseY - perpY])
+            .fill({ color: arrowColor, alpha: 0.95 })
+        }
+      }
+
       if (selected) {
         // Geometry only — the ambient tick below animates this layer's alpha
         // into a pulse (#298) every frame, not just on a dirty redraw.
@@ -832,24 +925,78 @@ export function MapCanvas(props: MapCanvasProps) {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top }
     }
 
-    function selectTileAt(screenX: number, screenY: number) {
+    // Screen → world px → grid coord under the map's topology (#348), or
+    // `null` off-map. Square is the prior floor-divide; hex inverts the
+    // pointy-top layout via mapLayout. Shared by tap-to-act (selectTileAt),
+    // mouse hover, and touch's course-preview tap (#375).
+    function cellAtPoint(screenX: number, screenY: number): Coord | null {
       const map = propsRef.current.map
-      // Screen → world px → grid coord under the map's topology (#348). Square is
-      // the prior floor-divide; hex inverts the pointy-top layout via mapLayout.
       const cell = pixelToCell(
         mapTopology(map),
         (screenX - view.x) / view.scale,
         (screenY - view.y) / view.scale,
         TILE,
       )
-      if (cell.x < 0 || cell.x >= map.width || cell.y < 0 || cell.y >= map.height) return
-      propsRef.current.onTileClick(cell.x, cell.y)
+      if (cell.x < 0 || cell.x >= map.width || cell.y < 0 || cell.y >= map.height) return null
+      return cell
+    }
+
+    function selectTileAt(screenX: number, screenY: number) {
+      const cell = cellAtPoint(screenX, screenY)
+      if (cell) propsRef.current.onTileClick(cell.x, cell.y)
+    }
+
+    /**
+     * Touch's course-preview tap (#375): a tap on an empty, out-of-range water
+     * tile sets a sticky preview (mouse gets this live from hover instead);
+     * tapping that same tile again clears it. Taps on anything already handled
+     * by #376's any-distance targeting (a captain, city, or active encounter)
+     * are left alone — those already open their own confirm sheet immediately,
+     * so a lingering course dot would be redundant. Runs *before*
+     * `selectTileAt` so the sticky state reflects this tap even though the
+     * actual click dispatch (for an in-range tile) fires the same frame.
+     */
+    function updateTouchPreview(cell: Coord | null) {
+      const { captains, cities, encounters, selectedCaptainId, map } = propsRef.current
+      const selected = selectedCaptainId
+        ? captains.find((c) => c.id === selectedCaptainId)
+        : undefined
+      const occupied =
+        !!cell &&
+        (captains.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
+          cities.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
+          encounters.some((e) => e.active && e.position.x === cell.x && e.position.y === cell.y))
+      if (!cell || !selected || occupied) {
+        touchPreviewRef.current = null
+        setTouchPreviewHint(null)
+        dirtyRef.current = true
+        return
+      }
+      const path = findPath(map, selected.position, cell)
+      const outOfRange = !!path && path.length - 1 > selected.movementPoints
+      const isSecondTap = !!touchPreviewRef.current && coordsEqual(touchPreviewRef.current, cell)
+      if (outOfRange && !isSecondTap) {
+        touchPreviewRef.current = cell
+        // #372 (multi-turn sail orders) will make the second tap a real
+        // `setSailOrder` confirm instead of just clearing the preview.
+        setTouchPreviewHint('Course preview — tap again to set course')
+      } else {
+        touchPreviewRef.current = null
+        setTouchPreviewHint(null)
+      }
+      dirtyRef.current = true
     }
 
     function onPointerDown(e: PointerEvent) {
       canvas.setPointerCapture(e.pointerId)
       pointers.set(e.pointerId, toCanvasPoint(e))
       moved = false
+      // A mouse press (button down to drag/click) supersedes the live hover
+      // preview until the button comes back up and hover resumes (#375).
+      if (e.pointerType === 'mouse' && hoverCellRef.current) {
+        hoverCellRef.current = null
+        dirtyRef.current = true
+      }
       if (pointers.size === 1) {
         const p = pointers.values().next().value!
         dragStart = { x: p.x, y: p.y, viewX: view.x, viewY: view.y }
@@ -860,7 +1007,21 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function onPointerMove(e: PointerEvent) {
-      if (!pointers.has(e.pointerId)) return
+      if (!pointers.has(e.pointerId)) {
+        // Plain hover (#375): no pointer is down, so this can't be a drag or
+        // pinch — mouse only, since touch never fires pointermove without a
+        // preceding pointerdown that would already be in `pointers`.
+        if (e.pointerType === 'mouse') {
+          const p = toCanvasPoint(e)
+          const cell = cellAtPoint(p.x, p.y)
+          const prev = hoverCellRef.current
+          if (prev?.x !== cell?.x || prev?.y !== cell?.y) {
+            hoverCellRef.current = cell
+            dirtyRef.current = true
+          }
+        }
+        return
+      }
       pointers.set(e.pointerId, toCanvasPoint(e))
       if (pointers.size >= 2) {
         const [a, b] = [...pointers.values()]
@@ -882,6 +1043,13 @@ export function MapCanvas(props: MapCanvasProps) {
       }
     }
 
+    function onPointerLeave() {
+      if (hoverCellRef.current) {
+        hoverCellRef.current = null
+        dirtyRef.current = true
+      }
+    }
+
     function onPointerUp(e: PointerEvent) {
       if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId)
       const wasTap = pointers.size === 1 && !moved
@@ -889,7 +1057,10 @@ export function MapCanvas(props: MapCanvasProps) {
       pointers.delete(e.pointerId)
       if (pointers.size < 2) pinchPrevDist = undefined
       if (pointers.size === 0) dragStart = undefined
-      if (wasTap && point) selectTileAt(point.x, point.y)
+      if (wasTap && point) {
+        if (e.pointerType === 'touch') updateTouchPreview(cellAtPoint(point.x, point.y))
+        selectTileAt(point.x, point.y)
+      }
     }
 
     function onWheel(e: WheelEvent) {
@@ -909,6 +1080,7 @@ export function MapCanvas(props: MapCanvasProps) {
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerup', onPointerUp)
     canvas.addEventListener('pointercancel', onPointerUp)
+    canvas.addEventListener('pointerleave', onPointerLeave)
     canvas.addEventListener('wheel', onWheel, { passive: false })
     pixiApp.renderer.on('resize', onResize)
 
@@ -969,6 +1141,7 @@ export function MapCanvas(props: MapCanvasProps) {
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('pointercancel', onPointerUp)
+      canvas.removeEventListener('pointerleave', onPointerLeave)
       canvas.removeEventListener('wheel', onWheel)
       if (pixiApp.renderer) pixiApp.renderer.off('resize', onResize)
       if (pixiApp.stage) pixiApp.stage.removeChild(world)
@@ -1057,6 +1230,12 @@ export function MapCanvas(props: MapCanvasProps) {
         tileSize={TILE}
         onJump={(tile) => controlsRef.current?.centerOn(tile)}
       />
+
+      {touchPreviewHint && (
+        <div className="map-course-hint" role="status">
+          {touchPreviewHint}
+        </div>
+      )}
 
       <div className="sr-only" role="status" aria-live="polite">
         {announcement}

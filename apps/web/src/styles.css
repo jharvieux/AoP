@@ -125,6 +125,10 @@
   --map-encounter-natives: #6fbf73;
   --map-encounter-settlers: #c98bdb;
   --map-cursor: #ffe66d;
+  /* Dotted course preview (#375): this-turn legs vs. legs that only happen on
+     a later turn once movement refreshes. */
+  --map-course-now: #e0b64f;
+  --map-course-later: #5c7a94;
   /* Cosmetic hexagon tile boundary on hex-topology maps (#348). */
   --map-hex-grid: #0b1a26;
   --map-resource-timber: #8a5a2b;
@@ -245,6 +249,24 @@ body {
   color: var(--color-gold);
 }
 
+/* Touch course-preview hint (#375): "tap again to set course", shown while a
+   sticky touch preview is active (the touch equivalent of mouse hover, which
+   already shows the dotted route live with no hint text needed). */
+.map-course-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-panel) 88%, transparent);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
 .map-minimap {
   position: absolute;
   bottom: 12px;
@@ -299,6 +321,65 @@ body {
 
 .turn-event-feed li:first-child {
   color: var(--color-gold);
+}
+
+/* City roster (#373): a compact strip of the viewer's cities, bottom-left over
+   the map. Only rendered when the viewer holds more than one city. */
+.city-roster {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: 60%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 4;
+}
+
+.city-roster-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg-panel) 82%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.city-roster-entry.selected {
+  border-color: var(--color-gold);
+}
+
+.city-roster-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-roster-built {
+  color: var(--color-text-muted, var(--color-border));
+}
+
+.city-roster-built.done {
+  color: var(--color-gold);
+}
+
+/* End-turn nudge (#373): a quiet, non-blocking idle-city reminder above the
+   action buttons. */
+.idle-city-hint {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, var(--color-text));
+  opacity: 0.85;
 }
 
 button.primary {

@@ -6,6 +6,7 @@ import {
   captainsOf,
   createGame,
   createCombatStats,
+  currentlyVisibleTiles,
   currentPlayer,
   estimateOdds,
   InvalidActionError,
@@ -16,6 +17,7 @@ import {
   replay,
   RULES_VERSION,
   seedRng,
+  tileKey,
   visibleState,
   type Action,
   type Captain,
@@ -480,6 +482,68 @@ describe('economy & cities', () => {
         buildingId: 'sawmill',
       }),
     ).toThrow(InvalidActionError)
+  })
+
+  it('sums income, resets builds, and unions vision across every owned city (#373)', () => {
+    const base = createGame(econConfig())
+    // Hand p2's capital to p1 so p1 fields two cities. p2 keeps its captain, so
+    // it stays in play — this isolates the multi-city economy from elimination.
+    const twoCity: GameState = {
+      ...base,
+      cities: base.cities.map((c) => (c.id === 'p2-capital' ? { ...c, ownerId: 'p1' } : c)),
+    }
+    const cityA = twoCity.cities.find((c) => c.id === 'p1-capital')!
+    const cityB = twoCity.cities.find((c) => c.id === 'p2-capital')!
+
+    // Vision is the union of both cities' discs, not just the first.
+    const visible = new Set(currentlyVisibleTiles(twoCity, 'p1').map(tileKey))
+    expect(visible.has(tileKey(cityA.position))).toBe(true)
+    expect(visible.has(tileKey(cityB.position))).toBe(true)
+
+    // Both cities can build in the same turn (the one-build rule is per city).
+    let state = applyAction(twoCity, {
+      type: 'construct',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      buildingId: 'sawmill',
+    })
+    state = applyAction(state, {
+      type: 'construct',
+      playerId: 'p1',
+      cityId: 'p2-capital',
+      buildingId: 'sawmill',
+    })
+    expect(state.cities.filter((c) => c.ownerId === 'p1').every((c) => c.builtThisRound)).toBe(true)
+
+    const startGold = state.players.find((p) => p.id === 'p1')!.resources.gold
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // wrap -> round 2
+
+    // Two townhalls' income (100 gold each) is counted, not one.
+    expect(state.players.find((p) => p.id === 'p1')!.resources.gold).toBe(startGold + 200)
+    // The round wrap clears builtThisRound on every owned city, not just one.
+    expect(state.cities.filter((c) => c.ownerId === 'p1').every((c) => !c.builtThisRound)).toBe(
+      true,
+    )
+  })
+
+  it('replays two-city builds and income identically (#373)', () => {
+    const base = createGame(econConfig())
+    const twoCity: GameState = {
+      ...base,
+      cities: base.cities.map((c) => (c.id === 'p2-capital' ? { ...c, ownerId: 'p1' } : c)),
+    }
+    const log: Action[] = [
+      { type: 'construct', playerId: 'p1', cityId: 'p1-capital', buildingId: 'sawmill' },
+      { type: 'construct', playerId: 'p1', cityId: 'p2-capital', buildingId: 'sawmill' },
+      { type: 'recruit', playerId: 'p1', cityId: 'p1-capital', unitId: 'deckhand', count: 2 },
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+    ]
+    const a = replay(twoCity, log)
+    const b = replay(twoCity, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
   })
 })
 
