@@ -105,6 +105,48 @@ export function visibleState(
   return { visible, explored: Array.from(exploredKeys, keyToCoord) }
 }
 
+/**
+ * A hostile entity `playerId` can currently perceive (#372) — the fog-of-war
+ * "contacts" a standing sail order watches for. An entity counts when its owner
+ * is neither `playerId` nor a live ally:
+ *
+ * - enemy captains (not captured) standing on a currently-visible tile,
+ * - active encounters on a currently-visible tile (they have no owner — always
+ *   a contact when seen),
+ * - enemy cities on an *explored* tile (a city, once found, stays a known
+ *   contact even after it slips back under the fog — you don't forget a port).
+ *
+ * Returned as a sorted id list so a *new* contact is a cheap set-difference and
+ * the value is byte-identical across machines (replay determinism). Pure — reads
+ * only GameState.
+ */
+export function currentContacts(state: GameState, playerId: string): string[] {
+  const isEnemy = (ownerId: string): boolean =>
+    ownerId !== playerId && !pairsContain(state.alliances.pairs, playerId, ownerId)
+
+  const visibleKeys = new Set(currentlyVisibleTiles(state, playerId).map(tileKey))
+  const exploredKeys = new Set(state.exploredTiles[playerId] ?? [])
+  const ids: string[] = []
+
+  for (const captain of state.captains) {
+    if (
+      !captain.captured &&
+      isEnemy(captain.ownerId) &&
+      visibleKeys.has(tileKey(captain.position))
+    ) {
+      ids.push(captain.id)
+    }
+  }
+  for (const encounter of state.encounters) {
+    if (encounter.active && visibleKeys.has(tileKey(encounter.position))) ids.push(encounter.id)
+  }
+  for (const city of state.cities) {
+    if (isEnemy(city.ownerId) && exploredKeys.has(tileKey(city.position))) ids.push(city.id)
+  }
+
+  return ids.sort()
+}
+
 /** The explored-tile key set for `playerId` after folding in whatever is visible right now. */
 export function accumulateExploredTiles(state: GameState, playerId: string): string[] {
   const explored = new Set(state.exploredTiles[playerId] ?? [])
