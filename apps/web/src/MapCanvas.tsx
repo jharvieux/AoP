@@ -473,25 +473,30 @@ export function MapCanvas(props: MapCanvasProps) {
     )
     pixiApp.stage.addChild(world)
 
-    // Terrain geometry cache (#393): retraced only when the map or the
-    // explored set changes — never on a plain pan/zoom redraw.
+    // Terrain geometry cache (#393). GameScreen/playerViewBoard build a fresh
+    // exploredKeys Set on every state update, so keying on Set identity would
+    // retrace the whole grid every action. Exploration is monotonic per viewer
+    // (visibility.ts only ever adds explored tiles), so (map, size, viewer) is
+    // a complete content key: same map, same viewer, and same count means the
+    // same set of explored cells.
     let painted: {
       map: GameMap
-      explored: Set<string>
       size: number
+      viewerId: string
       geom: PaintedGeometry
     } | null = null
     function paintedGeometry(map: GameMap, exploredKeys: Set<string>): PaintedGeometry {
+      const viewerId = propsRef.current.viewerId
       if (
         !painted ||
         painted.map !== map ||
-        painted.explored !== exploredKeys ||
-        painted.size !== exploredKeys.size
+        painted.size !== exploredKeys.size ||
+        painted.viewerId !== viewerId
       ) {
         painted = {
           map,
-          explored: exploredKeys,
           size: exploredKeys.size,
+          viewerId,
           geom: buildPaintedGeometry(map, exploredKeys),
         }
       }
