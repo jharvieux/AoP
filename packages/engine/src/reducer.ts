@@ -82,9 +82,10 @@ import type {
   GameSetup,
   GameState,
   PlayerState,
+  SailOrder,
   TroopStack,
 } from './types'
-import { accumulateExploredTiles, tileKey, tilesInRadius } from './visibility'
+import { accumulateExploredTiles, currentContacts, tileKey, tilesInRadius } from './visibility'
 
 /**
  * What a captain learned from resolving a random encounter (#23) — the result of
