@@ -187,6 +187,45 @@ export function pathCost(map: GameMap, from: Coord, to: Coord): number | null {
   return path ? path.length - 1 : null
 }
 
+/**
+ * Every water tile a ship at `from` could move to within `movementPoints`, i.e.
+ * whose shortest water path from `from` costs between 1 and `movementPoints`
+ * steps inclusive. The origin tile itself is never included (cost 0), so
+ * `movementPoints <= 0` yields `[]` — the caller shades "where can I go", not
+ * "where am I". Powers the movement-range highlight on ship selection (#371).
+ *
+ * A breadth-first flood over water only, along the map's topology (#348), so it
+ * works identically on square (8-neighbor) and hex (6-neighbor) maps. Pure and
+ * deterministic — no RNG — and the result is sorted by tile index so the same
+ * query yields a byte-identical array on every machine, regardless of the
+ * neighbor iteration order the flood happened to visit tiles in.
+ */
+export function reachableTiles(map: GameMap, from: Coord, movementPoints: number): Coord[] {
+  if (movementPoints <= 0 || !isWaterTile(tileAt(map, from))) return []
+
+  const startIdx = tileIndex(map, from.x, from.y)
+  const dist = new Map<number, number>([[startIdx, 0]])
+  const queue: Coord[] = [from]
+  const reached: number[] = []
+
+  for (let i = 0; i < queue.length; i++) {
+    const cur = queue[i]!
+    const d = dist.get(tileIndex(map, cur.x, cur.y))!
+    if (d === movementPoints) continue // depth cap: nothing past here is in range
+    for (const n of mapNeighbors(map, cur)) {
+      if (!isWaterTile(tileAt(map, n))) continue
+      const nIdx = tileIndex(map, n.x, n.y)
+      if (dist.has(nIdx)) continue // BFS first-visit is the shortest, uniform-cost path
+      dist.set(nIdx, d + 1)
+      reached.push(nIdx)
+      queue.push(n)
+    }
+  }
+
+  reached.sort((a, b) => a - b)
+  return reached.map((idx) => ({ x: idx % map.width, y: Math.floor(idx / map.width) }))
+}
+
 function reconstruct(nodes: Map<number, Node>, goalIdx: number): Coord[] {
   const path: Coord[] = []
   let idx: number | null = goalIdx
