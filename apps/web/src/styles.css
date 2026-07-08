@@ -301,6 +301,65 @@ body {
   color: var(--color-gold);
 }
 
+/* City roster (#373): a compact strip of the viewer's cities, bottom-left over
+   the map. Only rendered when the viewer holds more than one city. */
+.city-roster {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: 60%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 4;
+}
+
+.city-roster-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg-panel) 82%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.city-roster-entry.selected {
+  border-color: var(--color-gold);
+}
+
+.city-roster-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-roster-built {
+  color: var(--color-text-muted, var(--color-border));
+}
+
+.city-roster-built.done {
+  color: var(--color-gold);
+}
+
+/* End-turn nudge (#373): a quiet, non-blocking idle-city reminder above the
+   action buttons. */
+.idle-city-hint {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, var(--color-text));
+  opacity: 0.85;
+}
+
 button.primary {
   min-height: 44px;
   padding: 0 18px;
