@@ -83,6 +83,22 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # For docs-only changes, run format:check only (skip typecheck/test/build).
+  # This ensures formatting is enforced even on docs-only PRs.
+  format-check-only:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+
   # supabase/functions is not a pnpm workspace — it runs on Deno, not Node (see
   # supabase/functions/README.md) — so the `ci` job above never typechecks or tests it.
   # This job is the Deno-side equivalent of `pnpm typecheck` / `pnpm test` (#248).
