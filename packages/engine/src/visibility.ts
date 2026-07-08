@@ -1,6 +1,6 @@
 import type { Coord } from '@aop/shared'
 import { pairsContain } from './alliances'
-import type { GameMap } from './map'
+import { mapDistance, type GameMap } from './map'
 import type { GameState } from './types'
 
 export function tileKey(coord: Coord): string {
@@ -12,16 +12,22 @@ function keyToCoord(key: string): Coord {
   return { x: Number(x), y: Number(y) }
 }
 
-/** All tiles within `radius` (Chebyshev distance) of `center`, clipped to the map bounds. */
+/**
+ * All tiles within `radius` of `center` under the map's grid distance
+ * (Chebyshev on square maps — the whole scan box; true hex distance on hex
+ * maps — the hex ball inside it), clipped to the map bounds. A single hex
+ * step changes col and row by at most 1, so the ±radius box always contains
+ * the full hex ball.
+ */
 export function tilesInRadius(center: Coord, radius: number, map: GameMap): Coord[] {
   const tiles: Coord[] = []
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
       const x = center.x + dx
       const y = center.y + dy
-      if (x >= 0 && x < map.width && y >= 0 && y < map.height) {
-        tiles.push({ x, y })
-      }
+      if (x < 0 || x >= map.width || y < 0 || y >= map.height) continue
+      if (mapDistance(map, center, { x, y }) > radius) continue
+      tiles.push({ x, y })
     }
   }
   return tiles

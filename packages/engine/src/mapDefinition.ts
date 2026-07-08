@@ -1,7 +1,14 @@
 import type { Coord } from '@aop/shared'
-import { chebyshevDistance } from '@aop/shared'
 import type { EncounterKind, ResourceNodeKind } from './content'
-import { inBounds, isWaterTile, neighbors8, tileAt, tileIndex, type GameMap } from './map'
+import {
+  inBounds,
+  isWaterTile,
+  mapDistance,
+  mapNeighbors,
+  tileAt,
+  tileIndex,
+  type GameMap,
+} from './map'
 
 /**
  * An author-placed encounter (#41 map editor). When a `MapDefinition` carries
@@ -81,6 +88,9 @@ export function mapToDefinition(map: GameMap): MapDefinition {
     height: map.height,
     tiles: map.tiles.map((t) => ({ ...t })),
     startPositions: map.startPositions.map((c) => ({ ...c })),
+    // Preserve hex topology (#348); omit for square so pre-hex snapshots stay
+    // byte-identical (no stray optional keys).
+    ...(map.topology ? { topology: map.topology } : {}),
   }
 }
 
@@ -95,7 +105,7 @@ export interface MapValidationLimits {
   maxSize: number
   minPlayers: number
   maxPlayers: number
-  /** Minimum Chebyshev distance required between any two start positions. */
+  /** Minimum grid distance (see `mapDistance`) required between any two start positions. */
   minStartDistance: number
   /** Max allowed ratio between the largest and smallest home island's land area. */
   maxHomeIslandAreaRatio: number
@@ -177,7 +187,7 @@ export function validateMapDefinition(
       })
       return
     }
-    const nextToPort = neighbors8(def, s).some((n) => tileAt(def, n)?.type === 'port')
+    const nextToPort = mapNeighbors(def, s).some((n) => tileAt(def, n)?.type === 'port')
     if (!nextToPort) {
       errors.push({
         code: 'start-not-coastal',
@@ -188,7 +198,7 @@ export function validateMapDefinition(
 
   for (let i = 0; i < def.startPositions.length; i++) {
     for (let j = i + 1; j < def.startPositions.length; j++) {
-      const d = chebyshevDistance(def.startPositions[i]!, def.startPositions[j]!)
+      const d = mapDistance(def, def.startPositions[i]!, def.startPositions[j]!)
       if (d < limits.minStartDistance) {
         errors.push({
           code: 'starts-too-close',
@@ -315,7 +325,7 @@ export function validateMapDefinition(
   return { valid: errors.length === 0, errors }
 }
 
-/** All water tiles reachable from `start` by 8-directional sea travel. */
+/** All water tiles reachable from `start` by sea travel under the map's topology. */
 function floodFillWater(map: GameMap, start: Coord): Set<number> {
   const visited = new Set<number>()
   if (!isWaterTile(tileAt(map, start))) return visited
@@ -323,7 +333,7 @@ function floodFillWater(map: GameMap, start: Coord): Set<number> {
   visited.add(tileIndex(map, start.x, start.y))
   while (queue.length > 0) {
     const current = queue.shift()!
-    for (const n of neighbors8(map, current)) {
+    for (const n of mapNeighbors(map, current)) {
       const idx = tileIndex(map, n.x, n.y)
       if (visited.has(idx) || !isWaterTile(tileAt(map, n))) continue
       visited.add(idx)

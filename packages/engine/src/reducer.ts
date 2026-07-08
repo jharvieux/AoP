@@ -1,7 +1,6 @@
 import {
   addResources,
   canAfford,
-  chebyshevDistance,
   subtractResources,
   type Coord,
   type ResourcePool,
@@ -56,7 +55,7 @@ import type { ContentCatalog, EncounterKind } from './content'
 import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
-import { isWaterTile, neighbors8, tileAt, type GameMap } from './map'
+import { isWaterTile, mapDistance, mapNeighbors, tileAt, type GameMap } from './map'
 import { findPath } from './pathfinding'
 import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
@@ -435,7 +434,7 @@ function attackCaptain(
   if (target.captured) {
     throw new InvalidActionError(`Captain ${action.targetCaptainId} is already captured`, action)
   }
-  if (chebyshevDistance(attacker.position, target.position) > 1) {
+  if (mapDistance(state.map, attacker.position, target.position) > 1) {
     throw new InvalidActionError('Target is not within attack range', action)
   }
   if (attacker.movementPoints < 1) {
@@ -610,7 +609,7 @@ function attackCity(
   if (target.ownerId === action.playerId) {
     throw new InvalidActionError('Cannot assault your own city', action)
   }
-  if (chebyshevDistance(attacker.position, target.position) > 1) {
+  if (mapDistance(state.map, attacker.position, target.position) > 1) {
     throw new InvalidActionError('City is not within assault range', action)
   }
   if (attacker.movementPoints < 1) {
@@ -829,7 +828,7 @@ function ownedCaptain(state: GameState, captainId: string, action: Action): Capt
  * bouncing cleanly.
  */
 function adjacentWaterTile(map: GameMap, coord: Coord, action: Action): Coord {
-  const water = neighbors8(map, coord).find((n) => isWaterTile(tileAt(map, n)))
+  const water = mapNeighbors(map, coord).find((n) => isWaterTile(tileAt(map, n)))
   if (!water) {
     throw new InvalidActionError(`No water tile adjacent to ${coord.x},${coord.y}`, action)
   }
@@ -1047,7 +1046,7 @@ function transferTroops(state: GameState, action: TransferTroopsAction): GameSta
   if (action.count <= 0) throw new InvalidActionError('Transfer count must be positive', action)
   const city = ownedCity(state, action.cityId, action)
   const captain = ownedCaptain(state, action.captainId, action)
-  if (chebyshevDistance(captain.position, city.position) > 1) {
+  if (mapDistance(state.map, captain.position, city.position) > 1) {
     throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
   }
 
@@ -1144,7 +1143,7 @@ function upgradeShip(state: GameState, action: UpgradeShipAction): GameState {
     throw new InvalidActionError(`${city.id} has no shipyard`, action)
   }
   const captain = ownedCaptain(state, action.captainId, action)
-  if (chebyshevDistance(captain.position, city.position) > 1) {
+  if (mapDistance(state.map, captain.position, city.position) > 1) {
     throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
   }
   const ship = content.ships[captain.shipClassId]
@@ -1191,7 +1190,7 @@ function resolveEncounter(
   if (!encounter || !encounter.active) {
     throw new InvalidActionError(`No active encounter ${action.encounterId}`, action)
   }
-  if (chebyshevDistance(captain.position, encounter.position) > 1) {
+  if (mapDistance(state.map, captain.position, encounter.position) > 1) {
     throw new InvalidActionError('Encounter is not within reach', action)
   }
   const kindDef = content.encounters[encounter.kind]
