@@ -14,10 +14,7 @@ export default defineConfig({
           // Isolate pixi.js into its own chunk (loaded only by gameplay screens).
           if (id.includes('node_modules/pixi.js')) return 'pixi'
           // Isolate other major vendors to reduce main bundle bloat.
-          if (id.includes('node_modules')) {
-            if (id.includes('@pixi')) return 'pixi'
-            if (id.includes('supabase')) return 'supabase'
-          }
+          if (id.includes('node_modules/supabase')) return 'supabase'
           // Core app runtime stays in main.
           return undefined
         },

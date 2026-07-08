@@ -27,15 +27,17 @@ import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { loadGame, saveGame } from './storage'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
+import { Spinner } from './components/Spinner'
 import type { GameSetupConfig } from './types'
 import { isTestPlayAfterLoadSlot, isTestPlayAfterRematch, shouldAutosave } from './gameSession'
 import { audioManager } from './audio/audioManager'
 import { DIALOGUE } from './audio/dialogueClips'
 import { registerBackButtonHandler } from './plugins/androidBackButton'
 
-// Lazy-loaded screens that don't depend on pixi.js for initial load (#353).
-// Screens that use MapCanvas (GameScreen, SpectateScreen, MatchScreen) remain
-// eagerly loaded to avoid a fetch waterfall when entering gameplay.
+// Lazy-loaded screens (#353). ReplayScreen does use MapCanvas/pixi.js but is
+// accessed infrequently (only after a match ends). Eager screens (GameScreen,
+// SpectateScreen, MatchScreen) keep pixi.js resident, so this split doesn't
+// waterfall — it just defers loading replay-specific code until needed.
 const ReplayScreen = lazy(() =>
   import('./replay/ReplayScreen').then((m) => ({ default: m.ReplayScreen })),
 )
@@ -351,7 +353,7 @@ export function App() {
           />
         )}
         {screen === 'replay' && replayData && (
-          <Suspense fallback={<div className="screen-loading" />}>
+          <Suspense fallback={<Spinner label="Loading replay…" />}>
             <ReplayScreen
               config={replayData.config}
               actions={replayData.actions}
