@@ -18,6 +18,17 @@ export function tileContentId(tileType: string): string {
   return `tile:${tileType}`
 }
 
+/**
+ * Theme-pack content id for an autotile variant (#354). When autotile art is
+ * added, theme packs can override per-variant edge sprites keyed like
+ * `tile:land:edge:1`, `tile:land:edge:2`, etc. (variant 0 is the base tile,
+ * variants 1-15 represent edge patterns from marching squares).
+ * If the pack doesn't define a specific variant, the base tile is used.
+ */
+export function tileAutotileId(tileType: string, variant: number): string {
+  return variant > 0 ? `tile:${tileType}:edge:${variant}` : `tile:${tileType}`
+}
+
 /** Theme-pack content id for a city sprite override, split by ownership. */
 export function cityContentId(own: boolean): string {
   return own ? 'city:own' : 'city:enemy'

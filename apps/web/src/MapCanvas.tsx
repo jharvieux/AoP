@@ -116,12 +116,20 @@ function defaultArtUrls(): string[] {
   return [...urls]
 }
 
-// Coastline + tile-variety rendering (#347). All rendering-only: a deterministic
+// Coastline + tile-variety rendering (#347, #354). All rendering-only: a deterministic
 // hash of integer tile coords picks each tile's variant, so two paints of the
 // same tile agree and the engine's seeded RNG is never touched.
 const SURF_COLOR = cssToken('--map-surf', '#bfe6f2')
 const SURF_BAND = TILE * 0.16
 const WATER_TYPES = new Set(['deep', 'shallows'])
+
+// Texture scaling factor for crisper rendering (#354): source art is 128px,
+// scaled 4x to TILE = 32. Increasing this trades memory for visual sharpness.
+// At scale > 1, camera/culling math remains unchanged (world coords stay in
+// 32-pixel grid), but sprites render at higher resolution. Scale = 1 is the
+// baseline (current behavior); 1.5 or 2.0 gives noticeable sharpening on
+// modern devices without re-tooling the entire coordinate system.
+const TILE_TEXTURE_SCALE = 1
 
 /** A stable [0,1) value per integer tile — the seed for that tile's rendering variant. */
 function tileHash(x: number, y: number): number {
@@ -129,6 +137,37 @@ function tileHash(x: number, y: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
   h ^= h >>> 13
   return (h >>> 0) / 0xffffffff
+}
+
+/**
+ * Marching-squares edge detection for autotiling coastlines (#354).
+ * Land tiles bordering water get a bitmask variant (0-15) encoding which edges
+ * touch water. Water tiles always return 0 (no autotiling).
+ * Bitmask: bit 0 = north, bit 1 = east, bit 2 = south, bit 3 = west.
+ * When new autotile variant art is added, `resolveSpriteUrl()` will use this
+ * to pick edge-mask sprites keyed by terrain type + variant.
+ */
+function getAutotileVariant(map: GameMap, x: number, y: number): number {
+  const tile = map.tiles[tileIndex(map, x, y)]
+  if (!tile || WATER_TYPES.has(tile.type)) return 0
+  // Land tile: check which orthogonal neighbors are water
+  let variant = 0
+  if (y > 0 && WATER_TYPES.has(map.tiles[tileIndex(map, x, y - 1)]!.type)) variant |= 1
+  if (x < map.width - 1 && WATER_TYPES.has(map.tiles[tileIndex(map, x + 1, y)]!.type)) variant |= 2
+  if (y < map.height - 1 && WATER_TYPES.has(map.tiles[tileIndex(map, x, y + 1)]!.type)) variant |= 4
+  if (x > 0 && WATER_TYPES.has(map.tiles[tileIndex(map, x - 1, y)]!.type)) variant |= 8
+  return variant
+}
+
+/**
+ * Select a tile variant for rendering (#354). Combines autotile edge patterns
+ * (for coast borders) with per-tile brightness variation (for terrain detail).
+ * Returns a stable variant index [0-1) that can be used to pick distinct tile
+ * art or blend alpha masks over a base sprite.
+ */
+function getTileVariant(map: GameMap, x: number, y: number): number {
+  const autotile = getAutotileVariant(map, x, y)
+  return autotile > 0 ? autotile / 16 : tileHash(x, y)
 }
 
 /** Parse a `#rrggbb` token to a packed 0xRRGGBB number, or null for any other format. */
@@ -515,17 +554,27 @@ export function MapCanvas(props: MapCanvasProps) {
           if (WATER_TYPES.has(tile.type)) {
             paintSurf(coast, map, x, y)
           }
+          // Autotile variant selection (#354): land tiles bordering water get an
+          // edge-pattern ID (0-15) via marching squares; used to pick edge-mask art
+          // when autotile sprites are available (see mapSprites.tileAutotileId).
+          const autotileVariant = getAutotileVariant(map, x, y)
           const spriteUrl = resolveSpriteUrl(
             themeSpriteUrlRef.current,
-            tileContentId(tile.type),
+            autotileVariant > 0
+              ? `tile:${tile.type}:edge:${autotileVariant}`
+              : tileContentId(tile.type),
             TILE_SPRITE_URL[tile.type],
           )
           const texture = spriteUrl ? getTexture(spriteUrl) : undefined
           if (texture) {
             const sprite = tilePool.get(key)
             sprite.texture = texture
-            sprite.width = TILE
-            sprite.height = TILE
+            // Texture scaling (#354): scale texture for crisper rendering. At
+            // TILE_TEXTURE_SCALE = 1, sprite size = TILE (32px). At 1.5 or 2.0,
+            // sprites are larger, giving sharper detail on high-DPI devices while
+            // keeping world coordinates and culling math unchanged.
+            sprite.width = TILE * TILE_TEXTURE_SCALE
+            sprite.height = TILE * TILE_TEXTURE_SCALE
             sprite.position.set(x * TILE + TILE / 2, y * TILE + TILE / 2)
             sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming (#299)
             // Per-tile brightness variety (#347): a subtle deterministic tint so
