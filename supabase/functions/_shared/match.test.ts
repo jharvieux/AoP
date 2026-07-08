@@ -4,7 +4,17 @@
 //   deno test --import-map supabase/functions/deno.json supabase/functions/_shared/match.test.ts
 // These edge functions are not part of the pnpm/vitest CI gate (they run on
 // Deno, not Node), so this file is exercised by `deno test`, not `pnpm test`.
-import { createGame, type Action } from '@aop/engine'
+import {
+  createGame,
+  currentlyVisibleTiles,
+  mapDistance,
+  playerView,
+  type Action,
+  type GameConfig,
+  type MapDefinition,
+  type Tile,
+} from '@aop/engine'
+import type { Coord } from '@aop/shared'
 import { assertEquals, assertNotEquals, assertRejects, assertThrows } from 'jsr:@std/assert@1'
 import {
   appendAction,
@@ -18,9 +28,11 @@ import {
   isExpectedSweepRace,
   parseSettings,
   sanitizeAction,
+  submitAction,
   type MatchSettings,
   type StartMatchSeat,
 } from './match.ts'
+import { buildMatchConfig, type SeatConfig } from './catalog.ts'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
 
@@ -736,3 +748,309 @@ Deno.test('broadcastTurn: pokes the private match channel with the seq only', as
     payload: { type: 'turn', seq: 5 },
   })
 })
+
+// --- Hex-topology protocol audit (#348 Phase 5) ---
+//
+// The engine's topology switch (Phase 2, #363) lives entirely inside `@aop/engine`:
+// `GameMap.topology` drives `mapNeighbors`/`mapDistance`, which every adjacency/range/
+// vision/pathfinding consumer already dispatches through (map.ts, pathfinding.ts,
+// visibility.ts — see packages/engine/test/hexIntegration.test.ts for the exhaustive
+// per-function coverage). Nothing in the multiplayer layer (this file, submit-action,
+// get-player-view) ever branches on topology, reads `map.topology`, or encodes it in an
+// `Action` — coordinates are the same `{x, y}` integer pair either way (hex reinterprets
+// the identical rectangular storage as odd-r offset). So there is no new coordinate
+// format, no new validation surface, and no new Edge Function to add: the existing
+// `sanitizeAction` -> `applyActionWithOutcome` pipeline is already topology-agnostic BY
+// CONSTRUCTION, and `playerView`'s fog filter is already topology-aware BY CONSTRUCTION
+// (it calls `mapDistance`, not a hardcoded Chebyshev box). The tests below prove that
+// property holds all the way through the real `submitAction`/`playerView` entry points
+// the Edge Functions call, not just the engine internals hexIntegration.test.ts covers.
+
+/** A seat as `buildMatchConfig` needs it, sized for the 2-seat hex fixtures below. */
+const HEX_SEATS: SeatConfig[] = [
+  { seat: 0, faction: 'pirates', isAI: false, displayName: 'Alice' },
+  { seat: 1, faction: 'british', isAI: false, displayName: 'Bob' },
+]
+
+/** An all-deep-water hex map (topology: 'hex') with one port per seat, small enough for
+ * a fast unit test. Mirrors packages/engine/test/hexIntegration.test.ts's fixture. */
+function hexTestMap(startPositions: Coord[]): MapDefinition {
+  const size = 16
+  const tiles: Tile[] = Array.from({ length: size * size }, () => ({
+    type: 'deep' as const,
+    island: -1,
+  }))
+  tiles[2 * size + 2] = { type: 'port', island: 0 }
+  tiles[12 * size + 12] = { type: 'port', island: 1 }
+  return { width: size, height: size, tiles, startPositions, topology: 'hex' }
+}
+
+/** A real `GameConfig` — same `buildMatchConfig` create-match/start-match use for a
+ * procedural square map — with an authored hex `mapDefinition` swapped in. Proves the
+ * multiplayer config-building path needs no hex-specific branch: `createGame` already
+ * prefers `mapDefinition` over procedural generation (game.ts, predates #348). */
+function hexMatchConfig(seed: number, startPositions: Coord[]): GameConfig {
+  return {
+    ...buildMatchConfig(seed, 'small', HEX_SEATS),
+    mapDefinition: hexTestMap(startPositions),
+  }
+}
+
+Deno.test(
+  'sanitizeAction: identical output for square and hex coordinates — the wire format never encodes topology (#348)',
+  () => {
+    // Coordinate format is 2 plain integers under either topology; sanitizeAction has
+    // no map/topology parameter to branch on. The *same* moveCaptain action targets a
+    // square-plausible tile and an equally-plausible hex tile with no difference in
+    // shape, so there is nothing for a hex-aware code path to have missed here.
+    const move: Action = {
+      type: 'moveCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-seat-0',
+      to: { x: 7, y: 3 },
+    }
+    const sanitized = sanitizeAction(move)
+    assertEquals(sanitized, move)
+    assertEquals(JSON.parse(JSON.stringify(sanitized)), move) // byte-identical round trip
+    assertEquals('topology' in sanitized, false)
+    assertEquals('map' in sanitized, false)
+  },
+)
+
+Deno.test('sanitizeAction: network payload size is independent of topology (#348 Phase 5)', () => {
+  // Same digit-width coordinates, one on a plausible square map and one on a
+  // plausible hex map of identical dimensions — the serialized size only tracks
+  // digit count, never a topology-specific encoding (no cube/axial coords ride
+  // along; hex reuses the same {x, y} storage as square).
+  const square: Action = {
+    type: 'moveCaptain',
+    playerId: 'seat-0',
+    captainId: 'cap-seat-0',
+    to: { x: 12, y: 9 },
+  }
+  const hex: Action = {
+    type: 'moveCaptain',
+    playerId: 'seat-0',
+    captainId: 'cap-seat-0',
+    to: { x: 12, y: 9 },
+  }
+  assertEquals(
+    JSON.stringify(sanitizeAction(square)).length,
+    JSON.stringify(sanitizeAction(hex)).length,
+  )
+})
+
+Deno.test(
+  'submitAction: accepts a hex-adjacent move on a hex-topology match (#348 Phase 5)',
+  async () => {
+    const starts: Coord[] = [
+      { x: 2, y: 3 },
+      { x: 12, y: 13 },
+    ]
+    const state = createGame(hexMatchConfig(42, starts))
+    assertEquals(state.map.topology, 'hex')
+
+    const db = mutableFakeDb({
+      matches: [
+        {
+          id: 'hex-1',
+          status: 'active',
+          seed: 42,
+          settings: START_MATCH_SETTINGS,
+          action_count: 0,
+        },
+      ],
+      match_snapshots: [{ match_id: 'hex-1', seq: 0, state }],
+      match_actions: [],
+      match_players: [
+        { match_id: 'hex-1', seat: 0, user_id: 'user-a', status: 'active', alliance_id: null },
+        { match_id: 'hex-1', seat: 1, user_id: 'user-b', status: 'active', alliance_id: null },
+      ],
+    })
+
+    // (2,3) -> (3,3) is a hex neighbor (odd-r adjacency), 1 movement point.
+    const result = await submitAction(db, 'hex-1', 0, {
+      type: 'moveCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-seat-0',
+      to: { x: 3, y: 3 },
+    })
+    assertEquals(result.state.captains.find((c) => c.id === 'cap-seat-0')!.position, { x: 3, y: 3 })
+  },
+)
+
+Deno.test(
+  'submitAction: rejects an attack at hex distance 2 (a square-diagonal target) through the real pipeline (#348 Phase 5)',
+  async () => {
+    // (2,3) and (1,2) are Chebyshev-adjacent (legal range on a square map) but hex
+    // distance 2 — the same case packages/engine/test/hexIntegration.test.ts proves at
+    // the engine layer, exercised here through the actual submitAction() Edge Functions
+    // call, backed by a fake Db, to prove the multiplayer layer doesn't quietly relax
+    // (or duplicate, and risk diverging from) the engine's own topology-aware range check.
+    const starts: Coord[] = [
+      { x: 2, y: 3 },
+      { x: 1, y: 2 },
+    ]
+    const state = createGame(hexMatchConfig(42, starts))
+    const db = mutableFakeDb({
+      matches: [
+        {
+          id: 'hex-2',
+          status: 'active',
+          seed: 42,
+          settings: START_MATCH_SETTINGS,
+          action_count: 0,
+        },
+      ],
+      match_snapshots: [{ match_id: 'hex-2', seq: 0, state }],
+      match_actions: [],
+      match_players: [
+        { match_id: 'hex-2', seat: 0, user_id: 'user-a', status: 'active', alliance_id: null },
+        { match_id: 'hex-2', seat: 1, user_id: 'user-b', status: 'active', alliance_id: null },
+      ],
+    })
+
+    const err = await assertRejects(
+      () =>
+        submitAction(db, 'hex-2', 0, {
+          type: 'attackCaptain',
+          playerId: 'seat-0',
+          captainId: 'cap-seat-0',
+          targetCaptainId: 'cap-seat-1',
+        }),
+      AppError,
+    )
+    assertEquals(err.code, 'INVALID_ACTION')
+  },
+)
+
+Deno.test(
+  "playerView: fog-of-war on a hex map matches the engine's own topology-aware vision, not a Chebyshev box (#348 Phase 5)",
+  () => {
+    // get-player-view (supabase/functions/get-player-view/index.ts) calls `playerView`
+    // directly on the reconstructed state with no topology-specific code of its own —
+    // this proves that SAME function's visible-tile set matches the ground truth
+    // (`currentlyVisibleTiles`, which unions city vision + captain vision, both via
+    // topology-aware `mapDistance`) exactly, on a hex map.
+    const starts: Coord[] = [
+      { x: 2, y: 3 },
+      { x: 12, y: 13 },
+    ]
+    const state = createGame(hexMatchConfig(7, starts))
+    const view = playerView(state, 'seat-0')
+
+    const expected = new Set(currentlyVisibleTiles(state, 'seat-0').map((t) => `${t.x},${t.y}`))
+    const actual = new Set(
+      view.tiles.filter((t) => t.visible).map((t) => `${t.coord.x},${t.coord.y}`),
+    )
+    assertEquals(actual, expected)
+
+    // Sanity: this is a genuinely hex-shaped ball, not a square Chebyshev box — find a
+    // tile the fog filter actually disagrees on between the two metrics (Chebyshev-in,
+    // hex-out or vice versa) near the captain, proving `mapDistance`, not Chebyshev,
+    // is what governs the boundary.
+    const cap = state.captains.find((c) => c.ownerId === 'seat-0')!
+    const radius = state.config.setup.captainVisionRadius
+    let sawDisagreement = false
+    for (let dy = -radius - 1; dy <= radius + 1; dy++) {
+      for (let dx = -radius - 1; dx <= radius + 1; dx++) {
+        const t = { x: cap.position.x + dx, y: cap.position.y + dy }
+        const chebyshevIn = Math.max(Math.abs(dx), Math.abs(dy)) <= radius
+        const hexIn = mapDistance(state.map, cap.position, t) <= radius
+        if (chebyshevIn !== hexIn) sawDisagreement = true
+      }
+    }
+    assertEquals(sawDisagreement, true)
+  },
+)
+
+/** A richer in-memory fake `Db` than {@link fakeDb} above: also supports `.update()` and
+ * the `append_match_action` RPC, so a hex-topology `submitAction()` call can run its real
+ * read/append path (load, reconstruct, append) without a live Postgres. Scoped to exactly
+ * what `submitAction` touches for a single non-turn-ending action — the hex tests above
+ * never advance the turn, so `writeSnapshot` (an upsert), `broadcastTurn`, and the
+ * push/email dispatch never fire; `.update()` is exercised defensively (`mirrorAllianceIds`
+ * always reads `match_players`, though it writes nothing here since no alliance changed) —
+ * not a general-purpose PostgREST fake. */
+function mutableFakeDb(tables: Record<string, Row[]>): Db {
+  function builder(table: string) {
+    const predicates: Array<(r: Row) => boolean> = []
+    let single = false
+    let mode: 'select' | 'update' = 'select'
+    let patch: Row | undefined
+    let ordering: { col: string; ascending: boolean } | null = null
+    let limitN: number | null = null
+    const api = {
+      select: () => api,
+      eq: (col: string, val: unknown) => {
+        predicates.push((r) => r[col] === val)
+        return api
+      },
+      lt: (col: string, val: unknown) => {
+        predicates.push((r) => (r[col] as string) < (val as string))
+        return api
+      },
+      lte: (col: string, val: unknown) => {
+        predicates.push((r) => (r[col] as number) <= (val as number))
+        return api
+      },
+      gt: (col: string, val: unknown) => {
+        predicates.push((r) => (r[col] as number) > (val as number))
+        return api
+      },
+      order: (col: string, opts?: { ascending?: boolean }) => {
+        ordering = { col, ascending: opts?.ascending !== false }
+        return api
+      },
+      limit: (n: number) => {
+        limitN = n
+        return api
+      },
+      maybeSingle: () => {
+        single = true
+        return api
+      },
+      update: (p: Row) => {
+        mode = 'update'
+        patch = p
+        return api
+      },
+      then(onfulfilled: (v: { data: unknown; error: null }) => unknown) {
+        const rows = tables[table] ?? []
+        const matches = (r: Row) => predicates.every((p) => p(r))
+        if (mode === 'update') {
+          tables[table] = rows.map((r) => (matches(r) ? { ...r, ...patch } : r))
+          return Promise.resolve({ data: null, error: null }).then(onfulfilled)
+        }
+        let result = rows.filter(matches)
+        if (ordering) {
+          const { col, ascending } = ordering
+          const dir = ascending ? 1 : -1
+          result = [...result].sort((a, b) =>
+            a[col]! > b[col]! ? dir : a[col]! < b[col]! ? -dir : 0,
+          )
+        }
+        if (limitN !== null) result = result.slice(0, limitN)
+        const data = single ? (result[0] ?? null) : result
+        return Promise.resolve({ data, error: null }).then(onfulfilled)
+      },
+    }
+    return api
+  }
+  const db = {
+    from: (table: string) => builder(table),
+    rpc: (fn: string, args: Record<string, unknown>) => {
+      if (fn !== 'append_match_action') {
+        throw new Error(`mutableFakeDb: unhandled rpc ${fn}`)
+      }
+      const seq = (args.p_prior_count as number) + 1
+      const rows = tables.match_actions ?? (tables.match_actions = [])
+      rows.push({ match_id: args.p_match_id, seq, action: args.p_action })
+      const match = (tables.matches ?? []).find((m) => m.id === args.p_match_id)
+      if (match) match.action_count = seq
+      return Promise.resolve({ data: seq, error: null })
+    },
+    channel: () => ({ send: () => Promise.resolve('ok') }),
+  }
+  return db as unknown as Db
+}
