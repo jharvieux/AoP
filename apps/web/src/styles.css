@@ -68,27 +68,26 @@
   --font-display: 'Pirata One', 'Times New Roman', serif;
   --font-body: Cabin, system-ui, -apple-system, sans-serif;
 
-  /* App chrome (blue steel & gold) — the in-game HUD/menu palette. Was three
-     independently-hardcoded color forks (this file, MapCanvas.tsx,
-     battleBoardSvg.tsx) with overlapping values drifting out of sync (#301);
-     this is now the single palette source both the DOM and the Pixi/SVG
-     render layers read from (see cssToken() in colorTokens.ts for the canvas
-     side, which can't consume var() directly). */
-  --color-bg: #0b2239;
-  --color-bg-panel: #122f4d;
-  --color-bg-panel-alt: #0e2740;
-  --color-bg-input: #0b1d2d;
-  --color-bg-raised: #163a5c;
-  --color-border: #2a5580;
+  /* App chrome — the in-game HUD/menu palette. Recolored to the Weathered
+     Parchment & Rope palette above (#345); diegetic map/battle-board colors
+     (--color-gold, --color-success, --color-alert-border) kept at original
+     blue-steel values per D-023/D-026 and #345 scope — see cssToken() in
+     colorTokens.ts, which reads these for world-map ship/port/city/editor markers. */
+  --color-bg: #1c1206;
+  --color-bg-panel: #2c1d0f;
+  --color-bg-panel-alt: #26190c;
+  --color-bg-input: #150d05;
+  --color-bg-raised: #3c2814;
+  --color-border: #6b4a2a;
   --color-gold: #c9a227;
-  --color-text: #e8dcc0;
-  --color-text-on-gold: #1a1408;
-  --color-danger: #a5352b;
+  --color-text: #f3e6c8;
+  --color-text-on-gold: #2c1810;
+  --color-danger: #8a2e1f;
   --color-danger-text: #f6e9dd;
-  --color-defeat: #e74c3c;
-  --color-warn: #e0685a;
+  --color-defeat: #d9604a;
+  --color-warn: #dd8355;
   --color-success: #3be2a1;
-  --color-alert-bg: #5c1616;
+  --color-alert-bg: #4a1810;
   --color-alert-border: #e23b3b;
   --color-fog: #0b1a26;
   --color-deep-water: #1b4a6b;

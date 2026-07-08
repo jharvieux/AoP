@@ -17,7 +17,7 @@ type Mode = 'signin' | 'create'
 
 const PROVIDER_LABELS: Record<OAuthProvider, string> = {
   google: 'Continue with Google',
-  github: 'Continue with GitHub',
+  microsoft: 'Continue with Microsoft',
 }
 
 function messageFor(err: unknown): string {
@@ -89,6 +89,10 @@ export function AccountScreen({ onBack }: AccountScreenProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // OAuth is the primary path (#307); email/password is a demoted fallback
+  // revealed on request. Guest-only builds (no Supabase config) have no OAuth
+  // to lead with, so start with the form already open.
+  const [showEmailForm, setShowEmailForm] = useState(!auth.configured)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -150,67 +154,88 @@ export function AccountScreen({ onBack }: AccountScreenProps) {
 
         {!auth.configured && <p className="theme-error">Accounts are unavailable in this build.</p>}
 
-        <form onSubmit={handleSubmit}>
-          {mode === 'create' && (
-            <input
-              className="text-input"
-              type="text"
-              placeholder="Display name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-              disabled={!auth.configured || busy}
-            />
-          )}
-          <input
-            className="text-input"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={!auth.configured || busy}
-          />
-          <input
-            className="text-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={!auth.configured || busy}
-          />
-          <button className="primary large" type="submit" disabled={!auth.configured || busy}>
-            {mode === 'create' ? 'Create account' : 'Sign in'}
-          </button>
-        </form>
+        {auth.configured && (
+          <>
+            {OAUTH_PROVIDERS.map((provider) => (
+              <button
+                key={provider}
+                className="primary large"
+                onClick={() => auth.signInWithOAuth(provider)}
+                disabled={busy}
+              >
+                {PROVIDER_LABELS[provider]}
+              </button>
+            ))}
+            {auth.oauthError && <p className="theme-error">{auth.oauthError}</p>}
+          </>
+        )}
 
-        {auth.configured &&
-          OAUTH_PROVIDERS.map((provider) => (
+        {auth.configured && !showEmailForm && (
+          <button
+            className="back-button"
+            onClick={() => {
+              auth.clearOAuthError()
+              setShowEmailForm(true)
+            }}
+          >
+            or use email
+          </button>
+        )}
+
+        {showEmailForm && (
+          <>
+            <form onSubmit={handleSubmit}>
+              {mode === 'create' && (
+                <input
+                  className="text-input"
+                  type="text"
+                  placeholder="Display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  disabled={!auth.configured || busy}
+                />
+              )}
+              <input
+                className="text-input"
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={!auth.configured || busy}
+              />
+              <input
+                className="text-input"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={!auth.configured || busy}
+              />
+              <button className="primary large" type="submit" disabled={!auth.configured || busy}>
+                {mode === 'create' ? 'Create account' : 'Sign in'}
+              </button>
+            </form>
+
+            {error && <p className="theme-error">{error}</p>}
+            {notice && <p className="section-label">{notice}</p>}
+
             <button
-              key={provider}
               className="secondary large"
-              onClick={() => auth.signInWithOAuth(provider)}
+              onClick={() => {
+                setMode(mode === 'create' ? 'signin' : 'create')
+                setError(null)
+                setNotice(null)
+              }}
               disabled={busy}
             >
-              {PROVIDER_LABELS[provider]}
+              {mode === 'create' ? 'Have an account? Sign in' : 'Need an account? Create one'}
             </button>
-          ))}
+          </>
+        )}
 
-        {error && <p className="theme-error">{error}</p>}
-        {notice && <p className="section-label">{notice}</p>}
-
-        <button
-          className="secondary large"
-          onClick={() => {
-            setMode(mode === 'create' ? 'signin' : 'create')
-            setError(null)
-            setNotice(null)
-          }}
-          disabled={busy}
-        >
-          {mode === 'create' ? 'Have an account? Sign in' : 'Need an account? Create one'}
-        </button>
         <button className="back-button" onClick={onBack}>
           Back
         </button>
