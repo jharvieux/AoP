@@ -49,6 +49,30 @@ Deno.test(
   },
 )
 
+Deno.test('parseSettings: defaults topology to hex for new lobbies (#389)', () => {
+  assertEquals(parseSettings(base).topology, 'hex')
+  assertEquals(parseSettings({ ...base, topology: 'square' }).topology, 'square')
+  assertEquals(parseSettings({ ...base, topology: 'hex' }).topology, 'hex')
+})
+
+Deno.test('parseSettings: rejects unknown topology values (#389)', () => {
+  for (const topology of ['triangle', 42, null]) {
+    assertThrows(
+      () => parseSettings({ ...base, topology }),
+      AppError,
+      undefined,
+      `expected topology ${JSON.stringify(topology)} to be rejected`,
+    )
+  }
+})
+
+Deno.test('buildMatchConfig: passes topology into the config, omits it when absent (#389)', () => {
+  const hex = buildMatchConfig(7, 'small', HEX_SEATS, {}, 'hex')
+  assertEquals(hex.topology, 'hex')
+  const legacy = buildMatchConfig(7, 'small', HEX_SEATS)
+  assertEquals('topology' in legacy, false)
+})
+
 Deno.test('parseSettings: carries a valid in-range captivity knob through unchanged', () => {
   assertEquals(parseSettings({ ...base, captainCaptivityRounds: 0 }).captainCaptivityRounds, 0)
   assertEquals(parseSettings({ ...base, captainCaptivityRounds: 20 }).captainCaptivityRounds, 20)

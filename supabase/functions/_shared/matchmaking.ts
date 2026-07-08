@@ -92,6 +92,7 @@ async function createQuickMatch(
     betrayalReputationPenalty: GAME_SETUP.betrayalReputationPenalty,
     betrayalTruceRounds: GAME_SETUP.betrayalTruceRounds,
     captainCaptivityRounds: GAME_SETUP.captainCaptivityRounds,
+    topology: 'hex',
   }
   const seed = randomSeed()
 

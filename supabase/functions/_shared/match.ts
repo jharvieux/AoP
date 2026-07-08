@@ -17,6 +17,7 @@ import {
   type BoardOrder,
   type GameConfig,
   type GameState,
+  type GridTopology,
   type StandingOrder,
 } from '@aop/engine'
 import {
@@ -71,6 +72,12 @@ export interface MatchSettings {
   betrayalTruceRounds: number
   /** Host-chosen captivity window in rounds (#309); overrides `GAME_SETUP.captainCaptivityRounds`. */
   captainCaptivityRounds: number
+  /**
+   * Grid topology for the generated map (#389). Absent in settings stored
+   * before this field existed — those matches must rebuild as square, exactly
+   * as pre-#389 start-match would have generated them.
+   */
+  topology?: GridTopology
 }
 
 /** A server-generated map + RNG seed (§11 chosen-seed advantage: never client-chosen).
@@ -497,11 +504,17 @@ export function buildStartMatchConfig(
     isAI: s.userId === null,
     displayName: s.userId ? (names.get(s.userId) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
   }))
-  return buildMatchConfig(seed, settings.mapSize, seatConfigs, {
-    betrayalReputationPenalty: settings.betrayalReputationPenalty,
-    betrayalTruceRounds: settings.betrayalTruceRounds,
-    captainCaptivityRounds: settings.captainCaptivityRounds,
-  })
+  return buildMatchConfig(
+    seed,
+    settings.mapSize,
+    seatConfigs,
+    {
+      betrayalReputationPenalty: settings.betrayalReputationPenalty,
+      betrayalTruceRounds: settings.betrayalTruceRounds,
+      captainCaptivityRounds: settings.captainCaptivityRounds,
+    },
+    settings.topology,
+  )
 }
 
 /**
@@ -1263,6 +1276,12 @@ export function parseSettings(raw: unknown): MatchSettings {
   ) {
     throw new AppError('BAD_REQUEST', 'settings.captainCaptivityRounds must be an integer 0..20')
   }
+  // Hex is the default for new lobbies (#389); persisted explicitly so the
+  // stored settings say what start-match will generate.
+  const topology = s.topology === undefined ? 'hex' : s.topology
+  if (topology !== 'square' && topology !== 'hex') {
+    throw new AppError('BAD_REQUEST', 'settings.topology must be square | hex')
+  }
   return {
     mapSize,
     maxPlayers,
@@ -1273,6 +1292,7 @@ export function parseSettings(raw: unknown): MatchSettings {
     betrayalReputationPenalty,
     betrayalTruceRounds,
     captainCaptivityRounds,
+    topology,
   }
 }
 

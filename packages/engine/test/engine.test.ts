@@ -176,6 +176,17 @@ describe('createGame', () => {
     expect(createGame(testConfig())).toEqual(createGame(testConfig()))
   })
 
+  it('generates a hex map when config.topology is hex, square when absent (#389)', () => {
+    const hex = createGame({ ...testConfig(), topology: 'hex' })
+    expect(hex.map.topology).toBe('hex')
+    expect(createGame(testConfig()).map.topology).toBeUndefined()
+  })
+
+  it('is deterministic for hex-topology configs (#389)', () => {
+    const config = (): GameConfig => ({ ...testConfig(), topology: 'hex' })
+    expect(createGame(config())).toEqual(createGame(config()))
+  })
+
   it('places one capital city per player on a home-island port', () => {
     const state = createGame(testConfig(3))
     expect(state.cities).toHaveLength(3)
@@ -648,6 +659,21 @@ describe('replay determinism', () => {
     ]
     const a = replay(createGame(testConfig(3)), log)
     const b = replay(createGame(testConfig(3)), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(log.length)
+  })
+
+  it('replays identically on a generated hex map (#389)', () => {
+    const config = (): GameConfig => ({ ...testConfig(3), topology: 'hex' })
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p3' },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(createGame(config()), log)
+    const b = replay(createGame(config()), log)
+    expect(a.map.topology).toBe('hex')
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.actionCount).toBe(log.length)
   })

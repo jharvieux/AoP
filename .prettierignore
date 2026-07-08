@@ -5,3 +5,8 @@ pnpm-lock.yaml
 # Design-tool exports kept verbatim as the fidelity reference; reformatting
 # them would diverge the artifact from what design actually delivered.
 docs/design_handoff_start_screen/
+
+# Local-only state that never reaches CI: Claude Code agent worktrees (full repo
+# copies whose formatting is the agent's business) and Supabase CLI scratch.
+.claude/worktrees/
+supabase/.temp/

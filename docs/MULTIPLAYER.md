@@ -120,7 +120,8 @@ All functions require a valid JWT; the caller's seat is derived server-side from
 
 `POST { settings } → { matchId, inviteCode }`
 Server generates `seed` (crypto-random) and pins `engine_version`. Creator occupies seat 0
-in `lobby` status.
+in `lobby` status. `settings.topology` (`'hex'` default, `'square'` optional, #389) picks
+the generated map's grid; settings stored before the field existed rebuild as square.
 
 ### `join-match`
 

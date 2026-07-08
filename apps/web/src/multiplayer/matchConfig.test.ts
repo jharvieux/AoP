@@ -26,6 +26,13 @@ describe('buildMatchConfig', () => {
     expect(config.mapSize).toBe('large')
   })
 
+  it('passes topology into the config and omits it when absent, matching the server twin (#389)', () => {
+    expect(buildMatchConfig(1, 'small', SEATS, {}, 'hex').topology).toBe('hex')
+    expect('topology' in buildMatchConfig(1, 'small', SEATS)).toBe(false)
+    // A hex config generates a hex map — the whole point of threading it through.
+    expect(createGame(buildMatchConfig(1, 'small', SEATS, {}, 'hex')).map.topology).toBe('hex')
+  })
+
   it('gives every seat starting troops of six of their faction tier-1 unit', () => {
     const config = buildMatchConfig(1, 'small', SEATS)
     for (const player of config.players) {

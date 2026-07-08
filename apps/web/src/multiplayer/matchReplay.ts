@@ -51,6 +51,8 @@ interface MatchRow {
     betrayalReputationPenalty?: number
     betrayalTruceRounds?: number
     captainCaptivityRounds?: number
+    /** Absent on matches created before #389; those generated square maps. */
+    topology?: 'square' | 'hex'
   }
   engine_version: string
 }
@@ -144,11 +146,17 @@ export class MatchReplayClient {
       displayName: s.user_id ? (names.get(s.user_id) ?? `Seat ${s.seat}`) : `AI ${s.seat}`,
     }))
 
-    const config = buildMatchConfig(seed, match.settings.mapSize, seatConfigs, {
-      betrayalReputationPenalty: match.settings.betrayalReputationPenalty,
-      betrayalTruceRounds: match.settings.betrayalTruceRounds,
-      captainCaptivityRounds: match.settings.captainCaptivityRounds,
-    })
+    const config = buildMatchConfig(
+      seed,
+      match.settings.mapSize,
+      seatConfigs,
+      {
+        betrayalReputationPenalty: match.settings.betrayalReputationPenalty,
+        betrayalTruceRounds: match.settings.betrayalTruceRounds,
+        captainCaptivityRounds: match.settings.captainCaptivityRounds,
+      },
+      match.settings.topology,
+    )
 
     const actionRows = await this.fetchMany<ActionRow>(
       session,

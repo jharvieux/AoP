@@ -7,7 +7,14 @@ import {
   combatStatsData,
 } from '@aop/content'
 import type { FactionId, MapSize } from '@aop/shared'
-import type { AiDifficulty, AiPersonality, AiProfile, GameSetup, PlayerConfig } from '@aop/engine'
+import type {
+  AiDifficulty,
+  AiPersonality,
+  AiProfile,
+  GameSetup,
+  GridTopology,
+  PlayerConfig,
+} from '@aop/engine'
 import { buildCatalog } from '../catalog'
 import { createDefaultPlayer, FACTIONS_ARRAY, starterTroops } from '../players'
 import { useTheme } from '../theme/ThemeContext'
@@ -44,6 +51,8 @@ const CAPTIVITY_ROUNDS_MAX = 20
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const { factionName } = useTheme()
   const [mapSize, setMapSize] = useState<MapSize>('small')
+  // Hex is the default for new games (#389); square remains available for comparison.
+  const [topology, setTopology] = useState<GridTopology>('hex')
   const [playerCount, setPlayerCount] = useState(2)
   const [betrayalPenalty, setBetrayalPenalty] = useState(GAME_SETUP.betrayalReputationPenalty)
   const [truceRounds, setTruceRounds] = useState(GAME_SETUP.betrayalTruceRounds)
@@ -89,6 +98,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
     onPlay({
       seed: Math.floor(Math.random() * 2 ** 31),
       mapSize,
+      topology,
       players: players.map((p) => ({ ...p, startingTroops: starterTroops(p.faction) })),
       // Freeze opening-state + combat + economy/content balance snapshots from
       // @aop/content into the match so the pure engine holds no balance data.
@@ -131,6 +141,24 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
                 {size.charAt(0).toUpperCase() + size.slice(1)}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">Grid</label>
+          <div className="button-group">
+            <button
+              className={`size-button ${topology === 'hex' ? 'active' : ''}`}
+              onClick={() => setTopology('hex')}
+            >
+              Hex
+            </button>
+            <button
+              className={`size-button ${topology === 'square' ? 'active' : ''}`}
+              onClick={() => setTopology('square')}
+            >
+              Square
+            </button>
           </div>
         </div>
 

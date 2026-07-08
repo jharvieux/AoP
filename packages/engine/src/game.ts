@@ -51,6 +51,7 @@ export function createGame(config: GameConfig): GameState {
         config.players.length,
         setup.homeIslandRadius,
         setup.homeIslandRingRadiusFactor,
+        config.topology,
       )
 
   if (map.startPositions.length !== config.players.length) {
