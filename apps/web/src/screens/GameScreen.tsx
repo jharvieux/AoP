@@ -22,7 +22,7 @@ import {
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { chebyshevDistance } from '@aop/shared'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
@@ -188,6 +188,59 @@ export function GameScreen({
   const { visible, explored } = useMemo(() => visibleState(game, viewer.id), [game, viewer.id])
   const visibleKeys = useMemo(() => new Set(visible.map((c) => `${c.x},${c.y}`)), [visible])
   const exploredKeys = useMemo(() => new Set(explored.map((c) => `${c.x},${c.y}`)), [explored])
+
+  // Turn-event feed (#346): a lightweight "what happened" log so activity
+  // outside the viewport (AI moves, captures, new sightings) is ascertainable.
+  // Derived entirely from observable state diffs — no new engine state.
+  const [eventFeed, setEventFeed] = useState<{ id: number; text: string }[]>([])
+  const feedSeqRef = useRef(0)
+  const pushEvent = useCallback((text: string) => {
+    setEventFeed((feed) => [{ id: feedSeqRef.current++, text }, ...feed].slice(0, 6))
+  }, [])
+  const prevSnapshotRef = useRef<{
+    round: number
+    sighted: Set<string>
+    cityOwners: Record<string, string>
+  } | null>(null)
+
+  useEffect(() => {
+    const sighted = new Set(
+      game.captains
+        .filter((c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`))
+        .map((c) => c.id),
+    )
+    const cityOwners: Record<string, string> = {}
+    for (const c of game.cities) cityOwners[c.id] = c.ownerId
+    const nameOf = (id: string) => game.players.find((p) => p.id === id)?.name ?? id
+
+    const prev = prevSnapshotRef.current
+    if (prev) {
+      if (game.round > prev.round) pushEvent(`Round ${game.round} begins`)
+      for (const id of sighted) {
+        if (!prev.sighted.has(id)) {
+          const cap = game.captains.find((c) => c.id === id)
+          if (cap) pushEvent(`Enemy fleet sighted at ${cap.position.x},${cap.position.y}`)
+        }
+      }
+      for (const c of game.cities) {
+        const was = prev.cityOwners[c.id]
+        if (was && was !== c.ownerId) pushEvent(`${c.name} captured by ${nameOf(c.ownerId)}`)
+      }
+    }
+    prevSnapshotRef.current = { round: game.round, sighted, cityOwners }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, visibleKeys, viewer.id, pushEvent])
+
+  useEffect(() => {
+    if (!battleReport) return
+    const nameOf = (id: string) => game.players.find((p) => p.id === id)?.name ?? id
+    pushEvent(
+      battleReport.escapedId
+        ? `${nameOf(battleReport.escapedId)} broke off the battle`
+        : `${nameOf(battleReport.winnerId)} defeated ${nameOf(battleReport.loserId)}`,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battleReport])
 
   const selectedCaptain = selectedCaptainId
     ? (game.captains.find((c) => c.id === selectedCaptainId) ?? null)
@@ -735,6 +788,13 @@ export function GameScreen({
           onTileClick={handleTileClick}
           factionOf={factionOf}
         />
+        {eventFeed.length > 0 && (
+          <ul className="turn-event-feed" aria-label="Recent events">
+            {eventFeed.map((e) => (
+              <li key={e.id}>{e.text}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Primary actions live in a bottom bar, not the header, so they sit in

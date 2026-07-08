@@ -12,6 +12,7 @@ import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
 import { Assets, Container, Graphics, Sprite, Texture, type Ticker } from 'pixi.js'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
+import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { easeInOutCubic, pathPointAt, shipAnimDurationMs } from './shipAnimation'
 import { useTheme } from './theme/ThemeContext'
@@ -265,6 +266,14 @@ export function MapCanvas(props: MapCanvasProps) {
   const themeSpriteUrlRef = useRef(themeSpriteUrl)
   themeSpriteUrlRef.current = themeSpriteUrl
   const viewRef = useRef({ x: 40, y: 40, scale: 1 })
+  // Navigation controls (#346) the overlay buttons + minimap drive. Assigned by
+  // the Pixi effect (which owns the camera math) so React handlers can pan/zoom
+  // without reaching into the imperative draw loop.
+  const controlsRef = useRef<{
+    zoomBy: (factor: number) => void
+    centerOn: (tile: Coord) => void
+    centerOnFleet: () => void
+  } | null>(null)
   // Flipped on every render (a new action, fog reveal, selection change, …)
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
   const dirtyRef = useRef(true)
@@ -419,6 +428,36 @@ export function MapCanvas(props: MapCanvasProps) {
       view.x = screenX - worldX * clamped
       view.y = screenY - worldY * clamped
       dirtyRef.current = true
+    }
+
+    // Navigation controls (#346): center the camera on a tile, on the viewer's
+    // fleet, and zoom about the viewport center — the button/minimap analogs of
+    // the existing pointer pan/zoom. All use CSS-pixel container dims, the same
+    // space as `view` and the pointer handlers.
+    const viewportSize = () => ({
+      w: containerRef.current?.clientWidth ?? pixiApp.renderer.width,
+      h: containerRef.current?.clientHeight ?? pixiApp.renderer.height,
+    })
+    function centerOn(tile: Coord) {
+      const { w, h } = viewportSize()
+      view.x = w / 2 - (tile.x * TILE + TILE / 2) * view.scale
+      view.y = h / 2 - (tile.y * TILE + TILE / 2) * view.scale
+      dirtyRef.current = true
+    }
+    controlsRef.current = {
+      zoomBy: (factor) => {
+        const { w, h } = viewportSize()
+        zoomAt(w / 2, h / 2, view.scale * factor)
+      },
+      centerOn,
+      centerOnFleet: () => {
+        const { captains, viewerId, selectedCaptainId } = propsRef.current
+        const mine = captains.filter((c) => c.ownerId === viewerId && !c.captured)
+        if (mine.length === 0) return
+        // Prefer the selected captain when it's the viewer's, else the first.
+        const target = mine.find((c) => c.id === selectedCaptainId) ?? mine[0]!
+        centerOn(target.position)
+      },
     }
 
     function draw(deltaMs: number) {
@@ -831,6 +870,7 @@ export function MapCanvas(props: MapCanvasProps) {
       if (pixiApp.renderer) pixiApp.renderer.off('resize', onResize)
       if (pixiApp.stage) pixiApp.stage.removeChild(world)
       world.destroy({ children: true })
+      controlsRef.current = null
     }
   }, [app])
 
@@ -871,6 +911,50 @@ export function MapCanvas(props: MapCanvasProps) {
       }}
     >
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Navigation affordances (#346): zoom, recenter-on-fleet, and a minimap —
+          all optional overlays over the Pixi canvas, driven via controlsRef. */}
+      <div className="map-nav-controls">
+        <button
+          type="button"
+          className="map-nav-button"
+          aria-label="Zoom in"
+          onClick={() => controlsRef.current?.zoomBy(1.25)}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          className="map-nav-button"
+          aria-label="Zoom out"
+          onClick={() => controlsRef.current?.zoomBy(0.8)}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className="map-nav-button"
+          aria-label="Center on fleet"
+          title="Center on fleet"
+          onClick={() => controlsRef.current?.centerOnFleet()}
+        >
+          ⌖
+        </button>
+      </div>
+
+      <Minimap
+        map={props.map}
+        cities={props.cities}
+        captains={props.captains}
+        viewerId={props.viewerId}
+        exploredKeys={props.exploredKeys}
+        visibleKeys={props.visibleKeys}
+        cameraRef={viewRef}
+        containerRef={containerRef}
+        tileSize={TILE}
+        onJump={(tile) => controlsRef.current?.centerOn(tile)}
+      />
+
       <div className="sr-only" role="status" aria-live="polite">
         {announcement}
       </div>
