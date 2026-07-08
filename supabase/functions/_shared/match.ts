@@ -377,6 +377,16 @@ export function sanitizeAction(action: Action): Action {
       }
     case 'leaveAlliance':
       return { type: action.type, playerId, otherId: reqString(action.otherId, 'otherId') }
+    case 'attackCity':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        targetCityId: reqString(action.targetCityId, 'targetCityId'),
+        ...(action.boardCommands !== undefined
+          ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
+          : {}),
+      }
     default: {
       // Compile-time exhaustiveness guard; at runtime this is a hostile
       // client's unknown type string, so reject the request, not the server.
