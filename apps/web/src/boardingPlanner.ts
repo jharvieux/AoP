@@ -11,6 +11,7 @@ import {
   hexIndex,
   hexLineOfSight,
   plainTacticDriver,
+  prizeSpawnFor,
   resolveBoardCombat,
   resolveTacticalCombat,
   standingOrdersDriver,
@@ -129,11 +130,26 @@ export function probeBoardingBattle(
           : {}),
       },
     )
-    return { kind: 'resolved', report: result.report }
+    return { kind: 'resolved', report: withPrizeShip(result.report, game, attacker, target) }
   } catch (err) {
     if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }
     throw err
   }
+}
+
+/**
+ * Attach the #374 prize-ship metadata a decisive naval victory produces, using
+ * the engine's shared helper so the previewed report matches the reducer's byte
+ * for byte. A non-decisive result (escape/draw) returns the report unchanged.
+ */
+function withPrizeShip(
+  report: BattleReport,
+  game: GameState,
+  attacker: Parameters<typeof prizeSpawnFor>[1],
+  defender: Parameters<typeof prizeSpawnFor>[2],
+): BattleReport {
+  const prize = prizeSpawnFor(report, attacker, defender, game.actionCount, game.config.setup)
+  return prize ? { ...report, prizeShip: prize.report } : report
 }
 
 /**
@@ -270,7 +286,7 @@ export function probeTacticalBattle(
           : {}),
       },
     )
-    return { kind: 'resolved', report: result.report }
+    return { kind: 'resolved', report: withPrizeShip(result.report, game, attacker, target) }
   } catch (err) {
     if (err instanceof AwaitingTactic) return { kind: 'awaitingTactic', ctx: err.ctx }
     if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }

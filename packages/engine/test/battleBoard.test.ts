@@ -801,16 +801,20 @@ describe('attackCaptain with the battle board', () => {
       attackerOrders: ['board'],
     })
     expect(battleReport!.board).toBeDefined()
-    // Decisive: the loser is captured (not removed, #309) and the winner
-    // keeps its melee survivors.
-    expect(next.captains).toHaveLength(2)
-    const survivor = next.captains.find((c) => !c.captured)!
+    // Decisive: the loser is captured (not removed, #309), the winner keeps its
+    // melee survivors, and the defeated hull joins the winner as a prize (#374)
+    // — three captains in all.
+    expect(next.captains).toHaveLength(3)
+    const survivor = next.captains.find((c) => !c.captured && !c.id.startsWith('prize-'))!
     const captive = next.captains.find((c) => c.captured)!
+    const prize = next.captains.find((c) => c.id.startsWith('prize-'))!
     expect(survivor.ownerId).toBe(battleReport!.winnerId)
     expect(survivor.troops[0]!.count).toBeGreaterThan(0)
     expect(captive.ownerId).toBe(battleReport!.loserId)
     expect(captive.capturedBy).toBe(battleReport!.winnerId)
     expect(captive.troops).toHaveLength(0)
+    expect(prize.ownerId).toBe(battleReport!.winnerId)
+    expect(prize.troops).toHaveLength(0)
   })
 
   it('a boarding attack with ranged crews replays through the action log identically (#94)', () => {

@@ -72,7 +72,15 @@ import {
   TACTICS,
   type TacticDriver,
 } from './tactics'
-import type { AllianceState, Captain, CityState, GameState, PlayerState, TroopStack } from './types'
+import type {
+  AllianceState,
+  Captain,
+  CityState,
+  GameSetup,
+  GameState,
+  PlayerState,
+  TroopStack,
+} from './types'
 import { accumulateExploredTiles, tileKey, tilesInRadius } from './visibility'
 
 /**
@@ -322,6 +330,58 @@ function releaseCaptivesHeldBy(captains: Captain[], captorId: string, round: num
   })
 }
 
+/** A prize captain (#374) plus the {@link BattleReport.prizeShip} metadata it produces. */
+export interface PrizeSpawn {
+  captain: Captain
+  report: NonNullable<BattleReport['prizeShip']>
+}
+
+/**
+ * The prize a decisive naval victory (#374) hands the winner: the defeated
+ * captain's hull as a fresh, empty-crewed "prize captain" (level 1, no skills,
+ * no troops, copied ship class + upgrades), spawned on the defeated ship's tile.
+ * Null on any non-decisive result — an escape or a mutual-survival draw leaves
+ * both sides afloat (both `*Survived`), so no capture and no prize. Pure and
+ * shared by the reducer (which spawns the captain) and the client battle probe
+ * (which previews the report), so both agree on the report's prizeShip byte for
+ * byte. The prize id keys off `actionCount`, so it stays deterministic and
+ * replay-stable.
+ */
+export function prizeSpawnFor(
+  report: BattleReport,
+  attacker: Captain,
+  defender: Captain,
+  actionCount: number,
+  setup: GameSetup,
+): PrizeSpawn | null {
+  const loser = !report.attackerSurvived ? attacker : !report.defenderSurvived ? defender : null
+  if (!loser) return null
+  const captain: Captain = {
+    id: `prize-${actionCount}`,
+    ownerId: report.winnerId,
+    name: `Prize of the ${loser.shipClassId.charAt(0).toUpperCase()}${loser.shipClassId.slice(1)}`,
+    position: { ...loser.position },
+    shipClassId: loser.shipClassId,
+    // No movement the turn it is taken; refreshes to a full allowance on the
+    // winner's next turn like any other captain.
+    movementPoints: 0,
+    maxMovementPoints: setup.startingCaptainMovement,
+    troops: [],
+    xp: 0,
+    skills: [],
+    shipUpgrades: { ...loser.shipUpgrades },
+    captured: false,
+  }
+  return {
+    captain,
+    report: {
+      captainId: captain.id,
+      shipClassId: captain.shipClassId,
+      newOwnerId: captain.ownerId,
+    },
+  }
+}
+
 /**
  * Build a combatant, layering in this captain's ship upgrades (#22) and skill
  * bonuses (#21). Faction has no effect on combat stats (bonuses come from
@@ -549,6 +609,13 @@ function attackCaptain(
     return c
   })
 
+  // Prize ship (#374): a decisive naval victory hands the defeated captain's
+  // hull to the winner as a fresh, empty-crewed "prize captain". Built by the
+  // shared pure helper the client battle probe also uses, so the previewed
+  // report and the authoritative one carry the same prizeShip.
+  const prize = prizeSpawnFor(report, attacker, target, state.actionCount, state.config.setup)
+  const captainsWithPrize = prize ? [...captains, prize.captain] : captains
+
   const players = betrayal
     ? state.players.map((p) =>
         p.id === attacker.ownerId
@@ -578,10 +645,10 @@ function attackCaptain(
     ...state,
     players,
     alliances,
-    captains,
+    captains: captainsWithPrize,
     rngState: result.rng,
   })
-  return { state: settled, battleReport: report }
+  return { state: settled, battleReport: prize ? { ...report, prizeShip: prize.report } : report }
 }
 
 /**
@@ -880,7 +947,11 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
         ...c,
         captured: false,
         position: spawnPosition,
-        shipClassId: setup.startingShipClass,
+        // A rehired captive comes back on a starter hull (#374): its old ship
+        // was handed to whoever captured it as a prize, so its upgrades go with
+        // it — the returning captain buys refits afresh.
+        shipClassId: setup.ransomReturnShipClassId ?? setup.startingShipClass,
+        shipUpgrades: {},
         movementPoints: setup.startingCaptainMovement,
         maxMovementPoints: setup.startingCaptainMovement,
         troops: crew,
