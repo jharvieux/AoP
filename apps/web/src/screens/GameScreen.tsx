@@ -206,7 +206,9 @@ export function GameScreen({
   useEffect(() => {
     const sighted = new Set(
       game.captains
-        .filter((c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`))
+        .filter(
+          (c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`),
+        )
         .map((c) => c.id),
     )
     const cityOwners: Record<string, string> = {}
@@ -947,13 +949,13 @@ export function GameScreen({
       )}
 
       {assaultCity && selectedCaptain && (
-        <BottomSheet
-          title={`Assault ${assaultCity.name}?`}
-          onClose={() => setAssaultCityId(null)}
-        >
+        <BottomSheet title={`Assault ${assaultCity.name}?`} onClose={() => setAssaultCityId(null)}>
           <section>
             <p className="building-option__hint">
-              {factionName(factionOf(assaultCity.ownerId), FACTIONS[factionOf(assaultCity.ownerId)].name)}{' '}
+              {factionName(
+                factionOf(assaultCity.ownerId),
+                FACTIONS[factionOf(assaultCity.ownerId)].name,
+              )}{' '}
               stronghold. Your landing force storms the garrison — win it and the city is yours;
               lose and your captain is taken captive.
             </p>
@@ -973,7 +975,9 @@ export function GameScreen({
                 {UI_ICON.attack && (
                   <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
                 )}
-                {game.config.setup.battleResolution === 'tactical' ? 'Assault tactically' : 'Assault'}
+                {game.config.setup.battleResolution === 'tactical'
+                  ? 'Assault tactically'
+                  : 'Assault'}
               </button>
               {game.config.setup.battleResolution === 'tactical' && (
                 <button className="secondary" onClick={autoResolveAssault}>

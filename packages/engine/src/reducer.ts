@@ -689,7 +689,13 @@ function attackCity(
       // round (so the captor can't also build with it this turn), and its stale
       // recruit pool cleared — next round replenishes it for the new owner's
       // faction.
-      return { ...c, ownerId: attacker.ownerId, garrison: {}, builtThisRound: true, unitAvailability: {} }
+      return {
+        ...c,
+        ownerId: attacker.ownerId,
+        garrison: {},
+        builtThisRound: true,
+        unitAvailability: {},
+      }
     }
     return { ...c, garrison: troopsToGarrison(result.defenderTroops) }
   })

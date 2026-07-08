@@ -141,7 +141,9 @@ function parseHexColor(c: string): number | null {
 /** Scale a packed color's brightness by `factor` (1 = unchanged), clamped per channel. */
 function shadeColor(color: number, factor: number): number {
   const clamp = (v: number) => Math.min(255, Math.max(0, Math.round(v * factor)))
-  return (clamp((color >> 16) & 0xff) << 16) | (clamp((color >> 8) & 0xff) << 8) | clamp(color & 0xff)
+  return (
+    (clamp((color >> 16) & 0xff) << 16) | (clamp((color >> 8) & 0xff) << 8) | clamp(color & 0xff)
+  )
 }
 
 /**

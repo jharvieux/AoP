@@ -48,7 +48,15 @@ const CATALOG: ContentCatalog = {
     citadel: { produces: {}, cost: { gold: 1400 }, requires: 'palisade', defenseBonus: 70 },
   },
   units: {
-    grunt: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8, attack: 5, defense: 2, health: 12 },
+    grunt: {
+      factionId: 'pirates',
+      tier: 1,
+      goldCost: 25,
+      weeklyGrowth: 8,
+      attack: 5,
+      defense: 2,
+      health: 12,
+    },
   },
   ships: {
     sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 12, upgrades: {} },
@@ -105,9 +113,7 @@ function assaultState(opts: {
         ? { ...c, garrison: opts.garrison, buildings: opts.buildings ?? c.buildings }
         : c,
     ),
-    alliances: opts.ally
-      ? { ...state.alliances, pairs: [{ a: 'p1', b: 'p2' }] }
-      : state.alliances,
+    alliances: opts.ally ? { ...state.alliances, pairs: [{ a: 'p1', b: 'p2' }] } : state.alliances,
   }
 }
 
@@ -120,7 +126,16 @@ describe('cityToCombatant (#344)', () => {
       { unitId: 'grunt', count: 4 },
     ])
     const c = cityToCombatant(
-      { id: 'c1', ownerId: 'p2', name: 'C', position: { x: 0, y: 0 }, buildings: [], builtThisRound: false, garrison: { grunt: 4 }, unitAvailability: {} },
+      {
+        id: 'c1',
+        ownerId: 'p2',
+        name: 'C',
+        position: { x: 0, y: 0 },
+        buildings: [],
+        builtThisRound: false,
+        garrison: { grunt: 4 },
+        unitAvailability: {},
+      },
       CATALOG,
     )
     expect(c.shipStats).toEqual({ hull: 0, cannons: 0, speed: 0 })
@@ -130,7 +145,16 @@ describe('cityToCombatant (#344)', () => {
 
   it('sums fortification defense bonuses from standing buildings', () => {
     const c = cityToCombatant(
-      { id: 'c1', ownerId: 'p2', name: 'C', position: { x: 0, y: 0 }, buildings: ['townhall', 'palisade', 'citadel'], builtThisRound: false, garrison: { grunt: 1 }, unitAvailability: {} },
+      {
+        id: 'c1',
+        ownerId: 'p2',
+        name: 'C',
+        position: { x: 0, y: 0 },
+        buildings: ['townhall', 'palisade', 'citadel'],
+        builtThisRound: false,
+        garrison: { grunt: 1 },
+        unitAvailability: {},
+      },
       CATALOG,
     )
     expect(c.defenseBonusPct).toBe(80)
@@ -213,7 +237,12 @@ describe('attackCity — validation', () => {
     const p1cap = captainsOf(state, 'p1')[0]!
     const ownCity = state.cities.find((c) => c.ownerId === 'p1')!
     expect(() =>
-      applyAction(state, { type: 'attackCity', playerId: 'p1', captainId: p1cap.id, targetCityId: ownCity.id }),
+      applyAction(state, {
+        type: 'attackCity',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCityId: ownCity.id,
+      }),
     ).toThrow()
   })
 
@@ -224,11 +253,18 @@ describe('attackCity — validation', () => {
     const far = {
       ...state,
       captains: state.captains.map((c) =>
-        c.id === p1cap.id ? { ...c, position: { x: targetCity.position.x + 5, y: targetCity.position.y + 5 } } : c,
+        c.id === p1cap.id
+          ? { ...c, position: { x: targetCity.position.x + 5, y: targetCity.position.y + 5 } }
+          : c,
       ),
     }
     expect(() =>
-      applyAction(far, { type: 'attackCity', playerId: 'p1', captainId: p1cap.id, targetCityId: targetCity.id }),
+      applyAction(far, {
+        type: 'attackCity',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCityId: targetCity.id,
+      }),
     ).toThrow()
   })
 
@@ -237,7 +273,12 @@ describe('attackCity — validation', () => {
     const p1cap = captainsOf(state, 'p1')[0]!
     const targetCity = state.cities.find((c) => c.ownerId === 'p2')!
     expect(() =>
-      applyAction(state, { type: 'attackCity', playerId: 'p1', captainId: p1cap.id, targetCityId: targetCity.id }),
+      applyAction(state, {
+        type: 'attackCity',
+        playerId: 'p1',
+        captainId: p1cap.id,
+        targetCityId: targetCity.id,
+      }),
     ).toThrow()
   })
 })
