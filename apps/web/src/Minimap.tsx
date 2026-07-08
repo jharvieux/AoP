@@ -74,12 +74,17 @@ export function Minimap({
     if (!ctx) return
     canvas.width = MINIMAP_W
     canvas.height = height
-    ctx.clearRect(0, 0, MINIMAP_W, height)
+    // Painted world (#394): uncharted dark everywhere, explored cells painted
+    // over it through a slight blur so the tiny map reads as regions, not a
+    // grid of pixels. Markers below are drawn after the filter resets, sharp.
+    ctx.fillStyle = FOG
+    ctx.fillRect(0, 0, MINIMAP_W, height)
+    ctx.filter = 'blur(0.6px)'
     for (let y = 0; y < map.height; y++) {
       for (let x = 0; x < map.width; x++) {
-        const explored = exploredKeys.has(`${x},${y}`)
+        if (!exploredKeys.has(`${x},${y}`)) continue
         const tile = map.tiles[y * map.width + x]!
-        ctx.fillStyle = explored ? TILE_COLOR[tile.type] : FOG
+        ctx.fillStyle = TILE_COLOR[tile.type]
         if (topology === 'hex') {
           const poly = cellPolygon('hex', x, y, 1)
           ctx.beginPath()
@@ -95,6 +100,7 @@ export function Minimap({
         }
       }
     }
+    ctx.filter = 'none'
     const dot = (pos: Coord, color: string, r: number) => {
       const c = cellCenter(topology, pos.x, pos.y, 1)
       ctx.fillStyle = color
