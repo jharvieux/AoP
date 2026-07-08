@@ -1,7 +1,7 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiTuning } from './ai'
 import type { BoardOrder } from './battleBoard'
-import type { CombatStatsData } from './combat'
+import type { BattleReport, CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { TileType } from './map'
 import type { StandingOrder } from './tactics'
@@ -65,6 +65,15 @@ export interface PlayerView {
    */
   alliances: ViewAlliances
   /**
+   * Recent resolved battles (#320) visible to this seat (player, or spectator of
+   * the match). Allows live-spectate and replay to show "View Battle" affordances
+   * for battles that occurred between polls/snapshots. Server populates this from
+   * `match_battle_log` or equivalent; client-facing only. Spectators see all battles
+   * in the match; players see battles their captain participated in or battles visible
+   * to them (if their standing allows viewing battle reports for others).
+   */
+  recentBattles?: ViewBattleRecord[]
+  /**
    * Always `null`. Present so the shape stays obviously distinct from
    * `GameState`, and as a guard against a view being fed back in as truth.
    */
@@ -79,6 +88,26 @@ export interface ViewAlliances {
   outgoingProposals: string[]
   /** Seats that have proposed to the viewer, awaiting the viewer's acceptance. */
   incomingProposals: string[]
+}
+
+/**
+ * Recent battle record for spectate/playback (#320). Carried in {@link PlayerView}
+ * so the client knows which battles have resolved since the last poll and can
+ * display "View Battle" affordances for them (in ReplayScreen or live SpectateScreen).
+ *
+ * The `report` contains the full structured battle outcome (captains, damage, tactics
+ * used, board log if applicable). The server sources this from `match_battle_log` or
+ * replayed `BattleReport` attached to the matched `attackCaptain` action in the match log.
+ */
+export interface ViewBattleRecord {
+  /** The action sequence number in `match_actions` this battle resolved at. */
+  seq: number
+  /** Attacker's captain id. */
+  attackerCaptainId: string
+  /** Defender's captain id. */
+  defenderCaptainId: string
+  /** The battle report (outcome summary, round-by-round detail, board log if applicable). */
+  report: BattleReport
 }
 
 export interface ViewRules {

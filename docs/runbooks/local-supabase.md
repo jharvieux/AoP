@@ -48,3 +48,34 @@ pnpm exec supabase stop
 
 If a future session's `supabase start` (even with the flag) still fails outright — not
 just the health-check timeout — this is a good place to add findings.
+
+## 3. `supabase functions deploy` fails at VFS-build step (#341)
+
+After vendoring `@aop/*` workspace dependencies (#339/#340), local `supabase functions deploy`
+still fails for every function with an opaque `Effect.tryPromise` error during the bundler's
+VFS-build step:
+
+```
+DEBUG Building vfs with root '/Users/.../AoP/supabase'
+{"_tag":"Error","error":{"code":"UnknownError","message":"An error occurred in Effect.tryPromise"}}
+```
+
+The Supabase CLI's internal Effect-based error handling swallows the real cause. This is
+**a third distinct colima/virtiofs incompatibility** (after #1 and #2 above), this time in
+the Docker-based function bundler rather than in `supabase start` itself. The bundler
+container starts cleanly, joins the network, and exits — but the bundler-to-VFS interaction
+fails silently.
+
+### Workaround: deploy via GitHub Actions
+
+Local `supabase functions deploy` is blocked on colima indefinitely until either:
+
+1. Supabase CLI reports the real error (not Effect-swallowed), allowing a targeted fix.
+2. A colima-specific VFS workaround is discovered (unlikely; virtiofs is a colima
+   architectural choice).
+
+**Recommended path**: deploy via `.github/workflows/deploy.yml` on GitHub Actions' native
+Linux runner instead. Set up the `production` environment secrets per
+`docs/runbooks/deploy.md` and trigger the workflow from main once deployment is ready.
+This avoids the colima issue entirely and keeps local dev on Docker free from deploy
+machinery.
