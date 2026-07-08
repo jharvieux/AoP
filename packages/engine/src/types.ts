@@ -204,6 +204,13 @@ export interface GameSetup {
    */
   ransomXpMultiplier: number
   /**
+   * Ship class a rehired captive returns to sea on (#374). Its own ship was
+   * handed to its captor as a prize the moment it was captured, so on release
+   * it comes back on this hull (upgrades cleared). Omit to fall back to
+   * `startingShipClass`.
+   */
+  ransomReturnShipClassId?: string
+  /**
    * Battle resolution mode (#305): `'auto'` (the default) instant-resolves
    * every naval battle exactly as before; `'tactical'` has the client route
    * the human attacker's battles through the interactive round-by-round

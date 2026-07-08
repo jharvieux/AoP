@@ -185,6 +185,51 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     expect(mine.shipUpgrades).toBeDefined()
   })
 
+  it('reveals a winner’s prize ship to the loser as a bare hull, not a manifest (#374)', () => {
+    // A decisive battle seat-0 wins: seat-1 is captured and its hull becomes
+    // seat-0's prize, spawned on the captured captain's tile — which stays in
+    // seat-1's vision (a captive still lights its tile for its owner). The prize
+    // must read as a plain enemy hull from seat-1's seat, never its own manifest.
+    const config: GameConfig = {
+      ...matchConfig(),
+      players: matchConfig().players.map((p) => ({
+        ...p,
+        startingTroops:
+          p.id === 'seat-0'
+            ? [{ unitId: 'deckhand', count: 8 }]
+            : [{ unitId: 'deckhand', count: 1 }],
+      })),
+    }
+    const base = createGame(config)
+    const attacker = ownCaptain(base)
+    const defender = enemyCaptain(base)
+    const target = { x: attacker.position.x + 1, y: attacker.position.y }
+    const adjacent: GameState = {
+      ...base,
+      captains: base.captains.map((c) => (c.id === defender.id ? { ...c, position: target } : c)),
+    }
+    const next = applyAction(adjacent, {
+      type: 'attackCaptain',
+      playerId: 'seat-0',
+      captainId: attacker.id,
+      targetCaptainId: defender.id,
+    })
+    const prize = next.captains.find((c) => c.id.startsWith('prize-'))!
+    expect(prize.ownerId).toBe('seat-0')
+
+    // Winner sees its own prize in full; loser sees only a bare hull.
+    const winnerView = playerView(next, 'seat-0')
+    expect(winnerView.captains.find((c) => c.id === prize.id)!.troops).toBeDefined()
+
+    const loserView = playerView(next, 'seat-1')
+    const seenPrize = loserView.captains.find((c) => c.id === prize.id)!
+    expect(seenPrize).toBeDefined()
+    expect(seenPrize.ownerId).toBe('seat-0')
+    expect(seenPrize.troops).toBeUndefined()
+    expect(seenPrize.shipUpgrades).toBeUndefined()
+    expect(seenPrize.xp).toBeUndefined()
+  })
+
   it('discloses the viewer’s own captain standing/board orders (#285)', () => {
     const state = createGame(matchConfig())
     const mine = ownCaptain(state)

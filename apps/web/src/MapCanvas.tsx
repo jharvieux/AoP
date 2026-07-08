@@ -20,7 +20,7 @@ import {
   type StrokeInput,
   type Ticker,
 } from 'pixi.js'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
 import { Minimap } from './Minimap'
@@ -298,6 +298,18 @@ function midpoint(a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
+/**
+ * Imperative camera controls (#346) the Pixi effect assigns once the scene is
+ * live. Exposed to the parent via {@link MapCanvasProps.controlsRef} so out-of-
+ * canvas UI (the city roster, #373) can recenter without reaching into the draw
+ * loop.
+ */
+export interface MapControls {
+  zoomBy: (factor: number) => void
+  centerOn: (tile: Coord) => void
+  centerOnFleet: () => void
+}
+
 export interface MapCanvasProps {
   map: GameMap
   captains: Captain[]
@@ -310,6 +322,8 @@ export interface MapCanvasProps {
   onTileClick: (x: number, y: number) => void
   /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
   factionOf: (ownerId: string) => FactionId
+  /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
+  controlsRef?: MutableRefObject<MapControls | null>
 }
 
 export function MapCanvas(props: MapCanvasProps) {
@@ -329,11 +343,7 @@ export function MapCanvas(props: MapCanvasProps) {
   // Navigation controls (#346) the overlay buttons + minimap drive. Assigned by
   // the Pixi effect (which owns the camera math) so React handlers can pan/zoom
   // without reaching into the imperative draw loop.
-  const controlsRef = useRef<{
-    zoomBy: (factor: number) => void
-    centerOn: (tile: Coord) => void
-    centerOnFleet: () => void
-  } | null>(null)
+  const controlsRef = useRef<MapControls | null>(null)
   // Flipped on every render (a new action, fog reveal, selection change, …)
   // so the ticker below knows to redraw; the pan/zoom handlers flip it too.
   const dirtyRef = useRef(true)
@@ -537,6 +547,8 @@ export function MapCanvas(props: MapCanvasProps) {
         centerOn(target.position)
       },
     }
+    // Mirror to the parent's ref (#373) so out-of-canvas UI can recenter too.
+    if (propsRef.current.controlsRef) propsRef.current.controlsRef.current = controlsRef.current
 
     function draw(deltaMs: number) {
       // Advance in-flight sail animations before this frame's ship loop reads them, so a

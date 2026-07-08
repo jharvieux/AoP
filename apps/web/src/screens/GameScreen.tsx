@@ -36,7 +36,7 @@ import {
   type StackLoss,
   type TacticalProbeOutcome,
 } from '../boardingPlanner'
-import { MapCanvas } from '../MapCanvas'
+import { MapCanvas, type MapControls } from '../MapCanvas'
 import { ResourceHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
@@ -161,6 +161,11 @@ export function GameScreen({
   const [enemyCityInfoId, setEnemyCityInfoId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
+  // The city the roster/City button currently targets (#373). Null falls back to
+  // the first owned city, preserving single-city behavior with zero footprint.
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null)
+  // Live map camera controls (#346) so the city roster can recenter the map.
+  const mapControlsRef = useRef<MapControls | null>(null)
 
   // Ambient during normal play, battle theme while a battle report, boarding
   // melee, or Tactical-mode round sheet is open.
@@ -281,7 +286,15 @@ export function GameScreen({
     return () => audioManager.stop(BATTLE_TAUNT_KEY)
   }, [attackTargetId])
 
-  const viewerCity = game.cities.find((c) => c.ownerId === viewer.id)
+  // Every city the viewer owns (#373) — the engine has always allowed more than
+  // one; the HUD roster and city sheet now honor that instead of always acting
+  // on whichever city sorts first.
+  const viewerCities = useMemo(
+    () => game.cities.filter((c) => c.ownerId === viewer.id),
+    [game.cities, viewer.id],
+  )
+  const viewerCity =
+    viewerCities.find((c) => c.id === selectedCityId) ?? viewerCities[0] ?? undefined
   const viewerCaptainAtCity = viewerCity
     ? game.captains.find(
         (c) => c.ownerId === viewer.id && chebyshevDistance(c.position, viewerCity.position) <= 1,
@@ -855,6 +868,7 @@ export function GameScreen({
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
           factionOf={factionOf}
+          controlsRef={mapControlsRef}
         />
         {eventFeed.length > 0 && (
           <ul className="turn-event-feed" aria-label="Recent events">
@@ -863,11 +877,42 @@ export function GameScreen({
             ))}
           </ul>
         )}
+        {/* City roster (#373): only when the viewer holds more than one city —
+            a single-city game keeps the unchanged "City" button and no strip. */}
+        {viewerCities.length > 1 && (
+          <ul className="city-roster" aria-label="Your cities">
+            {viewerCities.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className={
+                    c.id === viewerCity?.id ? 'city-roster-entry selected' : 'city-roster-entry'
+                  }
+                  onClick={() => openCity(c.id)}
+                >
+                  <span className="city-roster-name">{c.name}</span>
+                  <span
+                    className={c.builtThisRound ? 'city-roster-built done' : 'city-roster-built'}
+                    aria-label={c.builtThisRound ? 'Built this round' : 'Idle this round'}
+                    title={c.builtThisRound ? 'Built this round' : 'Idle this round'}
+                  >
+                    {c.builtThisRound ? '✓' : '•'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Primary actions live in a bottom bar, not the header, so they sit in
           the thumb-reach zone on one-handed phone use (#27). */}
       <div className="bottom-action-bar">
+        {idleCityHint && (
+          <div className="idle-city-hint" role="status">
+            {idleCityHint}
+          </div>
+        )}
         <div className="button-group">
           <button
             className="secondary"
