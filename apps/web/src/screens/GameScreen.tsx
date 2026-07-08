@@ -339,7 +339,9 @@ export function GameScreen({
     // shows from outside current vision, so the read-only info fallback below
     // keeps working exactly as before.
     const enemyHere = visibleKeys.has(key)
-      ? game.captains.find((c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y)
+      ? game.captains.find(
+          (c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y,
+        )
       : undefined
     if (enemyHere) {
       const approach = approachToEngage(enemyHere.position)
@@ -961,10 +963,13 @@ export function GameScreen({
       )}
 
       {attackTarget && odds && selectedCaptain && (
-        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => {
+        <BottomSheet
+          title={`Engage ${attackTarget.name}?`}
+          onClose={() => {
             setAttackTargetId(null)
             setPendingApproach(null)
-          }}>
+          }}
+        >
           <section className="battle-intro">
             <div className="battle-intro__side">
               {FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (
@@ -1016,10 +1021,13 @@ export function GameScreen({
       )}
 
       {assaultCity && selectedCaptain && (
-        <BottomSheet title={`Assault ${assaultCity.name}?`} onClose={() => {
+        <BottomSheet
+          title={`Assault ${assaultCity.name}?`}
+          onClose={() => {
             setAssaultCityId(null)
             setPendingApproach(null)
-          }}>
+          }}
+        >
           <section>
             <p className="building-option__hint">
               {factionName(
