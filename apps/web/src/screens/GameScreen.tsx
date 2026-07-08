@@ -22,7 +22,7 @@ import {
   type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import { chebyshevDistance, type Coord } from '@aop/shared'
+import { canAfford, chebyshevDistance, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
@@ -331,6 +331,38 @@ export function GameScreen({
     if (cost + 1 > selectedCaptain.movementPoints) return undefined
     return cost > 0 ? approach : null
   }
+
+  // Roster tap (#373): focus a city — select it, recenter the map on it (reusing
+  // the #346 camera controls), and open its sheet.
+  function openCity(cityId: string) {
+    tapFeedback()
+    setSelectedCityId(cityId)
+    const city = game.cities.find((c) => c.id === cityId)
+    if (city) mapControlsRef.current?.centerOn(city.position)
+    setCityOpen(true)
+  }
+
+  // End-turn nudge (#373): a subtle, non-blocking hint that an owned city hasn't
+  // built this round and can still afford a building — so a second city isn't
+  // silently left idle. Counts only cities that can actually build something now.
+  const idleCityHint = useMemo(() => {
+    if (!isViewerTurn) return null
+    const content = game.config.content
+    if (!content) return null
+    const buildableIdle = viewerCities.filter(
+      (city) =>
+        !city.builtThisRound &&
+        Object.entries(content.buildings).some(
+          ([id, def]) =>
+            !city.buildings.includes(id) &&
+            (!def.requires || city.buildings.includes(def.requires)) &&
+            canAfford(viewer.resources, def.cost),
+        ),
+    )
+    if (buildableIdle.length === 0) return null
+    const n = buildableIdle.length
+    return `${n} idle ${n === 1 ? 'city' : 'cities'} can still build`
+  }, [isViewerTurn, game.config.content, viewerCities, viewer.resources])
 
   function handleTileClick(x: number, y: number) {
     if (!isViewerTurn || game.status !== 'active') return

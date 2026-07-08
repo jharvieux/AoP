@@ -307,4 +307,17 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     expect(after.currentPlayerIndex).toBe(1)
     expect(after.captains.find((c) => c.id === mine.id)!.position).toEqual(startTile)
   })
+
+  it('carries the map topology so a hex match reconstructs as hex, not square (#379)', () => {
+    const base = createGame(matchConfig())
+    const hexState: GameState = { ...base, map: { ...base.map, topology: 'hex' } }
+    expect(playerView(hexState, 'seat-0').topology).toBe('hex')
+  })
+
+  it('omits topology for a square map, so old snapshots default to square (#379)', () => {
+    // The default generated map is square (no topology field); the view must not
+    // invent one, so `boardFromPlayerView`'s absent → square default holds.
+    const view = playerView(createGame(matchConfig()), 'seat-0')
+    expect(view.topology).toBeUndefined()
+  })
 })

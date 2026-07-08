@@ -48,6 +48,10 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     height: view.mapHeight,
     tiles: new Array(view.mapWidth * view.mapHeight).fill(UNEXPLORED_TILE),
     startPositions: [],
+    // #379: carry the real grid topology so client-side distance/adjacency/
+    // rendering (mapDistance, mapNeighbors, MapCanvas) dispatch as hex when the
+    // match is hex. Absent in old snapshots → GameMap's own `square` default.
+    ...(view.topology ? { topology: view.topology } : {}),
   }
 
   const visibleKeys = new Set<string>()
