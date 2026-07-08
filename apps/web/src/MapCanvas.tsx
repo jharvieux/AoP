@@ -395,7 +395,14 @@ export function MapCanvas(props: MapCanvasProps) {
     if (container) {
       Object.assign(
         view,
-        panToKeepTileVisible(view, next, TILE, container.clientWidth, container.clientHeight),
+        panToKeepTileVisible(
+          view,
+          next,
+          TILE,
+          container.clientWidth,
+          container.clientHeight,
+          mapTopology(map),
+        ),
       )
     }
     announceTile(next)

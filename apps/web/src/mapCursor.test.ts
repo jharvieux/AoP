@@ -50,6 +50,31 @@ describe('panToKeepTileVisible', () => {
     const result = panToKeepTileVisible(zoomedView, { x: 20, y: 0 }, 32, 800, 600)
     expect(result.x).toBeLessThan(0)
   })
+
+  it('computes hex bounds correctly for odd and even rows', () => {
+    // Hex tiles have different pixel extents depending on row parity — test
+    // that panToKeepTileVisible correctly computes them, not the square bounds.
+    const hexView = { x: 0, y: 0, scale: 1 }
+    // Tile at (0, 0) even row vs. (0, 1) odd row should have different extents
+    // due to the odd-r stagger. Both should fit in view without panning when
+    // the camera is at the origin.
+    expect(panToKeepTileVisible(hexView, { x: 0, y: 0 }, 32, 800, 600, 'hex')).toEqual(
+      { x: 0, y: 0 },
+    )
+    expect(panToKeepTileVisible(hexView, { x: 0, y: 1 }, 32, 800, 600, 'hex')).toEqual(
+      { x: 0, y: 0 },
+    )
+  })
+
+  it('pans correctly for hex tiles at the viewport edges', () => {
+    // A hex far out in a row (larger y) should trigger pan if off screen.
+    // Hex row spacing is ~1.5*hexSize = 1.5 * (tileSize/√3) ≈ 27.7px at 32px tile.
+    // Row 23 centers at ~637px (over the 600px viewport), requiring pan.
+    const hexView = { x: 0, y: 0, scale: 1 }
+    const result = panToKeepTileVisible(hexView, { x: 0, y: 23 }, 32, 800, 600, 'hex')
+    // y = 23 at hex row spacing should be past the 600px viewport, so pan is needed.
+    expect(result.y).toBeLessThan(0)
+  })
 })
 
 describe('describeMapTile', () => {

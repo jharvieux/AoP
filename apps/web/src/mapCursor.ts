@@ -1,12 +1,14 @@
-import type { TileType } from '@aop/engine'
+import type { GridTopology, TileType } from '@aop/engine'
 import type { Coord } from '@aop/shared'
+import { cellCenter, hexSize } from './mapLayout'
 
 /**
  * Pure helpers for MapCanvas's keyboard cursor (#247): arrow-key movement,
  * panning the camera to keep the cursor tile on screen, and the text
  * announced to an offscreen live region. Kept separate from MapCanvas (which
  * owns the Pixi scene and can't run in a DOM-less test) the same way
- * mapSprites.ts pulls the sprite-resolution logic out.
+ * mapSprites.ts pulls the sprite-resolution logic out. Topology-aware (#348)
+ * so keyboard pan-into-view works for both square and hex grids.
  */
 
 const ARROW_DELTA: Partial<Record<string, Coord>> = {
@@ -35,23 +37,42 @@ export function moveCursor(
 /** Adjusts a pan offset by the minimum amount needed so `tile` is fully within the
  * viewport — "scrollIntoView" for the map's own pan/zoom camera, since keyboard users
  * have no pointer/pinch gesture to bring an off-screen cursor tile into view. A no-op
- * (returns the same x/y) if the tile is already fully visible. */
+ * (returns the same x/y) if the tile is already fully visible. Topology-aware (#348):
+ * square uses axis-aligned tile bounds, hex uses pointy-top hexagon bounds. */
 export function panToKeepTileVisible(
   view: { x: number; y: number; scale: number },
   tile: Coord,
   tileSize: number,
   viewportWidth: number,
   viewportHeight: number,
+  topology: GridTopology = 'square',
 ): { x: number; y: number } {
-  const left = tile.x * tileSize * view.scale + view.x
-  const top = tile.y * tileSize * view.scale + view.y
-  const size = tileSize * view.scale
+  const c = cellCenter(topology, tile.x, tile.y, tileSize)
   let x = view.x
   let y = view.y
-  if (left < 0) x -= left
-  else if (left + size > viewportWidth) x -= left + size - viewportWidth
-  if (top < 0) y -= top
-  else if (top + size > viewportHeight) y -= top + size - viewportHeight
+  if (topology === 'hex') {
+    const s = hexSize(tileSize)
+    // Pointy-top hex: horizontal reach is half the hex width (SQRT3 * s / 2),
+    // vertical reach to a corner is the radius s.
+    const halfW = (Math.sqrt(3) * s) / 2
+    const left = (c.x - halfW) * view.scale + view.x
+    const right = (c.x + halfW) * view.scale + view.x
+    const top = (c.y - s) * view.scale + view.y
+    const bottom = (c.y + s) * view.scale + view.y
+    if (left < 0) x -= left
+    else if (right > viewportWidth) x -= right - viewportWidth
+    if (top < 0) y -= top
+    else if (bottom > viewportHeight) y -= bottom - viewportHeight
+  } else {
+    // Square: axis-aligned tile bounds (prior behavior, unchanged).
+    const size = tileSize * view.scale
+    const left = c.x * view.scale + view.x - size / 2
+    const top = c.y * view.scale + view.y - size / 2
+    if (left < 0) x -= left
+    else if (left + size > viewportWidth) x -= left + size - viewportWidth
+    if (top < 0) y -= top
+    else if (top + size > viewportHeight) y -= top + size - viewportHeight
+  }
   return { x, y }
 }
 
