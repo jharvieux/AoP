@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
+import { smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
@@ -66,9 +67,11 @@ const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
 // later turn, once movement refreshes.
 const COURSE_NOW_COLOR = cssToken('--map-course-now', '#e0b64f')
 const COURSE_LATER_COLOR = cssToken('--map-course-later', '#5c7a94')
-// Cosmetic hexagon tile boundary, hex maps only (#348). A faint hairline so the
-// hex layout reads as a grid without competing with terrain art or the surf/fog.
-const HEX_GRID_COLOR = cssToken('--map-hex-grid', '#0b1a26')
+// Painted-world coastline treatment (#393): a sand rim on the land side of the
+// traced coast, a darker shoreline hairline, and a wide translucent foam band
+// on the water side.
+const SAND_COLOR = cssToken('--map-sand', '#cdb87e')
+const SHORE_COLOR = cssToken('--map-shore', '#2c4a33')
 export const ENCOUNTER_COLOR = {
   merchant: cssToken('--color-merchant', '#e0b64f'),
   natives: cssToken('--map-encounter-natives', '#6fbf73'),
@@ -135,20 +138,14 @@ function defaultArtUrls(): string[] {
   return [...urls]
 }
 
-// Coastline + tile-variety rendering (#347, #354). All rendering-only: a deterministic
-// hash of integer tile coords picks each tile's variant, so two paints of the
-// same tile agree and the engine's seeded RNG is never touched.
+// Painted-world rendering (#392/#393): all rendering-only — a deterministic
+// hash of integer tile coords drives every per-cell variation, so two paints of
+// the same tile agree and the engine's seeded RNG is never touched.
 const SURF_COLOR = cssToken('--map-surf', '#bfe6f2')
-const SURF_BAND = TILE * 0.16
 const WATER_TYPES = new Set(['deep', 'shallows'])
-
-// Texture scaling factor for crisper rendering (#354): source art is 128px,
-// scaled 4x to TILE = 32. Increasing this trades memory for visual sharpness.
-// At scale > 1, camera/culling math remains unchanged (world coords stay in
-// 32-pixel grid), but sprites render at higher resolution. Scale = 1 is the
-// baseline (current behavior); 1.5 or 2.0 gives noticeable sharpening on
-// modern devices without re-tooling the entire coordinate system.
-const TILE_TEXTURE_SCALE = 1
+// Fraction of explored water cells that carry a drifting sun-glint sprite; the
+// ambient ticker (#298) oscillates their alpha so the ocean reads as moving.
+const GLINT_DENSITY = 0.14
 
 /** A stable [0,1) value per integer tile — the seed for that tile's rendering variant. */
 function tileHash(x: number, y: number): number {
@@ -156,37 +153,6 @@ function tileHash(x: number, y: number): number {
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
   h ^= h >>> 13
   return (h >>> 0) / 0xffffffff
-}
-
-/**
- * Marching-squares edge detection for autotiling coastlines (#354).
- * Land tiles bordering water get a bitmask variant (0-15) encoding which edges
- * touch water. Water tiles always return 0 (no autotiling).
- * Bitmask: bit 0 = north, bit 1 = east, bit 2 = south, bit 3 = west.
- * When new autotile variant art is added, `resolveSpriteUrl()` will use this
- * to pick edge-mask sprites keyed by terrain type + variant.
- */
-function getAutotileVariant(map: GameMap, x: number, y: number): number {
-  const tile = map.tiles[tileIndex(map, x, y)]
-  if (!tile || WATER_TYPES.has(tile.type)) return 0
-  // Land tile: check which orthogonal neighbors are water
-  let variant = 0
-  if (y > 0 && WATER_TYPES.has(map.tiles[tileIndex(map, x, y - 1)]!.type)) variant |= 1
-  if (x < map.width - 1 && WATER_TYPES.has(map.tiles[tileIndex(map, x + 1, y)]!.type)) variant |= 2
-  if (y < map.height - 1 && WATER_TYPES.has(map.tiles[tileIndex(map, x, y + 1)]!.type)) variant |= 4
-  if (x > 0 && WATER_TYPES.has(map.tiles[tileIndex(map, x - 1, y)]!.type)) variant |= 8
-  return variant
-}
-
-/**
- * Select a tile variant for rendering (#354). Combines autotile edge patterns
- * (for coast borders) with per-tile brightness variation (for terrain detail).
- * Returns a stable variant index [0-1) that can be used to pick distinct tile
- * art or blend alpha masks over a base sprite.
- */
-function getTileVariant(map: GameMap, x: number, y: number): number {
-  const autotile = getAutotileVariant(map, x, y)
-  return autotile > 0 ? autotile / 16 : tileHash(x, y)
 }
 
 /** Parse a `#rrggbb` token to a packed 0xRRGGBB number, or null for any other format. */
@@ -216,27 +182,36 @@ function tileBrightness(x: number, y: number, spread: number): number {
 
 const isLandType = (t: string): boolean => t === 'land' || t === 'port'
 
+// The uncharted world (#394): everything outside the explored region — fogged
+// map cells and the void beyond the map edge alike — renders as one darker
+// shade of the same ocean, so the frontier is a soft lightening of the sea
+// rather than a wall of black hexes.
+const UNCHARTED_SHADE = 0.5
+
 /**
- * Paint a foam band on each edge of water tile (x,y) that borders land (#347),
- * so the coastline reads as a shoreline instead of a hard grid seam. Orthogonal
- * neighbours only — diagonal-only contacts don't get a band, which keeps the
- * surf reading as edges rather than corner dots.
+ * The painted-world terrain geometry (#393/#394) for one (map, exploredKeys)
+ * pair: smoothed coastline loops of the explored landmass, and the smoothed
+ * outline of the whole explored region (the "known world" — everything outside
+ * it renders as uniform uncharted sea, including beyond the map's edge).
+ * Rebuilt only when exploration changes — tracing walks the whole grid, far
+ * too much for a per-frame pan redraw.
  */
-function paintSurf(g: Graphics, map: GameMap, x: number, y: number): void {
-  const foam = { color: SURF_COLOR, alpha: 0.45 }
-  const px = x * TILE
-  const py = y * TILE
-  if (y > 0 && isLandType(map.tiles[tileIndex(map, x, y - 1)]!.type)) {
-    g.rect(px, py, TILE, SURF_BAND).fill(foam)
-  }
-  if (y < map.height - 1 && isLandType(map.tiles[tileIndex(map, x, y + 1)]!.type)) {
-    g.rect(px, py + TILE - SURF_BAND, TILE, SURF_BAND).fill(foam)
-  }
-  if (x > 0 && isLandType(map.tiles[tileIndex(map, x - 1, y)]!.type)) {
-    g.rect(px, py, SURF_BAND, TILE).fill(foam)
-  }
-  if (x < map.width - 1 && isLandType(map.tiles[tileIndex(map, x + 1, y)]!.type)) {
-    g.rect(px + TILE - SURF_BAND, py, SURF_BAND, TILE).fill(foam)
+interface PaintedGeometry {
+  coastLoops: { points: number[]; hole: boolean }[]
+  exploredLoops: { points: number[]; hole: boolean }[]
+}
+
+function buildPaintedGeometry(map: GameMap, exploredKeys: Set<string>): PaintedGeometry {
+  const topology = mapTopology(map)
+  const exploredLand = (x: number, y: number): boolean =>
+    exploredKeys.has(`${x},${y}`) && isLandType(map.tiles[tileIndex(map, x, y)]!.type)
+  const coast = traceRegionLoops(topology, map.width, map.height, TILE, exploredLand)
+  const explored = traceRegionLoops(topology, map.width, map.height, TILE, (x, y) =>
+    exploredKeys.has(`${x},${y}`),
+  )
+  return {
+    coastLoops: coast.map((l) => ({ points: smoothLoop(l.points, 2), hole: l.hole })),
+    exploredLoops: explored.map((l) => ({ points: smoothLoop(l.points, 2), hole: l.hole })),
   }
 }
 
@@ -327,7 +302,10 @@ export interface MapCanvasProps {
 }
 
 export function MapCanvas(props: MapCanvasProps) {
-  const { containerRef, app, error } = usePixiApp({ background: TILE_COLOR.deep })
+  const deepPacked = parseHexColor(TILE_COLOR.deep) ?? 0x1b4a6b
+  const { containerRef, app, error } = usePixiApp({
+    background: `#${shadeColor(deepPacked, UNCHARTED_SHADE).toString(16).padStart(6, '0')}`,
+  })
   const { spriteUrl: themeSpriteUrl, pack: themePack, factionName } = useTheme()
 
   // Latest props + view are read by the render loop via refs, so per-action
@@ -442,14 +420,31 @@ export function MapCanvas(props: MapCanvasProps) {
     const pixiApp = app
 
     const world = new Container()
-    const tiles = new Graphics()
-    const tileSprites = new Container()
-    const coast = new Graphics() // Coastline surf overlay (#347)
+    // Painted world (#392/#394): the canvas background is the dark uncharted
+    // sea. `knownSea` paints the smoothed explored region in the full ocean
+    // color with a soft halo, so the frontier of the known world is a curve of
+    // light fading into darkness — never a wall of fog cells. Land renders as
+    // tile art inside `landGroup`, whose stencil mask is the smoothed traced
+    // coastline, so islands have organic silhouettes no matter how blocky the
+    // cell art underneath is.
+    const knownSea = new Graphics()
+    const landGroup = new Container()
+    const landMask = new Graphics()
+    const tileSprites = new Container() // land/port tile art, clipped by landMask
+    const landDetail = new Graphics() // flat fallback + terrain speckles, clipped too
+    landGroup.addChild(tileSprites, landDetail)
+    landGroup.mask = landMask
+    // Shallows wash: soft overlapping discs over shallow-water cells, drawn
+    // above the land group so the wash laps a few pixels onto the traced
+    // coast — reads as wet sand / surf zone rather than a cell boundary.
+    const wash = new Graphics()
+    const glintSprites = new Container() // drifting sun glints on open water (#392)
+    const coast = new Graphics() // sand rim + shoreline + foam along the traced loops (#393)
     const entities = new Graphics()
     const citySprites = new Container()
     const encounterSprites = new Container()
     const shipSprites = new Container()
-    const fog = new Graphics() // Feathered fog overlay (#299)
+    const fog = new Graphics() // Feathered fog overlay (#299/#394)
     // Dotted course preview (#375), above fog so it reads clearly over dimmed
     // explored-but-not-visible water — the preview is a planning aid, not
     // something that should itself respect the viewer's live fog of war.
@@ -459,12 +454,13 @@ export function MapCanvas(props: MapCanvasProps) {
     // pulse, kept separate from `highlight`'s static keyboard-cursor rect so
     // the pulse's per-frame alpha animation doesn't also dim the cursor.
     const selectionPulse = new Graphics()
-    // Draw order: flat-color fallback first, then sprite layers on top, so a
-    // texture that finishes loading later simply covers its own fallback tile.
     // Fog overlay drawn after entities so it can feather over all content.
     world.addChild(
-      tiles,
-      tileSprites,
+      knownSea,
+      landMask,
+      landGroup,
+      wash,
+      glintSprites,
       coast,
       entities,
       citySprites,
@@ -477,6 +473,31 @@ export function MapCanvas(props: MapCanvasProps) {
     )
     pixiApp.stage.addChild(world)
 
+    // Terrain geometry cache (#393): retraced only when the map or the
+    // explored set changes — never on a plain pan/zoom redraw.
+    let painted: {
+      map: GameMap
+      explored: Set<string>
+      size: number
+      geom: PaintedGeometry
+    } | null = null
+    function paintedGeometry(map: GameMap, exploredKeys: Set<string>): PaintedGeometry {
+      if (
+        !painted ||
+        painted.map !== map ||
+        painted.explored !== exploredKeys ||
+        painted.size !== exploredKeys.size
+      ) {
+        painted = {
+          map,
+          explored: exploredKeys,
+          size: exploredKeys.size,
+          geom: buildPaintedGeometry(map, exploredKeys),
+        }
+      }
+      return painted.geom
+    }
+
     const textureLoader = createTextureLoader<Texture>(Assets, () => {
       dirtyRef.current = true
     })
@@ -487,6 +508,7 @@ export function MapCanvas(props: MapCanvasProps) {
     void textureLoader.preload(defaultArtUrls())
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
+    const glintPool = new SpritePool(glintSprites)
     const cityPool = new SpritePool(citySprites)
     const encounterPool = new SpritePool(encounterSprites)
     const shipPool = new SpritePool(shipSprites)
@@ -596,111 +618,149 @@ export function MapCanvas(props: MapCanvasProps) {
       ambientTileSpritesRef.current.clear()
       shipSpritesRef.current.clear()
 
-      tiles.clear()
+      const geom = paintedGeometry(map, exploredKeys)
+
+      knownSea.clear()
+      landMask.clear()
+      landDetail.clear()
+      wash.clear()
       coast.clear()
       fog.clear()
       tilePool.begin()
+      glintPool.begin()
+
+      // The known world (#394): fill the explored region with the full ocean
+      // color over the darker uncharted background, ringed by two soft halo
+      // strokes so exploration's frontier fades out instead of stepping.
+      const unchartedColor = shadeColor(deepPacked, UNCHARTED_SHADE)
+      for (const loop of geom.exploredLoops) {
+        if (loop.hole) continue
+        knownSea.poly(loop.points).stroke({ width: TILE * 1.2, color: deepPacked, alpha: 0.18 })
+        knownSea.poly(loop.points).stroke({ width: TILE * 0.55, color: deepPacked, alpha: 0.3 })
+        knownSea.poly(loop.points).fill(deepPacked)
+      }
+      for (const loop of geom.exploredLoops) {
+        // Enclosed unexplored pockets go back to uncharted dark.
+        if (loop.hole) knownSea.poly(loop.points).fill(unchartedColor)
+      }
+
+      // Landmass silhouette + coastline (#393): the traced, smoothed loops.
+      // Holes (water enclosed by land) are skipped from the mask so lake cells
+      // simply stay ocean-colored; their shoreline still gets stroked below.
+      for (const loop of geom.coastLoops) {
+        if (!loop.hole) landMask.poly(loop.points).fill(0xffffff)
+      }
+      for (const loop of geom.coastLoops) {
+        // Water side first: a wide translucent foam band, then a tighter sand
+        // rim, then a crisp shoreline — layered strokes centred on the same
+        // curve read as a beach gradient without any per-cell art.
+        coast.poly(loop.points).stroke({ width: TILE * 0.5, color: SURF_COLOR, alpha: 0.16 })
+        coast.poly(loop.points).stroke({ width: TILE * 0.24, color: SAND_COLOR, alpha: 0.55 })
+        coast.poly(loop.points).stroke({ width: 1.5, color: SHORE_COLOR, alpha: 0.6 })
+      }
+
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
           const key = `${x},${y}`
-          const explored = exploredKeys.has(key)
-          if (!explored) {
-            fillCell(tiles, x, y, FOG_COLOR)
+          if (!exploredKeys.has(key)) continue
+          const tile = map.tiles[tileIndex(map, x, y)]!
+
+          if (WATER_TYPES.has(tile.type)) {
+            // Shallows wash (#392): soft overlapping discs merge into one
+            // organic shoal region — no cell seams. Two radii layer a brighter
+            // core inside a wider fade.
+            if (tile.type === 'shallows') {
+              const c = centerOf(x, y)
+              const washColor = parseHexColor(TILE_COLOR.shallows) ?? 0x2a6a8f
+              wash.circle(c.x, c.y, TILE * 0.92).fill({ color: washColor, alpha: 0.28 })
+              wash.circle(c.x, c.y, TILE * 0.6).fill({ color: washColor, alpha: 0.3 })
+            }
+            // Sun glints (#392): a sparse deterministic subset of water cells
+            // carries a small light streak whose alpha the ambient tick
+            // oscillates — the ocean moves without any per-frame Graphics work.
+            if (tileHash(x, y) < GLINT_DENSITY) {
+              const sprite = glintPool.get(key)
+              sprite.texture = Texture.WHITE
+              sprite.width = TILE * (0.18 + tileHash(y, x) * 0.2)
+              sprite.height = 1.6
+              sprite.rotation = -0.35 + tileHash(x + 1, y) * 0.7
+              const c = centerOf(x, y)
+              sprite.position.set(
+                c.x + (tileHash(x, y + 1) - 0.5) * TILE * 0.8,
+                c.y + (tileHash(x + 2, y) - 0.5) * TILE * 0.8,
+              )
+              sprite.tint = 0xdff1fa
+              ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
+            }
             continue
           }
-          const tile = map.tiles[tileIndex(map, x, y)]!
-          // Coastline (#347): a soft surf band on any explored water tile edge
-          // that meets land, so land/water boundaries read as coast, not a grid
-          // line. Drawn on its own layer above the tiles, under the fog. Square
-          // only — paintSurf/autotiling key off the 4 orthogonal square neighbors
-          // and the axis-aligned tile box, neither of which maps to a hex cell;
-          // hex maps get the cosmetic hex-boundary pass below instead (#348).
-          if (topology === 'square' && WATER_TYPES.has(tile.type)) {
-            paintSurf(coast, map, x, y)
-          }
-          // Autotile variant selection (#354): land tiles bordering water get an
-          // edge-pattern ID (0-15) via marching squares; used to pick edge-mask art
-          // when autotile sprites are available (see mapSprites.tileAutotileId).
-          const autotileVariant = topology === 'square' ? getAutotileVariant(map, x, y) : 0
+
+          // Land/port tile art, clipped to the traced coastline by landGroup's
+          // mask — the art supplies interior texture, the mask the silhouette.
           const spriteUrl = resolveSpriteUrl(
             themeSpriteUrlRef.current,
-            autotileVariant > 0
-              ? `tile:${tile.type}:edge:${autotileVariant}`
-              : tileContentId(tile.type),
+            tileContentId(tile.type),
             TILE_SPRITE_URL[tile.type],
           )
           const texture = spriteUrl ? getTexture(spriteUrl) : undefined
           if (texture) {
             const sprite = tilePool.get(key)
             sprite.texture = texture
-            // Texture scaling (#354): scale texture for crisper rendering. At
-            // TILE_TEXTURE_SCALE = 1, sprite size = TILE (32px). At 1.5 or 2.0,
-            // sprites are larger, giving sharper detail on high-DPI devices while
-            // keeping world coordinates and culling math unchanged.
-            sprite.width = TILE * TILE_TEXTURE_SCALE
-            sprite.height = TILE * TILE_TEXTURE_SCALE
+            // Slightly oversized so hex packing (row pitch 0.87×TILE) leaves no
+            // gaps between the square art tiles inside the mask.
+            sprite.width = TILE * 1.16
+            sprite.height = TILE * 1.16
             const tc = centerOf(x, y)
             sprite.position.set(tc.x, tc.y)
-            sprite.alpha = 1 // Sprites always fully opaque; fog layer handles dimming (#299)
-            // Per-tile brightness variety (#347): a subtle deterministic tint so
-            // repeated terrain art doesn't read as identical squares. Ambient
-            // shimmer (#298) rides alpha, so tint here is orthogonal to it.
-            sprite.tint = shadeColor(0xffffff, tileBrightness(x, y, 0.08))
-            if (tile.type === 'deep' || tile.type === 'shallows') {
-              ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
-            } else if (tile.type === 'port') {
+            sprite.alpha = 1 // Fog layer handles dimming (#299)
+            // Per-tile brightness variety (#347) so repeated art doesn't read
+            // as identical squares; kept subtle to avoid seams at overlaps.
+            sprite.tint = shadeColor(0xffffff, tileBrightness(x, y, 0.06))
+            if (tile.type === 'port') {
               ambientTileSpritesRef.current.set(key, { sprite, kind: 'port' })
             }
-            continue
+          } else {
+            // Flat-color fallback, same silhouette via the mask.
+            const base = parseHexColor(TILE_COLOR[tile.type])
+            const color =
+              base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
+            fillCell(landDetail, x, y, { color, alpha: 1 })
           }
-          // Flat-color fallback, varied per tile the same way (#347).
-          const base = parseHexColor(TILE_COLOR[tile.type])
-          const color =
-            base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
-          fillCell(tiles, x, y, { color, alpha: 1 }) // Full alpha; fog applies dimming
-        }
-      }
-      // Cosmetic hex tile boundary (#348), hex maps only: a faint hairline around
-      // each explored hex so the layout reads as a hex grid. Square maps deliberately
-      // draw no such lines (their grid reads from the terrain art / surf bands).
-      // Drawn on the `coast` layer — above the tile sprites (so terrain art doesn't
-      // hide it) but below entities/fog — which is otherwise unused on hex maps
-      // (paintSurf is square-only), so it needs no extra layer.
-      if (topology === 'hex') {
-        for (let y = minY; y <= maxY; y++) {
-          for (let x = minX; x <= maxX; x++) {
-            if (!exploredKeys.has(`${x},${y}`)) continue
-            strokeCell(coast, x, y, { width: 1, color: HEX_GRID_COLOR, alpha: 0.25 })
+          // Terrain speckles (#393): sparse darker flecks so large landmasses
+          // read as vegetated ground, not a repeated texture.
+          if (tile.type === 'land' && tileHash(x, y) > 0.55) {
+            const c = centerOf(x, y)
+            const dx = (tileHash(x + 3, y) - 0.5) * TILE * 0.7
+            const dy = (tileHash(x, y + 3) - 0.5) * TILE * 0.7
+            landDetail
+              .circle(c.x + dx, c.y + dy, 1.2 + tileHash(y, x + 1) * 1.4)
+              .fill({ color: 0x2f5426, alpha: 0.5 })
           }
         }
       }
       tilePool.end()
+      glintPool.end()
 
-      // Render feathered fog overlay (#299): soft edges between unexplored/explored/visible.
-      // For each explored tile, render a dimming layer if it's not currently visible.
-      // We check neighboring tiles to feather the fog boundary — tiles at the edge of
-      // the fog region render with decreased alpha for a smooth transition.
+      // Explored-but-fogged dimming (#299). The unexplored world needs no fog
+      // fills at all anymore — it simply isn't painted into `knownSea`.
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
           const key = `${x},${y}`
-          const explored = exploredKeys.has(key)
-          const visibleNow = visibleKeys.has(key)
-
-          if (!visibleNow && explored) {
-            // Explored-but-fogged: dim it. Grade the alpha by how many of the 8
-            // neighbours are currently visible (#347/#299), so the fog fades in
-            // smoothly toward the sighted region instead of stepping in two hard
-            // bands that only reinforced the grid.
-            let visibleNeighbors = 0
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue
-                if (visibleKeys.has(`${x + dx},${y + dy}`)) visibleNeighbors++
-              }
+          if (!exploredKeys.has(key)) continue
+          if (visibleKeys.has(key)) continue
+          // Explored-but-fogged: dim it. Grade the alpha by how many of the 8
+          // neighbours are currently visible (#347/#299), so the fog fades in
+          // smoothly toward the sighted region instead of stepping in two hard
+          // bands that only reinforced the grid.
+          let visibleNeighbors = 0
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue
+              if (visibleKeys.has(`${x + dx},${y + dy}`)) visibleNeighbors++
             }
-            const edgeAlpha = Math.max(0.16, 0.52 - visibleNeighbors * 0.05)
-            fillCell(fog, x, y, { color: FOG_COLOR, alpha: edgeAlpha })
           }
+          const edgeAlpha = Math.max(0.14, 0.45 - visibleNeighbors * 0.045)
+          fillCell(fog, x, y, { color: FOG_COLOR, alpha: edgeAlpha })
         }
       }
 
@@ -721,6 +781,12 @@ export function MapCanvas(props: MapCanvasProps) {
           ENCOUNTER_SPRITE_URL[enc.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        // Grounding shadow (#394) so the sprite reads as an object on the
+        // water, not a decal floating over it.
+        entities.ellipse(cx, cy + TILE * 0.26, TILE * 0.3, TILE * 0.1).fill({
+          color: 0x000000,
+          alpha: 0.22,
+        })
         if (texture) {
           const sprite = encounterPool.get(enc.id)
           sprite.texture = texture
@@ -749,11 +815,18 @@ export function MapCanvas(props: MapCanvasProps) {
           own ? CITY_SPRITE_URL.own : CITY_SPRITE_URL.enemy,
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        // Grounding shadow (#394), drawn whether art or fallback renders above.
+        entities.ellipse(cx, cy + TILE * 0.3, TILE * 0.42, TILE * 0.13).fill({
+          color: 0x000000,
+          alpha: 0.28,
+        })
         if (texture) {
           const sprite = cityPool.get(city.id)
           sprite.texture = texture
-          sprite.width = TILE - 8
-          sprite.height = TILE - 8
+          // Sized up (#394) so a settlement reads as a landmark, not another
+          // terrain cell; anchored center like every pooled sprite.
+          sprite.width = TILE * 1.05
+          sprite.height = TILE * 1.05
           sprite.position.set(cx, cy)
           continue
         }
@@ -813,6 +886,11 @@ export function MapCanvas(props: MapCanvasProps) {
           defaultShipSpriteUrl,
         )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
+        // Hull shadow on the water (#394); the ambient bob rides above it.
+        entities.ellipse(cx, cy + TILE * 0.24, TILE * 0.28, TILE * 0.09).fill({
+          color: 0x000000,
+          alpha: 0.25,
+        })
         if (texture) {
           const sprite = shipPool.get(cap.id)
           const size = TILE * (SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
@@ -907,6 +985,17 @@ export function MapCanvas(props: MapCanvasProps) {
         strokeCell(selectionPulse, selected.position.x, selected.position.y, {
           width: 3,
           color: HIGHLIGHT_COLOR,
+        })
+      }
+      // Hover cell outline (#393): with the always-on grid gone, the cell
+      // shape appears under the mouse where it's actionable — the painted
+      // terrain stays clean everywhere else.
+      const hover = hoverCellRef.current
+      if (hover && exploredKeys.has(`${hover.x},${hover.y}`)) {
+        strokeCell(highlight, hover.x, hover.y, {
+          width: 1.5,
+          color: HIGHLIGHT_COLOR,
+          alpha: 0.4,
         })
       }
       // Keyboard tile cursor (#247) — only drawn while the map has keyboard
