@@ -72,3 +72,44 @@ export function pathPointAt(path: readonly Coord[], t: number): TilePoint {
   const last = path[path.length - 1]!
   return { x: last.x, y: last.y }
 }
+
+/**
+ * Pixel position at fraction `t` along `path`, interpolating in *pixel* space
+ * between consecutive node centres (via `centerOf`) rather than in tile space.
+ *
+ * For a square grid this equals `centerOf(pathPointAt(path, t))` — tile centres
+ * are linear in the tile coords, so lerping the coords then projecting matches
+ * lerping the projected centres. For a hex grid the two differ: odd-r offset
+ * coords are *not* linear in pixel space across the row-parity stagger, so a
+ * hex sail must interpolate the pixel centres to trace a straight visual path.
+ * Arc length is still measured in tile space so speed reads consistently with
+ * {@link shipAnimDurationMs}.
+ */
+export function pathPixelAt(
+  path: readonly Coord[],
+  t: number,
+  centerOf: (coord: Coord) => TilePoint,
+): TilePoint {
+  const first = path[0]
+  if (!first) return { x: 0, y: 0 }
+  if (path.length === 1) return centerOf(first)
+
+  const total = pathArcLength(path)
+  if (total === 0) return centerOf(first)
+
+  const target = Math.min(1, Math.max(0, t)) * total
+  let travelled = 0
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!
+    const b = path[i]!
+    const segLength = Math.hypot(b.x - a.x, b.y - a.y)
+    if (travelled + segLength >= target || i === path.length - 1) {
+      const local = segLength === 0 ? 0 : Math.min(1, Math.max(0, (target - travelled) / segLength))
+      const pa = centerOf(a)
+      const pb = centerOf(b)
+      return { x: pa.x + (pb.x - pa.x) * local, y: pa.y + (pb.y - pa.y) * local }
+    }
+    travelled += segLength
+  }
+  return centerOf(path[path.length - 1]!)
+}
