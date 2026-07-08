@@ -2,7 +2,7 @@ import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiDifficultyModifier, AiPersonalityWeights, AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
 import type { ContentCatalog, EncounterKind, ResourceNodeKind } from './content'
-import type { GameMap } from './map'
+import type { GameMap, GridTopology } from './map'
 import type { MapDefinition } from './mapDefinition'
 import type { BoardOrder } from './battleBoard'
 import type { RngState } from './rng'
@@ -267,6 +267,12 @@ export interface GameConfig {
   /** Seed for all in-game randomness (and for map generation when {@link mapDefinition} is absent). */
   seed: number
   mapSize: MapSize
+  /**
+   * Grid topology for the generated map (#389); absent means `square`, so
+   * configs frozen before this field existed rebuild identically. Ignored when
+   * {@link mapDefinition} is set — an authored map carries its own topology.
+   */
+  topology?: GridTopology
   /**
    * An authored map (#62) to play instead of generating one from `seed` +
    * `mapSize`. `seed` still drives every other RNG draw (combat, economy,

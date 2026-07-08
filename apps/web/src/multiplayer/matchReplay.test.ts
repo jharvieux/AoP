@@ -83,6 +83,40 @@ describe('MatchReplayClient.loadMatchReplay', () => {
     expect(JSON.parse(init.body as string)).toEqual({ p_match_id: MATCH_ID })
   })
 
+  it('forwards stored topology into the rebuilt config, defaulting square when absent (#389)', async () => {
+    // mockHappyPath's matches row has no topology — a pre-#389 match rebuilds square.
+    const legacyFetch = vi.fn<typeof fetch>()
+    mockHappyPath(legacyFetch)
+    const legacy = await new MatchReplayClient(CONFIG, legacyFetch).loadMatchReplay(
+      SESSION,
+      MATCH_ID,
+    )
+    expect(legacy.config.topology).toBeUndefined()
+
+    const hexFetch = vi.fn<typeof fetch>()
+    hexFetch
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          {
+            id: MATCH_ID,
+            status: 'finished',
+            settings: { mapSize: 'small', topology: 'hex' },
+            engine_version: CLIENT_ENGINE_VERSION,
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, 99))
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          { seat: 0, user_id: null, faction: 'pirates' },
+          { seat: 1, user_id: null, faction: 'british' },
+        ]),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, []))
+    const hex = await new MatchReplayClient(CONFIG, hexFetch).loadMatchReplay(SESSION, MATCH_ID)
+    expect(hex.config.topology).toBe('hex')
+  })
+
   it('surfaces a withheld seed (RPC returns null) as not-found rather than NaN', async () => {
     // Defense in depth: if the match_seed RPC ever returns null (match not
     // finished, or caller not seated), we refuse instead of building a config

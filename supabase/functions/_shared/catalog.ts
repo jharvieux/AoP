@@ -112,6 +112,7 @@ export function buildMatchConfig(
   mapSize: GameConfig['mapSize'],
   seats: SeatConfig[],
   setupOverrides: MatchSetupOverrides = {},
+  topology?: GameConfig['topology'],
 ): GameConfig {
   const players: PlayerConfig[] = seats.map((s) => ({
     id: `seat-${s.seat}`,
@@ -123,6 +124,9 @@ export function buildMatchConfig(
   return {
     seed,
     mapSize,
+    // Absent means square (#389) — settings stored before the field existed
+    // must rebuild the exact map pre-#389 start-match generated.
+    ...(topology ? { topology } : {}),
     players,
     setup: {
       ...GAME_SETUP,

@@ -29,6 +29,10 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
   const dragState = useRef<{ startY: number; startTime: number } | null>(null)
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    // Never start the drag gesture from the close button: capturing the pointer
+    // retargets the eventual click to this header (the capture element), so the
+    // button's onClick would never fire on desktop Chrome (#388).
+    if ((e.target as Element).closest('.sheet__close')) return
     dragState.current = { startY: e.clientY, startTime: e.timeStamp }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
