@@ -523,7 +523,7 @@ function setSailOrder(state: GameState, action: SetSailOrderAction): GameState {
       throw new InvalidActionError('Sail destination is not water', action)
     }
     if (coordsEqual(captain.position, action.destination)) {
-      throw new InvalidActionError('Sail destination is the captain’s current tile', action)
+      throw new InvalidActionError('Sail destination is already the current tile', action)
     }
     if (!findPath(state.map, captain.position, action.destination)) {
       throw new InvalidActionError('Sail destination is not reachable by sea', action)
