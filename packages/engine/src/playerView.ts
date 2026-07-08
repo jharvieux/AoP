@@ -347,16 +347,3 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     rngState: null,
   }
 }
-
-/**
- * Export the ViewBattleRecord type so it's available in the engine's public surface.
- * The server-side edge function (`get-player-view`) populates `recentBattles` from
- * the match action log's resolved `attackCaptain` actions by replaying their attached
- * {@link BattleReport}s (see #320 and docs/design/spectate-battle-history.md).
- *
- * The engine itself does not populate this field: `playerView()` returns it empty
- * (omitted), and the server adds the recent battles after fetching the snapshot.
- *
- * @see PlayerView.recentBattles
- */
-export type { ViewBattleRecord }

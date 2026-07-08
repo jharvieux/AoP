@@ -69,6 +69,7 @@ fails silently.
 ### Workaround: deploy via GitHub Actions
 
 Local `supabase functions deploy` is blocked on colima indefinitely until either:
+
 1. Supabase CLI reports the real error (not Effect-swallowed), allowing a targeted fix.
 2. A colima-specific VFS workaround is discovered (unlikely; virtiofs is a colima
    architectural choice).

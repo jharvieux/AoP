@@ -15,6 +15,7 @@ until the square-grid rendering is polished.
 ## Why hex?
 
 **Potential advantages**:
+
 - Six-directional movement feels more "natural" in strategy games (though HoMM-style square
   grids are also common).
 - Reduced diagonal bias in distance metrics (hex grids have true 6 equidistant neighbors;
@@ -24,6 +25,7 @@ until the square-grid rendering is polished.
 ## Why not (yet)?
 
 **Impact scope** if actually implemented:
+
 - Engine: adjacency/pathfinding rebuild, all AI search, standing-order distance checks
 - Replay contract: action coordinates are serialized in every `GameState`; replay tests
   must cover all existing matches
@@ -51,6 +53,7 @@ Before committing to a hex implementation, the team should:
 ## Decision criteria
 
 Ship hex if and only if:
+
 - Operator judges the square-grid rendering (#347) insufficient after completion.
 - The effort estimate fits a future roadmap milestone.
 - The replay/content changes are acceptable (e.g., one-time migration for existing saved
