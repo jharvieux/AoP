@@ -5,6 +5,7 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
+  mapDistance,
   nextAiAction,
   pathCost,
   visibleState,
@@ -307,7 +308,7 @@ export function GameScreen({
     )
     if (enemyHere) {
       if (
-        chebyshevDistance(selectedCaptain.position, enemyHere.position) <= 1 &&
+        mapDistance(game.map, selectedCaptain.position, enemyHere.position) <= 1 &&
         selectedCaptain.movementPoints >= 1
       ) {
         setAttackTargetId(enemyHere.id)
@@ -321,7 +322,7 @@ export function GameScreen({
     if (cityHere && cityHere.ownerId !== viewer.id) {
       if (
         selectedCaptain &&
-        chebyshevDistance(selectedCaptain.position, cityHere.position) <= 1 &&
+        mapDistance(game.map, selectedCaptain.position, cityHere.position) <= 1 &&
         selectedCaptain.movementPoints >= 1 &&
         selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0
       ) {
@@ -337,7 +338,7 @@ export function GameScreen({
     )
     if (encounterHere) {
       if (
-        chebyshevDistance(selectedCaptain.position, encounterHere.position) <= 1 &&
+        mapDistance(game.map, selectedCaptain.position, encounterHere.position) <= 1 &&
         selectedCaptain.movementPoints >= 1
       ) {
         setEncounterId(encounterHere.id)

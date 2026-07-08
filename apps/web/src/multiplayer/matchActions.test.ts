@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { PlayerView, ViewCaptain, ViewCity } from '@aop/engine'
+import {
+  hexDistance,
+  type GameMap,
+  type PlayerView,
+  type ViewCaptain,
+  type ViewCity,
+} from '@aop/engine'
+import type { Coord } from '@aop/shared'
 import {
   applyOptimisticMove,
   captainFromView,
@@ -186,6 +193,107 @@ describe('interpretTileClick (#261: the PlayerView analog of GameScreen tile han
   it('ignores a selection id that is not an own captain (stale/forged selection)', () => {
     const v = view()
     expect(interpretTileClick(v, mapOf(v), 'cap-near', 1, 0)).toBeNull()
+  })
+})
+
+describe('interpretTileClick on a hex map (#370: mapDistance, not chebyshevDistance)', () => {
+  // Odd-r hex topology (see engine `hex.ts`): a tile that is Chebyshev-adjacent
+  // (within one row/col) is not always a true hex neighbor. The viewer's
+  // captain sits at (2,2) — an even row — whose six true hex neighbors are
+  // (3,2)/(2,1)/(1,1)/(1,2)/(1,3)/(2,3). (3,1) and (3,3) are Chebyshev-1 but
+  // hex-distance-2: exactly the divergence #370 fixed (client used to open
+  // the attack sheet on these, then the engine bounced it with InvalidActionError).
+  const hexMap: GameMap = {
+    width: 5,
+    height: 5,
+    tiles: Array.from({ length: 25 }, () => ({ type: 'shallows' as const, island: -1 })),
+    startPositions: [],
+    topology: 'hex',
+  }
+
+  function hexView(enemyPosition: Coord): PlayerView {
+    return {
+      viewerId: 'seat-0',
+      round: 1,
+      currentPlayerIndex: 0,
+      status: 'active',
+      winnerId: null,
+      rules: { setup: {} as PlayerView['rules']['setup'], mapSize: 'small' },
+      mapWidth: 5,
+      mapHeight: 5,
+      tiles: [],
+      players: [
+        {
+          id: 'seat-0',
+          name: 'Anne',
+          faction: 'pirates',
+          isAI: false,
+          eliminated: false,
+          reputation: 0,
+        },
+        {
+          id: 'seat-1',
+          name: 'Bart',
+          faction: 'british',
+          isAI: false,
+          eliminated: false,
+          reputation: 0,
+        },
+      ],
+      cities: [],
+      captains: [
+        {
+          id: 'cap-own',
+          ownerId: 'seat-0',
+          name: 'Anne',
+          position: { x: 2, y: 2 },
+          shipClassId: 'sloop',
+          troops: [{ unitId: 'swashbuckler', count: 6 }],
+          movementPoints: 2,
+          maxMovementPoints: 3,
+          xp: 0,
+          skills: [],
+          shipUpgrades: {},
+          captured: false,
+        },
+        {
+          id: 'cap-enemy',
+          ownerId: 'seat-1',
+          name: 'Bart',
+          position: enemyPosition,
+          shipClassId: 'sloop',
+          captured: false,
+        },
+      ],
+      encounters: [],
+      alliances: { allies: [], outgoingProposals: [], incomingProposals: [] },
+      rngState: null,
+    }
+  }
+
+  it('does not open an attack on a Chebyshev-adjacent tile that is hex-distance 2', () => {
+    expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 1 })).toBe(2)
+    expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 3 })).toBe(2)
+    expect(interpretTileClick(hexView({ x: 3, y: 1 }), hexMap, 'cap-own', 3, 1)).toBeNull()
+    expect(interpretTileClick(hexView({ x: 3, y: 3 }), hexMap, 'cap-own', 3, 3)).toBeNull()
+  })
+
+  it('opens an attack on every true hex neighbor', () => {
+    const neighbors: Coord[] = [
+      { x: 3, y: 2 },
+      { x: 2, y: 1 },
+      { x: 1, y: 1 },
+      { x: 1, y: 2 },
+      { x: 1, y: 3 },
+      { x: 2, y: 3 },
+    ]
+    for (const n of neighbors) {
+      expect(hexDistance({ col: 2, row: 2 }, { col: n.x, row: n.y })).toBe(1)
+      expect(interpretTileClick(hexView(n), hexMap, 'cap-own', n.x, n.y)).toEqual({
+        kind: 'attack',
+        targetCaptainId: 'cap-enemy',
+      })
+    }
   })
 })
 
