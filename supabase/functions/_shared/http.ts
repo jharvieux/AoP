@@ -56,10 +56,14 @@ export function jsonResponse(body: unknown, status = 200): Response {
  * Turn any thrown value into the error envelope. Deliberately terse: a
  * `SEQ_CONFLICT` (or any rejection) carries no action content, so it can never
  * become a side channel for an opponent's move (§7 leak-audit checklist).
- * INTERNAL errors (#337) never leak raw database error messages to the client.
+ * INTERNAL errors (#337) never leak raw database error messages to the client,
+ * but are logged server-side for debugging.
  */
 export function errorResponse(err: unknown): Response {
   if (err instanceof AppError) {
+    if (err.code === 'INTERNAL') {
+      console.error('Internal error', err.message)
+    }
     const message = err.code === 'INTERNAL' ? 'Internal error' : err.message
     return jsonResponse({ error: { code: err.code, message } }, STATUS[err.code])
   }
@@ -67,7 +71,7 @@ export function errorResponse(err: unknown): Response {
   // domain failure. Log it for the pull-logs and report it to Sentry (#252).
   console.error('Unexpected error', err)
   reportUnexpectedError(err)
-  return jsonResponse({ error: { code: 'INTERNAL', message: 'Internal error' } }, STATUS.INTERNAL)
+  return jsonResponse({ error: { code: 'INTERNAL', message: 'Unexpected error' } }, STATUS.INTERNAL)
 }
 
 /** Standard preflight + method guard. Returns a Response to short-circuit, or null to proceed. */
