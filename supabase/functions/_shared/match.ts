@@ -387,6 +387,31 @@ export function sanitizeAction(action: Action): Action {
           ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
           : {}),
       }
+    case 'setSailOrder':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        destination: reqCoord(action.destination, 'destination'),
+        ...(action.targetId !== undefined
+          ? { targetId: reqString(action.targetId, 'targetId') }
+          : {}),
+        ...(action.targetKind !== undefined
+          ? {
+              targetKind: reqEnum(
+                action.targetKind,
+                ['captain', 'city', 'encounter'] as const,
+                'targetKind',
+              ),
+            }
+          : {}),
+      }
+    case 'clearSailOrder':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+      }
     default: {
       // Compile-time exhaustiveness guard; at runtime this is a hostile
       // client's unknown type string, so reject the request, not the server.

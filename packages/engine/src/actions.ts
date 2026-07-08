@@ -8,6 +8,7 @@ import type { Coord } from '@aop/shared'
 import type { BoardCommand, BoardOrder } from './battleBoard'
 import type { EncounterChoice } from './content'
 import type { StandingOrder, TacticId } from './tactics'
+import type { SailTargetKind } from './types'
 
 export interface EndTurnAction {
   type: 'endTurn'
@@ -85,6 +86,32 @@ export interface AttackCityAction {
   captainId: string
   targetCityId: string
   boardCommands?: BoardCommand[]
+}
+
+/**
+ * Give a captain a standing multi-turn sail order (#372): sail toward
+ * `destination` (or intercept the entity named by `targetId`/`targetKind`),
+ * auto-continuing at the start of each of the owner's turns until it arrives,
+ * runs out of navigable water, or a new contact comes into view. Spends this
+ * turn's movement immediately (the first leg), exactly as if the captain had
+ * been ordered as far along the route as its points allow. Replaces any
+ * existing order on the captain, clearing a prior interrupt.
+ */
+export interface SetSailOrderAction {
+  type: 'setSailOrder'
+  playerId: string
+  captainId: string
+  destination: Coord
+  /** Intercept this entity instead of a fixed tile; requires {@link targetKind}. */
+  targetId?: string
+  targetKind?: SailTargetKind
+}
+
+/** Cancel a captain's standing sail order (#372). No-op-safe: valid even if none is set. */
+export interface ClearSailOrderAction {
+  type: 'clearSailOrder'
+  playerId: string
+  captainId: string
 }
 
 /**
@@ -241,6 +268,8 @@ export type Action =
   | MoveCaptainAction
   | AttackCaptainAction
   | AttackCityAction
+  | SetSailOrderAction
+  | ClearSailOrderAction
   | SetStandingOrdersAction
   | ConstructBuildingAction
   | RecruitUnitAction
