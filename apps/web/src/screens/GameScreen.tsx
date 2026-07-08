@@ -22,7 +22,7 @@ import {
   type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import { canAfford, chebyshevDistance, type Coord } from '@aop/shared'
+import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
@@ -123,6 +123,23 @@ interface GameScreenProps {
   onWatchSlot: (slotId: string) => void
   /** True once autosave has failed and hasn't succeeded since (#237). */
   autosaveFailing: boolean
+}
+
+/**
+ * The viewer's own captain docked at (adjacent to) a given city, if any — gates
+ * recruit/load-troops/unload-troops/standing-order actions. Extracted as a pure
+ * function so `mapDistance` topology-awareness (#385, same hex-distance-2 bug as
+ * #370) is unit-testable without rendering the component.
+ */
+export function findViewerCaptainAtCity(
+  captains: GameState['captains'],
+  map: GameState['map'],
+  viewerId: string,
+  cityPosition: Coord,
+): GameState['captains'][number] | undefined {
+  return captains.find(
+    (c) => c.ownerId === viewerId && mapDistance(map, c.position, cityPosition) <= 1,
+  )
 }
 
 export function GameScreen({
@@ -297,9 +314,7 @@ export function GameScreen({
   const viewerCity =
     viewerCities.find((c) => c.id === selectedCityId) ?? viewerCities[0] ?? undefined
   const viewerCaptainAtCity = viewerCity
-    ? game.captains.find(
-        (c) => c.ownerId === viewer.id && chebyshevDistance(c.position, viewerCity.position) <= 1,
-      )
+    ? findViewerCaptainAtCity(game.captains, game.map, viewer.id, viewerCity.position)
     : undefined
   // Every captain the viewer owns, so the city sheet's fleet list (#114) can
   // break the army out one row per captain instead of just the docked one.
