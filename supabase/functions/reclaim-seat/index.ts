@@ -1,9 +1,10 @@
-// reclaim-seat (docs/MULTIPLAYER.md §8, #134): POST { matchId } -> { seat }. A returning
+// reclaim-seat (docs/MULTIPLAYER.md §8, #134, #335): POST { matchId } -> { seat }. A returning
 // human flips their own seat from ai_takeover back to active and zeroes missed_turns —
-// always allowed (§8: "the mechanism protects the other seven players, it doesn't punish
-// the returner"). This has to be its own endpoint: the AI auto-play loop (#133) ends an
-// ai_takeover seat's turn inside the *prior* player's submit-action transaction, so the
-// returning human never gets a natural submit-action window to act their way back in.
+// only allowed when the seat is in ai_takeover status to prevent a grief vector (#335)
+// where a player periodically reclaims to reset missed_turns without submitting actions,
+// defeating AFK protection. This has to be its own endpoint: the AI auto-play loop (#133)
+// ends an ai_takeover seat's turn inside the *prior* player's submit-action transaction,
+// so the returning human never gets a natural submit-action window to act their way back in.
 
 import { canReclaimSeat, reclaimSeatUpdate } from '@aop/shared'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
