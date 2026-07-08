@@ -69,27 +69,26 @@
   --font-body: Cabin, system-ui, -apple-system, sans-serif;
 
   /* App chrome — the in-game HUD/menu palette. Recolored to the Weathered
-     Parchment & Rope palette above (#345); the world-map/battle-board groups
-     below stay on their original (diegetic) values per the same decision —
-     see cssToken() in colorTokens.ts for the canvas side, which can't consume
-     var() directly. --color-gold is unified with --accent (was a second,
-     slightly different gold; #345/D-023). */
+     Parchment & Rope palette above (#345); diegetic map/battle-board colors
+     (--color-gold, --color-success, --color-alert-border) kept at original
+     blue-steel values per D-023/D-026 and #345 scope — see cssToken() in
+     colorTokens.ts, which reads these for world-map ship/port/city/editor markers. */
   --color-bg: #1c1206;
   --color-bg-panel: #2c1d0f;
   --color-bg-panel-alt: #26190c;
   --color-bg-input: #150d05;
   --color-bg-raised: #3c2814;
   --color-border: #6b4a2a;
-  --color-gold: #c8962c;
+  --color-gold: #c9a227;
   --color-text: #f3e6c8;
   --color-text-on-gold: #2c1810;
   --color-danger: #8a2e1f;
   --color-danger-text: #f6e9dd;
   --color-defeat: #d9604a;
   --color-warn: #dd8355;
-  --color-success: #8cb45a;
+  --color-success: #3be2a1;
   --color-alert-bg: #4a1810;
-  --color-alert-border: #d9604a;
+  --color-alert-border: #e23b3b;
   --color-fog: #0b1a26;
   --color-deep-water: #1b4a6b;
   --color-white: #fff;
