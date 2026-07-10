@@ -342,8 +342,9 @@ by initiative and each activation belongs to exactly one side, so at most one se
 ever awaiting a `BoardCommand` at a time — the melee needs no simultaneity handling, only
 per-side command lists.
 
-**Engine delta (belongs to the probe-extraction PR 1, consumed by #408):** the recording
-probe must support _both_ sides recording, and must report **which seat(s) are pending**
+**Engine delta (a follow-on to the now-merged probe module `packages/engine/src/probe.ts`,
+which shipped only a single-seat sentinel in PR 1; this two-seat extension lands on top of
+it with #408):** the recording probe must support _both_ sides recording, and must report **which seat(s) are pending**
 for the current naval round. Because both sides' `TacticContext` for round N are pure
 projections of the same round-start `RoundView` (independent of either current-round
 pick), `chooseTactics` can evaluate both drivers in a _collect_ pass: an exhausted
