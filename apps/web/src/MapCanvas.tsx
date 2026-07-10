@@ -12,6 +12,7 @@ import { FACTIONS } from '@aop/content'
 import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
 import {
   Assets,
+  BlurFilter,
   Container,
   Graphics,
   Sprite,
@@ -23,7 +24,7 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
-import { smoothLoop, traceRegionLoops } from './paintedWorld'
+import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
@@ -152,6 +153,15 @@ const WATER_TYPES = new Set(['deep', 'shallows'])
 // Fraction of explored water cells that carry a drifting sun-glint sprite; the
 // ambient ticker (#298) oscillates their alpha so the ocean reads as moving.
 const GLINT_DENSITY = 0.14
+// Slow caustic blobs (#405): a sparser water subset than the glints, selected
+// from the TOP of the hash range so the two sets never overlap (glints take
+// `tileHash < GLINT_DENSITY`, caustics `tileHash > CAUSTIC_MIN_HASH`).
+const CAUSTIC_MIN_HASH = 0.95
+// Terrain washes over land (#404): darker discs over "forest" cells and a
+// lighter warm-green over "clearing" cells, thresholds aligned with the
+// existing speckle cutoff so vegetation and flecks agree.
+const FOREST_WASH_COLOR = 0x2f5426
+const CLEARING_WASH_COLOR = 0x9ab873
 
 /** A stable [0,1) value per integer tile — the seed for that tile's rendering variant. */
 function tileHash(x: number, y: number): number {
@@ -187,6 +197,27 @@ function tileBrightness(x: number, y: number, spread: number): number {
 }
 
 const isLandType = (t: string): boolean => t === 'land' || t === 'port'
+
+/**
+ * A white → transparent diagonal gradient texture (#402). Painted once into an
+ * offscreen canvas because Texture.WHITE is uniform and can't by itself encode a
+ * light *direction*; a Sprite of this texture tinted warm and blended soft-light
+ * gives the whole map one consistent top-left light. Static — generated once at
+ * scene setup, never per frame.
+ */
+function makeLightTexture(): Texture {
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const gradient = ctx.createLinearGradient(0, 0, size, size)
+  gradient.addColorStop(0, 'rgba(255,255,255,1)')
+  gradient.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, size, size)
+  return Texture.from(canvas)
+}
 
 // The uncharted world (#394): everything outside the explored region — fogged
 // map cells and the void beyond the map edge alike — renders as one darker
@@ -354,6 +385,12 @@ export function MapCanvas(props: MapCanvasProps) {
   const ambientTileSpritesRef = useRef(
     new Map<string, { sprite: Sprite; kind: 'water' | 'port' }>(),
   )
+  // Slow water caustics (#405): recorded per on-screen blob so the ambient tick
+  // can drift each one and oscillate its alpha on a much longer period than the
+  // glints — no Graphics rebuild, just property writes.
+  const causticSpritesRef = useRef(
+    new Map<string, { sprite: Sprite; baseX: number; baseY: number }>(),
+  )
   const shipSpritesRef = useRef(new Map<string, { sprite: Sprite; baseX: number; baseY: number }>())
   const hasSelectionRef = useRef(false)
 
@@ -446,6 +483,13 @@ export function MapCanvas(props: MapCanvasProps) {
     // coastline, so islands have organic silhouettes no matter how blocky the
     // cell art underneath is.
     const knownSea = new Graphics()
+    // Slow caustic layer (#405): big soft light blobs over open water, one blur
+    // pass on the whole container (not per sprite), composited soft-light so it
+    // reads as light playing under the surface. Sits above the dark ocean fill
+    // and below land/fog, so fog dimming still grades over it correctly.
+    const caustics = new Container()
+    caustics.blendMode = 'soft-light'
+    caustics.filters = [new BlurFilter({ strength: 10, quality: 2 })]
     const landGroup = new Container()
     const landMask = new Graphics()
     const tileSprites = new Container() // land/port tile art, clipped by landMask
@@ -478,6 +522,7 @@ export function MapCanvas(props: MapCanvasProps) {
     // Fog overlay drawn after entities so it can feather over all content.
     world.addChild(
       knownSea,
+      caustics,
       landMask,
       landGroup,
       wash,
@@ -494,6 +539,43 @@ export function MapCanvas(props: MapCanvasProps) {
       selectionPulse,
     )
     pixiApp.stage.addChild(world)
+
+    // Screen-fixed overlays (#401/#402): added to the stage above `world`, so
+    // they never pan or zoom. `light` is a single soft-light gradient sprite
+    // that gives the whole map one consistent top-left light direction;
+    // `vignette` darkens the frame edge so the world reads as receding into the
+    // uncharted dark rather than stopping at a flat plane. Both are laid out
+    // (sized/redrawn) only on renderer resize — never per frame.
+    const lightTexture = makeLightTexture()
+    const light = new Sprite(lightTexture)
+    light.tint = 0xfff8e0
+    light.alpha = 0.06
+    light.blendMode = 'soft-light'
+    const vignette = new Graphics()
+    pixiApp.stage.addChild(light, vignette)
+
+    function layoutScreenOverlays() {
+      const sw = pixiApp.renderer.screen.width
+      const sh = pixiApp.renderer.screen.height
+      light.width = sw
+      light.height = sh
+      // Fake a radial gradient with concentric inset rings whose alpha falls off
+      // by ~15% of the shorter side — Pixi Graphics has no native gradient, the
+      // same layered-stroke trick knownSea's halo uses.
+      vignette.clear()
+      const rings = 6
+      const step = (Math.min(sw, sh) * 0.15) / rings
+      for (let i = 0; i < rings; i++) {
+        const inset = i * step
+        vignette.rect(inset, inset, sw - inset * 2, sh - inset * 2).stroke({
+          width: step * 1.1,
+          color: FOG_COLOR,
+          alpha: 0.5 * (1 - i / rings),
+          alignment: 1, // inside the screen rect (Pixi v8: 1 = inside)
+        })
+      }
+    }
+    layoutScreenOverlays()
 
     // Terrain geometry cache (#393). GameScreen/playerViewBoard build a fresh
     // exploredKeys Set on every state update, so keying on Set identity would
@@ -536,6 +618,7 @@ export function MapCanvas(props: MapCanvasProps) {
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const glintPool = new SpritePool(glintSprites)
+    const causticPool = new SpritePool(caustics)
     const cityPool = new SpritePool(citySprites)
     const encounterPool = new SpritePool(encounterSprites)
     const shipPool = new SpritePool(shipSprites)
@@ -644,6 +727,7 @@ export function MapCanvas(props: MapCanvasProps) {
       // are (re)assigned this pass, so the ambient tick always nudges exactly
       // what's currently on screen.
       ambientTileSpritesRef.current.clear()
+      causticSpritesRef.current.clear()
       shipSpritesRef.current.clear()
 
       const geom = paintedGeometry(map, exploredKeys)
@@ -656,6 +740,7 @@ export function MapCanvas(props: MapCanvasProps) {
       fog.clear()
       tilePool.begin()
       glintPool.begin()
+      causticPool.begin()
 
       // The known world (#394): fill the explored region with the full ocean
       // color over the darker uncharted background, ringed by two soft halo
@@ -681,9 +766,21 @@ export function MapCanvas(props: MapCanvasProps) {
       for (const loop of geom.coastLoops) {
         // Water side first: a wide translucent foam band, then a tighter sand
         // rim, then a crisp shoreline — layered strokes centred on the same
-        // curve read as a beach gradient without any per-cell art.
-        coast.poly(loop.points).stroke({ width: TILE * 0.5, color: SURF_COLOR, alpha: 0.16 })
-        coast.poly(loop.points).stroke({ width: TILE * 0.24, color: SAND_COLOR, alpha: 0.55 })
+        // curve read as a beach gradient without any per-cell art. The foam and
+        // sand are stroked in short overlapping runs (#403) whose alpha is
+        // jittered per-run by `tileHash` of the run's first point, so the surf
+        // breathes unevenly along the shore instead of reading as one uniform
+        // outline. The shore hairline stays a single uniform loop so the
+        // silhouette stays crisp.
+        for (const run of loopStrokeRuns(loop.points, 6)) {
+          const jitter = 0.7 + tileHash(Math.round(run[0]!), Math.round(run[1]!)) * 0.6
+          coast
+            .poly(run, false)
+            .stroke({ width: TILE * 0.5, color: SURF_COLOR, alpha: 0.16 * jitter })
+          coast
+            .poly(run, false)
+            .stroke({ width: TILE * 0.24, color: SAND_COLOR, alpha: 0.55 * jitter })
+        }
         coast.poly(loop.points).stroke({ width: 1.5, color: SHORE_COLOR, alpha: 0.6 })
       }
 
@@ -720,6 +817,20 @@ export function MapCanvas(props: MapCanvasProps) {
               sprite.tint = 0xdff1fa
               ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
             }
+            // Slow caustics (#405): a sparser subset than the glints (disjoint
+            // by hash range) carries a big soft blob the ambient tick drifts and
+            // fades on a long period — the ocean's large-scale "light under the
+            // surface". The container's blur + soft-light do the rest.
+            if (tileHash(x, y) > CAUSTIC_MIN_HASH) {
+              const sprite = causticPool.get(key)
+              sprite.texture = Texture.WHITE
+              sprite.width = TILE * 2.5
+              sprite.height = TILE * 2.5
+              sprite.tint = 0xeaf4fb
+              const c = centerOf(x, y)
+              sprite.position.set(c.x, c.y)
+              causticSpritesRef.current.set(key, { sprite, baseX: c.x, baseY: c.y })
+            }
             continue
           }
 
@@ -754,6 +865,28 @@ export function MapCanvas(props: MapCanvasProps) {
               base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
             fillCell(landDetail, x, y, { color, alpha: 1 })
           }
+          // Terrain washes (#404): the same soft-disc trick the shallows wash
+          // uses, over land and clipped by landGroup's coastline mask, so large
+          // islands break into organic forest/clearing patches instead of one
+          // uniform green. Adjacent same-hash cells overlap (radius > cell
+          // pitch) and merge with no visible cell boundary. Drawn before the
+          // speckles so the flecks sit on top of the forest wash.
+          if (tile.type === 'land') {
+            const c = centerOf(x, y)
+            const hash = tileHash(x, y)
+            if (hash > 0.55) {
+              landDetail
+                .circle(c.x, c.y, TILE * 0.9)
+                .fill({ color: FOREST_WASH_COLOR, alpha: 0.25 })
+              landDetail
+                .circle(c.x, c.y, TILE * 0.55)
+                .fill({ color: FOREST_WASH_COLOR, alpha: 0.25 })
+            } else if (hash < 0.2) {
+              landDetail
+                .circle(c.x, c.y, TILE * 0.85)
+                .fill({ color: CLEARING_WASH_COLOR, alpha: 0.14 })
+            }
+          }
           // Terrain speckles (#393): sparse darker flecks so large landmasses
           // read as vegetated ground, not a repeated texture.
           if (tile.type === 'land' && tileHash(x, y) > 0.55) {
@@ -768,6 +901,7 @@ export function MapCanvas(props: MapCanvasProps) {
       }
       tilePool.end()
       glintPool.end()
+      causticPool.end()
 
       // Movement-range shading (#371): a translucent fill + outline per tile in
       // each of the three overlay sets. Rebuilt every draw, but the draw only
@@ -1248,6 +1382,7 @@ export function MapCanvas(props: MapCanvasProps) {
     // (resizeTo: container in usePixiApp) without moving the camera or
     // touching props, so the dirty flag needs its own nudge here too.
     function onResize() {
+      layoutScreenOverlays()
       dirtyRef.current = true
     }
 
@@ -1276,6 +1411,18 @@ export function MapCanvas(props: MapCanvasProps) {
         const swing = kind === 'water' ? 0.12 : 0.06
         const speed = kind === 'water' ? 1.6 : 0.8
         sprite.alpha = base * (1 - swing + swing * (0.5 + 0.5 * Math.sin(t * speed + phase)))
+      }
+      // Slow caustics (#405): drift each blob a few px along a per-tile direction
+      // over a ~20s period and oscillate its alpha on a much longer, out-of-sync
+      // period than the glints, so the ocean's large-scale light keeps moving at
+      // rest. Placement is deterministic; only the wall-clock phase animates.
+      for (const [key, { sprite, baseX, baseY }] of causticSpritesRef.current) {
+        const [xs, ys] = key.split(',')
+        const hash = tileHash(Number(xs), Number(ys))
+        const angle = hash * Math.PI * 2
+        const drift = Math.sin(t * 0.31 + hash * 6.28) * 4
+        sprite.position.set(baseX + Math.cos(angle) * drift, baseY + Math.sin(angle) * drift)
+        sprite.alpha = 0.05 * (0.55 + 0.45 * Math.sin(t * 0.17 + hash * 6.28))
       }
       for (const [id, { sprite, baseX, baseY }] of shipSpritesRef.current) {
         let hash = 0
@@ -1319,8 +1466,11 @@ export function MapCanvas(props: MapCanvasProps) {
       canvas.removeEventListener('pointerleave', onPointerLeave)
       canvas.removeEventListener('wheel', onWheel)
       if (pixiApp.renderer) pixiApp.renderer.off('resize', onResize)
-      if (pixiApp.stage) pixiApp.stage.removeChild(world)
+      if (pixiApp.stage) pixiApp.stage.removeChild(world, light, vignette)
       world.destroy({ children: true })
+      light.destroy()
+      vignette.destroy()
+      lightTexture.destroy(true)
       controlsRef.current = null
     }
   }, [app])
