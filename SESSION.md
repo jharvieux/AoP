@@ -1,48 +1,56 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-07 (naval-navigation UX issue batch, D-027)._
+_Last updated: 2026-07-10 (map-polish + issue sweep: 8 PRs merged, D-028/D-029)._
 
 ## Just completed
 
-**Naval-navigation UX batch (D-027): seven ready-to-execute, model-labeled issues filed — no code changes this session.**
+**Full issue sweep (2026-07-10): 13 issues closed across 8 merged PRs, all audited
+(pre-pr-reviewer) and CI-green; production Vercel deploy READY on the final main.**
 
-The operator reported naval navigation is hard to understand and requested six
-improvements; each was designed against the actual code (two parallel exploration passes
-over `apps/web` map UI and `packages/engine` movement/combat/visibility) and filed:
+| PR   | Scope                                                              | Issues closed          |
+| ---- | ------------------------------------------------------------------ | ---------------------- |
+| #406 | docs: map-polish design specs (`docs/design/UI/`)                  | —                      |
+| #411 | Map polish: vignette, light, coast foam, land washes, caustics     | #401–#405              |
+| #412 | D-028: battle-sessions design approved (operator answers)          | —                      |
+| #413 | Probe extraction into `@aop/engine` (battle sessions step 1)       | #321 (with #412/#416)  |
+| #415 | Naval navigation/targeting client UI (+ conflict-resolve vs #413)  | #371 #372 #375 #376    |
+| #416 | §10 interactive-defender design extension + D-029 sign-off         | #410                   |
+| #417 | Multiplayer approach-and-attack parity (audit warnings fixed)      | #414                   |
+| #419 | `match_battle_sessions` two-seat schema + RLS (migration file)     | #407                   |
+| #420 | Engine: server-authored `defenderOrders` on `attackCaptain`        | #418                   |
 
-| #    | Title (short)                                               | Tier   | Pri |
-| ---- | ----------------------------------------------------------- | ------ | --- |
-| #370 | BUG: client chebyshev vs engine hex `mapDistance` adjacency | sonnet | P1  |
-| #371 | Movement-range shading on selection (green/red/yellow)      | opus   | P1  |
-| #372 | Engine multi-turn sail orders + fog-of-war interrupts       | opus   | P1  |
-| #375 | Dotted course preview, this-turn vs later-turn dots         | sonnet | P1  |
-| #376 | Target ships/cities/encounters from any distance            | sonnet | P1  |
-| #373 | Multi-city ownership audit (AI/economy/UI)                  | sonnet | P2  |
-| #374 | Defeated captain's ship joins winner's fleet (prizes)       | opus   | P2  |
+Also closed without code: #384 (branch protection already had `format-check-only` —
+verified via API), #373/#374 (already shipped in PR #383; missing "Closes" keywords had
+left them open).
 
-#370 was a bug discovered during exploration (likely part of the operator's targeting
-complaint), not one of the six requests.
+Key decisions this session: **D-028** (battle sessions approved: 3–5 min deadline,
+cyclic forced finish, interactive defender) and **D-029** (seven defender-seat product
+decisions, operator "Approve all"), plus the operator-approved replay-contract expansion
+(#418: defender picks ride the logged action, server-authored).
 
 ## In flight
 
-None.
+None. Sweep ledger deleted; no open `auto-triaged` PRs.
 
 ## Next step
 
-Execute the batch in dependency order: **#370 first** (small correctness fix), then
-**#371 + #372** (engine foundations: `reachableTiles`, sail orders), then **#375 + #376**
-(course preview and any-distance targeting build on both). #373 and #374 can run anytime.
-Carry-over: operator review of the #321 multiplayer tactical probe design still pending.
+**#408 (edge functions: battle-session open/round/resolve + BATTLE_PENDING guard)** — now
+unblocked: design (§10), schema (#419), and engine support (#420) are all on main. Then
+**#409** (MatchScreen wiring). Both carry the D-028/D-029 decisions in their bodies.
+When #408 ships, remember `deploy.yml` is manual-dispatch — edge functions and the
+`match_battle_sessions` migration reach the real Supabase project only when the operator
+runs it (no production Supabase project exists yet per supabase/README.md).
 
 ## Blocked on user
 
-- Optional vetoes on product defaults embedded in the designs (see D-027): no auto-attack
-  on intercept arrival (#372); prize ships join empty-crewed, no prize on failed city
-  assaults (#374).
-- Carry-over: #321 design go/no-go; stale `.claude/worktrees/*` cleanup (local prettier
-  blocker, not CI-critical).
+- Stale `.claude/worktrees/*` cleanup (~70 leftover worktrees from old sweeps; needs
+  explicit permission to delete).
+- The `needs-human-fix` backlog: #362 (CI docs-only fast path), #98/#100/#156/#159/#160/
+  #161 (Capacitor/native), #4 (Phase 3 epic).
 
 ## Open questions
 
-None beyond the in-issue defaults above.
+- #410's interactive-defender extension pulled a "both online" flow into scope earlier
+  than the base design recommended; if async pacing suffers in playtests, D-029's
+  presence-gated grace (offline defender = zero added latency) is the knob to revisit.
