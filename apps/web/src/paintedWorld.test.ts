@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { generateMap, mapNeighbors, mapTopology } from '@aop/engine'
-import { neighborAcrossEdge, smoothLoop, traceRegionLoops } from './paintedWorld'
+import { loopStrokeRuns, neighborAcrossEdge, smoothLoop, traceRegionLoops } from './paintedWorld'
 
 const TILE = 32
 
@@ -94,5 +94,35 @@ describe('smoothLoop', () => {
       expect(smoothed[i + 1]!).toBeGreaterThanOrEqual(0)
       expect(smoothed[i + 1]!).toBeLessThanOrEqual(32)
     }
+  })
+})
+
+describe('loopStrokeRuns', () => {
+  // A 6-point loop (12 numbers): points 0..5.
+  const loop = [0, 0, 10, 0, 20, 0, 20, 10, 10, 10, 0, 10]
+
+  it('covers every segment including the wrap back to the start', () => {
+    const runs = loopStrokeRuns(loop, 3)
+    // Each run overlaps the next by one point, so the union of run endpoints
+    // must include the start point twice: once opening the first run, once
+    // closing the last.
+    const first = runs[0]!
+    const last = runs[runs.length - 1]!
+    expect([first[0], first[1]]).toEqual([0, 0])
+    expect([last[last.length - 2], last[last.length - 1]]).toEqual([0, 0])
+  })
+
+  it('consecutive runs share exactly one point (no gaps, no skipped edges)', () => {
+    const runs = loopStrokeRuns(loop, 3)
+    for (let i = 1; i < runs.length; i++) {
+      const prev = runs[i - 1]!
+      const cur = runs[i]!
+      expect([cur[0], cur[1]]).toEqual([prev[prev.length - 2], prev[prev.length - 1]])
+    }
+  })
+
+  it('returns nothing for a degenerate loop or runLength < 2', () => {
+    expect(loopStrokeRuns([0, 0], 4)).toEqual([])
+    expect(loopStrokeRuns(loop, 1)).toEqual([])
   })
 })
