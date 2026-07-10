@@ -1,4 +1,12 @@
-import type { Action, BattleReport, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
+import type {
+  Action,
+  BattleReport,
+  BoardCommand,
+  EncounterChoice,
+  EncounterKind,
+  PlayerView,
+  TacticId,
+} from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import type { Coord } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -24,9 +32,13 @@ import {
   matchAction,
   ownCaptains,
 } from '../multiplayer/matchActions'
-import { MatchActionClient } from '../multiplayer/matchActionClient'
+import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
+import { BattleSessionClient, type BattleSessionOutcome } from '../multiplayer/battleSessionClient'
+import { BattleSessionFlow } from '../multiplayer/battleSessionFlow'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
 import { classifyRangeOverlay } from '../shipRange'
+import { TacticalRoundSheet } from '../TacticalRoundSheet'
+import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   createMatchRealtimeTransport,
   supabaseRealtimeClient,
@@ -107,6 +119,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Structured result of the viewer's own last attack (#285), for the battle
   // report sheet — derived output, never part of the polled view.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
+  // Interactive-combat session (#408/#409, docs/design/multiplayer-tactical-probe.md): the
+  // driver holds the running per-side CAS counters; `battleOutcome` is the engine context to
+  // render (a naval round or a melee activation), null when no battle is being played out.
+  const [battleFlow, setBattleFlow] = useState<BattleSessionFlow | null>(null)
+  const [battleOutcome, setBattleOutcome] = useState<BattleSessionOutcome | null>(null)
+  const [battleBusy, setBattleBusy] = useState(false)
   // The live `match:{id}` Realtime transport (#260) — also handed to the chat
   // panel so incoming-message pokes arrive without polling.
   const [transport, setTransport] = useState<MatchRealtimeTransport | null>(null)
@@ -116,6 +134,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Whether any view has ever loaded — ref, not state, because `refetch` is
   // captured once by the mount effect and must not read a stale `live`.
   const hasLoadedRef = useRef(false)
+  // One-shot guard for the resume-on-reconnect battle-context probe (#409).
+  const battleResumedRef = useRef(false)
 
   const config = resolveSupabaseConfig()
   const session = auth.state.status === 'authenticated' ? auth.state.session : null
@@ -207,6 +227,38 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     return () => clearInterval(id)
   }, [])
 
+  // Resume-on-reconnect (#409): once, after the first view loads in a tactical match, ask
+  // battle-context whether this seat has a battle in progress (a reload mid-fight, or a
+  // pending session the BATTLE_PENDING guard would otherwise wedge behind). Only tactical
+  // matches can hold a session, so non-tactical matches never make this call. The full
+  // reconnect story (live defender pickup) is #422.
+  useEffect(() => {
+    if (!live || !session || !config || battleResumedRef.current) return
+    if (live.view.rules.setup.battleResolution !== 'tactical') return
+    battleResumedRef.current = true
+    const flow = makeBattleFlow()
+    flow
+      .resume()
+      .then((outcome) => {
+        if (outcome.kind === 'awaitingTactic' || outcome.kind === 'awaitingCommand') {
+          setBattleFlow(flow)
+          setBattleOutcome(outcome)
+        }
+      })
+      .catch((err) => {
+        // Only the expected quiet cases are swallowed: no session in progress (MATCH_STATE)
+        // or this seat isn't a participant (NOT_A_PARTICIPANT). Any OTHER failure (network,
+        // server error) is a real problem — surface it through the same actionError UI every
+        // other MatchScreen write path uses, rather than swallowing it invisibly (fail loud).
+        const code = err instanceof MatchActionError ? err.code : undefined
+        if (code === 'MATCH_STATE' || code === 'NOT_A_PARTICIPANT') return
+        setActionError(
+          err instanceof Error ? err.message : 'Could not check for a battle in progress.',
+        )
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, session, config])
+
   // Turn-change notification (#35): haptic nudge + tab title while it's the
   // viewer's move, so a backgrounded tab still signals.
   useEffect(() => {
@@ -258,6 +310,99 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     } else {
       const err = outcome.error
       setActionError(err instanceof Error ? err.message : 'The action was rejected.')
+    }
+  }
+
+  // --- Interactive combat (#409): drive TacticalRoundSheet/BoardingCommandSheet from the
+  // #408 battle-session endpoints. A `battleResolution: 'tactical'` attacker plays the fight
+  // round by round; every other attack (and non-tactical matches) keeps today's one-shot
+  // `submit()` path. rngState never reaches the client — each pick is one round trip that
+  // returns the engine's own next decision context (BattleSessionFlow). The live interactive
+  // DEFENDER seat, boarding-loss highlighting, and tactical-after-approach are #422.
+
+  function makeBattleFlow(): BattleSessionFlow {
+    const client = new BattleSessionClient(config!)
+    return new BattleSessionFlow({
+      open: (p) => client.open(session!, { matchId, ...p }),
+      round: (p) => client.round(session!, { matchId, ...p }),
+      auto: () => client.auto(session!, { matchId }),
+      context: () => client.context(session!, { matchId }),
+    })
+  }
+
+  function applyBattleOutcome(flow: BattleSessionFlow, outcome: BattleSessionOutcome): void {
+    if (outcome.kind === 'resolved') {
+      setBattleFlow(null)
+      setBattleOutcome(null)
+      setLive((l) => (l ? { ...l, seq: outcome.seq, view: outcome.view } : l))
+      setBattleReport(outcome.battleReport)
+      void refetch()
+    } else if (outcome.kind === 'awaitingTactic' || outcome.kind === 'awaitingCommand') {
+      setBattleFlow(flow)
+      setBattleOutcome(outcome)
+    }
+    // 'recorded' is the defender-seat ack — the attacker driver never receives it.
+  }
+
+  function handleBattleError(err: unknown): void {
+    // A stale session (SEQ_CONFLICT) means the battle already resolved/deleted server-side:
+    // drop the local sheet and refetch. Every other failure keeps the sheet open so the
+    // player can retry the pick or hit auto-fight (the session is still live server-side).
+    if (err instanceof MatchActionError && err.isStale) {
+      setBattleFlow(null)
+      setBattleOutcome(null)
+      setActionError('The board changed — refreshed.')
+      void refetch()
+      return
+    }
+    setActionError(err instanceof Error ? err.message : 'The battle order was rejected.')
+  }
+
+  async function runBattleStep(step: () => Promise<BattleSessionOutcome>): Promise<void> {
+    if (battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    try {
+      const flow = battleFlow
+      if (!flow) return
+      applyBattleOutcome(flow, await step())
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
+    }
+  }
+
+  async function startTacticalBattle(
+    captainId: string,
+    targetCaptainId: string,
+    expectedSeq: number,
+  ): Promise<void> {
+    if (battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    const flow = makeBattleFlow()
+    try {
+      applyBattleOutcome(flow, await flow.open(expectedSeq, captainId, targetCaptainId))
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
+    }
+  }
+
+  async function autoFightBattle(): Promise<void> {
+    if (!battleFlow || battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    const flow = battleFlow
+    try {
+      const result = await flow.autoResolve()
+      applyBattleOutcome(flow, { kind: 'resolved', ...result })
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
     }
   }
 
@@ -448,6 +593,13 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     setAttackTargetId(null)
     setSelectedCaptainId(null)
     setPendingApproach(null)
+    // Tactical mode (#305/#409): an adjacent attack is played out round by round through a
+    // binding battle session instead of one-shot auto-resolution. Tactical-after-approach
+    // stays on the auto path below for now (opening a session after a same-turn move is #422).
+    if (!approach && view?.rules.setup.battleResolution === 'tactical' && live) {
+      void startTacticalBattle(captainId, targetCaptainId, live.seq)
+      return
+    }
     if (!approach) {
       void submit(matchAction.attack(view, captainId, targetCaptainId))
       return
@@ -712,6 +864,34 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           report={battleReport}
           playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
           onClose={() => setBattleReport(null)}
+        />
+      )}
+
+      {/* Interactive combat (#409): the naval round and the boarding activation, driven from
+          the #408 session. Same engine views single-player's probe feeds these sheets — the
+          `key` remounts each on a fresh context. Boarding-loss highlighting (the `losses`
+          diff, §5) is #422; multiplayer shows the activation without the since-last-order
+          delta for now. */}
+      {battleOutcome?.kind === 'awaitingTactic' && (
+        <TacticalRoundSheet
+          key={`t${battleOutcome.ctx.round}`}
+          ctx={battleOutcome.ctx}
+          onChoose={(tactic: TacticId) =>
+            void runBattleStep(() => battleFlow!.chooseTactic(tactic))
+          }
+          onAutoResolve={() => void autoFightBattle()}
+        />
+      )}
+
+      {battleOutcome?.kind === 'awaitingCommand' && (
+        <BoardingCommandSheet
+          key={`b${battleOutcome.view.round}-${battleOutcome.view.stack.id}`}
+          view={battleOutcome.view}
+          losses={[]}
+          onCommand={(command: BoardCommand) =>
+            void runBattleStep(() => battleFlow!.command(command))
+          }
+          onAutoResolve={() => void autoFightBattle()}
         />
       )}
 

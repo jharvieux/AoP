@@ -594,6 +594,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_battle_order: {
+        Args: {
+          p_column: string
+          p_element: Json
+          p_expected: number
+          p_match_id: string
+          p_set_interactive: boolean
+        }
+        Returns: number
+      }
       append_match_action: {
         Args: {
           p_action: Json

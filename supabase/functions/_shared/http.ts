@@ -19,6 +19,12 @@ export type ErrorCode =
   | 'BAD_REQUEST'
   | 'RATE_LIMITED'
   | 'ALREADY_OWNED'
+  // Battle sessions (#408, docs/design/multiplayer-tactical-probe.md §3): an
+  // interactive battle is open, so a state-advancing action is blocked; a stale
+  // per-side order CAS lost; or a non-participant seat tried to record a pick.
+  | 'BATTLE_PENDING'
+  | 'ORDERS_CONFLICT'
+  | 'NOT_A_PARTICIPANT'
   | 'INTERNAL'
 
 const STATUS: Record<ErrorCode, number> = {
@@ -31,6 +37,9 @@ const STATUS: Record<ErrorCode, number> = {
   BAD_REQUEST: 400,
   RATE_LIMITED: 429,
   ALREADY_OWNED: 409,
+  BATTLE_PENDING: 409,
+  ORDERS_CONFLICT: 409,
+  NOT_A_PARTICIPANT: 403,
   INTERNAL: 500,
 }
 

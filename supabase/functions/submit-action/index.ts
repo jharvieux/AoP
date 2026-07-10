@@ -16,6 +16,7 @@ import {
   seatPlayerId,
   submitAction,
 } from '../_shared/match.ts'
+import { assertNoBattlePending } from '../_shared/battleSession.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -38,6 +39,10 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
 
+    // A state-advancing action is blocked while this seat has an interactive battle
+    // open (docs/design/multiplayer-tactical-probe.md §2.2): it would advance state
+    // underneath the session's recorded prefix and desync it. BATTLE_PENDING.
+    await assertNoBattlePending(db, body.matchId, seat)
     await assertExpectedSeq(db, body.matchId, body.expectedSeq!)
 
     // Structural validation (#206) before the engine sees the payload: whitelist
