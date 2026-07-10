@@ -2,8 +2,10 @@
 
 _Design proposal for #321 (multiplayer Tactical naval mode) and the multiplayer
 interactive boarding melee (#293's underlying authority problem, referenced by #305).
-Companion to [MULTIPLAYER.md](../MULTIPLAYER.md) and D-015. Status: **proposal — requires
-operator review before implementation.**_
+Companion to [MULTIPLAYER.md](../MULTIPLAYER.md) and D-015. Status: **approved by the
+operator 2026-07-10 (D-028), with modified answers to §9** — implementation tracked in
+#407 (schema), #408 (edge functions), #409 (client), #410 (interactive-defender design
+extension)._
 
 ## 1. Problem statement
 
@@ -288,14 +290,20 @@ one stroke, and `ORDERS_CONFLICT` additionally fixes the probe-race class that c
    audit rows, threat-model row "probe retraction → sessions are binding"), and a
    D-NNN entry recording this decision once the operator approves the design.
 
-## 9. Open questions for the operator
+## 9. Open questions for the operator — ANSWERED 2026-07-10 (D-028)
 
 - Session deadline default (proposal: 10 minutes or remaining turn time, whichever is
   smaller) — is a mid-battle walk-away costing opponents up to 10 extra minutes
   acceptable for async pacing?
+  - **Answer: no — 3–5 minutes** (or remaining turn time, whichever is smaller), stored
+    as config with a 5-minute default.
 - Should forced completion of a truncated _naval_ plan keep `tacticPlanDriver`'s cyclic
   wrap (zero engine change, slightly quirky) — recommended — or add the optional
   plan-then-AI action flag (§4.2)?
+  - **Answer: keep the cyclic wrap.** The §4.2 flag was rejected.
 - Is the defender ever interactive? This design says no (async: standing orders drive
   the defender, per ARCHITECTURE §6) — a future "both online" live variant could reuse
   sessions with a second seat's cursor, but nothing here depends on it.
+  - **Answer: yes — operator override.** The defender gets an interactive seat; the
+    second-seat cursor extension and its offline-defender fallbacks are designed in #410,
+    and #407–#409 must not merge a single-seat-only shape.

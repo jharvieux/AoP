@@ -1,3 +1,31 @@
+## D-028 — 2026-07-10 — Battle sessions design approved (#321): 3–5 min deadline, cyclic forced finish, interactive defender
+
+**Decision.** The operator reviewed the binding-battle-sessions proposal
+(`docs/design/multiplayer-tactical-probe.md`, PR #329) during the 2026-07-10 issue sweep
+and approved it with three answers to its §9 open questions:
+
+- **Session deadline: 3–5 minutes** (tighter than the doc's 10-minute proposal) or
+  remaining turn time, whichever is smaller — stored as config, implementer default 5 min.
+- **Forced completion keeps the cyclic wrap**: a truncated naval plan repeats its recorded
+  orders via the existing `tacticPlanDriver` behavior — zero engine change. The optional
+  plan-then-AI flag (§4.2) was rejected.
+- **The defender IS interactive** — an operator override of the doc's single-interactive-
+  seat recommendation. The session model must grow a second seat's cursor before the
+  schema/edge-function steps land; async-pacing fallbacks (offline defender → standing
+  orders) get designed in #410.
+
+**Execution split.** Step 1 of the §8 plan (engine probe extraction, ungated) runs in the
+sweep as `feature/sweep-mp-probe-321`. Steps 2–4 were filed as follow-ups carrying these
+decisions: #407 (schema, supervised migration), #408 (edge functions), #409 (client
+wiring), plus #410 (interactive-defender design extension, which #407–#409 must not
+contradict).
+
+**Rejected.** 10-minute session deadline (opponent wait too long for async pacing);
+AI-takeover forced finish (unneeded engine/replay-surface change); defender-as-AI-only
+(operator wants both seats interactive).
+
+---
+
 ## D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)
 
 **Decision.** The operator reported that naval navigation is hard to understand and
