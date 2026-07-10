@@ -423,6 +423,12 @@ describe('canAttackAfterApproach (#414: re-verify against the fresh post-move vi
     const v = view()
     expect(canAttackAfterApproach(v, mapOf(v), 'cap-near', 'cap-own')).toBe(false)
   })
+
+  it('is illegal once the target has flipped to viewer-owned during the round trip (e.g. an ally captured it)', () => {
+    const v = view()
+    v.captains[1]!.ownerId = 'seat-0' // cap-near captured by an ally mid-approach
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-own', 'cap-near')).toBe(false)
+  })
 })
 
 describe('captainFromView / cityFromView (own-detail widening)', () => {

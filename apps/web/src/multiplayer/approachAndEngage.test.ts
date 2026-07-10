@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { PlayerView } from '@aop/engine'
+import type { GameMap, PlayerView } from '@aop/engine'
 import { submitApproachAndEngage } from './approachAndEngage'
 import { MatchActionError } from './matchActionClient'
+import { canAttackAfterApproach } from './matchActions'
 
 const MOVE = {
   type: 'moveCaptain',
@@ -110,5 +111,49 @@ describe('submitApproachAndEngage (#414 — sequencing a same-turn approach + at
       followUp: { seq: 9, view: VIEW },
     })
     expect(submit).toHaveBeenNthCalledWith(3, 8, ATTACK)
+  })
+
+  it("reports followUpFailed as stale when the attack leg's own SEQ_CONFLICT survives its retry — the move still landed", async () => {
+    const submit = vi
+      .fn()
+      .mockResolvedValueOnce({ seq: 5, view: VIEW }) // move
+      .mockRejectedValueOnce(new MatchActionError('stale', 'SEQ_CONFLICT')) // attack, first try
+      .mockRejectedValueOnce(new MatchActionError('stale again', 'SEQ_CONFLICT')) // attack, retried
+    const refetch = vi.fn().mockResolvedValueOnce({ seq: 8, view: VIEW })
+    const buildFollowUp = vi.fn().mockReturnValue(ATTACK)
+
+    const outcome = await submitApproachAndEngage({ submit, refetch, buildFollowUp }, 4, MOVE)
+
+    expect(outcome).toEqual({
+      kind: 'followUpFailed',
+      move: { seq: 5, view: VIEW },
+      outcome: { kind: 'stale' },
+    })
+    expect(submit).toHaveBeenCalledTimes(3)
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the follow-up when the target has flipped to viewer-owned in the fresh post-move view (#414 fix: mirrors the owner check interpretTileClick applies)', async () => {
+    // An ally's capture landed during the approach round trip: cap-enemy's
+    // ownerId is now the viewer's own seat in the fresh post-move view.
+    const freshView = {
+      viewerId: 'seat-0',
+      captains: [
+        { id: 'cap-own', ownerId: 'seat-0', position: { x: 1, y: 1 }, movementPoints: 1 },
+        { id: 'cap-enemy', ownerId: 'seat-0', position: { x: 1, y: 2 } },
+      ],
+    } as unknown as PlayerView
+    const submit = vi.fn().mockResolvedValueOnce({ seq: 5, view: freshView })
+    const refetch = vi.fn()
+    // Exercises the real gate, not a stand-in mock — this is the composition-
+    // level regression test for the owner check `canAttackAfterApproach` now
+    // applies.
+    const buildFollowUp = (v: PlayerView) =>
+      canAttackAfterApproach(v, {} as GameMap, 'cap-own', 'cap-enemy') ? ATTACK : null
+
+    const outcome = await submitApproachAndEngage({ submit, refetch, buildFollowUp }, 4, MOVE)
+
+    expect(outcome).toEqual({ kind: 'followUpSkipped', move: { seq: 5, view: freshView } })
+    expect(submit).toHaveBeenCalledTimes(1)
   })
 })

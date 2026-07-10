@@ -262,11 +262,12 @@ export function applyOptimisticMove(
  * Re-check, against the *authoritative* post-move view, whether `captainId`
  * can still attack `targetCaptainId` (#414): the approach leg's round trip
  * takes real wall-clock time, during which fog or an opposing action may
- * have moved the target, sunk it, or pulled it out of visibility — none of
- * which the pre-move client snapshot can know about. Mirrors the same
- * adjacency-and-movement gate `interpretTileClick`'s `'attack'` branch uses,
- * but against the fresh view/map rather than the stale one the click
- * happened against.
+ * have moved the target, sunk it, pulled it out of visibility, or — via an
+ * ally's capture — flipped its ownership to the viewer, none of which the
+ * pre-move client snapshot can know about. Mirrors the same
+ * owner-and-adjacency-and-movement gate `interpretTileClick`'s `enemyHere`
+ * lookup + `'attack'` branch use, but against the fresh view/map rather than
+ * the stale one the click happened against.
  */
 export function canAttackAfterApproach(
   freshView: PlayerView,
@@ -277,7 +278,9 @@ export function canAttackAfterApproach(
   const captain = freshView.captains.find(
     (c) => c.id === captainId && c.ownerId === freshView.viewerId,
   )
-  const target = freshView.captains.find((c) => c.id === targetCaptainId)
+  const target = freshView.captains.find(
+    (c) => c.id === targetCaptainId && c.ownerId !== freshView.viewerId,
+  )
   if (!captain || !target || (captain.movementPoints ?? 0) < 1) return false
   return mapDistance(freshMap, captain.position, target.position) <= 1
 }
