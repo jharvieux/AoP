@@ -8,6 +8,7 @@ import { playerView } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import { assertExpectedSeq, callerSeat, seatPlayerId, submitAction } from '../_shared/match.ts'
+import { assertNoBattlePending } from '../_shared/battleSession.ts'
 
 Deno.serve(async (req) => {
   const preflight = guardMethod(req)
@@ -25,6 +26,9 @@ Deno.serve(async (req) => {
 
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
+    // Blocked while this seat has an interactive battle open (§2.2): ending the turn
+    // would advance state out from under the session's recorded prefix. BATTLE_PENDING.
+    await assertNoBattlePending(db, body.matchId, seat)
     await assertExpectedSeq(db, body.matchId, body.expectedSeq!)
 
     const { seq, state } = await submitAction(db, body.matchId, seat, {

@@ -636,6 +636,94 @@ Deno.test('assertClientSubmittable: allows every other Action variant', () => {
   }
 })
 
+// assertClientSubmittable / sanitizeAction: server-authored defender orders (#418, #408).
+// The engine's `attackCaptain` gained optional `defenderOrders`/`defenderBoardCommands` so the
+// battle-session resolver can carry an interactive DEFENDER's own picks into the one logged
+// action. sanitizeAction must copy them through structurally (the resolver's server-authored
+// action passes through it), but assertClientSubmittable must REJECT a CLIENT that supplies
+// them — a client dictating its opponent's tactics is an anti-cheat hole.
+
+Deno.test(
+  'assertClientSubmittable: rejects a client-supplied defenderOrders on attackCaptain',
+  () => {
+    const err = assertThrows(
+      () =>
+        assertClientSubmittable({
+          type: 'attackCaptain',
+          playerId: 'seat-0',
+          captainId: 'c',
+          targetCaptainId: 't',
+          defenderOrders: ['broadside'],
+        }),
+      AppError,
+      'server-authored',
+    )
+    assertEquals(err.code, 'INVALID_ACTION')
+  },
+)
+
+Deno.test('assertClientSubmittable: rejects client-supplied defenderBoardCommands too', () => {
+  const err = assertThrows(
+    () =>
+      assertClientSubmittable({
+        type: 'attackCaptain',
+        playerId: 'seat-0',
+        captainId: 'c',
+        targetCaptainId: 't',
+        defenderBoardCommands: [{ stackId: 0 }],
+      }),
+    AppError,
+  )
+  assertEquals(err.code, 'INVALID_ACTION')
+})
+
+Deno.test(
+  'assertClientSubmittable: a plain attackCaptain (attacker-only orders) is still allowed',
+  () => {
+    assertClientSubmittable({
+      type: 'attackCaptain',
+      playerId: 'seat-0',
+      captainId: 'c',
+      targetCaptainId: 't',
+      attackerOrders: ['broadside'],
+      boardCommands: [{ stackId: 0 }],
+    })
+  },
+)
+
+Deno.test(
+  'sanitizeAction: carries server-authored defenderOrders/defenderBoardCommands through unchanged',
+  () => {
+    const action: Action = {
+      type: 'attackCaptain',
+      playerId: 'seat-1',
+      captainId: 'captain-a',
+      targetCaptainId: 'captain-b',
+      attackerOrders: ['broadside', 'ram'],
+      boardCommands: [{ stackId: 0, to: { col: 1, row: -1 } }],
+      defenderOrders: ['evade', 'broadside'],
+      defenderBoardCommands: [{ stackId: 2, targetId: 3 }],
+    }
+    assertEquals(sanitizeAction(action), action)
+  },
+)
+
+Deno.test('sanitizeAction: validates defenderOrders enum members item by item', () => {
+  const err = assertThrows(
+    () =>
+      sanitizeAction({
+        type: 'attackCaptain',
+        playerId: 'seat-0',
+        captainId: 'c',
+        targetCaptainId: 't',
+        defenderOrders: ['broadside', 'nuke'],
+      } as unknown as Action),
+    AppError,
+    'action.defenderOrders[1]',
+  )
+  assertEquals(err.code, 'BAD_REQUEST')
+})
+
 // --- sanitizeAction structural validation (#206) ---
 
 /** Assert sanitizeAction rejects `action` as BAD_REQUEST mentioning `field`. */
