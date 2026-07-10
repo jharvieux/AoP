@@ -7,8 +7,10 @@ import {
   type ViewCity,
 } from '@aop/engine'
 import type { Coord } from '@aop/shared'
+import { findApproachPath } from '../approach'
 import {
   applyOptimisticMove,
+  canAttackAfterApproach,
   captainFromView,
   cityFromView,
   interpretTileClick,
@@ -164,6 +166,41 @@ describe('interpretTileClick (#261: the PlayerView analog of GameScreen tile han
     expect(interpretTileClick(v, mapOf(v), 'cap-own', 1, 1)).toBeNull()
   })
 
+  it('approaches and attacks a non-adjacent enemy reachable-and-attackable this turn (#414)', () => {
+    const v = view()
+    // (2,1): distance 2 from (0,0) — non-adjacent, but the approach leg
+    // (through a neighbor at distance 1) plus the attack's own point fits
+    // inside the captain's 2 movement points.
+    v.captains.push({
+      id: 'cap-mid',
+      ownerId: 'seat-1',
+      name: 'Cutlass',
+      position: { x: 2, y: 1 },
+      shipClassId: 'sloop',
+      captured: false,
+    })
+    const map = mapOf(v)
+    const expectedApproach = findApproachPath(map, { x: 0, y: 0 }, { x: 2, y: 1 })
+    expect(expectedApproach).not.toBeNull()
+    expect(interpretTileClick(v, map, 'cap-own', 2, 1)).toEqual({
+      kind: 'approachAndAttack',
+      targetCaptainId: 'cap-mid',
+      approach: expectedApproach,
+    })
+  })
+
+  it('falls back to an intercept course when the approach exists but is not reachable this turn (#376/#414)', () => {
+    // cap-far is at (3,3), distance 3 — same fixture the pre-#414 intercept
+    // test uses; confirms approachAndAttack never fires when it shouldn't.
+    const v = view()
+    expect(interpretTileClick(v, mapOf(v), 'cap-own', 3, 3)).toEqual({
+      kind: 'setSailOrder',
+      destination: { x: 3, y: 3 },
+      targetId: 'cap-far',
+      targetKind: 'captain',
+    })
+  })
+
   it('offers an adjacent active encounter', () => {
     const v = view()
     expect(interpretTileClick(v, mapOf(v), 'cap-own', 0, 1)).toEqual({
@@ -280,20 +317,34 @@ describe('interpretTileClick on a hex map (#370: mapDistance, not chebyshevDista
     }
   }
 
-  it('does not open an attack on a Chebyshev-adjacent tile that is hex-distance 2', () => {
+  it('never opens a direct attack on a Chebyshev-adjacent tile that is hex-distance 2 (#370)', () => {
     expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 1 })).toBe(2)
     expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 3 })).toBe(2)
-    // Hex-distance 2 is not attack-adjacency (#370): the tap offers an intercept
-    // course, never a direct attack.
-    expect(interpretTileClick(hexView({ x: 3, y: 1 }), hexMap, 'cap-own', 3, 1)).toEqual({
+    // Hex-distance 2 is not attack-adjacency (#370): the tap never opens a
+    // direct 'attack' (which would fire with no movement spent). With
+    // movement to spare it approaches and attacks in one turn (#414); the
+    // fallback-to-intercept-course case is covered separately below.
+    for (const target of [
+      { x: 3, y: 1 },
+      { x: 3, y: 3 },
+    ] as const) {
+      const v = hexView(target)
+      const expectedApproach = findApproachPath(hexMap, { x: 2, y: 2 }, target)
+      expect(expectedApproach).not.toBeNull()
+      expect(interpretTileClick(v, hexMap, 'cap-own', target.x, target.y)).toEqual({
+        kind: 'approachAndAttack',
+        targetCaptainId: 'cap-enemy',
+        approach: expectedApproach,
+      })
+    }
+  })
+
+  it('falls back to an intercept course on the hex map when the approach is not reachable this turn (#414)', () => {
+    const v = hexView({ x: 3, y: 1 })
+    v.captains[0]!.movementPoints = 0
+    expect(interpretTileClick(v, hexMap, 'cap-own', 3, 1)).toEqual({
       kind: 'setSailOrder',
       destination: { x: 3, y: 1 },
-      targetId: 'cap-enemy',
-      targetKind: 'captain',
-    })
-    expect(interpretTileClick(hexView({ x: 3, y: 3 }), hexMap, 'cap-own', 3, 3)).toEqual({
-      kind: 'setSailOrder',
-      destination: { x: 3, y: 3 },
       targetId: 'cap-enemy',
       targetKind: 'captain',
     })
@@ -340,6 +391,37 @@ describe('applyOptimisticMove (#285 optimistic local application)', () => {
     const v = view()
     const patched = applyOptimisticMove(v, mapOf(v), 'cap-own', { x: -1, y: 0 })
     expect(patched).toBe(v)
+  })
+})
+
+describe('canAttackAfterApproach (#414: re-verify against the fresh post-move view)', () => {
+  it('is legal when the target is still adjacent with movement to spare', () => {
+    const v = view()
+    // cap-own already sits adjacent to cap-near in the base fixture.
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-own', 'cap-near')).toBe(true)
+  })
+
+  it('is illegal once the target has moved out of range during the round trip', () => {
+    const v = view()
+    v.captains[1]!.position = { x: 3, y: 3 } // cap-near sails off
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-own', 'cap-near')).toBe(false)
+  })
+
+  it('is illegal once the target is no longer disclosed in the view (sunk, captured, or fogged out)', () => {
+    const v = view()
+    v.captains = v.captains.filter((c) => c.id !== 'cap-near')
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-own', 'cap-near')).toBe(false)
+  })
+
+  it('is illegal with no movement left to spend on the attack itself', () => {
+    const v = view()
+    v.captains[0]!.movementPoints = 0
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-own', 'cap-near')).toBe(false)
+  })
+
+  it('is illegal for a captain the viewer does not own', () => {
+    const v = view()
+    expect(canAttackAfterApproach(v, mapOf(v), 'cap-near', 'cap-own')).toBe(false)
   })
 })
 
