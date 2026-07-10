@@ -129,6 +129,12 @@
      a later turn once movement refreshes. */
   --map-course-now: #e0b64f;
   --map-course-later: #5c7a94;
+  /* Ship movement-range shading (#371), muted for the Weathered Parchment
+     palette (D-023): reachable water (ally/empty), an engageable enemy, and a
+     reachable neutral encounter. */
+  --map-range-ally: #3f7d54;
+  --map-range-enemy: #a6402f;
+  --map-range-neutral: #b8912f;
   /* Cosmetic hexagon tile boundary on hex-topology maps (#348). */
   --map-hex-grid: #0b1a26;
   --map-resource-timber: #8a5a2b;
@@ -321,6 +327,29 @@ body {
 
 .turn-event-feed li:first-child {
   color: var(--color-gold);
+}
+
+/* Paused sail order (#372): a halted ship's Resume/Cancel prompt, top-center
+   over the map so it's noticed the turn it appears. */
+.sail-interrupt-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-bg-panel) 90%, transparent);
+  border: 1px solid var(--color-alert-border, var(--color-border));
+  border-radius: 8px;
+}
+
+.sail-interrupt-banner .button-group {
+  margin: 0;
 }
 
 /* City roster (#373): a compact strip of the viewer's cities, bottom-left over
