@@ -192,6 +192,34 @@ export function tacticPlanDriver(plan: readonly TacticId[]): TacticDriver {
 }
 
 /**
+ * Plays a recorded per-round tactic `prefix`, then delegates every round beyond
+ * it to `fallback`. This is D-029's asymmetric force-resolution rule — "prefix
+ * counts, fallback finishes the tail" — with a per-seat fallback: an interactive
+ * defender's recorded picks count for the rounds it actually answered, and its
+ * standing orders (or the combat AI) finish any rounds it never got to. Unlike
+ * {@link tacticPlanDriver}'s cyclic wrap, the tail here is a genuinely different
+ * driver, not a repeat of the recorded picks — the defender who stops responding
+ * has not authored a deliberate full plan, so its honest completion is the
+ * pre-declared doctrine, per D-029 §10.5. A pick that isn't currently available
+ * degrades to broadside exactly like the other recorded-plan drivers, so a stale
+ * or truncated prefix can never corrupt a replay.
+ */
+export function recordedTacticsDriver(
+  prefix: readonly TacticId[],
+  fallback: TacticDriver,
+): TacticDriver {
+  return {
+    choose(ctx) {
+      if (ctx.round - 1 < prefix.length) {
+        const pick = prefix[ctx.round - 1]!
+        return ctx.available.includes(pick) ? pick : 'broadside'
+      }
+      return fallback.choose(ctx)
+    },
+  }
+}
+
+/**
  * Utility AI driver. Deterministic: run when clearly losing (but ram a chaser
  * who has us grappled — evading a held ship is a doomed play), pin a fleeing
  * enemy when fast enough to hold it, board when holding a crew-strength edge,
