@@ -1,5 +1,6 @@
 import type { Action, BattleReport, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
+import type { Coord } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { impactFeedback, shipMoveFeedback, tapFeedback } from '../audio/feedback'
@@ -12,9 +13,11 @@ import { MatchChatPanel } from '../components/MatchChatPanel'
 import { Spinner } from '../components/Spinner'
 import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
+import { submitApproachAndEngage } from '../multiplayer/approachAndEngage'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
   applyOptimisticMove,
+  canAttackAfterApproach,
   captainFromView,
   cityFromView,
   interpretTileClick,
@@ -90,6 +93,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [actionError, setActionError] = useState<string | null>(null)
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
+  // The approach leg (#414) recorded when `attackTargetId` was set for a
+  // non-adjacent-but-reachable-this-turn target; `null` for an already
+  // adjacent attack, which needs no approach move first.
+  const [pendingApproach, setPendingApproach] = useState<Coord[] | null>(null)
   const [encounterId, setEncounterId] = useState<string | null>(null)
   const [openCityId, setOpenCityId] = useState<string | null>(null)
   const [diplomacyOpen, setDiplomacyOpen] = useState(false)
@@ -332,6 +339,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       case 'selectCaptain':
         setSelectedCaptainId(intent.captainId)
         setAttackTargetId(null)
+        setPendingApproach(null)
         break
       case 'openCity':
         tapFeedback()
@@ -351,6 +359,14 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         break
       case 'attack':
         setAttackTargetId(intent.targetCaptainId)
+        setPendingApproach(null)
+        break
+      case 'approachAndAttack':
+        // Non-adjacent but reachable-and-attackable this turn (#414): opens
+        // the same confirm sheet as an adjacent attack; the recorded
+        // approach leg is sailed first when the player confirms.
+        setAttackTargetId(intent.targetCaptainId)
+        setPendingApproach(intent.approach)
         break
       case 'encounter':
         setEncounterId(intent.encounterId)
@@ -428,9 +444,97 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     impactFeedback()
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
+    const approach = pendingApproach
     setAttackTargetId(null)
     setSelectedCaptainId(null)
-    void submit(matchAction.attack(view, captainId, targetCaptainId))
+    setPendingApproach(null)
+    if (!approach) {
+      void submit(matchAction.attack(view, captainId, targetCaptainId))
+      return
+    }
+    void submitApproachAndAttack(captainId, targetCaptainId, approach)
+  }
+
+  /**
+   * Sail `approach`'s last leg, then attack — the multiplayer counterpart of
+   * `GameScreen`'s `dispatchApproach` + `confirmAttack` (#414, finishing
+   * #376's parity). `MatchScreen`'s plain `submit()` closes over `live.seq`
+   * at call time, so two back-to-back `void submit()` calls would both race
+   * the same pre-move seq; `submitApproachAndEngage` threads `seq`/`view`
+   * explicitly between the two so the attack always targets the seq the move
+   * actually produced. `buildFollowUp` re-checks legality against the fresh
+   * post-move view — the round trip takes real time, during which fog or an
+   * opposing action may have moved, sunk, or hidden the target — and skips
+   * the attack rather than ever submitting one the engine would reject.
+   */
+  async function submitApproachAndAttack(
+    captainId: string,
+    targetCaptainId: string,
+    approach: Coord[],
+  ) {
+    if (!session || !config || !live || submitting) return
+    setActionError(null)
+    setSubmitting(true)
+    const client = new MatchActionClient(config)
+    const deps = {
+      submit: (expectedSeq: number, a: Action) =>
+        client.submitAction(session, { matchId, expectedSeq, action: a }),
+      refetch: fetchLive,
+      buildFollowUp: (freshView: PlayerView) =>
+        canAttackAfterApproach(
+          freshView,
+          boardFromPlayerView(freshView).map,
+          captainId,
+          targetCaptainId,
+        )
+          ? matchAction.attack(freshView, captainId, targetCaptainId)
+          : null,
+    }
+    const moveAction = matchAction.move(view, captainId, approach.at(-1)!)
+    const outcome = await submitApproachAndEngage(deps, live.seq, moveAction)
+    setSubmitting(false)
+
+    switch (outcome.kind) {
+      case 'ok':
+        setLive({ ...live, seq: outcome.followUp.seq, view: outcome.followUp.view })
+        if (outcome.followUp.battleReport) setBattleReport(outcome.followUp.battleReport)
+        void refetch()
+        break
+      case 'followUpSkipped':
+        // The approach landed but the target is no longer a legal attack —
+        // the ship has moved, so keep that; just don't send an attack the
+        // engine would bounce.
+        setLive({ ...live, seq: outcome.move.seq, view: outcome.move.view })
+        setActionError(
+          'The target moved out of reach — the approach completed, but the attack was cancelled.',
+        )
+        void refetch()
+        break
+      case 'followUpFailed':
+        // A hard rejection (no internal retry) leaves `live` at the pre-move
+        // snapshot for the move's own seq/view; a stale rejection already
+        // refreshed `live` via the retry's own refetch, so it's left alone.
+        if (outcome.outcome.kind === 'error') {
+          setLive({ ...live, seq: outcome.move.seq, view: outcome.move.view })
+        }
+        setActionError(
+          outcome.outcome.kind === 'error'
+            ? outcome.outcome.error instanceof Error
+              ? outcome.outcome.error.message
+              : 'The attack was rejected.'
+            : 'The board changed — refreshed.',
+        )
+        break
+      case 'moveFailed':
+        setActionError(
+          outcome.outcome.kind === 'error'
+            ? outcome.outcome.error instanceof Error
+              ? outcome.outcome.error.message
+              : 'The approach was rejected.'
+            : 'The board changed — refreshed.',
+        )
+        break
+    }
   }
 
   function resolveEncounter(choice: string) {
@@ -612,7 +716,13 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       )}
 
       {attackTarget && selectedCaptain && (
-        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+        <BottomSheet
+          title={`Engage ${attackTarget.name}?`}
+          onClose={() => {
+            setAttackTargetId(null)
+            setPendingApproach(null)
+          }}
+        >
           <section className="battle-intro">
             <div className="battle-intro__side">
               {FACTIONS[board.factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (
