@@ -23,6 +23,7 @@ import {
 } from '../multiplayer/matchActions'
 import { MatchActionClient } from '../multiplayer/matchActionClient'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
+import { classifyRangeOverlay } from '../shipRange'
 import {
   createMatchRealtimeTransport,
   supabaseRealtimeClient,
@@ -354,8 +355,73 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       case 'encounter':
         setEncounterId(intent.encounterId)
         break
+      case 'setSailOrder':
+        shipMoveFeedback()
+        void submit(
+          matchAction.setSailOrder(
+            view,
+            selectedCaptain!.id,
+            intent.destination,
+            intent.targetId && intent.targetKind
+              ? { id: intent.targetId, kind: intent.targetKind }
+              : undefined,
+          ),
+        )
+        break
     }
   }
+
+  function resumeSailOrder(captainId: string) {
+    const order = myCaptains.find((c) => c.id === captainId)?.sailOrder
+    if (!order) return
+    tapFeedback()
+    void submit(
+      matchAction.setSailOrder(
+        view,
+        captainId,
+        order.destination,
+        order.targetId && order.targetKind
+          ? { id: order.targetId, kind: order.targetKind }
+          : undefined,
+      ),
+    )
+  }
+
+  function cancelSailOrder(captainId: string) {
+    tapFeedback()
+    void submit(matchAction.clearSailOrder(view, captainId))
+  }
+
+  // Movement-range shading (#371): same classification as single-player, but
+  // over the fog-reconstructed board and the view's own visibility sets.
+  const rangeOverlay = selectedCaptain
+    ? classifyRangeOverlay({
+        map: board.map,
+        from: selectedCaptain.position,
+        movementPoints: selectedCaptain.movementPoints ?? 0,
+        hasTroops: (selectedCaptain.troops ?? []).reduce((sum, t) => sum + t.count, 0) > 0,
+        enemies: view.captains
+          .filter(
+            (c) =>
+              c.ownerId !== view.viewerId &&
+              board.visibleKeys.has(`${c.position.x},${c.position.y}`),
+          )
+          .map((c) => c.position),
+        enemyCities: view.cities
+          .filter(
+            (c) =>
+              c.ownerId !== view.viewerId &&
+              board.exploredKeys.has(`${c.position.x},${c.position.y}`),
+          )
+          .map((c) => c.position),
+        encounters: view.encounters
+          .filter((e) => e.active && board.visibleKeys.has(`${e.position.x},${e.position.y}`))
+          .map((e) => e.position),
+      })
+    : undefined
+
+  // Paused sail orders (#372): own ships halted on a new contact.
+  const interruptedCaptains = myCaptains.filter((c) => c.sailOrder?.interrupted)
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
@@ -428,8 +494,28 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           exploredKeys={board.exploredKeys}
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
+          rangeOverlay={rangeOverlay}
+          onSetCourse={(cell) => {
+            if (!selectedCaptain) return
+            shipMoveFeedback()
+            void submit(matchAction.setSailOrder(view, selectedCaptain.id, cell))
+          }}
           factionOf={board.factionOf}
         />
+        {myTurn &&
+          interruptedCaptains.map((cap) => (
+            <div key={cap.id} className="sail-interrupt-banner" role="status">
+              <span>{cap.name} halted: new contact sighted</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
       </div>
 
       <div className="bottom-action-bar">

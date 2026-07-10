@@ -82,6 +82,9 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     ...(c.captivityReturnRound !== undefined
       ? { captivityReturnRound: c.captivityReturnRound }
       : {}),
+    // Own captains carry their sail order (#372) so the map can fly the
+    // destination flag and the screen can raise the paused-order banner.
+    ...(c.sailOrder ? { sailOrder: c.sailOrder } : {}),
   }))
 
   const cities: CityState[] = view.cities.map((c) => ({

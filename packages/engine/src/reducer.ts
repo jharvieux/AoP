@@ -756,8 +756,8 @@ export function cityToCombatant(city: CityState, content: ContentCatalog | undef
  * personality-flavored driver, with `easy` deliberately playing the weak line.
  * `tactics` is the match's frozen tuning (#212) — the thresholds these drivers
  * key on are balance data, never hardcoded in the engine. Exported so the
- * client boarding probe's parity test (#93) can compare its mirror against
- * this function directly.
+ * interactive-combat probes (`probe.ts`, #93/#305) select the exact same
+ * defender/attacker driver the reducer will, keeping probe and replay in sync.
  */
 export function aiTacticDriverForOwner(
   state: GameState,

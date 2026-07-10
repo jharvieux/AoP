@@ -26,6 +26,7 @@ import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
+import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
@@ -347,6 +348,90 @@ export function GameScreen({
     return cost > 0 ? approach : null
   }
 
+  /**
+   * Set an intercept course (#376/#372) toward a target that's out of reach
+   * this turn: the ship closes over the following turns and halts adjacent,
+   * pausing on any new fog-of-war contact. No-op when no water approach exists
+   * at all (island-locked target) — the engine would reject that, so there's
+   * nothing honest to offer. Selection is kept so the destination flag shows.
+   */
+  function setInterceptCourse(
+    targetPos: Coord,
+    targetId: string,
+    targetKind: 'captain' | 'city' | 'encounter',
+  ) {
+    if (!selectedCaptain) return
+    // The engine rejects an intercept onto a target already within reach, and
+    // there's nothing to chase if no water approach exists at all.
+    if (mapDistance(game.map, selectedCaptain.position, targetPos) <= 1) return
+    if (!findApproachPath(game.map, selectedCaptain.position, targetPos)) return
+    shipMoveFeedback()
+    onAction({
+      type: 'setSailOrder',
+      playerId: viewer.id,
+      captainId: selectedCaptain.id,
+      destination: targetPos,
+      targetId,
+      targetKind,
+    })
+  }
+
+  // Movement-range shading (#371): the reachable-water / engageable-target
+  // overlay for the selected ship, rebuilt only when the selection or state
+  // changes. Fog rules match the renderer — enemies/encounters must be currently
+  // visible, enemy cities explored — so nothing hidden is ever shaded.
+  const rangeOverlay = useMemo<RangeOverlay | undefined>(() => {
+    if (!selectedCaptain) return undefined
+    return classifyRangeOverlay({
+      map: game.map,
+      from: selectedCaptain.position,
+      movementPoints: selectedCaptain.movementPoints,
+      hasTroops: selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0,
+      enemies: game.captains
+        .filter(
+          (c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`),
+        )
+        .map((c) => c.position),
+      enemyCities: game.cities
+        .filter(
+          (c) => c.ownerId !== viewer.id && exploredKeys.has(`${c.position.x},${c.position.y}`),
+        )
+        .map((c) => c.position),
+      encounters: game.encounters
+        .filter((e) => e.active && visibleKeys.has(`${e.position.x},${e.position.y}`))
+        .map((e) => e.position),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCaptain, game, viewer.id, visibleKeys, exploredKeys])
+
+  // Paused sail orders (#372): own ships halted on a new sighting, awaiting the
+  // player's Resume (re-issue the order, refreshing the seen-contacts baseline)
+  // or Cancel (drop it).
+  const interruptedCaptains = game.captains.filter(
+    (c) => c.ownerId === viewer.id && c.sailOrder?.interrupted,
+  )
+
+  function resumeSailOrder(captainId: string) {
+    const cap = game.captains.find((c) => c.id === captainId)
+    const order = cap?.sailOrder
+    if (!order) return
+    tapFeedback()
+    onAction({
+      type: 'setSailOrder',
+      playerId: viewer.id,
+      captainId,
+      destination: order.destination,
+      ...(order.targetId && order.targetKind
+        ? { targetId: order.targetId, targetKind: order.targetKind }
+        : {}),
+    })
+  }
+
+  function cancelSailOrder(captainId: string) {
+    tapFeedback()
+    onAction({ type: 'clearSailOrder', playerId: viewer.id, captainId })
+  }
+
   // Roster tap (#373): focus a city — select it, recenter the map on it (reusing
   // the #346 camera controls), and open its sheet.
   function openCity(cityId: string) {
@@ -409,11 +494,10 @@ export function GameScreen({
       if (approach !== undefined) {
         setPendingApproach(approach)
         setAttackTargetId(enemyHere.id)
+      } else {
+        // Out of range this turn (#376): set an intercept course toward it.
+        setInterceptCourse(enemyHere.position, enemyHere.id, 'captain')
       }
-      // else: out of range this turn. #372 (multi-turn sail orders) will let a
-      // `setSailOrder` dispatch here queue an automatic intercept course; until
-      // it merges, an out-of-range tap on a visible target is a no-op, same as
-      // tapping an unreachable empty tile today.
       return
     }
 
@@ -427,7 +511,15 @@ export function GameScreen({
       if (approach !== undefined) {
         setPendingApproach(approach)
         setAssaultCityId(cityHere.id)
+      } else if (
+        hasTroops &&
+        findApproachPath(game.map, selectedCaptain.position, cityHere.position)
+      ) {
+        // Troops aboard but the city is beyond this turn's reach (#376): sail an
+        // intercept course toward it and assault on arrival.
+        setInterceptCourse(cityHere.position, cityHere.id, 'city')
       } else {
+        // No troops, or no sea approach at all: the read-only enemy-city info.
         setEnemyCityInfoId(cityHere.id)
       }
       return
@@ -441,19 +533,32 @@ export function GameScreen({
       if (approach !== undefined) {
         setPendingApproach(approach)
         setEncounterId(encounterHere.id)
+      } else {
+        setInterceptCourse(encounterHere.position, encounterHere.id, 'encounter')
       }
       return
     }
 
-    // Empty tile: move there if it is reachable by sea within remaining movement.
+    // Empty tile: move there if reachable this turn; if it's reachable by sea
+    // but beyond this turn's movement, set a multi-turn sail order instead (#372)
+    // so one click sends the ship on the whole voyage.
     const cost = pathCost(game.map, selectedCaptain.position, { x, y })
-    if (cost !== null && cost <= selectedCaptain.movementPoints) {
+    if (cost === null) return
+    if (cost <= selectedCaptain.movementPoints) {
       shipMoveFeedback()
       onAction({
         type: 'moveCaptain',
         playerId: viewer.id,
         captainId: selectedCaptain.id,
         to: { x, y },
+      })
+    } else {
+      shipMoveFeedback()
+      onAction({
+        type: 'setSailOrder',
+        playerId: viewer.id,
+        captainId: selectedCaptain.id,
+        destination: { x, y },
       })
     }
   }
@@ -915,6 +1020,17 @@ export function GameScreen({
           exploredKeys={exploredKeys}
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
+          rangeOverlay={rangeOverlay}
+          onSetCourse={(cell) => {
+            if (!selectedCaptain) return
+            shipMoveFeedback()
+            onAction({
+              type: 'setSailOrder',
+              playerId: viewer.id,
+              captainId: selectedCaptain.id,
+              destination: cell,
+            })
+          }}
           factionOf={factionOf}
           controlsRef={mapControlsRef}
         />
@@ -925,6 +1041,23 @@ export function GameScreen({
             ))}
           </ul>
         )}
+        {/* Paused sail orders (#372): a ship halted on a new sighting waits here
+            for Resume (continue, re-baselining the contacts it now sees) or
+            Cancel (drop the course). */}
+        {isViewerTurn &&
+          interruptedCaptains.map((cap) => (
+            <div key={cap.id} className="sail-interrupt-banner" role="status">
+              <span>{cap.name} halted: new contact sighted</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
         {/* City roster (#373): only when the viewer holds more than one city —
             a single-city game keeps the unchanged "City" button and no strip. */}
         {viewerCities.length > 1 && (

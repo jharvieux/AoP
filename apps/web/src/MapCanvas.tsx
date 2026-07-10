@@ -28,6 +28,7 @@ import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
+import type { RangeOverlay } from './shipRange'
 import { easeInOutCubic, pathPixelAt, shipAnimDurationMs } from './shipAnimation'
 import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
@@ -68,6 +69,11 @@ const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
 // later turn, once movement refreshes.
 const COURSE_NOW_COLOR = cssToken('--map-course-now', '#e0b64f')
 const COURSE_LATER_COLOR = cssToken('--map-course-later', '#5c7a94')
+// Ship movement-range shading (#371): reachable water, an engageable enemy/city,
+// and a reachable neutral encounter — muted to sit under the entity sprites.
+const RANGE_ALLY_COLOR = cssToken('--map-range-ally', '#3f7d54')
+const RANGE_ENEMY_COLOR = cssToken('--map-range-enemy', '#a6402f')
+const RANGE_NEUTRAL_COLOR = cssToken('--map-range-neutral', '#b8912f')
 // Painted-world coastline treatment (#393): a sand rim on the land side of the
 // traced coast, a darker shoreline hairline, and a wide translucent foam band
 // on the water side.
@@ -326,6 +332,18 @@ export interface MapCanvasProps {
   exploredKeys: Set<string>
   selectedCaptainId: string | null
   onTileClick: (x: number, y: number) => void
+  /**
+   * Movement-range shading for the selected ship (#371): three `"x,y"` key
+   * lists (reachable water / engageable enemy / reachable encounter) the range
+   * layer fills. Omitted or empty draws nothing.
+   */
+  rangeOverlay?: RangeOverlay | undefined
+  /**
+   * Confirm a multi-turn course (#372/#375): fired when a touch user taps an
+   * out-of-range water tile a second time. Omitted disables the touch confirm
+   * (the sticky preview just clears on the second tap instead).
+   */
+  onSetCourse?: (cell: Coord) => void
   /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
   factionOf: (ownerId: string) => FactionId
   /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
@@ -484,6 +502,9 @@ export function MapCanvas(props: MapCanvasProps) {
     const wash = new Graphics()
     const glintSprites = new Container() // drifting sun glints on open water (#392)
     const coast = new Graphics() // sand rim + shoreline + foam along the traced loops (#393)
+    // Movement-range shading (#371): reachable water + engageable targets, under
+    // the entity sprites so a shaded ship/city still reads clearly on top.
+    const range = new Graphics()
     const entities = new Graphics()
     const citySprites = new Container()
     const encounterSprites = new Container()
@@ -507,6 +528,7 @@ export function MapCanvas(props: MapCanvasProps) {
       wash,
       glintSprites,
       coast,
+      range,
       entities,
       citySprites,
       encounterSprites,
@@ -675,6 +697,7 @@ export function MapCanvas(props: MapCanvasProps) {
         visibleKeys,
         exploredKeys,
         selectedCaptainId,
+        rangeOverlay,
         factionOf,
       } = propsRef.current
       world.position.set(view.x, view.y)
@@ -879,6 +902,23 @@ export function MapCanvas(props: MapCanvasProps) {
       tilePool.end()
       glintPool.end()
       causticPool.end()
+
+      // Movement-range shading (#371): a translucent fill + outline per tile in
+      // each of the three overlay sets. Rebuilt every draw, but the draw only
+      // runs on a dirty tick (selection/state change), never per idle frame.
+      range.clear()
+      if (rangeOverlay) {
+        const paintRange = (keys: string[], color: string) => {
+          for (const k of keys) {
+            const [rx, ry] = k.split(',').map(Number) as [number, number]
+            fillCell(range, rx, ry, { color, alpha: 0.22 })
+            strokeCell(range, rx, ry, { width: 1.5, color, alpha: 0.45 })
+          }
+        }
+        paintRange(rangeOverlay.green, RANGE_ALLY_COLOR)
+        paintRange(rangeOverlay.red, RANGE_ENEMY_COLOR)
+        paintRange(rangeOverlay.yellow, RANGE_NEUTRAL_COLOR)
+      }
 
       // Explored-but-fogged dimming (#299). The unexplored world needs no fog
       // fills at all anymore — it simply isn't painted into `knownSea`.
@@ -1118,6 +1158,32 @@ export function MapCanvas(props: MapCanvasProps) {
         }
       }
 
+      // Destination flags (#372): every own ship steering a standing sail order
+      // flies a small pennant on the tile it's making for; a paused (interrupted)
+      // order flies it in the alert color so a halted voyage stands out at a
+      // glance. Drawn in the preview layer so it stays legible over fog.
+      for (const cap of captains) {
+        if (cap.ownerId !== viewerId || !cap.sailOrder) continue
+        const dest = cap.sailOrder.destination
+        const fc = centerOf(dest.x, dest.y)
+        const flagColor = cap.sailOrder.interrupted ? ENEMY_SHIP : COURSE_NOW_COLOR
+        const poleTop = fc.y - TILE * 0.42
+        pathPreview
+          .moveTo(fc.x, fc.y)
+          .lineTo(fc.x, poleTop)
+          .stroke({ width: 2, color: flagColor, alpha: 0.95 })
+        pathPreview
+          .poly([
+            fc.x,
+            poleTop,
+            fc.x + TILE * 0.26,
+            poleTop + TILE * 0.09,
+            fc.x,
+            poleTop + TILE * 0.18,
+          ])
+          .fill({ color: flagColor, alpha: 0.95 })
+      }
+
       if (selected) {
         // Geometry only — the ambient tick below animates this layer's alpha
         // into a pulse (#298) every frame, not just on a dirty redraw.
@@ -1175,17 +1241,19 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     /**
-     * Touch's course-preview tap (#375): a tap on an empty, out-of-range water
-     * tile sets a sticky preview (mouse gets this live from hover instead);
-     * tapping that same tile again clears it. Taps on anything already handled
-     * by #376's any-distance targeting (a captain, city, or active encounter)
-     * are left alone — those already open their own confirm sheet immediately,
-     * so a lingering course dot would be redundant. Runs *before*
-     * `selectTileAt` so the sticky state reflects this tap even though the
-     * actual click dispatch (for an in-range tile) fires the same frame.
+     * Touch's course-preview tap (#375/#372): a tap on an empty, out-of-range
+     * water tile sets a sticky preview (mouse gets this live from hover
+     * instead); tapping that same tile again confirms the multi-turn course via
+     * `onSetCourse`. Taps on anything already handled by #376's any-distance
+     * targeting (a captain, city, or active encounter) are left alone — those
+     * open their own confirm sheet, which is itself the confirmation step.
+     *
+     * Returns true if it *consumed* the tap (showed or confirmed a course), so
+     * the caller skips the normal `onTileClick` dispatch — that's what keeps the
+     * first tap from also committing the sail order the second tap is meant to.
      */
-    function updateTouchPreview(cell: Coord | null) {
-      const { captains, cities, encounters, selectedCaptainId, map } = propsRef.current
+    function updateTouchPreview(cell: Coord | null): boolean {
+      const { captains, cities, encounters, selectedCaptainId, map, onSetCourse } = propsRef.current
       const selected = selectedCaptainId
         ? captains.find((c) => c.id === selectedCaptainId)
         : undefined
@@ -1198,21 +1266,32 @@ export function MapCanvas(props: MapCanvasProps) {
         touchPreviewRef.current = null
         setTouchPreviewHint(null)
         dirtyRef.current = true
-        return
+        return false
       }
       const path = findPath(map, selected.position, cell)
       const outOfRange = !!path && path.length - 1 > selected.movementPoints
       const isSecondTap = !!touchPreviewRef.current && coordsEqual(touchPreviewRef.current, cell)
-      if (outOfRange && !isSecondTap) {
-        touchPreviewRef.current = cell
-        // #372 (multi-turn sail orders) will make the second tap a real
-        // `setSailOrder` confirm instead of just clearing the preview.
-        setTouchPreviewHint('Course preview — tap again to set course')
-      } else {
+      if (!outOfRange) {
+        // In range: a normal one-tap move — let `onTileClick` handle it.
         touchPreviewRef.current = null
         setTouchPreviewHint(null)
+        dirtyRef.current = true
+        return false
       }
+      if (!isSecondTap) {
+        touchPreviewRef.current = cell
+        setTouchPreviewHint(
+          onSetCourse ? 'Course preview — tap again to set course' : 'Out of range this turn',
+        )
+        dirtyRef.current = true
+        return true
+      }
+      // Second tap on the same out-of-range tile: confirm the course.
+      touchPreviewRef.current = null
+      setTouchPreviewHint(null)
       dirtyRef.current = true
+      onSetCourse?.(cell)
+      return true
     }
 
     function onPointerDown(e: PointerEvent) {
@@ -1286,7 +1365,9 @@ export function MapCanvas(props: MapCanvasProps) {
       if (pointers.size < 2) pinchPrevDist = undefined
       if (pointers.size === 0) dragStart = undefined
       if (wasTap && point) {
-        if (e.pointerType === 'touch') updateTouchPreview(cellAtPoint(point.x, point.y))
+        // Touch's two-tap course preview consumes the tap when it shows or
+        // confirms a course (#375/#372), so the first tap never also dispatches.
+        if (e.pointerType === 'touch' && updateTouchPreview(cellAtPoint(point.x, point.y))) return
         selectTileAt(point.x, point.y)
       }
     }

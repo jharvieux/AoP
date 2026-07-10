@@ -8,10 +8,13 @@ import {
   type EncounterChoice,
   type GameMap,
   type PlayerView,
+  type SailTargetKind,
   type StandingOrder,
   type ViewCaptain,
   type ViewCity,
 } from '@aop/engine'
+import type { Coord } from '@aop/shared'
+import { findApproachPath } from '../approach'
 
 /**
  * The PlayerView-shaped action surface for the multiplayer match screen
@@ -59,6 +62,7 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
       : {}),
     ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
     ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
+    ...(cap.sailOrder ? { sailOrder: cap.sailOrder } : {}),
   }
 }
 
@@ -91,6 +95,13 @@ export type TileIntent =
   | { kind: 'move'; to: { x: number; y: number } }
   | { kind: 'attack'; targetCaptainId: string }
   | { kind: 'encounter'; encounterId: string }
+  /**
+   * A multi-turn sail order (#372/#376): either a fixed distant tile
+   * (`destination` only) or an intercept course toward a visible target
+   * (`targetId`/`targetKind`). Dispatched as `setSailOrder`; the engine
+   * re-validates reachability server-side.
+   */
+  | { kind: 'setSailOrder'; destination: Coord; targetId?: string; targetKind?: SailTargetKind }
   | null
 
 export function interpretTileClick(
@@ -129,6 +140,21 @@ export function interpretTileClick(
     if (mapDistance(map, selected.position, enemyHere.position) <= 1 && movement >= 1) {
       return { kind: 'attack', targetCaptainId: enemyHere.id }
     }
+    // Beyond adjacency (#376): set an intercept course if there's any water
+    // approach at all — the ship closes over the next turns and halts adjacent.
+    // (An already-adjacent target with no movement can't be intercepted — the
+    // engine rejects a sail order onto a tile already within reach.)
+    if (
+      mapDistance(map, selected.position, enemyHere.position) > 1 &&
+      findApproachPath(map, selected.position, enemyHere.position)
+    ) {
+      return {
+        kind: 'setSailOrder',
+        destination: enemyHere.position,
+        targetId: enemyHere.id,
+        targetKind: 'captain',
+      }
+    }
     return null
   }
 
@@ -139,6 +165,17 @@ export function interpretTileClick(
     if (mapDistance(map, selected.position, encounterHere.position) <= 1 && movement >= 1) {
       return { kind: 'encounter', encounterId: encounterHere.id }
     }
+    if (
+      mapDistance(map, selected.position, encounterHere.position) > 1 &&
+      findApproachPath(map, selected.position, encounterHere.position)
+    ) {
+      return {
+        kind: 'setSailOrder',
+        destination: encounterHere.position,
+        targetId: encounterHere.id,
+        targetKind: 'encounter',
+      }
+    }
     return null
   }
 
@@ -146,8 +183,10 @@ export function interpretTileClick(
   // in the reconstructed map are 'deep' fillers, so a path may optimistically
   // cross fog — the server is the authority and bounces a truly illegal move.
   const cost = pathCost(map, selected.position, { x, y })
-  if (cost !== null && cost <= movement) return { kind: 'move', to: { x, y } }
-  return null
+  if (cost === null) return null
+  if (cost <= movement) return { kind: 'move', to: { x, y } }
+  // Reachable by sea but beyond this turn: a multi-turn sail order (#372).
+  return { kind: 'setSailOrder', destination: { x, y } }
 }
 
 /**
@@ -272,5 +311,22 @@ export const matchAction = {
   },
   ransomCaptain(view: PlayerView, captainId: string): Action {
     return { type: 'ransomCaptain', playerId: view.viewerId, captainId }
+  },
+  setSailOrder(
+    view: PlayerView,
+    captainId: string,
+    destination: Coord,
+    target?: { id: string; kind: SailTargetKind },
+  ): Action {
+    return {
+      type: 'setSailOrder',
+      playerId: view.viewerId,
+      captainId,
+      destination,
+      ...(target ? { targetId: target.id, targetKind: target.kind } : {}),
+    }
+  },
+  clearSailOrder(view: PlayerView, captainId: string): Action {
+    return { type: 'clearSailOrder', playerId: view.viewerId, captainId }
   },
 }

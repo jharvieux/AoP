@@ -202,8 +202,7 @@ export function tacticPlanDriver(plan: readonly TacticId[]): TacticDriver {
  * @aop/content rather than hardcoded here. The driver is cached per tuning
  * object (frozen once into a match's config, so it's stable for the match's
  * lifetime) so repeated calls with the same tuning return the identical
- * instance — the client's naval-AI mirror in `boardingPlanner.ts` relies on
- * this to prove parity with the reducer's driver selection.
+ * instance.
  */
 const aiTacticDriverCache = new WeakMap<TacticsTuning, TacticDriver>()
 export function aiTacticDriver(tactics: TacticsTuning): TacticDriver {
