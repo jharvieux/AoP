@@ -15,11 +15,19 @@
 import { requireServiceRole, serviceClient } from '../_shared/client.ts'
 import { AppError, errorResponse, guardMethod, jsonResponse } from '../_shared/http.ts'
 import { findExpiredTurns, isExpectedSweepRace, skipExpiredTurn } from '../_shared/match.ts'
+import { findExpiredBattleSessions, forceResolveExpiredSession } from '../_shared/battleSession.ts'
 
 interface SweepResult {
   matchId: string
   seat: number
   skipped: boolean
+  seq?: number
+  reason?: string
+}
+
+interface BattleSweepResult {
+  matchId: string
+  resolved: boolean
   seq?: number
   reason?: string
 }
@@ -30,6 +38,28 @@ Deno.serve(async (req) => {
   try {
     requireServiceRole(req)
     const db = serviceClient()
+
+    // Force-resolve abandoned interactive battles FIRST (§2.1 step 5): a session past its
+    // whole-battle deadline is auto-fought from the orders recorded so far, exactly like
+    // battle-auto, BEFORE the turn-skip logic below — otherwise the BATTLE_PENDING guard
+    // (§2.2) would block the very endTurn the turn sweep is about to submit. A resolve
+    // failure is logged and never aborts the batch, same discipline as the turn sweep.
+    const battlesResolved: BattleSweepResult[] = []
+    for (const matchId of await findExpiredBattleSessions(db)) {
+      try {
+        const seq = await forceResolveExpiredSession(db, matchId)
+        battlesResolved.push({ matchId, resolved: true, seq })
+      } catch (err) {
+        if (!isExpectedSweepRace(err)) {
+          console.error(`sweep-turns: unexpected error resolving battle in match ${matchId}`, err)
+        }
+        battlesResolved.push({
+          matchId,
+          resolved: false,
+          reason: err instanceof AppError ? err.code : 'INTERNAL',
+        })
+      }
+    }
 
     const expired = await findExpiredTurns(db)
     const results: SweepResult[] = []
@@ -56,7 +86,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return jsonResponse({ swept: results })
+    return jsonResponse({ swept: results, battlesResolved })
   } catch (err) {
     return errorResponse(err)
   }

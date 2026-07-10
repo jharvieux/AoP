@@ -1,48 +1,48 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-07 (naval-navigation UX issue batch, D-027)._
+_Last updated: 2026-07-10, late session (battle-sessions finale: #408/#409 shipped in PR #423)._
 
 ## Just completed
 
-**Naval-navigation UX batch (D-027): seven ready-to-execute, model-labeled issues filed — no code changes this session.**
+**Second sweep round (2026-07-10): battle sessions are feature-complete on `main` short
+of the live two-client slice.** PR #423 (audited twice — first pass found 2 BLOCKERs,
+both fixed and re-audit CLEAR) closed **#408** (edge functions: `battle-open`/`round`/
+`auto`/`context`, `BATTLE_PENDING` guard, sweep-turns expiry, atomic `append_battle_order`
+RPC migration, client-field rejection) and **#409** (MatchScreen wiring: session-driven
+TacticalRoundSheet/BoardingCommandSheet, resume-on-reconnect, auto-fight). 75 deno + 640
+web tests green. Worktree cleanup also done this round: 68 stale agent worktrees removed,
+primary checkout back on `main`.
 
-The operator reported naval navigation is hard to understand and requested six
-improvements; each was designed against the actual code (two parallel exploration passes
-over `apps/web` map UI and `packages/engine` movement/combat/visibility) and filed:
-
-| #    | Title (short)                                               | Tier   | Pri |
-| ---- | ----------------------------------------------------------- | ------ | --- |
-| #370 | BUG: client chebyshev vs engine hex `mapDistance` adjacency | sonnet | P1  |
-| #371 | Movement-range shading on selection (green/red/yellow)      | opus   | P1  |
-| #372 | Engine multi-turn sail orders + fog-of-war interrupts       | opus   | P1  |
-| #375 | Dotted course preview, this-turn vs later-turn dots         | sonnet | P1  |
-| #376 | Target ships/cities/encounters from any distance            | sonnet | P1  |
-| #373 | Multi-city ownership audit (AI/economy/UI)                  | sonnet | P2  |
-| #374 | Defeated captain's ship joins winner's fleet (prizes)       | opus   | P2  |
-
-#370 was a bug discovered during exploration (likely part of the operator's targeting
-complaint), not one of the six requests.
+Earlier the same day: the first sweep round merged 9 PRs closing 13 issues (map polish
+#401–#405, naval UX #371/#372/#375/#376, #414 parity, probe extraction #321/#413, schema
+#407/#419, engine defender-orders #418/#420, designs #410/#416) and recorded **D-028** +
+**D-029**.
 
 ## In flight
 
-None.
+None. No open `auto-triaged` PRs; sweep ledger deleted.
 
 ## Next step
 
-Execute the batch in dependency order: **#370 first** (small correctness fix), then
-**#371 + #372** (engine foundations: `reachableTiles`, sail orders), then **#375 + #376**
-(course preview and any-distance targeting build on both). #373 and #374 can run anytime.
-Carry-over: operator review of the #321 multiplayer tactical probe design still pending.
+**Operator: run the manual `deploy.yml` dispatch** when ready to ship — it applies the two
+new migrations (`match_battle_sessions`, `append_battle_order`) and deploys the four new
+edge functions to the real Supabase project (none of that is applied automatically; note
+supabase/README.md says no production project exists yet). After that, **#422** is the
+last battle-sessions slice: live blind one-round-ahead lockstep, presence-gated defender
+grace clock, and the live interactive-defender UI — needs the engine two-seat
+AwaitingTactics collect-pass and genuinely benefits from two live clients to verify.
 
 ## Blocked on user
 
-- Optional vetoes on product defaults embedded in the designs (see D-027): no auto-attack
-  on intercept arrival (#372); prize ships join empty-crewed, no prize on failed city
-  assaults (#374).
-- Carry-over: #321 design go/no-go; stale `.claude/worktrees/*` cleanup (local prettier
-  blocker, not CI-critical).
+- `deploy.yml` dispatch (above) — agent-inaccessible by policy.
+- ~28 stale local `feature/sweep-*` branches from previous sessions (worktrees now gone;
+  refs remain). Deleting needs a merged/closed-PR check per branch — ask when wanted.
+- The `needs-human-fix` backlog: #362 (CI docs-only fast path), #98/#100/#156/#159/#160/
+  #161 (Capacitor/native), #4 (Phase 3 epic).
 
 ## Open questions
 
-None beyond the in-issue defaults above.
+- #422's live-lockstep UX (per-round grace countdown presentation, defender notification
+  cadence) will surface product questions once implemented against two live clients;
+  D-029's decisions bound the mechanics but not the presentation.

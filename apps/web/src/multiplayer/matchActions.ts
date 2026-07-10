@@ -8,10 +8,36 @@ import {
   type EncounterChoice,
   type GameMap,
   type PlayerView,
+  type SailTargetKind,
   type StandingOrder,
   type ViewCaptain,
   type ViewCity,
 } from '@aop/engine'
+import type { Coord } from '@aop/shared'
+import { findApproachPath } from '../approach'
+
+/**
+ * Can `captainId` engage `targetPos` *this turn*, from any distance (#376,
+ * mirrored for multiplayer at #414)? Already-adjacent is the zero-cost case
+ * of the same approach-path query (`findApproachPath` returns the
+ * single-tile `[from]` path when `from` is already a neighbor), so there's
+ * one code path instead of a separate adjacency special-case. `+ 1` reserves
+ * the movement point the attack itself spends. Returns the approach leg to
+ * sail first (`null` if none needed, i.e. already adjacent) or `undefined`
+ * if the target can't be reached and engaged this turn at all.
+ */
+export function approachToEngage(
+  map: GameMap,
+  from: Coord,
+  targetPos: Coord,
+  movementPoints: number,
+): Coord[] | null | undefined {
+  const approach = findApproachPath(map, from, targetPos)
+  if (!approach) return undefined
+  const cost = approach.length - 1
+  if (cost + 1 > movementPoints) return undefined
+  return cost > 0 ? approach : null
+}
 
 /**
  * The PlayerView-shaped action surface for the multiplayer match screen
@@ -59,6 +85,7 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
       : {}),
     ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
     ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
+    ...(cap.sailOrder ? { sailOrder: cap.sailOrder } : {}),
   }
 }
 
@@ -91,6 +118,22 @@ export type TileIntent =
   | { kind: 'move'; to: { x: number; y: number } }
   | { kind: 'attack'; targetCaptainId: string }
   | { kind: 'encounter'; encounterId: string }
+  /**
+   * A non-adjacent enemy that's still reachable-and-attackable this turn
+   * (#414, finishing #376's multiplayer parity): sail the approach leg, then
+   * attack, in one dispatch — `MatchScreen` mirrors `GameScreen`'s
+   * `dispatchApproach` + `confirmAttack`. `approach` is the full inclusive
+   * path from `findApproachPath`; its last tile is the `moveCaptain`
+   * destination.
+   */
+  | { kind: 'approachAndAttack'; targetCaptainId: string; approach: Coord[] }
+  /**
+   * A multi-turn sail order (#372/#376): either a fixed distant tile
+   * (`destination` only) or an intercept course toward a visible target
+   * (`targetId`/`targetKind`). Dispatched as `setSailOrder`; the engine
+   * re-validates reachability server-side.
+   */
+  | { kind: 'setSailOrder'; destination: Coord; targetId?: string; targetKind?: SailTargetKind }
   | null
 
 export function interpretTileClick(
@@ -129,6 +172,25 @@ export function interpretTileClick(
     if (mapDistance(map, selected.position, enemyHere.position) <= 1 && movement >= 1) {
       return { kind: 'attack', targetCaptainId: enemyHere.id }
     }
+    if (mapDistance(map, selected.position, enemyHere.position) > 1) {
+      // Beyond adjacency but reachable-and-attackable this turn (#414,
+      // finishing #376 for multiplayer): approach and attack in one
+      // dispatch, rather than only offering a multi-turn intercept course.
+      // `approach` is never `null` here (that's only the already-adjacent
+      // case, already handled above) — either a real leg or `undefined`.
+      const approach = approachToEngage(map, selected.position, enemyHere.position, movement)
+      if (approach) return { kind: 'approachAndAttack', targetCaptainId: enemyHere.id, approach }
+      // Not reachable this turn: set an intercept course if there's any water
+      // approach at all — the ship closes over the next turns and halts adjacent.
+      if (findApproachPath(map, selected.position, enemyHere.position)) {
+        return {
+          kind: 'setSailOrder',
+          destination: enemyHere.position,
+          targetId: enemyHere.id,
+          targetKind: 'captain',
+        }
+      }
+    }
     return null
   }
 
@@ -139,6 +201,17 @@ export function interpretTileClick(
     if (mapDistance(map, selected.position, encounterHere.position) <= 1 && movement >= 1) {
       return { kind: 'encounter', encounterId: encounterHere.id }
     }
+    if (
+      mapDistance(map, selected.position, encounterHere.position) > 1 &&
+      findApproachPath(map, selected.position, encounterHere.position)
+    ) {
+      return {
+        kind: 'setSailOrder',
+        destination: encounterHere.position,
+        targetId: encounterHere.id,
+        targetKind: 'encounter',
+      }
+    }
     return null
   }
 
@@ -146,8 +219,10 @@ export function interpretTileClick(
   // in the reconstructed map are 'deep' fillers, so a path may optimistically
   // cross fog — the server is the authority and bounces a truly illegal move.
   const cost = pathCost(map, selected.position, { x, y })
-  if (cost !== null && cost <= movement) return { kind: 'move', to: { x, y } }
-  return null
+  if (cost === null) return null
+  if (cost <= movement) return { kind: 'move', to: { x, y } }
+  // Reachable by sea but beyond this turn: a multi-turn sail order (#372).
+  return { kind: 'setSailOrder', destination: { x, y } }
 }
 
 /**
@@ -181,6 +256,33 @@ export function applyOptimisticMove(
       c.id === captainId ? { ...c, position: to, movementPoints: spent } : c,
     ),
   }
+}
+
+/**
+ * Re-check, against the *authoritative* post-move view, whether `captainId`
+ * can still attack `targetCaptainId` (#414): the approach leg's round trip
+ * takes real wall-clock time, during which fog or an opposing action may
+ * have moved the target, sunk it, pulled it out of visibility, or — via an
+ * ally's capture — flipped its ownership to the viewer, none of which the
+ * pre-move client snapshot can know about. Mirrors the same
+ * owner-and-adjacency-and-movement gate `interpretTileClick`'s `enemyHere`
+ * lookup + `'attack'` branch use, but against the fresh view/map rather than
+ * the stale one the click happened against.
+ */
+export function canAttackAfterApproach(
+  freshView: PlayerView,
+  freshMap: GameMap,
+  captainId: string,
+  targetCaptainId: string,
+): boolean {
+  const captain = freshView.captains.find(
+    (c) => c.id === captainId && c.ownerId === freshView.viewerId,
+  )
+  const target = freshView.captains.find(
+    (c) => c.id === targetCaptainId && c.ownerId !== freshView.viewerId,
+  )
+  if (!captain || !target || (captain.movementPoints ?? 0) < 1) return false
+  return mapDistance(freshMap, captain.position, target.position) <= 1
 }
 
 /**
@@ -272,5 +374,22 @@ export const matchAction = {
   },
   ransomCaptain(view: PlayerView, captainId: string): Action {
     return { type: 'ransomCaptain', playerId: view.viewerId, captainId }
+  },
+  setSailOrder(
+    view: PlayerView,
+    captainId: string,
+    destination: Coord,
+    target?: { id: string; kind: SailTargetKind },
+  ): Action {
+    return {
+      type: 'setSailOrder',
+      playerId: view.viewerId,
+      captainId,
+      destination,
+      ...(target ? { targetId: target.id, targetKind: target.kind } : {}),
+    }
+  },
+  clearSailOrder(view: PlayerView, captainId: string): Action {
+    return { type: 'clearSailOrder', playerId: view.viewerId, captainId }
   },
 }

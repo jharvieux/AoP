@@ -213,6 +213,65 @@ export type Database = {
           },
         ]
       }
+      match_battle_sessions: {
+        Row: {
+          attacker_board_commands: Json
+          attacker_seat: number
+          attacker_tactic_orders: Json
+          base_seq: number
+          captain_id: string
+          created_at: string
+          deadline: string
+          defender_board_commands: Json
+          defender_interactive: boolean
+          defender_seat: number
+          defender_tactic_orders: Json
+          match_id: string
+          round_deadline: string | null
+          target_captain_id: string
+        }
+        Insert: {
+          attacker_board_commands?: Json
+          attacker_seat: number
+          attacker_tactic_orders?: Json
+          base_seq: number
+          captain_id: string
+          created_at?: string
+          deadline: string
+          defender_board_commands?: Json
+          defender_interactive?: boolean
+          defender_seat: number
+          defender_tactic_orders?: Json
+          match_id: string
+          round_deadline?: string | null
+          target_captain_id: string
+        }
+        Update: {
+          attacker_board_commands?: Json
+          attacker_seat?: number
+          attacker_tactic_orders?: Json
+          base_seq?: number
+          captain_id?: string
+          created_at?: string
+          deadline?: string
+          defender_board_commands?: Json
+          defender_interactive?: boolean
+          defender_seat?: number
+          defender_tactic_orders?: Json
+          match_id?: string
+          round_deadline?: string | null
+          target_captain_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'match_battle_sessions_match_id_fkey'
+            columns: ['match_id']
+            isOneToOne: true
+            referencedRelation: 'matches'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       match_chat: {
         Row: {
           alliance_id: number | null
@@ -535,6 +594,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_battle_order: {
+        Args: {
+          p_column: string
+          p_element: Json
+          p_expected: number
+          p_match_id: string
+          p_set_interactive: boolean
+        }
+        Returns: number
+      }
       append_match_action: {
         Args: {
           p_action: Json

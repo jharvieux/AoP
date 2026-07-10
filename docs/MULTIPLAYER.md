@@ -205,11 +205,21 @@ sides). Contract:
 - Battle reports involving your seat, redacted to what a participant would learn (enemy
   stack sizes engaged, not reserves elsewhere).
 - Public scoreboard aggregates if enabled in match settings (city counts, rough score).
+- **Interactive battle sessions** (`docs/design/multiplayer-tactical-probe.md`): each live
+  seat receives the engine's own per-round `TacticContext` / `BoardActivationView` — both
+  documented symmetric, hidden-info-free views. With the interactive **defender** seat
+  (D-028), the defender additionally learns that an attack on it is in progress during the
+  opponent's turn and its per-round context; this is inherent to the feature, bounded to
+  the engaged stack (not the attacker's other forces or plans), and operator-approved. The
+  counterpart's _current-round_ pick is never disclosed until both seats are bound (design
+  §10.6).
 
 **Leak audit checklist for #34** (each is a test): action log not readable while active
 (§4); `SEQ_CONFLICT` responses carry no action content; encounter outcomes visible only to
 the triggering player; alliance vision revoked on alliance break; Realtime broadcasts carry
-sequence numbers only, never state.
+sequence numbers only, never state; battle-session responses carry no `rngState` and no
+counterpart order bytes — a seat never sees the other seat's recorded picks, and an
+`awaitingCounterpart` response carries no pending pick (design §10.6).
 
 ## 8. Turn timers, auto-skip, AI takeover
 
@@ -266,18 +276,19 @@ odds-preview UX (#19).
 
 ## 11. Threat model
 
-| Attack                                  | Mitigation                                                                        |
-| --------------------------------------- | --------------------------------------------------------------------------------- |
-| Forged action for another seat          | `playerId` overwritten from JWT (§5.4)                                            |
-| Out-of-turn / illegal action            | Engine validation is the single choke point; `InvalidActionError` → reject        |
-| Replay or reorder submissions           | `expectedSeq` + `FOR UPDATE` + `(match_id, seq)` PK — three layers                |
-| Read full state (map hack)              | State tables not client-readable; only `get-player-view` output leaves the server |
-| Predict RNG (combat/encounter outcomes) | `rngState` never leaves the server (§7)                                           |
-| Harvest enemy moves from the action log | `match_actions` unreadable until match end (§4)                                   |
-| Chosen-seed advantage                   | `seed` is server-generated; client cannot supply it                               |
-| Stall the match                         | Turn timers → auto-skip → AI takeover (§8)                                        |
-| Snapshot/entitlement tampering          | Service-role-only writes; payment webhooks verify signatures                      |
-| Notification spam via channel           | Broadcasts are server-emitted pokes; channel is listen-only for clients           |
+| Attack                                                                 | Mitigation                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Forged action for another seat                                         | `playerId` overwritten from JWT (§5.4)                                                                                                                                                                                         |
+| Out-of-turn / illegal action                                           | Engine validation is the single choke point; `InvalidActionError` → reject                                                                                                                                                     |
+| Replay or reorder submissions                                          | `expectedSeq` + `FOR UPDATE` + `(match_id, seq)` PK — three layers                                                                                                                                                             |
+| Read full state (map hack)                                             | State tables not client-readable; only `get-player-view` output leaves the server                                                                                                                                              |
+| Predict RNG (combat/encounter outcomes)                                | `rngState` never leaves the server (§7)                                                                                                                                                                                        |
+| Probe-retract a battle to see the enemy's move (single- or cross-seat) | Battle sessions are binding; each seat's per-round order is irrevocable and neither live seat sees the other's current-round pick until both are committed — simultaneity enforced as a security property (design §1.1, §10.6) |
+| Harvest enemy moves from the action log                                | `match_actions` unreadable until match end (§4)                                                                                                                                                                                |
+| Chosen-seed advantage                                                  | `seed` is server-generated; client cannot supply it                                                                                                                                                                            |
+| Stall the match                                                        | Turn timers → auto-skip → AI takeover (§8)                                                                                                                                                                                     |
+| Snapshot/entitlement tampering                                         | Service-role-only writes; payment webhooks verify signatures                                                                                                                                                                   |
+| Notification spam via channel                                          | Broadcasts are server-emitted pokes; channel is listen-only for clients                                                                                                                                                        |
 
 Residual risks (accepted for v1, documented): collusion between allied players (a social
 problem, not a technical one) and timing side-channels (submission timestamps reveal when

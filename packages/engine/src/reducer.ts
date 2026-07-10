@@ -69,6 +69,7 @@ import {
   cautiousTacticDriver,
   ORDER_CONDITIONS,
   plainTacticDriver,
+  recordedTacticsDriver,
   resolveTacticalCombat,
   standingOrdersDriver,
   tacticPlanDriver,
@@ -756,8 +757,8 @@ export function cityToCombatant(city: CityState, content: ContentCatalog | undef
  * personality-flavored driver, with `easy` deliberately playing the weak line.
  * `tactics` is the match's frozen tuning (#212) — the thresholds these drivers
  * key on are balance data, never hardcoded in the engine. Exported so the
- * client boarding probe's parity test (#93) can compare its mirror against
- * this function directly.
+ * interactive-combat probes (`probe.ts`, #93/#305) select the exact same
+ * defender/attacker driver the reducer will, keeping probe and replay in sync.
  */
 export function aiTacticDriverForOwner(
   state: GameState,
@@ -806,9 +807,19 @@ function attackCaptain(
       throw new InvalidActionError(`Unknown tactic '${tactic}' in attacker orders`, action)
     }
   }
+  for (const tactic of action.defenderOrders ?? []) {
+    if (!TACTICS.includes(tactic)) {
+      throw new InvalidActionError(`Unknown tactic '${tactic}' in defender orders`, action)
+    }
+  }
   for (const command of action.boardCommands ?? []) {
     if (!isValidBoardCommand(command)) {
       throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
+  for (const command of action.defenderBoardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in defender plan', action)
     }
   }
 
@@ -827,8 +838,15 @@ function attackCaptain(
   const content = state.config.content
 
   // The attacker plays its submitted plan; the defender fights by the standing
-  // orders its own owner saved in state (never anything the attacker supplies).
+  // orders its own owner saved in state (never anything the attacker supplies)
+  // UNLESS the server authored the defender's interactive picks (#418, D-029):
+  // `defenderOrders`/`defenderBoardCommands` are populated only by the battle-
+  // session resolver from the defender's own authenticated submissions, and the
+  // recorded prefix plays out with the standing-orders/doctrine tail beyond it.
   // Either side without orders is driven by the combat AI — auto-resolve.
+  const defenderTacticFallback: TacticDriver = target.standingOrders?.length
+    ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
+    : aiTacticDriverForOwner(state, target.ownerId, stats.tactics)
   const result: CombatResult = resolveTacticalCombat(
     {
       attacker: captainToCombatant(attacker, content),
@@ -840,9 +858,12 @@ function attackCaptain(
       attacker: action.attackerOrders?.length
         ? tacticPlanDriver(action.attackerOrders)
         : aiTacticDriverForOwner(state, attacker.ownerId, stats.tactics),
-      defender: target.standingOrders?.length
-        ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-        : aiTacticDriverForOwner(state, target.ownerId, stats.tactics),
+      // Interactive defender (#418): recorded picks count, standing orders → AI
+      // finish the tail (D-029 §10.5). Absent `defenderOrders`, this is the
+      // fallback alone — byte-identical to the previous standing-orders behavior.
+      defender: action.defenderOrders?.length
+        ? recordedTacticsDriver(action.defenderOrders, defenderTacticFallback)
+        : defenderTacticFallback,
       // Board melee (#39): the attacker plays its recorded commands if it
       // submitted any (the single-player interactive picker, #93 — it can
       // probe the live RNG state to build one). Lacking that, it falls back
@@ -856,9 +877,20 @@ function attackCaptain(
         : attacker.boardOrders?.length
           ? { attackerBoard: boardOrdersDriver(attacker.boardOrders) }
           : {}),
-      ...(target.boardOrders?.length
-        ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
-        : {}),
+      // Interactive defender melee (#418): recorded commands first, then the
+      // target's board doctrine → board AI finish the tail (boardPlanDriver's
+      // fallback defaults to the board AI when no doctrine is set). Absent
+      // `defenderBoardCommands`, this is byte-identical to the previous branch.
+      ...(action.defenderBoardCommands?.length
+        ? {
+            defenderBoard: boardPlanDriver(
+              action.defenderBoardCommands,
+              target.boardOrders?.length ? boardOrdersDriver(target.boardOrders) : undefined,
+            ),
+          }
+        : target.boardOrders?.length
+          ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
+          : {}),
     },
   )
   const { report } = result

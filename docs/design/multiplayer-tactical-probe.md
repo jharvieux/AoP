@@ -2,8 +2,10 @@
 
 _Design proposal for #321 (multiplayer Tactical naval mode) and the multiplayer
 interactive boarding melee (#293's underlying authority problem, referenced by #305).
-Companion to [MULTIPLAYER.md](../MULTIPLAYER.md) and D-015. Status: **proposal — requires
-operator review before implementation.**_
+Companion to [MULTIPLAYER.md](../MULTIPLAYER.md) and D-015. Status: **approved by the
+operator 2026-07-10 (D-028), with modified answers to §9** — implementation tracked in
+#407 (schema), #408 (edge functions), #409 (client), #410 (interactive-defender design
+extension)._
 
 ## 1. Problem statement
 
@@ -288,14 +290,230 @@ one stroke, and `ORDERS_CONFLICT` additionally fixes the probe-race class that c
    audit rows, threat-model row "probe retraction → sessions are binding"), and a
    D-NNN entry recording this decision once the operator approves the design.
 
-## 9. Open questions for the operator
+## 9. Open questions for the operator — ANSWERED 2026-07-10 (D-028)
 
 - Session deadline default (proposal: 10 minutes or remaining turn time, whichever is
   smaller) — is a mid-battle walk-away costing opponents up to 10 extra minutes
   acceptable for async pacing?
+  - **Answer: no — 3–5 minutes** (or remaining turn time, whichever is smaller), stored
+    as config with a 5-minute default.
 - Should forced completion of a truncated _naval_ plan keep `tacticPlanDriver`'s cyclic
   wrap (zero engine change, slightly quirky) — recommended — or add the optional
   plan-then-AI action flag (§4.2)?
+  - **Answer: keep the cyclic wrap.** The §4.2 flag was rejected.
 - Is the defender ever interactive? This design says no (async: standing orders drive
   the defender, per ARCHITECTURE §6) — a future "both online" live variant could reuse
   sessions with a second seat's cursor, but nothing here depends on it.
+  - **Answer: yes — operator override.** The defender gets an interactive seat; the
+    second-seat cursor extension and its offline-defender fallbacks are designed in §10
+    (issue #410), and #407–#409 must not merge a single-seat-only shape.
+
+## 10. Interactive defender seat (extension, #410 — D-028 override)
+
+D-028 overrode §9's single-interactive-seat recommendation: the defender is interactive
+too. This section is the design delta. It supersedes any §2–§8 phrasing that assumes the
+defender is always driven by standing orders; where the two conflict, §10 wins for the
+naval/board **decision** flow, while every replay/authority invariant in §2.3 is
+unchanged (the log still receives exactly one `attackCaptain`; the defender's interactive
+picks are consumed server-side and never serialized into the action or into the
+attacker's view).
+
+### 10.1 Why the defender is not symmetric to the attacker
+
+The attacker is, by construction, present: they initiated the attack this turn, and
+`battle-open` is their action. The defender is generally **absent** — it is not their
+turn (async play, MULTIPLAYER.md §1/§8). So the defender seat is **opportunistic**:
+interactive _if_ the defender happens to be online and answers in time, otherwise it
+falls back to exactly today's behavior (standing orders → board doctrine → AI), adding
+**zero** latency to the attacker. The design goal is: _a present defender gets to play;
+an absent defender is invisible to the attacker's pacing._ Everything below follows from
+that asymmetry.
+
+### 10.2 The engine already picks both sides per round — the two-seat hook
+
+`resolveTacticalCombat`'s `chooseTactics` already calls **both** `drivers.attacker.choose`
+and `drivers.defender.choose` every naval round (`tactics.ts`), and picks are
+**simultaneous**: neither driver sees the other's _current-round_ tactic — `TacticContext`
+only exposes `enemyLastTactic`, the _previous_ round's pick. Today the probe wires the
+attacker to a recording driver (throws `AwaitingTactic` when its recorded plan runs out)
+and the defender to `standingOrdersDriver`/AI. The extension makes the **defender a
+recording driver too**. In the board (melee) phase, activations are strictly sequential
+by initiative and each activation belongs to exactly one side, so at most one seat is
+ever awaiting a `BoardCommand` at a time — the melee needs no simultaneity handling, only
+per-side command lists.
+
+**Engine delta (a follow-on to the now-merged probe module `packages/engine/src/probe.ts`,
+which shipped only a single-seat sentinel in PR 1; this two-seat extension lands on top of
+it with #408):** the recording probe must support _both_ sides recording, and must report **which seat(s) are pending**
+for the current naval round. Because both sides' `TacticContext` for round N are pure
+projections of the same round-start `RoundView` (independent of either current-round
+pick), `chooseTactics` can evaluate both drivers in a _collect_ pass: an exhausted
+recording driver registers its own correct ctx (correct `available` and `enemyLastTactic`)
+into a pending set instead of throwing; after both sides are consulted the probe throws a
+single `AwaitingTactics { pending: Array<{ side: 'attacker' | 'defender'; ctx: TacticContext }> }`
+carrying 1 or 2 contexts. A round advances only when neither side is pending. This is the
+minimal honest change: no RNG exposure, no second simulation, no new action shape.
+
+### 10.3 Session state shape (two writers)
+
+The session grows from one order list to **per-side** lists, and records both seats:
+
+```sql
+-- match_battle_sessions, extended from §3.1 (still one row per match, service-role only)
+  attacker_seat            int  not null,   -- was `seat`
+  defender_seat            int  not null,   -- target captain's owner seat (may be AI/offline)
+  attacker_tactic_orders   jsonb not null default '[]',
+  defender_tactic_orders   jsonb not null default '[]',
+  attacker_board_commands  jsonb not null default '[]',
+  defender_board_commands  jsonb not null default '[]',
+  defender_interactive     boolean not null default false,  -- flips true on the defender's first order
+  round_deadline           timestamptz,     -- per-round grace for the side that owes the current round
+  deadline                 timestamptz not null,             -- whole-battle hard cap (§10.5), unchanged role
+```
+
+`captain_id` / `target_captain_id` / `base_seq` / `created_at` are unchanged. The single
+`deadline` remains the whole-battle hard cap; `round_deadline` is the new short per-round
+grace. `defender_interactive` lets the resolver distinguish "defender chose to play but
+paused" from "defender never showed up."
+
+**CAS / mutual exclusion with two writers.** Each seat only ever appends to **its own**
+columns, so the two writers touch **disjoint** state. A `battle-round` call appends under
+a per-side length guard — an atomic `UPDATE … WHERE jsonb_array_length(<caller-side col>)
+= :expectedOrders` (still inside the `SELECT … FOR UPDATE` on the `matches` row that
+serialises every writer per match). Attacker and defender rounds therefore never lose-
+update each other, and a rapid double-submit from one seat gets a deterministic
+`ORDERS_CONFLICT` (the same server-side race fix §3 already describes for #293), now
+per-seat.
+
+**Lockstep bound.** To keep the awaiting-set well defined, each side may be at most **one
+unresolved naval round ahead**: `battle-round` rejects a round-`N+1` append while that
+seat's round `N` is not yet resolved (both sides in), with `BATTLE_ROUND_PENDING`. So
+`len(attacker_tactic_orders)` and `len(defender_tactic_orders)` never differ by more than
+one, and "the current round" is unambiguous. A seat that has submitted round N and is
+waiting for its counterpart receives an `awaitingCounterpart` outcome carrying **no
+information** about the counterpart's pending pick — preserving simultaneity as a security
+property (see §10.6).
+
+### 10.4 Turn-taking within a battle round
+
+Naval round N resolves when **both** seats have recorded a round-N tactic:
+
+1. Attacker submits round-N tactic via `battle-round` (seat derived from JWT → appended to
+   `attacker_tactic_orders`). If the defender still owes round N, the attacker gets
+   `awaitingCounterpart`.
+2. Defender: if **online** (subscribed to `match:{id}`, recently seen), the server pokes
+   them at `battle-open` and they submit round-N via the _same_ `battle-round` (routed to
+   `defender_tactic_orders`). If **offline**, or if `round_deadline` lapses (§10.5), the
+   server fills the defender's round N from `standingOrdersDriver` (or AI) **instantly** and
+   proceeds — the attacker never waits on an absent defender.
+3. With both round-N picks in, the probe resolves round N and returns each seat the _next_
+   awaiting context (round N+1), which now legitimately carries `enemyLastTactic` = the
+   counterpart's round-N pick — disclosure paid for by both seats already being bound.
+
+Board (melee) phase: strictly sequential. On each activation the probe throws
+`awaitingCommand` **tagged with the owning seat**; only that seat's `battle-round` is
+accepted for it. The counterpart seat is idle (may watch via its read path) until an
+activation of its own comes up.
+
+### 10.5 Deadline sharing and force-resolution
+
+**One shared whole-battle wall-clock budget, attacker-paced.** Not two chess clocks —
+that is over-engineered for async play. The whole-battle `deadline` = `min(remaining
+attacker turn time, config default 5 min ∈ [3,5])` per D-028. It is the hard cap for the
+_entire_ battle across both seats. Within it, a short **per-round defender grace**
+(`round_deadline`, config; suggested 30–45 s, and **0 / skipped when the defender is
+detectably offline**) bounds how long the attacker waits on the defender each round. The
+attacker's own thinking time is bounded only by the whole-battle cap — they always have
+the `battle-auto` escape hatch. So the "split" is: attacker paces the battle; the defender
+gets a bounded grace per round or is auto-filled. **An offline defender adds no latency;
+an online-but-slow defender adds at most one `round_deadline` per round.**
+
+Force-resolution (either `battle-auto`, attacker-only; or the `sweep-turns` cron at the
+whole-battle `deadline`) completes each seat's unsubmitted tail from its **own** fallback
+— asymmetric by design:
+
+| Seat     | Recorded prefix | Unsubmitted tail on force-resolve                                                                                          |
+| -------- | --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Attacker | counts          | **cyclic wrap** of the recorded naval plan (`tacticPlanDriver`; `broadside` if empty); board → board AI — per D-028        |
+| Defender | counts          | **standing orders → board doctrine → AI** (today's async default), _not_ a cyclic wrap of the defender's interactive picks |
+
+Rationale for the defender's different tail: a defender who stops responding has not
+authored a deliberate full plan the way the attacker's auto path assumes; the honest
+completion for them is their pre-declared standing orders, which is precisely the base
+design's non-interactive defender. Both seats keep their recorded prefix and fall back
+only for the remainder — the same "prefix counts, fallback finishes the tail" principle,
+with a different fallback driver per seat. `battle-auto` stays **attacker-only**; a
+defender who wants out simply stops answering (the grace auto-fills them). An optional
+`battle-yield` (defender relinquishes to standing orders immediately, without waiting out
+the grace) is a nice-to-have, not required.
+
+### 10.6 Anti-cheat / no-leak analysis for the defender seat
+
+The defender must learn no more than their `PlayerView` plus the engine's own symmetric
+decision context already exposes.
+
+- **Symmetric views only.** The defender driver receives `TacticContext`
+  (`tactics.ts`: "nothing here is hidden information … honest under the anti-cheat model")
+  and `BoardActivationView` (`battleBoard.ts`: "the board is fully visible to both sides")
+  — the exact mirror of what the attacker receives. Own/enemy strength, HP, speed, and
+  `enemyLastTactic` (the attacker's _previous_ pick) are all things a battle participant
+  learns anyway. No `rngState`, no attacker standing orders/doctrine, no attacker forces
+  elsewhere are ever in these views.
+- **Simultaneity is a security property, not just a rule.** With two live seats the probe-
+  retraction oracle (§1.1) becomes _cross-seat_: if either seat could see the other's
+  current-round pick before committing its own, it could pick the matrix counter and
+  retract otherwise. Therefore each seat's submitted round-N order is **irrevocable**, and
+  neither seat learns the other's round-N pick until **both** are bound — the
+  `awaitingCounterpart` outcome (§10.3) discloses only "still waiting," never the pending
+  pick. `enemyLastTactic` for round N+1 is revealed only after both round-N picks are
+  committed. The §1.1 monotone-disclosure invariant now holds for **both** writers.
+- **Resolution report redaction unchanged.** The battle report the defender receives at
+  resolution is the same participant-redacted report a defender gets today (MULTIPLAYER.md
+  §7: "enemy stack sizes engaged, not reserves elsewhere").
+- **New, deliberate disclosure (documented, accepted).** An interactive defender learns
+  _the attack is in progress during the opponent's turn_ and its per-round context — which
+  a non-interactive defender would only see as a battle report on their next view. This is
+  inherent to the feature and operator-approved; it is bounded to the engagement (the
+  attacking stack engaged, not the attacker's other fleets or plans). The timing side-
+  channel (the auto-fill speed reveals whether the defender is online) is already an
+  accepted residual risk (MULTIPLAYER.md §11). Both are added to the leak-audit rows in
+  MULTIPLAYER.md §7/§11.
+- **Serialization test extends.** The §8 PR-3 leak test (no `rngState`/standing-orders
+  bytes in any session response) gains a case: no _attacker_ order bytes appear in a
+  defender-facing response and vice-versa, and `awaitingCounterpart` carries no counterpart
+  pick.
+
+### 10.7 Explicit deltas to #407 (schema) and #408 (API)
+
+**#407 (schema) — must not merge single-seat:**
+
+- Rename `seat` → `attacker_seat`; add `defender_seat`.
+- Replace `tactic_orders`/`board_commands` with the four per-side columns in §10.3.
+- Add `defender_interactive boolean` and `round_deadline timestamptz`.
+- The single `deadline` stays as the whole-battle hard cap; the expiry index still keys on
+  it (the sweep force-resolves on `deadline`; `round_deadline` is enforced inline by
+  `battle-round`/read paths, not by the cron).
+
+**#408 (API) — must not merge single-seat:**
+
+- `battle-round` is callable by **both** the attacker and defender seats; the caller's seat
+  (from JWT) selects which side's list is appended, and `expectedOrders` is that side's
+  own length. Reject a non-participant seat with `NOT_A_PARTICIPANT`.
+- `battle-open` additionally records `defender_seat` and, when the defender is a human and
+  online, emits a Realtime poke on `match:{id}` (`{ type: 'battle', … }`) inviting the
+  interactive seat. Attacker response shape unchanged.
+- Add a per-seat context read so the defender (who never saw the `battle-open` response)
+  can fetch its side's current outcome on the poke and on reconnect — either a new
+  `battle-context POST { matchId } → { outcome }` (seat-derived) or generalise
+  `battle-open`'s idempotent-resume to return the caller-side outcome for either seat.
+- Outcome union gains `{ kind: 'awaitingCounterpart' }` (you submitted this round; waiting
+  on the other seat — no counterpart data). `awaitingCommand` gains a `seat` tag naming the
+  seat that must act.
+- New error codes: `BATTLE_ROUND_PENDING` (round-ahead lockstep, §10.3) and
+  `NOT_A_PARTICIPANT`. `BATTLE_PENDING` (§2.2) still guards `submit-action`/`end-turn` for
+  the **attacker's** seat only — the defender's interaction advances no match state, so it
+  needs no such guard.
+- `battle-auto` stays attacker-only; `sweep-turns` force-resolves at `deadline` using the
+  per-seat fallbacks in §10.5.
+- Force-resolution determinism test extends to two recorded prefixes + two distinct
+  fallbacks.

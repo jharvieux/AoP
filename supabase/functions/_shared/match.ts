@@ -237,7 +237,7 @@ function reqBoardOrder(value: unknown, field: string): BoardOrder {
   }
 }
 
-function reqBoardCommand(value: unknown, field: string): BoardCommand {
+export function reqBoardCommand(value: unknown, field: string): BoardCommand {
   const v = reqObject(value, field)
   const out: BoardCommand = { stackId: reqInt(v.stackId, `${field}.stackId`) }
   if (v.to !== undefined) {
@@ -278,6 +278,14 @@ export function sanitizeAction(action: Action): Action {
         to: reqCoord(action.to, 'to'),
       }
     case 'attackCaptain':
+      // `attackerOrders`/`boardCommands` are the attacker's own recorded plan; a
+      // client may submit them. `defenderOrders`/`defenderBoardCommands` are
+      // SERVER-AUTHORED ONLY (#418, D-029): they carry an interactive defender's
+      // own picks and are populated exclusively by the battle-session resolver
+      // (`_shared/battleSession.ts`), never from a client body — {@link
+      // assertClientSubmittable} rejects a client that tries. They are copied
+      // through structurally so the server-authored resolution action survives
+      // `sanitizeAction` intact on its way into the log (#408).
       return {
         type: action.type,
         playerId,
@@ -292,6 +300,22 @@ export function sanitizeAction(action: Action): Action {
           : {}),
         ...(action.boardCommands !== undefined
           ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
+          : {}),
+        ...(action.defenderOrders !== undefined
+          ? {
+              defenderOrders: reqArray(action.defenderOrders, 'defenderOrders', (v, f) =>
+                reqEnum(v, TACTICS, f),
+              ),
+            }
+          : {}),
+        ...(action.defenderBoardCommands !== undefined
+          ? {
+              defenderBoardCommands: reqArray(
+                action.defenderBoardCommands,
+                'defenderBoardCommands',
+                reqBoardCommand,
+              ),
+            }
           : {}),
       }
     case 'setStandingOrders':
@@ -447,6 +471,22 @@ export function assertClientSubmittable(action: Action): void {
     throw new AppError(
       'INVALID_ACTION',
       'gainCaptainXp cannot be submitted directly; XP is awarded by the server',
+    )
+  }
+  // Interactive-defender orders are server-authored ONLY (#418, D-029, #408): they
+  // carry the DEFENDER's own recorded picks and are written exclusively by the
+  // battle-session resolver from the defender seat's authenticated submissions.
+  // A client (attacker or otherwise) submitting an `attackCaptain` that pre-supplies
+  // them would be dictating its opponent's tactics — an anti-cheat hole the engine's
+  // `defenderOrders` field opened for the server's benefit alone. Reject it here, the
+  // single choke point for client-proposed actions.
+  if (
+    action.type === 'attackCaptain' &&
+    (action.defenderOrders !== undefined || action.defenderBoardCommands !== undefined)
+  ) {
+    throw new AppError(
+      'INVALID_ACTION',
+      'defenderOrders/defenderBoardCommands are server-authored and cannot be submitted by a client',
     )
   }
 }
@@ -875,7 +915,7 @@ export async function skipExpiredTurn(
   )
 }
 
-async function submitActionInternal(
+export async function submitActionInternal(
   db: Db,
   matchId: string,
   callerSeat: number,

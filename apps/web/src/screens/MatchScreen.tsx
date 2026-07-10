@@ -1,5 +1,14 @@
-import type { Action, BattleReport, EncounterChoice, EncounterKind, PlayerView } from '@aop/engine'
+import type {
+  Action,
+  BattleReport,
+  BoardCommand,
+  EncounterChoice,
+  EncounterKind,
+  PlayerView,
+  TacticId,
+} from '@aop/engine'
 import { FACTIONS } from '@aop/content'
+import type { Coord } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { impactFeedback, shipMoveFeedback, tapFeedback } from '../audio/feedback'
@@ -12,17 +21,24 @@ import { MatchChatPanel } from '../components/MatchChatPanel'
 import { Spinner } from '../components/Spinner'
 import { CityScreen } from '../CityScreen'
 import { MapCanvas } from '../MapCanvas'
+import { submitApproachAndEngage } from '../multiplayer/approachAndEngage'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
   applyOptimisticMove,
+  canAttackAfterApproach,
   captainFromView,
   cityFromView,
   interpretTileClick,
   matchAction,
   ownCaptains,
 } from '../multiplayer/matchActions'
-import { MatchActionClient } from '../multiplayer/matchActionClient'
+import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
+import { BattleSessionClient, type BattleSessionOutcome } from '../multiplayer/battleSessionClient'
+import { BattleSessionFlow } from '../multiplayer/battleSessionFlow'
 import { boardFromPlayerView } from '../multiplayer/playerViewBoard'
+import { classifyRangeOverlay } from '../shipRange'
+import { TacticalRoundSheet } from '../TacticalRoundSheet'
+import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   createMatchRealtimeTransport,
   supabaseRealtimeClient,
@@ -89,6 +105,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [actionError, setActionError] = useState<string | null>(null)
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
+  // The approach leg (#414) recorded when `attackTargetId` was set for a
+  // non-adjacent-but-reachable-this-turn target; `null` for an already
+  // adjacent attack, which needs no approach move first.
+  const [pendingApproach, setPendingApproach] = useState<Coord[] | null>(null)
   const [encounterId, setEncounterId] = useState<string | null>(null)
   const [openCityId, setOpenCityId] = useState<string | null>(null)
   const [diplomacyOpen, setDiplomacyOpen] = useState(false)
@@ -99,6 +119,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Structured result of the viewer's own last attack (#285), for the battle
   // report sheet — derived output, never part of the polled view.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
+  // Interactive-combat session (#408/#409, docs/design/multiplayer-tactical-probe.md): the
+  // driver holds the running per-side CAS counters; `battleOutcome` is the engine context to
+  // render (a naval round or a melee activation), null when no battle is being played out.
+  const [battleFlow, setBattleFlow] = useState<BattleSessionFlow | null>(null)
+  const [battleOutcome, setBattleOutcome] = useState<BattleSessionOutcome | null>(null)
+  const [battleBusy, setBattleBusy] = useState(false)
   // The live `match:{id}` Realtime transport (#260) — also handed to the chat
   // panel so incoming-message pokes arrive without polling.
   const [transport, setTransport] = useState<MatchRealtimeTransport | null>(null)
@@ -108,6 +134,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Whether any view has ever loaded — ref, not state, because `refetch` is
   // captured once by the mount effect and must not read a stale `live`.
   const hasLoadedRef = useRef(false)
+  // One-shot guard for the resume-on-reconnect battle-context probe (#409).
+  const battleResumedRef = useRef(false)
 
   const config = resolveSupabaseConfig()
   const session = auth.state.status === 'authenticated' ? auth.state.session : null
@@ -199,6 +227,38 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     return () => clearInterval(id)
   }, [])
 
+  // Resume-on-reconnect (#409): once, after the first view loads in a tactical match, ask
+  // battle-context whether this seat has a battle in progress (a reload mid-fight, or a
+  // pending session the BATTLE_PENDING guard would otherwise wedge behind). Only tactical
+  // matches can hold a session, so non-tactical matches never make this call. The full
+  // reconnect story (live defender pickup) is #422.
+  useEffect(() => {
+    if (!live || !session || !config || battleResumedRef.current) return
+    if (live.view.rules.setup.battleResolution !== 'tactical') return
+    battleResumedRef.current = true
+    const flow = makeBattleFlow()
+    flow
+      .resume()
+      .then((outcome) => {
+        if (outcome.kind === 'awaitingTactic' || outcome.kind === 'awaitingCommand') {
+          setBattleFlow(flow)
+          setBattleOutcome(outcome)
+        }
+      })
+      .catch((err) => {
+        // Only the expected quiet cases are swallowed: no session in progress (MATCH_STATE)
+        // or this seat isn't a participant (NOT_A_PARTICIPANT). Any OTHER failure (network,
+        // server error) is a real problem — surface it through the same actionError UI every
+        // other MatchScreen write path uses, rather than swallowing it invisibly (fail loud).
+        const code = err instanceof MatchActionError ? err.code : undefined
+        if (code === 'MATCH_STATE' || code === 'NOT_A_PARTICIPANT') return
+        setActionError(
+          err instanceof Error ? err.message : 'Could not check for a battle in progress.',
+        )
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, session, config])
+
   // Turn-change notification (#35): haptic nudge + tab title while it's the
   // viewer's move, so a backgrounded tab still signals.
   useEffect(() => {
@@ -250,6 +310,99 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     } else {
       const err = outcome.error
       setActionError(err instanceof Error ? err.message : 'The action was rejected.')
+    }
+  }
+
+  // --- Interactive combat (#409): drive TacticalRoundSheet/BoardingCommandSheet from the
+  // #408 battle-session endpoints. A `battleResolution: 'tactical'` attacker plays the fight
+  // round by round; every other attack (and non-tactical matches) keeps today's one-shot
+  // `submit()` path. rngState never reaches the client — each pick is one round trip that
+  // returns the engine's own next decision context (BattleSessionFlow). The live interactive
+  // DEFENDER seat, boarding-loss highlighting, and tactical-after-approach are #422.
+
+  function makeBattleFlow(): BattleSessionFlow {
+    const client = new BattleSessionClient(config!)
+    return new BattleSessionFlow({
+      open: (p) => client.open(session!, { matchId, ...p }),
+      round: (p) => client.round(session!, { matchId, ...p }),
+      auto: () => client.auto(session!, { matchId }),
+      context: () => client.context(session!, { matchId }),
+    })
+  }
+
+  function applyBattleOutcome(flow: BattleSessionFlow, outcome: BattleSessionOutcome): void {
+    if (outcome.kind === 'resolved') {
+      setBattleFlow(null)
+      setBattleOutcome(null)
+      setLive((l) => (l ? { ...l, seq: outcome.seq, view: outcome.view } : l))
+      setBattleReport(outcome.battleReport)
+      void refetch()
+    } else if (outcome.kind === 'awaitingTactic' || outcome.kind === 'awaitingCommand') {
+      setBattleFlow(flow)
+      setBattleOutcome(outcome)
+    }
+    // 'recorded' is the defender-seat ack — the attacker driver never receives it.
+  }
+
+  function handleBattleError(err: unknown): void {
+    // A stale session (SEQ_CONFLICT) means the battle already resolved/deleted server-side:
+    // drop the local sheet and refetch. Every other failure keeps the sheet open so the
+    // player can retry the pick or hit auto-fight (the session is still live server-side).
+    if (err instanceof MatchActionError && err.isStale) {
+      setBattleFlow(null)
+      setBattleOutcome(null)
+      setActionError('The board changed — refreshed.')
+      void refetch()
+      return
+    }
+    setActionError(err instanceof Error ? err.message : 'The battle order was rejected.')
+  }
+
+  async function runBattleStep(step: () => Promise<BattleSessionOutcome>): Promise<void> {
+    if (battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    try {
+      const flow = battleFlow
+      if (!flow) return
+      applyBattleOutcome(flow, await step())
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
+    }
+  }
+
+  async function startTacticalBattle(
+    captainId: string,
+    targetCaptainId: string,
+    expectedSeq: number,
+  ): Promise<void> {
+    if (battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    const flow = makeBattleFlow()
+    try {
+      applyBattleOutcome(flow, await flow.open(expectedSeq, captainId, targetCaptainId))
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
+    }
+  }
+
+  async function autoFightBattle(): Promise<void> {
+    if (!battleFlow || battleBusy) return
+    setBattleBusy(true)
+    setActionError(null)
+    const flow = battleFlow
+    try {
+      const result = await flow.autoResolve()
+      applyBattleOutcome(flow, { kind: 'resolved', ...result })
+    } catch (err) {
+      handleBattleError(err)
+    } finally {
+      setBattleBusy(false)
     }
   }
 
@@ -331,6 +484,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       case 'selectCaptain':
         setSelectedCaptainId(intent.captainId)
         setAttackTargetId(null)
+        setPendingApproach(null)
         break
       case 'openCity':
         tapFeedback()
@@ -350,21 +504,189 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         break
       case 'attack':
         setAttackTargetId(intent.targetCaptainId)
+        setPendingApproach(null)
+        break
+      case 'approachAndAttack':
+        // Non-adjacent but reachable-and-attackable this turn (#414): opens
+        // the same confirm sheet as an adjacent attack; the recorded
+        // approach leg is sailed first when the player confirms.
+        setAttackTargetId(intent.targetCaptainId)
+        setPendingApproach(intent.approach)
         break
       case 'encounter':
         setEncounterId(intent.encounterId)
         break
+      case 'setSailOrder':
+        shipMoveFeedback()
+        void submit(
+          matchAction.setSailOrder(
+            view,
+            selectedCaptain!.id,
+            intent.destination,
+            intent.targetId && intent.targetKind
+              ? { id: intent.targetId, kind: intent.targetKind }
+              : undefined,
+          ),
+        )
+        break
     }
   }
+
+  function resumeSailOrder(captainId: string) {
+    const order = myCaptains.find((c) => c.id === captainId)?.sailOrder
+    if (!order) return
+    tapFeedback()
+    void submit(
+      matchAction.setSailOrder(
+        view,
+        captainId,
+        order.destination,
+        order.targetId && order.targetKind
+          ? { id: order.targetId, kind: order.targetKind }
+          : undefined,
+      ),
+    )
+  }
+
+  function cancelSailOrder(captainId: string) {
+    tapFeedback()
+    void submit(matchAction.clearSailOrder(view, captainId))
+  }
+
+  // Movement-range shading (#371): same classification as single-player, but
+  // over the fog-reconstructed board and the view's own visibility sets.
+  const rangeOverlay = selectedCaptain
+    ? classifyRangeOverlay({
+        map: board.map,
+        from: selectedCaptain.position,
+        movementPoints: selectedCaptain.movementPoints ?? 0,
+        hasTroops: (selectedCaptain.troops ?? []).reduce((sum, t) => sum + t.count, 0) > 0,
+        enemies: view.captains
+          .filter(
+            (c) =>
+              c.ownerId !== view.viewerId &&
+              board.visibleKeys.has(`${c.position.x},${c.position.y}`),
+          )
+          .map((c) => c.position),
+        enemyCities: view.cities
+          .filter(
+            (c) =>
+              c.ownerId !== view.viewerId &&
+              board.exploredKeys.has(`${c.position.x},${c.position.y}`),
+          )
+          .map((c) => c.position),
+        encounters: view.encounters
+          .filter((e) => e.active && board.visibleKeys.has(`${e.position.x},${e.position.y}`))
+          .map((e) => e.position),
+      })
+    : undefined
+
+  // Paused sail orders (#372): own ships halted on a new contact.
+  const interruptedCaptains = myCaptains.filter((c) => c.sailOrder?.interrupted)
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
     impactFeedback()
     const captainId = selectedCaptain.id
     const targetCaptainId = attackTarget.id
+    const approach = pendingApproach
     setAttackTargetId(null)
     setSelectedCaptainId(null)
-    void submit(matchAction.attack(view, captainId, targetCaptainId))
+    setPendingApproach(null)
+    // Tactical mode (#305/#409): an adjacent attack is played out round by round through a
+    // binding battle session instead of one-shot auto-resolution. Tactical-after-approach
+    // stays on the auto path below for now (opening a session after a same-turn move is #422).
+    if (!approach && view?.rules.setup.battleResolution === 'tactical' && live) {
+      void startTacticalBattle(captainId, targetCaptainId, live.seq)
+      return
+    }
+    if (!approach) {
+      void submit(matchAction.attack(view, captainId, targetCaptainId))
+      return
+    }
+    void submitApproachAndAttack(captainId, targetCaptainId, approach)
+  }
+
+  /**
+   * Sail `approach`'s last leg, then attack — the multiplayer counterpart of
+   * `GameScreen`'s `dispatchApproach` + `confirmAttack` (#414, finishing
+   * #376's parity). `MatchScreen`'s plain `submit()` closes over `live.seq`
+   * at call time, so two back-to-back `void submit()` calls would both race
+   * the same pre-move seq; `submitApproachAndEngage` threads `seq`/`view`
+   * explicitly between the two so the attack always targets the seq the move
+   * actually produced. `buildFollowUp` re-checks legality against the fresh
+   * post-move view — the round trip takes real time, during which fog or an
+   * opposing action may have moved, sunk, or hidden the target — and skips
+   * the attack rather than ever submitting one the engine would reject.
+   */
+  async function submitApproachAndAttack(
+    captainId: string,
+    targetCaptainId: string,
+    approach: Coord[],
+  ) {
+    if (!session || !config || !live || submitting) return
+    setActionError(null)
+    setSubmitting(true)
+    const client = new MatchActionClient(config)
+    const deps = {
+      submit: (expectedSeq: number, a: Action) =>
+        client.submitAction(session, { matchId, expectedSeq, action: a }),
+      refetch: fetchLive,
+      buildFollowUp: (freshView: PlayerView) =>
+        canAttackAfterApproach(
+          freshView,
+          boardFromPlayerView(freshView).map,
+          captainId,
+          targetCaptainId,
+        )
+          ? matchAction.attack(freshView, captainId, targetCaptainId)
+          : null,
+    }
+    const moveAction = matchAction.move(view, captainId, approach.at(-1)!)
+    const outcome = await submitApproachAndEngage(deps, live.seq, moveAction)
+    setSubmitting(false)
+
+    switch (outcome.kind) {
+      case 'ok':
+        setLive({ ...live, seq: outcome.followUp.seq, view: outcome.followUp.view })
+        if (outcome.followUp.battleReport) setBattleReport(outcome.followUp.battleReport)
+        void refetch()
+        break
+      case 'followUpSkipped':
+        // The approach landed but the target is no longer a legal attack —
+        // the ship has moved, so keep that; just don't send an attack the
+        // engine would bounce.
+        setLive({ ...live, seq: outcome.move.seq, view: outcome.move.view })
+        setActionError(
+          'The target moved out of reach — the approach completed, but the attack was cancelled.',
+        )
+        void refetch()
+        break
+      case 'followUpFailed':
+        // A hard rejection (no internal retry) leaves `live` at the pre-move
+        // snapshot for the move's own seq/view; a stale rejection already
+        // refreshed `live` via the retry's own refetch, so it's left alone.
+        if (outcome.outcome.kind === 'error') {
+          setLive({ ...live, seq: outcome.move.seq, view: outcome.move.view })
+        }
+        setActionError(
+          outcome.outcome.kind === 'error'
+            ? outcome.outcome.error instanceof Error
+              ? outcome.outcome.error.message
+              : 'The attack was rejected.'
+            : 'The board changed — refreshed.',
+        )
+        break
+      case 'moveFailed':
+        setActionError(
+          outcome.outcome.kind === 'error'
+            ? outcome.outcome.error instanceof Error
+              ? outcome.outcome.error.message
+              : 'The approach was rejected.'
+            : 'The board changed — refreshed.',
+        )
+        break
+    }
   }
 
   function resolveEncounter(choice: string) {
@@ -428,8 +750,28 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           exploredKeys={board.exploredKeys}
           selectedCaptainId={selectedCaptainId}
           onTileClick={handleTileClick}
+          rangeOverlay={rangeOverlay}
+          onSetCourse={(cell) => {
+            if (!selectedCaptain) return
+            shipMoveFeedback()
+            void submit(matchAction.setSailOrder(view, selectedCaptain.id, cell))
+          }}
           factionOf={board.factionOf}
         />
+        {myTurn &&
+          interruptedCaptains.map((cap) => (
+            <div key={cap.id} className="sail-interrupt-banner" role="status">
+              <span>{cap.name} halted: new contact sighted</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
       </div>
 
       <div className="bottom-action-bar">
@@ -525,8 +867,42 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         />
       )}
 
+      {/* Interactive combat (#409): the naval round and the boarding activation, driven from
+          the #408 session. Same engine views single-player's probe feeds these sheets — the
+          `key` remounts each on a fresh context. Boarding-loss highlighting (the `losses`
+          diff, §5) is #422; multiplayer shows the activation without the since-last-order
+          delta for now. */}
+      {battleOutcome?.kind === 'awaitingTactic' && (
+        <TacticalRoundSheet
+          key={`t${battleOutcome.ctx.round}`}
+          ctx={battleOutcome.ctx}
+          onChoose={(tactic: TacticId) =>
+            void runBattleStep(() => battleFlow!.chooseTactic(tactic))
+          }
+          onAutoResolve={() => void autoFightBattle()}
+        />
+      )}
+
+      {battleOutcome?.kind === 'awaitingCommand' && (
+        <BoardingCommandSheet
+          key={`b${battleOutcome.view.round}-${battleOutcome.view.stack.id}`}
+          view={battleOutcome.view}
+          losses={[]}
+          onCommand={(command: BoardCommand) =>
+            void runBattleStep(() => battleFlow!.command(command))
+          }
+          onAutoResolve={() => void autoFightBattle()}
+        />
+      )}
+
       {attackTarget && selectedCaptain && (
-        <BottomSheet title={`Engage ${attackTarget.name}?`} onClose={() => setAttackTargetId(null)}>
+        <BottomSheet
+          title={`Engage ${attackTarget.name}?`}
+          onClose={() => {
+            setAttackTargetId(null)
+            setPendingApproach(null)
+          }}
+        >
           <section className="battle-intro">
             <div className="battle-intro__side">
               {FACTIONS[board.factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (

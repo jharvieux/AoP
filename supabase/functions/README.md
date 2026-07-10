@@ -5,23 +5,27 @@ Each function runs the **same `@aop/engine` reducer the client runs** (§2), aga
 reconstructed from the action log, under Deno. The engine is dependency-free and touches no
 DOM/Node/Deno API, so it runs here unmodified.
 
-| Function            | Contract (§5)                                                             | Issue |
-| ------------------- | ------------------------------------------------------------------------- | ----- |
-| `create-match`      | `POST { settings } -> { matchId, inviteCode }`                            | #32   |
-| `join-match`        | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`           | #32   |
-| `start-match`       | `POST { matchId } -> { seq: 0 }` (creator only)                           | #32   |
-| `submit-action`     | `POST { matchId, expectedSeq, action } -> { seq, view }`                  | #33   |
-| `end-turn`          | `POST { matchId, expectedSeq } -> { seq, view }`                          | #33   |
-| `get-player-view`   | `POST { matchId } -> { seq, seat, view, turnDeadline }`                   | #34   |
-| `sweep-turns`       | `POST -> { swept }` (§8 turn-timer sweep; service-role only)              | #129  |
-| `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)         | #134  |
-| `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list) | #150  |
-| `get-leaderboard`   | `POST { limit? } -> { entries }` (top-N ranked players)                   | #154  |
-| `publish-map`       | `POST { mapCode, name? } -> { mapId }` (registered accounts only)         | #63   |
-| `browse-maps`       | `POST { search?, limit?, before? } -> { maps, nextBefore }`               | #63   |
-| `download-map`      | `POST { mapId } -> { mapId, name, mapCode, … }` (counts the download)     | #63   |
-| `report-map`        | `POST { mapId, reason? } -> { status, reportCount }`                      | #63   |
-| `remove-map`        | `POST { mapId } -> { removed }` (author-only soft delete)                 | #63   |
+| Function            | Contract (§5)                                                                   | Issue |
+| ------------------- | ------------------------------------------------------------------------------- | ----- |
+| `create-match`      | `POST { settings } -> { matchId, inviteCode }`                                  | #32   |
+| `join-match`        | `POST { inviteCode \| matchId, faction? } -> { matchId, seat }`                 | #32   |
+| `start-match`       | `POST { matchId } -> { seq: 0 }` (creator only)                                 | #32   |
+| `submit-action`     | `POST { matchId, expectedSeq, action } -> { seq, view }`                        | #33   |
+| `end-turn`          | `POST { matchId, expectedSeq } -> { seq, view }`                                | #33   |
+| `battle-open`       | `POST { matchId, expectedSeq, captainId, targetCaptainId } -> { seq, outcome }` | #408  |
+| `battle-round`      | `POST { matchId, expectedOrders, order } -> { outcome }`                        | #408  |
+| `battle-auto`       | `POST { matchId } -> { seq, view, battleReport }` (attacker force-resolve)      | #408  |
+| `battle-context`    | `POST { matchId } -> { outcome }` (per-seat resume/defender context)            | #408  |
+| `get-player-view`   | `POST { matchId } -> { seq, seat, view, turnDeadline }`                         | #34   |
+| `sweep-turns`       | `POST -> { swept }` (§8 turn-timer sweep; service-role only)                    | #129  |
+| `reclaim-seat`      | `POST { matchId } -> { seat }` (returning human from ai_takeover)               | #134  |
+| `list-open-matches` | `POST { limit?, before? } -> { matches, nextBefore }` (public lobby list)       | #150  |
+| `get-leaderboard`   | `POST { limit? } -> { entries }` (top-N ranked players)                         | #154  |
+| `publish-map`       | `POST { mapCode, name? } -> { mapId }` (registered accounts only)               | #63   |
+| `browse-maps`       | `POST { search?, limit?, before? } -> { maps, nextBefore }`                     | #63   |
+| `download-map`      | `POST { mapId } -> { mapId, name, mapCode, … }` (counts the download)           | #63   |
+| `report-map`        | `POST { mapId, reason? } -> { status, reportCount }`                            | #63   |
+| `remove-map`        | `POST { mapId } -> { removed }` (author-only soft delete)                       | #63   |
 
 Maintenance (not player-facing — gated by a shared secret or the service role, never a user JWT):
 
@@ -104,6 +108,36 @@ and the code itself leaves only through `download-map`, which counts the downloa
 server-side. `remove-map` is the author's own soft delete (`status = 'removed'`), kept
 as a row so it still counts against the publish rate limit and the author can always
 re-download their own work.
+
+The four `battle-*` functions (#408, `docs/design/multiplayer-tactical-probe.md`) back
+multiplayer **interactive combat** (Tactical naval rounds + boarding melee) without ever
+shipping `rngState` to a client. They are a transport-level **session**, not engine state:
+`battle-open` validates the attack's preconditions (via the reducer's own validation) and
+writes one `match_battle_sessions` row — from that moment the attack is committed (§1.1: an
+accurate probe is an outcome oracle, so it must be binding). `battle-round` appends one order
+(a `TacticId` or a `BoardCommand`) under a per-side length CAS (`ORDERS_CONFLICT` on a stale
+count — the server-side fix for the #293 client race), re-runs the **pure engine probe**
+(`probeTacticalBattle`, @aop/engine — the same code single-player runs) against state
+reconstructed from snapshot + log, and returns the next `awaitingTactic`/`awaitingCommand`
+context or the resolution. Only when the probe resolves is the single `attackCaptain` action
+appended to `match_actions` (through the unchanged `submitActionInternal` pipeline, at
+`base_seq + 1` via the existing append CAS), so the replay contract, engine purity, and
+snapshot machinery are untouched (§2.3) — a finished match's log is indistinguishable from a
+precomputed attack. `battle-auto` is the attacker's escape hatch: force-resolve from the
+orders so far, letting the engine's deterministic fallbacks finish the tail (attacker cyclic
+wrap, defender standing orders — asymmetric per D-029 §10.5). `battle-context` is a read-only
+per-seat context fetch for reconnect. While a session is open, `submit-action`/`end-turn`
+reject the attacker's seat with `BATTLE_PENDING` (§2.2), and `sweep-turns` force-resolves an
+expired session before its turn-skip logic (§2.1 step 5). The session row is service-role
+only (RLS deny-all, #407/#419) and never returned — only the per-seat probe outcome is, which
+carries the engine's documented symmetric `TacticContext`/`BoardActivationView` views, never
+`rngState` or the counterpart seat's recorded orders (§7/§10.6 leak audit;
+`_shared/battleSession.test.ts`). The remaining live-simultaneity slice — the engine two-seat
+`AwaitingTactics` collect-pass giving a LIVE defender its own per-round context under blind
+one-round-ahead lockstep, plus presence poking and the per-round grace clock — is #422. All
+four functions are covered by `_shared/battleSession.test.ts` (session parity, CAS,
+forced-resolution, leak checklist). Deploying them to the real project is an operator
+`deploy.yml` dispatch (see Deploy & run below).
 
 Shared code lives in `_shared/`: `http.ts` (CORS + the `{ error: { code, message } }`
 envelope), `client.ts` (service-role client + JWT→uid), `catalog.ts` (the server-side

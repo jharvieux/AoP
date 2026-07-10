@@ -251,6 +251,35 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     expect(seen.boardOrders).toEqual([{ when: 'outnumbered', doctrine: 'holdLine' }])
   })
 
+  it('discloses the viewer’s own sail order but never an enemy’s (#372)', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    const order = {
+      destination: { x: 9, y: 9 },
+      knownContactIds: [],
+      interrupted: true,
+    }
+    const withSailOrders: GameState = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === mine.id
+          ? { ...c, sailOrder: order }
+          : c.ownerId === 'seat-1'
+            ? // Enemy captain co-located into vision, also carrying a sail order.
+              { ...c, position: { ...mine.position }, sailOrder: { ...order, interrupted: false } }
+            : c,
+      ),
+    }
+    const view = playerView(withSailOrders, 'seat-0')
+    expect(view.captains.find((c) => c.id === mine.id)!.sailOrder).toEqual(order)
+    const enemy = view.captains.find((c) => c.ownerId === 'seat-1')!
+    expect(enemy.sailOrder).toBeUndefined()
+    // The enemy's queued course must not leak anywhere in the serialized view.
+    expect(JSON.stringify(view.captains.filter((c) => c.ownerId === 'seat-1'))).not.toContain(
+      'sailOrder',
+    )
+  })
+
   it('emits only explored tiles, flagging which are currently visible', () => {
     const state = createGame(matchConfig())
     const view = playerView(state, 'seat-0')
