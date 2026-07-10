@@ -166,3 +166,25 @@ export function smoothLoop(points: number[], iterations: number): number[] {
   for (let i = 0; i < iterations; i++) result = chaikinOnce(result)
   return result
 }
+
+/**
+ * Split a closed loop's flat `[x0,y0,x1,y1,…]` point array into consecutive open
+ * runs of up to `runLength` points, each overlapping the next by one point and
+ * the final run bridging back to the loop's start — so stroking every run
+ * separately reproduces the whole perimeter with no gaps between runs. Used by
+ * the coast treatment (#403) to give each stretch of surf its own alpha instead
+ * of one uniform whole-loop stroke.
+ */
+export function loopStrokeRuns(points: number[], runLength: number): number[][] {
+  const n = points.length / 2
+  if (n < 2 || runLength < 2) return []
+  // Append the start point so the last run closes the loop back onto it.
+  const closed = [...points, points[0]!, points[1]!]
+  const total = n + 1
+  const runs: number[][] = []
+  for (let start = 0; start < total - 1; start += runLength - 1) {
+    const end = Math.min(start + runLength, total) // exclusive point index
+    runs.push(closed.slice(start * 2, end * 2))
+  }
+  return runs
+}
