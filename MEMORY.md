@@ -1,3 +1,41 @@
+## D-029 — 2026-07-10 — Interactive defender seat: product decisions signed off (#410)
+
+**Decision.** The operator reviewed the §10 interactive-defender design extension
+(`docs/design/multiplayer-tactical-probe.md`, PR #416, #410) during the 2026-07-10 issue
+sweep and signed off on all seven of its product decisions (verbatim: "Approve all"):
+
+1. **Offline defender = standing orders with zero added latency.** A detectably-offline
+   defender is auto-filled from their pre-declared standing orders / board doctrine / AI
+   tail — the base design's non-interactive defender — and adds no wait to the attacker.
+2. **Online defender gets a short per-round grace** (`round_deadline`, config; suggested
+   30–45 s) bounding how long the attacker waits on the defender each round.
+3. **One shared whole-battle deadline** (3–5 min, implementer default 5, or remaining
+   attacker turn time, whichever is smaller — per D-028), the single hard cap across both
+   seats. Not two separate chess clocks.
+4. **Both seats pick each round blind** — simultaneity as an anti-cheat property: neither
+   seat learns the other's round-N tactic until both are bound.
+5. **No peek-and-retract for either seat** — each submitted round-N order is irrevocable,
+   closing the cross-seat retraction oracle.
+6. **Asymmetric force-resolution.** On force-resolve each seat keeps its recorded prefix
+   and fills only the tail from its own fallback: attacker = cyclic wrap of the recorded
+   naval plan (`tacticPlanDriver`, per D-028); defender = standing orders → board doctrine
+   → AI. Both follow "prefix counts, fallback finishes the tail," with a per-seat driver.
+7. **Online defender gains real-time under-attack awareness**, bounded to engaged ships
+   only (no leak beyond the symmetric `PlayerView` / decision-context the seat already has).
+
+**Why.** Locks the async-pacing fallbacks that D-028 deferred to #410, so the #407 (schema)
+/ #408 (API) / #409 (client) follow-ups have a settled two-seat contract to build against
+and cannot merge a single-seat-only shape.
+
+**Rejected.** Separate per-seat clocks (over-engineered for async play); a
+defender-visible view of the attacker's current-round picks (breaks simultaneity /
+anti-cheat); treating the per-round defender grace as blocking for offline defenders (it is
+skipped / 0 when the defender is detectably offline).
+
+**Related.** #410, PR #416, D-028; `docs/design/multiplayer-tactical-probe.md` §10.
+
+---
+
 ## D-028 — 2026-07-10 — Battle sessions design approved (#321): 3–5 min deadline, cyclic forced finish, interactive defender
 
 **Decision.** The operator reviewed the binding-battle-sessions proposal
