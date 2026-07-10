@@ -8,17 +8,17 @@ _Last updated: 2026-07-10 (map-polish + issue sweep: 8 PRs merged, D-028/D-029).
 **Full issue sweep (2026-07-10): 13 issues closed across 8 merged PRs, all audited
 (pre-pr-reviewer) and CI-green; production Vercel deploy READY on the final main.**
 
-| PR   | Scope                                                              | Issues closed          |
-| ---- | ------------------------------------------------------------------ | ---------------------- |
-| #406 | docs: map-polish design specs (`docs/design/UI/`)                  | —                      |
-| #411 | Map polish: vignette, light, coast foam, land washes, caustics     | #401–#405              |
-| #412 | D-028: battle-sessions design approved (operator answers)          | —                      |
-| #413 | Probe extraction into `@aop/engine` (battle sessions step 1)       | #321 (with #412/#416)  |
-| #415 | Naval navigation/targeting client UI (+ conflict-resolve vs #413)  | #371 #372 #375 #376    |
-| #416 | §10 interactive-defender design extension + D-029 sign-off         | #410                   |
-| #417 | Multiplayer approach-and-attack parity (audit warnings fixed)      | #414                   |
-| #419 | `match_battle_sessions` two-seat schema + RLS (migration file)     | #407                   |
-| #420 | Engine: server-authored `defenderOrders` on `attackCaptain`        | #418                   |
+| PR   | Scope                                                             | Issues closed         |
+| ---- | ----------------------------------------------------------------- | --------------------- |
+| #406 | docs: map-polish design specs (`docs/design/UI/`)                 | —                     |
+| #411 | Map polish: vignette, light, coast foam, land washes, caustics    | #401–#405             |
+| #412 | D-028: battle-sessions design approved (operator answers)         | —                     |
+| #413 | Probe extraction into `@aop/engine` (battle sessions step 1)      | #321 (with #412/#416) |
+| #415 | Naval navigation/targeting client UI (+ conflict-resolve vs #413) | #371 #372 #375 #376   |
+| #416 | §10 interactive-defender design extension + D-029 sign-off        | #410                  |
+| #417 | Multiplayer approach-and-attack parity (audit warnings fixed)     | #414                  |
+| #419 | `match_battle_sessions` two-seat schema + RLS (migration file)    | #407                  |
+| #420 | Engine: server-authored `defenderOrders` on `attackCaptain`       | #418                  |
 
 Also closed without code: #384 (branch protection already had `format-check-only` —
 verified via API), #373/#374 (already shipped in PR #383; missing "Closes" keywords had
