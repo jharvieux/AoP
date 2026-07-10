@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-029 — 2026-07-10 — Interactive defender seat: product decisions signed off (#410)
 - D-028 — 2026-07-10 — Battle sessions design approved (#321): 3–5 min deadline, cyclic forced finish, interactive defender
 - D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)
 - D-026 — 2026-07-07 — Quality triage: six operator-reported issues investigated, decisions made, tracked as #342–#348
