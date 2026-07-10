@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-028 — 2026-07-10 — Battle sessions design approved (#321): 3–5 min deadline, cyclic forced finish, interactive defender
 - D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)
 - D-026 — 2026-07-07 — Quality triage: six operator-reported issues investigated, decisions made, tracked as #342–#348
 - D-025 — 2026-07-07 — First real prod deploy: DB pushed live (was empty); fixed edge-fn `@aop/*` vendoring (#339/PR #340); blocked by colima Docker bug (#341)
