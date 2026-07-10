@@ -1,12 +1,13 @@
 import type { AttackCaptainAction, AttackCityAction } from './actions'
 import {
   boardOrdersDriver,
+  boardPlanDriver,
   resolveBoardCombat,
   type BoardActivationView,
   type BoardCommand,
   type BoardDriver,
 } from './battleBoard'
-import { createCombatStats, type BattleReport } from './combat'
+import { createCombatStats, type BattleReport, type CombatStats } from './combat'
 import {
   aiTacticDriverForOwner,
   captainToCombatant,
@@ -14,6 +15,7 @@ import {
   prizeSpawnFor,
 } from './reducer'
 import {
+  recordedTacticsDriver,
   resolveTacticalCombat,
   standingOrdersDriver,
   tacticPlanDriver,
@@ -21,7 +23,59 @@ import {
   type TacticDriver,
   type TacticId,
 } from './tactics'
-import type { GameState } from './types'
+import type { Captain, GameState } from './types'
+
+/**
+ * The defender's naval driver for a probe, mirroring the reducer's `attackCaptain`
+ * handler byte-for-byte (#418). When the server has authored the defender's
+ * recorded interactive picks, the defender plays them for the rounds it recorded
+ * and its standing orders → AI finish the tail (D-029 §10.5); absent picks, the
+ * defender is driven by its standing orders (or AI) exactly as today. Wiring the
+ * probe and the reducer through the same construction is what makes "server probe
+ * outcome == final applied battle report" hold for the same prefix (#408).
+ */
+function defenderTacticDriverFor(
+  game: GameState,
+  target: Captain,
+  stats: CombatStats,
+  orders: readonly TacticId[] | undefined,
+): TacticDriver {
+  const fallback: TacticDriver = target.standingOrders?.length
+    ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
+    : aiTacticDriverForOwner(game, target.ownerId, stats.tactics)
+  return orders?.length ? recordedTacticsDriver(orders, fallback) : fallback
+}
+
+/**
+ * The defender's board (melee) driver for a probe, mirroring the reducer:
+ * server-authored recorded commands first, then the target's board doctrine →
+ * board AI for the tail; absent commands, the target's board doctrine alone (or
+ * the board AI, via the `undefined` default). Returns `undefined` when neither
+ * applies, which `resolveTacticalCombat` treats as the board AI (`?? boardAiDriver`).
+ */
+function defenderBoardDriverFor(
+  target: Captain,
+  commands: readonly BoardCommand[] | undefined,
+): BoardDriver | undefined {
+  if (commands?.length) {
+    return boardPlanDriver(
+      commands,
+      target.boardOrders?.length ? boardOrdersDriver(target.boardOrders) : undefined,
+    )
+  }
+  return target.boardOrders?.length ? boardOrdersDriver(target.boardOrders) : undefined
+}
+
+/**
+ * Server-authored defender picks for a two-seat probe (#418): the interactive
+ * defender's recorded per-round tactics and per-activation melee commands. Absent
+ * (or empty), the probe drives the defender exactly as single-player does today —
+ * standing orders → board doctrine → AI — so existing callers are unaffected.
+ */
+export interface DefenderPicks {
+  tacticOrders?: readonly TacticId[]
+  boardCommands?: readonly BoardCommand[]
+}
 
 /**
  * Interactive-combat probes (#93, #305, #344). The engine's battle resolvers
@@ -70,6 +124,7 @@ export function probeBoardingBattle(
   game: GameState,
   action: Pick<AttackCaptainAction, 'captainId' | 'targetCaptainId' | 'attackerOrders'>,
   commands: readonly BoardCommand[],
+  defender?: DefenderPicks,
 ): BoardingProbeOutcome {
   const attacker = game.captains.find((c) => c.id === action.captainId)
   const target = game.captains.find((c) => c.id === action.targetCaptainId)
@@ -87,6 +142,7 @@ export function probeBoardingBattle(
     },
   }
 
+  const defenderBoard = defenderBoardDriverFor(target, defender?.boardCommands)
   try {
     const result = resolveTacticalCombat(
       {
@@ -99,13 +155,9 @@ export function probeBoardingBattle(
         attacker: action.attackerOrders?.length
           ? tacticPlanDriver(action.attackerOrders)
           : aiTacticDriverForOwner(game, attacker.ownerId, stats.tactics),
-        defender: target.standingOrders?.length
-          ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-          : aiTacticDriverForOwner(game, target.ownerId, stats.tactics),
+        defender: defenderTacticDriverFor(game, target, stats, defender?.tacticOrders),
         attackerBoard: recorder,
-        ...(target.boardOrders?.length
-          ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
-          : {}),
+        ...(defenderBoard ? { defenderBoard } : {}),
       },
     )
     return { kind: 'resolved', report: withPrizeShip(result.report, game, attacker, target) }
@@ -228,6 +280,7 @@ export function probeTacticalBattle(
   action: Pick<AttackCaptainAction, 'captainId' | 'targetCaptainId'>,
   tacticOrders: readonly TacticId[],
   boardCommands: readonly BoardCommand[],
+  defender?: DefenderPicks,
 ): TacticalProbeOutcome {
   const attacker = game.captains.find((c) => c.id === action.captainId)
   const target = game.captains.find((c) => c.id === action.targetCaptainId)
@@ -245,6 +298,7 @@ export function probeTacticalBattle(
     },
   }
 
+  const defenderBoard = defenderBoardDriverFor(target, defender?.boardCommands)
   try {
     const result = resolveTacticalCombat(
       {
@@ -255,13 +309,9 @@ export function probeTacticalBattle(
       game.rngState,
       {
         attacker: recordingTacticDriver(tacticOrders),
-        defender: target.standingOrders?.length
-          ? standingOrdersDriver(target.standingOrders, stats.tactics.outgunnedRatio)
-          : aiTacticDriverForOwner(game, target.ownerId, stats.tactics),
+        defender: defenderTacticDriverFor(game, target, stats, defender?.tacticOrders),
         attackerBoard: boardRecorder,
-        ...(target.boardOrders?.length
-          ? { defenderBoard: boardOrdersDriver(target.boardOrders) }
-          : {}),
+        ...(defenderBoard ? { defenderBoard } : {}),
       },
     )
     return { kind: 'resolved', report: withPrizeShip(result.report, game, attacker, target) }

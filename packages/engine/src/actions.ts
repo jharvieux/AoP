@@ -39,12 +39,20 @@ export interface MoveCaptainAction {
  *
  * `attackerOrders` is the attacker's own per-round tactic plan (an interactive
  * player's recorded picks, or a preset pattern); omitted means the combat AI
- * drives the attacker — auto-resolve, same math. The defender's tactics are
- * deliberately NOT part of this action: they come from the target captain's
- * standing orders in GameState (set by its owner via `setStandingOrders`), or
- * the combat AI when none are set. An attacker who could submit the defender's
- * orders could puppet the defence — an anti-cheat hole under the D-009
- * server-authoritative model.
+ * drives the attacker — auto-resolve, same math. The defender's tactics come
+ * from the target captain's standing orders in GameState (set by its owner via
+ * `setStandingOrders`), or the combat AI when none are set — EXCEPT when the
+ * server itself authors `defenderOrders`/`defenderBoardCommands` below.
+ *
+ * An attacker who could submit the defender's orders could puppet the defence —
+ * an anti-cheat hole under the D-009 server-authoritative model. `defenderOrders`
+ * / `defenderBoardCommands` are therefore **server-authored only**: the
+ * `battle-session` resolver populates them from the defender's OWN authenticated
+ * `battle-round` submissions (docs/design/multiplayer-tactical-probe.md §10,
+ * D-029). The client `submit-action` path must reject them
+ * (`assertClientSubmittable`, enforced in #408) so an attacker can never puppet
+ * the defence; `sanitizeAction` allows them structurally so the server-authored
+ * resolve action round-trips through `appendAction`.
  */
 export interface AttackCaptainAction {
   type: 'attackCaptain'
@@ -62,6 +70,25 @@ export interface AttackCaptainAction {
    * attacker — it comes from the target captain's own board orders in state.
    */
   boardCommands?: BoardCommand[]
+  /**
+   * The interactive defender's recorded per-round tactic picks (#418, #410,
+   * D-029). **Server-authored only** (see the interface doc). When present, the
+   * defender plays these picks for the rounds it recorded, and its standing
+   * orders → AI finish any tail rounds it never answered (asymmetric
+   * force-resolution, D-029 §10.5 — a genuinely different tail from the
+   * attacker's cyclic wrap). Omitted means today's behavior exactly: the
+   * defender fights by the target captain's standing orders (or the combat AI).
+   * Never serialized from a client action and never surfaced in a `PlayerView`.
+   */
+  defenderOrders?: TacticId[]
+  /**
+   * The interactive defender's recorded battle-board commands (#418, #410).
+   * **Server-authored only**, mirroring {@link defenderOrders} for the melee
+   * phase: the defender plays these commands, then its board doctrine → board AI
+   * finishes the tail. Omitted means the defender's melee comes from the target
+   * captain's own board orders (or the board AI), exactly as today.
+   */
+  defenderBoardCommands?: BoardCommand[]
 }
 
 /**
