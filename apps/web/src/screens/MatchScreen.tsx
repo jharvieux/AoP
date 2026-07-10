@@ -230,9 +230,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Resume-on-reconnect (#409): once, after the first view loads in a tactical match, ask
   // battle-context whether this seat has a battle in progress (a reload mid-fight, or a
   // pending session the BATTLE_PENDING guard would otherwise wedge behind). Only tactical
-  // matches can hold a session, so non-tactical matches never make this call; a "no session"
-  // (MATCH_STATE) or non-participant response is swallowed. The full reconnect story (live
-  // defender pickup) is #422.
+  // matches can hold a session, so non-tactical matches never make this call. The full
+  // reconnect story (live defender pickup) is #422.
   useEffect(() => {
     if (!live || !session || !config || battleResumedRef.current) return
     if (live.view.rules.setup.battleResolution !== 'tactical') return
@@ -246,7 +245,17 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           setBattleOutcome(outcome)
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        // Only the expected quiet cases are swallowed: no session in progress (MATCH_STATE)
+        // or this seat isn't a participant (NOT_A_PARTICIPANT). Any OTHER failure (network,
+        // server error) is a real problem — surface it through the same actionError UI every
+        // other MatchScreen write path uses, rather than swallowing it invisibly (fail loud).
+        const code = err instanceof MatchActionError ? err.code : undefined
+        if (code === 'MATCH_STATE' || code === 'NOT_A_PARTICIPANT') return
+        setActionError(
+          err instanceof Error ? err.message : 'Could not check for a battle in progress.',
+        )
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, session, config])
 

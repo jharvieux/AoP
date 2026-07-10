@@ -43,7 +43,7 @@ import {
   type TacticContext,
   type TacticId,
 } from '@aop/engine'
-import type { Database, Json } from '@aop/shared'
+import type { Json } from '@aop/shared'
 import type { Db } from './client.ts'
 import { AppError } from './http.ts'
 import {
@@ -188,13 +188,20 @@ function probeSession(state: GameState, session: SessionRow) {
  * left wedged behind a `BATTLE_PENDING` guard. Bypasses `assertClientSubmittable` (the
  * client guard) deliberately: the assembled action is server-authored and legitimately
  * carries the defender's `defenderOrders`/`defenderBoardCommands`.
+ *
+ * `viewerSeat` is the CALLER's own seat: the returned `view` is always
+ * `playerView(state, <caller>)`, never the counterpart's — a seat must never receive the
+ * other side's full `PlayerView` (§10.6). Resolution is an attacker action, so in practice
+ * `viewerSeat` is always the attacker's seat (only the attacker drives a resolving
+ * `battle-round`/`battle-auto`; the sweep discards the view), but we scope it explicitly
+ * rather than hardcode the attacker.
  */
 async function submitAndClear(
   db: Db,
   matchId: string,
   session: SessionRow,
+  viewerSeat: number,
 ): Promise<{ kind: 'resolved'; seq: number; view: PlayerView; battleReport: BattleReport }> {
-  const attackerPlayerId = seatPlayerId(session.attacker_seat)
   try {
     const { seq, state, battleReport } = await submitActionInternal(
       db,
@@ -207,7 +214,7 @@ async function submitAndClear(
     return {
       kind: 'resolved',
       seq,
-      view: playerView(state, attackerPlayerId),
+      view: playerView(state, seatPlayerId(viewerSeat)),
       // The action IS an attack, so `submitActionInternal` always returns the report.
       battleReport: battleReport as BattleReport,
     }
@@ -220,16 +227,31 @@ async function submitAndClear(
 }
 
 /** Reconstruct state, run the probe, and either resolve (append the action) or hand back the
- * next awaiting context. Shared by open, round, and the idempotent resume. */
+ * next awaiting context. Shared by open and round (the WRITE paths — a resolving probe here
+ * submits the action). `viewerSeat` scopes a resolved `view` to the caller (never the
+ * counterpart's PlayerView, §10.6). NOT used by the read-only `battleContext`, which must
+ * never submit. */
 async function outcomeFor(
   db: Db,
   matchId: string,
   session: SessionRow,
+  viewerSeat: number,
 ): Promise<BattleSessionOutcome> {
   const state = await reconstructState(db, matchId, session.base_seq)
   const probe = probeSession(state, session)
-  if (probe.kind === 'resolved') return submitAndClear(db, matchId, session)
+  if (probe.kind === 'resolved') return submitAndClear(db, matchId, session, viewerSeat)
   return probe
+}
+
+/** A numeric-only `recorded` ack of one seat's OWN recorded prefix — the leak-safe outcome a
+ * READ path returns: it carries counts only, never order bytes and never a `PlayerView`
+ * (§7/§10.6). Used by `battleContext` so a poll can report progress without resolving. */
+function recordedFor(session: SessionRow, side: 'attacker' | 'defender'): BattleSessionOutcome {
+  return {
+    kind: 'recorded',
+    tacticOrders: session[`${side}_tactic_orders`].length,
+    boardCommands: session[`${side}_board_commands`].length,
+  }
 }
 
 function parseOrder(value: unknown): BattleOrder {
@@ -292,7 +314,7 @@ export async function openBattleSession(
     ) {
       throw new AppError('BATTLE_PENDING', 'A different battle is already in progress')
     }
-    return { seq: existing.base_seq, outcome: await outcomeFor(db, matchId, existing) }
+    return { seq: existing.base_seq, outcome: await outcomeFor(db, matchId, existing, seat) }
   }
 
   // Precondition validation through the reducer (adjacency/movement/ownership/not-captured):
@@ -329,7 +351,7 @@ export async function openBattleSession(
 
   const session = await loadSession(db, matchId)
   if (!session) throw new AppError('INTERNAL', 'Session vanished immediately after insert')
-  return { seq: session.base_seq, outcome: await outcomeFor(db, matchId, session) }
+  return { seq: session.base_seq, outcome: await outcomeFor(db, matchId, session, seat) }
 }
 
 /**
@@ -358,39 +380,42 @@ export async function appendBattleOrder(
   if (!side) throw new AppError('NOT_A_PARTICIPANT', 'You are not a participant in this battle')
 
   const order = parseOrder(rawOrder)
-  const tacticCol = `${side}_tactic_orders` as const
-  const boardCol = `${side}_board_commands` as const
-  const tactics = session[tacticCol]
-  const commands = session[boardCol]
-
-  // Per-side length CAS. A tactic extends the tactic list; a board command the board list.
   const isTactic = 'tactic' in order
-  const currentLength = isTactic ? tactics.length : commands.length
-  if (currentLength !== expectedOrders) {
-    throw new AppError('ORDERS_CONFLICT', 'Your recorded orders are stale; refetch and retry')
-  }
+  const column = isTactic ? `${side}_tactic_orders` : `${side}_board_commands`
+  const element = (isTactic ? order.tactic : order.boardCommand) as unknown as Json
 
-  const patch: Database['public']['Tables']['match_battle_sessions']['Update'] = {}
-  if (isTactic) {
-    patch[tacticCol] = [...tactics, order.tactic] as unknown as Json
-  } else {
-    patch[boardCol] = [...commands, order.boardCommand] as unknown as Json
+  // ATOMIC per-side length CAS (§2.2/§10.3): the guard-and-append is ONE conditional UPDATE
+  // in the `append_battle_order` RPC, whose `WHERE jsonb_array_length(<col>) = expectedOrders`
+  // predicate is the real concurrency check — NOT a check-then-act read in JS. Two concurrent
+  // same-seat `battle-round` calls serialise on the row lock; the loser re-evaluates the
+  // predicate against the committed new length, matches zero rows (OC409), and gets a
+  // deterministic ORDERS_CONFLICT instead of silently overwriting the winner's append (the
+  // #293 lost-update the code exists to close).
+  const { data: newLen, error } = await db.rpc('append_battle_order', {
+    p_match_id: matchId,
+    p_column: column,
+    p_element: element,
+    p_expected: expectedOrders,
+    p_set_interactive: side === 'defender',
+  })
+  if (error) {
+    if (error.code === 'OC409') {
+      throw new AppError('ORDERS_CONFLICT', 'Your recorded orders are stale; refetch and retry')
+    }
+    throw new AppError('INTERNAL', error.message)
   }
-  if (side === 'defender') patch.defender_interactive = true
-
-  const { error } = await db.from('match_battle_sessions').update(patch).eq('match_id', matchId)
-  if (error) throw new AppError('INTERNAL', error.message)
 
   if (side === 'defender') {
+    // The counterpart-untouched side keeps its read length; the appended side is `newLen`.
     return {
       kind: 'recorded',
-      tacticOrders: isTactic ? tactics.length + 1 : tactics.length,
-      boardCommands: isTactic ? commands.length : commands.length + 1,
+      tacticOrders: isTactic ? (newLen as number) : session.defender_tactic_orders.length,
+      boardCommands: isTactic ? session.defender_board_commands.length : (newLen as number),
     }
   }
   const updated = await loadSession(db, matchId)
   if (!updated) throw new AppError('INTERNAL', 'Session vanished mid-round')
-  return outcomeFor(db, matchId, updated)
+  return outcomeFor(db, matchId, updated, seat)
 }
 
 /**
@@ -410,11 +435,23 @@ export async function autoResolveBattleSession(
   if (seat !== session.attacker_seat) {
     throw new AppError('NOT_A_PARTICIPANT', 'Only the attacker may force-resolve a battle')
   }
-  return submitAndClear(db, matchId, session)
+  return submitAndClear(db, matchId, session, seat)
 }
 
-/** Per-seat context read (§10.7) so the defender (who never saw the `battle-open` response)
- * or either seat on reconnect can fetch the current outcome without recording an order. */
+/**
+ * Per-seat context read (§10.7) so the defender (who never saw the `battle-open` response) or
+ * either seat on reconnect can fetch the current outcome WITHOUT recording an order.
+ *
+ * READ-ONLY, by contract (§10.7: "Records nothing"): a context poll reports state and MUST
+ * NEVER drive resolution. Resolution is an attacker action — it happens only on the attacker's
+ * own resolving `battle-round`/`battle-auto`, or the sweep — so this path never calls
+ * `submitAndClear`. That closes the leak the audit flagged: a defender's poll racing the
+ * attacker's resolving round could otherwise win the `append_match_action` CAS and receive the
+ * ATTACKER's full `PlayerView`. Here the defender only ever gets a numeric-only `recorded` ack
+ * of its OWN prefix (the live per-round defender context is #422); the attacker gets its own
+ * awaiting context, and a resolvable-but-unresolved session seen from the poll is reported as
+ * `recorded` (the attacker's own resolving call will commit it) rather than resolved here.
+ */
 export async function battleContext(
   db: Db,
   matchId: string,
@@ -422,10 +459,16 @@ export async function battleContext(
 ): Promise<BattleSessionOutcome> {
   const session = await loadSession(db, matchId)
   if (!session) throw new AppError('MATCH_STATE', 'No battle is in progress for this match')
-  if (seat !== session.attacker_seat && seat !== session.defender_seat) {
-    throw new AppError('NOT_A_PARTICIPANT', 'You are not a participant in this battle')
-  }
-  return outcomeFor(db, matchId, session)
+  const side =
+    seat === session.attacker_seat ? 'attacker' : seat === session.defender_seat ? 'defender' : null
+  if (!side) throw new AppError('NOT_A_PARTICIPANT', 'You are not a participant in this battle')
+
+  if (side === 'defender') return recordedFor(session, 'defender')
+
+  const state = await reconstructState(db, matchId, session.base_seq)
+  const probe = probeSession(state, session)
+  if (probe.kind === 'resolved') return recordedFor(session, 'attacker')
+  return probe
 }
 
 /**
@@ -461,6 +504,7 @@ export async function findExpiredBattleSessions(db: Db): Promise<string[]> {
 export async function forceResolveExpiredSession(db: Db, matchId: string): Promise<number> {
   const session = await loadSession(db, matchId)
   if (!session) throw new AppError('MATCH_STATE', 'Session already resolved')
-  const { seq } = await submitAndClear(db, matchId, session)
+  // Sweep force-resolve: no interactive caller, so scope the (discarded) view to the attacker.
+  const { seq } = await submitAndClear(db, matchId, session, session.attacker_seat)
   return seq
 }

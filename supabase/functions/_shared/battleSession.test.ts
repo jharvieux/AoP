@@ -174,6 +174,22 @@ function fakeDb(tables: Record<string, Row[]>): Db {
   const db = {
     from: (t: string) => builder(t),
     rpc: (fn: string, args: Record<string, unknown>) => {
+      if (fn === 'append_battle_order') {
+        // Mirrors the migration's atomic conditional UPDATE: the append lands ONLY when the
+        // target column's current length equals p_expected, else OC409 (→ ORDERS_CONFLICT).
+        // This is what makes a stale same-seat double-submit fail-loud instead of lost-update.
+        const row = (tables.match_battle_sessions ?? []).find((r) => r.match_id === args.p_match_id)
+        const col = args.p_column as string
+        const arr = row ? (row[col] as unknown[]) : undefined
+        if (!row || !arr || arr.length !== (args.p_expected as number)) {
+          return Promise.resolve({ data: null, error: { code: 'OC409', message: 'stale' } })
+        }
+        // Replace (not mutate in place) so the row owns a fresh array — the real UPDATE writes
+        // a new jsonb value, and in-place push would corrupt shared default arrays across tests.
+        row[col] = [...arr, args.p_element]
+        if (args.p_set_interactive) row.defender_interactive = true
+        return Promise.resolve({ data: (row[col] as unknown[]).length, error: null })
+      }
       if (fn !== 'append_match_action') throw new Error(`fakeDb: unhandled rpc ${fn}`)
       const seq = (args.p_prior_count as number) + 1
       ;(tables.match_actions ??= []).push({
@@ -368,6 +384,31 @@ Deno.test('appendBattleOrder: a stale per-side expectedOrders is ORDERS_CONFLICT
   assertEquals(err.code, 'ORDERS_CONFLICT')
 })
 
+Deno.test(
+  'appendBattleOrder: concurrent same-seat double-submit — the stale second write is rejected, not lost (#293)',
+  async () => {
+    const state = adjacentGame()
+    const tables = seedTables(state)
+    const db = fakeDb(tables)
+    await openBattleSession(db, 'm1', 0, { expectedSeq: 0, ...attackIds(state) })
+
+    // A double-tap / retry: BOTH calls carry the SAME expectedOrders=0, the length each read
+    // before either wrote. The first append lands; because the length CAS lives in the RPC's
+    // WHERE clause (not a check-then-act read in JS), the second re-evaluates against the
+    // committed new length (1 != 0) and gets a deterministic ORDERS_CONFLICT — it can never
+    // silently overwrite the first's just-appended order (the #293 lost-update).
+    const first = await appendBattleOrder(db, 'm1', 1, 0, { tactic: 'ram' })
+    assertEquals(first.kind, 'recorded')
+    const err = await assertRejects(
+      () => appendBattleOrder(db, 'm1', 1, 0, { tactic: 'broadside' }),
+      AppError,
+    )
+    assertEquals(err.code, 'ORDERS_CONFLICT')
+    // The first write survived intact: exactly one order recorded, no reorder, no drop.
+    assertEquals(tables.match_battle_sessions[0]!.defender_tactic_orders, ['ram'])
+  },
+)
+
 Deno.test('appendBattleOrder: a non-participant seat is NOT_A_PARTICIPANT', async () => {
   const state = adjacentGame()
   const db = fakeDb(seedTables(state))
@@ -454,6 +495,43 @@ Deno.test(
     }
     // The resolved view carries the phantom null, never real RNG bytes.
     assertEquals((resolved.view as unknown as { rngState: unknown }).rngState, null)
+  },
+)
+
+Deno.test(
+  'leak audit: a defender-facing response carries no attacker order bytes or attacker PlayerView (§10.6)',
+  async () => {
+    const state = adjacentGame()
+    const tables = seedTables(state)
+    const db = fakeDb(tables)
+    await openBattleSession(db, 'm1', 0, { expectedSeq: 0, ...attackIds(state) })
+
+    // The attacker records a distinctive naval plan; then the DEFENDER polls context and
+    // records its own pick. Neither the poll nor the ack may carry the attacker's recorded
+    // orders or a PlayerView — the defender read path must be numeric-only and NEVER resolve.
+    await appendBattleOrder(db, 'm1', 0, 0, { tactic: 'ram' })
+    const ctx = await battleContext(db, 'm1', 1)
+    const rec = await appendBattleOrder(db, 'm1', 1, 0, { tactic: 'broadside' })
+
+    for (const response of [ctx, rec]) {
+      // No attacker recorded-order list bytes (raw columns or the action's server-authored keys).
+      assertNoKey(response, 'attacker_tactic_orders')
+      assertNoKey(response, 'attacker_board_commands')
+      assertNoKey(response, 'attackerOrders')
+      assertNoKey(response, 'defenderOrders')
+      // No PlayerView — the attacker's whole visible board/resources. The defender read path
+      // never resolves, so no `players`/`viewerId` view shape can ride here.
+      assertNoKey(response, 'players')
+      assertNoKey(response, 'viewerId')
+      assertNoLiveRng(response)
+      // The attacker's actual naval pick ('ram') appears nowhere in the serialized bytes.
+      if (JSON.stringify(response).includes('ram')) {
+        throw new Error(`attacker order value leaked into a defender-facing ${response.kind}`)
+      }
+    }
+    // Both defender-facing responses are the numeric-only `recorded` ack.
+    assertEquals(ctx.kind, 'recorded')
+    assertEquals(rec.kind, 'recorded')
   },
 )
 
