@@ -148,9 +148,14 @@ describe('interpretTileClick (#261: the PlayerView analog of GameScreen tile han
     })
   })
 
-  it('does not line up an attack on a non-adjacent enemy', () => {
+  it('sets an intercept course on a non-adjacent enemy instead of attacking (#376)', () => {
     const v = view()
-    expect(interpretTileClick(v, mapOf(v), 'cap-own', 3, 3)).toBeNull()
+    expect(interpretTileClick(v, mapOf(v), 'cap-own', 3, 3)).toEqual({
+      kind: 'setSailOrder',
+      destination: { x: 3, y: 3 },
+      targetId: 'cap-far',
+      targetKind: 'captain',
+    })
   })
 
   it('does not attack with zero movement points', () => {
@@ -184,10 +189,14 @@ describe('interpretTileClick (#261: the PlayerView analog of GameScreen tile han
     })
   })
 
-  it('refuses a move beyond remaining movement', () => {
+  it('sets a multi-turn sail order for a reachable tile beyond remaining movement (#372)', () => {
     const v = view()
-    // (3,2) is 3 diagonal-ish steps from (0,0); the captain has 2 points.
-    expect(interpretTileClick(v, mapOf(v), 'cap-own', 3, 2)).toBeNull()
+    // (3,2) is 3 diagonal-ish steps from (0,0); the captain has 2 points, so it
+    // can't move there this turn — a multi-turn course is queued instead.
+    expect(interpretTileClick(v, mapOf(v), 'cap-own', 3, 2)).toEqual({
+      kind: 'setSailOrder',
+      destination: { x: 3, y: 2 },
+    })
   })
 
   it('ignores a selection id that is not an own captain (stale/forged selection)', () => {
@@ -274,8 +283,20 @@ describe('interpretTileClick on a hex map (#370: mapDistance, not chebyshevDista
   it('does not open an attack on a Chebyshev-adjacent tile that is hex-distance 2', () => {
     expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 1 })).toBe(2)
     expect(hexDistance({ col: 2, row: 2 }, { col: 3, row: 3 })).toBe(2)
-    expect(interpretTileClick(hexView({ x: 3, y: 1 }), hexMap, 'cap-own', 3, 1)).toBeNull()
-    expect(interpretTileClick(hexView({ x: 3, y: 3 }), hexMap, 'cap-own', 3, 3)).toBeNull()
+    // Hex-distance 2 is not attack-adjacency (#370): the tap offers an intercept
+    // course, never a direct attack.
+    expect(interpretTileClick(hexView({ x: 3, y: 1 }), hexMap, 'cap-own', 3, 1)).toEqual({
+      kind: 'setSailOrder',
+      destination: { x: 3, y: 1 },
+      targetId: 'cap-enemy',
+      targetKind: 'captain',
+    })
+    expect(interpretTileClick(hexView({ x: 3, y: 3 }), hexMap, 'cap-own', 3, 3)).toEqual({
+      kind: 'setSailOrder',
+      destination: { x: 3, y: 3 },
+      targetId: 'cap-enemy',
+      targetKind: 'captain',
+    })
   })
 
   it('opens an attack on every true hex neighbor', () => {

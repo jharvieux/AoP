@@ -5,7 +5,7 @@ import type { BattleReport, CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { GridTopology, TileType } from './map'
 import type { StandingOrder } from './tactics'
-import type { GameSetup, GameState, GameStatus, TroopStack } from './types'
+import type { GameSetup, GameState, GameStatus, SailOrder, TroopStack } from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
 
 /**
@@ -186,6 +186,13 @@ export interface ViewCaptain {
   standingOrders?: StandingOrder[]
   boardOrders?: BoardOrder[]
   /**
+   * The captain's standing multi-turn sail order (#372), if any — own-seat
+   * disclosure only, so a returning multiplayer client can draw its own ships'
+   * destination flags and the paused-order banner. Never present on an enemy
+   * captain: a rival's queued course is exactly the kind of intent §7 hides.
+   */
+  sailOrder?: SailOrder
+  /**
    * Captured status (#309) is public information — unlike troops/XP/orders
    * above, this is disclosed for both own and enemy captains once in vision,
    * so every seat can see who is holding whom.
@@ -294,6 +301,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         shipUpgrades: cap.shipUpgrades,
         ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
         ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
+        ...(cap.sailOrder ? { sailOrder: cap.sailOrder } : {}),
         ...capturedFields,
       })
     } else if (visibleKeys.has(tileKey(cap.position))) {
