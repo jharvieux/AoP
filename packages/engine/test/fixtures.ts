@@ -70,7 +70,7 @@ export const GAME_SETUP: GameSetup = {
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
   homeIslandRingRadiusFactor: 0.4,
-  startingBuildings: ['townhall'],
+  startingBuildings: ['townhall', 'barracks'],
   cityVisionRadius: 3,
   captainVisionRadius: 2,
   combatWinXp: 40,

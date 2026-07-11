@@ -158,7 +158,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
 }
 
 /** Buildings every starting city has before the player builds anything. */
-export const STARTING_BUILDINGS: readonly string[] = ['townhall']
+export const STARTING_BUILDINGS: readonly string[] = ['townhall', 'barracks']
 
 /**
  * Per-faction flavor names layered over the shared building tree — e.g. the
