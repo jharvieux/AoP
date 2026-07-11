@@ -131,6 +131,8 @@ export interface AiTuning {
   buildDefenseBonusWeight: number
   /** Flat utility bonus for the building that unlocks ship upgrades. */
   buildShipyardBonus: number
+  /** Flat utility bonus for the building that unlocks captain recruitment (tavern, #433). */
+  buildTavernBonus: number
   /** Scales a building's raw utility score into the shared action-score space. */
   buildScoreScale: number
   /** Score for recruiting troops, once gold is above the reserve. */
@@ -400,6 +402,7 @@ export const AI_TUNING: AiTuning = {
   buildRecruitTierWeight: 20,
   buildDefenseBonusWeight: 1,
   buildShipyardBonus: 25,
+  buildTavernBonus: 30,
   buildScoreScale: 0.5,
   recruitScoreBase: 25,
   recruitSpendFraction: 0.5,

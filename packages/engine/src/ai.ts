@@ -2,7 +2,7 @@ import { canAfford, type Coord } from '@aop/shared'
 import type { Action } from './actions'
 import { combatantStrength, createCombatStats, type CombatStats } from './combat'
 import type { ContentCatalog } from './content'
-import { unlockedRecruitTier } from './economy'
+import { cityUnlocksCaptains, unlockedRecruitTier } from './economy'
 import { areAllied, captainsOf, currentPlayer } from './game'
 import { isWaterTile, mapDistance, mapNeighbors, tileAt } from './map'
 import { findPath } from './pathfinding'
@@ -71,6 +71,8 @@ export interface AiTuning {
   buildRecruitTierWeight: number
   buildDefenseBonusWeight: number
   buildShipyardBonus: number
+  /** Flat utility bonus for the building that unlocks captain recruitment (#433). */
+  buildTavernBonus: number
   buildScoreScale: number
   recruitScoreBase: number
   recruitSpendFraction: number
@@ -482,14 +484,22 @@ function requirePlayer(state: GameState, playerId: string): PlayerState {
  * where the fighting is, not at whichever city happened to sort first. Ties
  * break on lowest city id for replay-stable determinism. Only cities that
  * border open water are eligible, since `recruitCaptain` spawns the hull on an
- * adjacent water tile; a landlocked conquest can't launch one. Returns null
- * when the seat owns no water-bordering city.
+ * adjacent water tile; a landlocked conquest can't launch one. When a content
+ * catalog is configured, cities without a tavern are excluded too (#433) —
+ * proposing a recruitCaptain the reducer would reject would crash the AI's
+ * turn instead of just skipping it. Returns null when the seat owns no
+ * eligible city.
  */
-function bestRecruitCity(state: GameState, playerId: string): CityState | null {
+function bestRecruitCity(
+  state: GameState,
+  playerId: string,
+  catalog: ContentCatalog | undefined,
+): CityState | null {
   const eligible = state.cities.filter(
     (c) =>
       c.ownerId === playerId &&
-      mapNeighbors(state.map, c.position).some((n) => isWaterTile(tileAt(state.map, n))),
+      mapNeighbors(state.map, c.position).some((n) => isWaterTile(tileAt(state.map, n))) &&
+      (!catalog || cityUnlocksCaptains(c, catalog)),
   )
   if (eligible.length === 0) return null
 
@@ -524,7 +534,7 @@ function planRecruitCaptain(
 ): ScoredAction | null {
   const liveCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
   if (liveCaptains.length > 0) return null
-  const city = bestRecruitCity(state, playerId)
+  const city = bestRecruitCity(state, playerId, state.config.content)
   if (!city) return null
 
   const player = requirePlayer(state, playerId)
@@ -595,7 +605,7 @@ function constructibleBuildings(
   })
 }
 
-/** Raw utility of constructing a building: weighted production plus tier/defense/shipyard value. */
+/** Raw utility of constructing a building: weighted production plus tier/defense/shipyard/tavern value. */
 function buildingUtility(def: ContentCatalog['buildings'][string], tuning: AiTuning): number {
   const produces = def.produces
   return (
@@ -605,7 +615,8 @@ function buildingUtility(def: ContentCatalog['buildings'][string], tuning: AiTun
     (produces.rum ?? 0) * tuning.buildRumWeight +
     (def.unlocksTier ?? 0) * tuning.buildRecruitTierWeight +
     (def.defenseBonus ?? 0) * tuning.buildDefenseBonusWeight +
-    (def.unlocksShipyard ? tuning.buildShipyardBonus : 0)
+    (def.unlocksShipyard ? tuning.buildShipyardBonus : 0) +
+    (def.unlocksCaptains ? tuning.buildTavernBonus : 0)
   )
 }
 

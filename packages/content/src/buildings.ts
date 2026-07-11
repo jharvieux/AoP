@@ -7,7 +7,9 @@ import type { FactionId, ResourcePool } from '@aop/shared'
  * construction action enforces it. One tree per category, HoMM-style:
  * economy (resource income), recruitment (unlocks unit tiers, see
  * @aop/content's UnitDef.tier), fortification (city defense bonus), shipyard
- * (gates the ship upgrade action, #22).
+ * (gates the ship upgrade action, #22). `tavern` also lives under `economy` —
+ * it produces no resources but gates the recruitCaptain action (#433), which
+ * didn't warrant its own single-building category.
  */
 
 export type BuildingCategory = 'economy' | 'recruitment' | 'fortification' | 'shipyard'
@@ -28,6 +30,8 @@ export interface BuildingDef {
   defenseBonus?: number
   /** True for the building that unlocks the ship-upgrade action at this city (shipyard only). */
   unlocksShipyard?: boolean
+  /** True for the building that unlocks the recruitCaptain action at this city (#433). */
+  unlocksCaptains?: boolean
 }
 
 export const BUILDINGS: Record<string, BuildingDef> = {
@@ -142,6 +146,15 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     requires: 'townhall',
     unlocksShipyard: true,
   },
+  tavern: {
+    id: 'tavern',
+    name: 'Tavern',
+    category: 'economy',
+    cost: { gold: 100 },
+    produces: {},
+    requires: 'townhall',
+    unlocksCaptains: true,
+  },
 }
 
 /** Buildings every starting city has before the player builds anything. */
@@ -153,11 +166,11 @@ export const STARTING_BUILDINGS: readonly string[] = ['townhall', 'barracks']
  * mechanical name in `BUILDINGS` when a faction has no override.
  */
 export const FACTION_BUILDING_NAMES: Partial<Record<FactionId, Record<string, string>>> = {
-  pirates: { barracks: 'Cutthroat Den', palisade: 'Driftwood Barricade' },
-  british: { barracks: 'Drill Yard', palisade: 'Redoubt' },
-  spanish: { barracks: 'Cuartel', palisade: 'Empalizada' },
-  dutch: { barracks: 'Schutterij Hall', palisade: 'Aardwerk' },
-  french: { barracks: 'Caserne', palisade: 'Palissade' },
+  pirates: { barracks: 'Cutthroat Den', palisade: 'Driftwood Barricade', tavern: 'Grog House' },
+  british: { barracks: 'Drill Yard', palisade: 'Redoubt', tavern: 'The Crown & Anchor' },
+  spanish: { barracks: 'Cuartel', palisade: 'Empalizada', tavern: 'Taberna' },
+  dutch: { barracks: 'Schutterij Hall', palisade: 'Aardwerk', tavern: 'Herberg' },
+  french: { barracks: 'Caserne', palisade: 'Palissade', tavern: 'Auberge' },
 }
 
 /** The display name for a building, honoring per-faction flavor overrides. */

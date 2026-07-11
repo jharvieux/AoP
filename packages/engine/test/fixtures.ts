@@ -99,6 +99,7 @@ export const AI_TUNING: AiTuning = {
   buildRecruitTierWeight: 20,
   buildDefenseBonusWeight: 1,
   buildShipyardBonus: 25,
+  buildTavernBonus: 30,
   buildScoreScale: 0.5,
   recruitScoreBase: 25,
   recruitSpendFraction: 0.5,

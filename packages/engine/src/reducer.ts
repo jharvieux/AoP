@@ -56,7 +56,12 @@ import {
   type TacticsTuning,
 } from './combat'
 import type { ContentCatalog, EncounterKind } from './content'
-import { playerIncome, replenishAvailability, unlockedRecruitTier } from './economy'
+import {
+  cityUnlocksCaptains,
+  playerIncome,
+  replenishAvailability,
+  unlockedRecruitTier,
+} from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
 import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex, type GameMap } from './map'
@@ -1271,12 +1276,24 @@ function adjacentWaterTile(map: GameMap, coord: Coord, action: Action): Coord {
 /**
  * Recruit a new captain at an owned port (#308), or rehire one of the owner's
  * own eligible captives from the recruitment pool (#309) — preserving its
- * name/XP/skills. Gold cost scales with how many live captains this seat
- * already fields, so recovering from zero always costs the base price while
- * building a bigger fleet gets steadily pricier.
+ * name/XP/skills. Both paths go through this one action, so both require the
+ * city to have a tavern (#433): rehiring is the same hiring transaction as a
+ * fresh recruit, just against a different candidate pool. `ransomCaptain` is
+ * a separate action (paying a captor, not hiring) and stays tavern-free.
+ * Unlike the other content-gated actions (recruit, construct, upgradeShip),
+ * this one has never required a content catalog to be configured — it only
+ * uses one to assign starting crew — so the tavern check is skipped entirely
+ * when no catalog is set, preserving that combat-only-match behavior.
+ * Gold cost scales with how many live captains this seat already fields, so
+ * recovering from zero always costs the base price while building a bigger
+ * fleet gets steadily pricier.
  */
 function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameState {
   const city = ownedCity(state, action.cityId, action)
+  const content = state.config.content
+  if (content && !cityUnlocksCaptains(city, content)) {
+    throw new InvalidActionError(`${city.id} has no tavern to recruit captains`, action)
+  }
   const player = state.players.find((p) => p.id === action.playerId)!
   const setup = state.config.setup
   const liveCount = state.captains.filter(
@@ -1287,7 +1304,6 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
     throw new InvalidActionError(`${action.playerId} cannot afford a new captain`, action)
   }
 
-  const content = state.config.content
   const tierOneUnit = content
     ? Object.entries(content.units).find(
         ([, def]) => def.factionId === player.faction && def.tier === 1,
