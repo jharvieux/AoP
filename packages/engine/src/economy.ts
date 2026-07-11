@@ -73,6 +73,11 @@ export function unlockedRecruitTier(city: CityState, catalog: ContentCatalog): n
   }, 0)
 }
 
+/** True if a city's standing buildings unlock the recruitCaptain action (tavern, #433). */
+export function cityUnlocksCaptains(city: CityState, catalog: ContentCatalog): boolean {
+  return city.buildings.some((id) => catalog.buildings[id]?.unlocksCaptains)
+}
+
 /**
  * Weekly-growth style replenishment: every unit of `factionId` whose tier is
  * unlocked by the city gains its `weeklyGrowth` in available recruits.

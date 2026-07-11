@@ -25,9 +25,15 @@ import {
 } from '../src'
 import { GAME_SETUP } from './fixtures'
 
-/** Minimal content catalog so recruitCaptain can assign a faction-appropriate crew. */
+/**
+ * Minimal content catalog so recruitCaptain can assign a faction-appropriate
+ * crew. Includes a tavern (#433) so the recruitCaptain-gate tests below can
+ * grant/withhold it explicitly via {@link withBuilding}.
+ */
 const CAPTAIN_CATALOG: ContentCatalog = {
-  buildings: {},
+  buildings: {
+    tavern: { produces: {}, cost: {}, unlocksCaptains: true },
+  },
   units: {
     deckhand: {
       factionId: 'pirates',
@@ -287,6 +293,16 @@ describe('moveCaptain action', () => {
   })
 })
 
+/** Directly adds a building to a city without going through construct — cheaper setup for reducer-level tests. */
+function withBuilding(state: GameState, cityId: string, buildingId: string): GameState {
+  return {
+    ...state,
+    cities: state.cities.map((c) =>
+      c.id === cityId ? { ...c, buildings: [...c.buildings, buildingId] } : c,
+    ),
+  }
+}
+
 /** Directly marks a captain captive (#309) without going through combat — cheaper setup for reducer-level tests. */
 function withCapturedCaptain(
   state: GameState,
@@ -314,7 +330,11 @@ function withCapturedCaptain(
 
 describe('recruitCaptain action (#308/#309)', () => {
   it('mints a brand-new captain at an owned port for the scaled gold cost', () => {
-    const state = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const state = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
     const goldBefore = state.players.find((p) => p.id === 'p1')!.resources.gold
     const cost = Math.ceil(
       GAME_SETUP.recruitCaptainBaseCost * GAME_SETUP.recruitCaptainCostGrowth ** 1,
@@ -336,11 +356,15 @@ describe('recruitCaptain action (#308/#309)', () => {
   })
 
   it('scales the cost up with each additional live captain (#309)', () => {
-    let state = createGame({
-      ...testConfig(2),
-      content: CAPTAIN_CATALOG,
-      setup: { ...GAME_SETUP, startingGold: 5000 },
-    })
+    let state = withBuilding(
+      createGame({
+        ...testConfig(2),
+        content: CAPTAIN_CATALOG,
+        setup: { ...GAME_SETUP, startingGold: 5000 },
+      }),
+      'p1-capital',
+      'tavern',
+    )
     state = applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
     const goldAfterFirst = state.players.find((p) => p.id === 'p1')!.resources.gold
     state = applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' })
@@ -354,11 +378,15 @@ describe('recruitCaptain action (#308/#309)', () => {
   })
 
   it('rejects recruiting a captain without enough gold', () => {
-    const state = createGame({
-      ...testConfig(2),
-      content: CAPTAIN_CATALOG,
-      setup: { ...GAME_SETUP, startingGold: 10 },
-    })
+    const state = withBuilding(
+      createGame({
+        ...testConfig(2),
+        content: CAPTAIN_CATALOG,
+        setup: { ...GAME_SETUP, startingGold: 10 },
+      }),
+      'p1-capital',
+      'tavern',
+    )
     expect(() =>
       applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }),
     ).toThrow(InvalidActionError)
@@ -371,8 +399,47 @@ describe('recruitCaptain action (#308/#309)', () => {
     ).toThrow(InvalidActionError)
   })
 
-  it('rejects rehiring a captive before its captivity round arrives', () => {
+  it('rejects recruiting a captain without a tavern (#433)', () => {
+    const state = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    expect(() =>
+      applyAction(state, { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('allows recruiting a captain once the city has a tavern (#433)', () => {
+    const state = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
+    const next = applyAction(state, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+    })
+    expect(captainsOf(next, 'p1')).toHaveLength(2)
+  })
+
+  it('rejects rehiring an eligible captive without a tavern (#433) — rehire goes through the same gate as a fresh recruit', () => {
     const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state = withCapturedCaptain(base, p1cap.id, 'p2', 0)
+    expect(() =>
+      applyAction(state, {
+        type: 'recruitCaptain',
+        playerId: 'p1',
+        cityId: 'p1-capital',
+        captainId: p1cap.id,
+      }),
+    ).toThrow(InvalidActionError)
+  })
+
+  it('rejects rehiring a captive before its captivity round arrives', () => {
+    const base = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
     const p1cap = captainsOf(base, 'p1')[0]!
     const state = withCapturedCaptain(base, p1cap.id, 'p2', 3)
     expect(() =>
@@ -386,7 +453,11 @@ describe('recruitCaptain action (#308/#309)', () => {
   })
 
   it('rehires an eligible captive, preserving its identity, xp, and skills', () => {
-    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const base = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
     const p1cap = captainsOf(base, 'p1')[0]!
     const withHistory: GameState = {
       ...base,
@@ -418,7 +489,11 @@ describe('recruitCaptain action (#308/#309)', () => {
     // The captive's own ship was handed to its captor as a prize the moment it
     // was captured, so on release it comes back on the starter hull, upgrades
     // wiped — never the veteran hull it lost.
-    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const base = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
     const p1cap = captainsOf(base, 'p1')[0]!
     const upgraded: GameState = {
       ...base,
@@ -441,7 +516,11 @@ describe('recruitCaptain action (#308/#309)', () => {
 
   it('honors an explicit ransomReturnShipClassId for the returning hull (#374)', () => {
     const setup = { ...GAME_SETUP, ransomReturnShipClassId: 'brigantine' }
-    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG, setup })
+    const base = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG, setup }),
+      'p1-capital',
+      'tavern',
+    )
     const p1cap = captainsOf(base, 'p1')[0]!
     const state = withCapturedCaptain(base, p1cap.id, 'p2', 0)
     const next = applyAction(state, {
@@ -454,7 +533,11 @@ describe('recruitCaptain action (#308/#309)', () => {
   })
 
   it('replays a recruitCaptain log to an identical state', () => {
-    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const base = withBuilding(
+      createGame({ ...testConfig(2), content: CAPTAIN_CATALOG }),
+      'p1-capital',
+      'tavern',
+    )
     const log: Action[] = [{ type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-capital' }]
     const a = replay(base, log)
     const b = replay(base, log)
@@ -536,6 +619,16 @@ describe('ransomCaptain action (#309)', () => {
     expect(() =>
       applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p2cap.id }),
     ).toThrow(InvalidActionError)
+  })
+
+  it('does not require a tavern (#433) — ransom pays a captor, it is not a hire', () => {
+    // Content is configured with a tavern building, but no city has built one:
+    // ransomCaptain must still succeed, unlike recruitCaptain.
+    const base = createGame({ ...testConfig(2), content: CAPTAIN_CATALOG })
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state = withCapturedCaptain(base, p1cap.id, 'p2', 5)
+    const next = applyAction(state, { type: 'ransomCaptain', playerId: 'p1', captainId: p1cap.id })
+    expect(next.captains.find((c) => c.id === p1cap.id)!.captivityReturnRound).toBe(next.round)
   })
 })
 

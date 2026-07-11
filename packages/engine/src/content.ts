@@ -18,6 +18,8 @@ export interface BuildingLike {
   defenseBonus?: number
   /** True for the building that unlocks the ship-upgrade action at this city. */
   unlocksShipyard?: boolean
+  /** True for the building that unlocks the recruitCaptain action at this city (#433). */
+  unlocksCaptains?: boolean
 }
 
 export interface UnitLike {
