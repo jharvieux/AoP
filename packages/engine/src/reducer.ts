@@ -737,8 +737,13 @@ export function garrisonToTroops(garrison: Record<string, number>): TroopStack[]
  *   casualties fall on the free militia before the recruited troops — the
  *   garrison a successful defense keeps is clamped back to what was recruited.
  * - **Turrets**: `turretCount` stationary ranged pieces whose stats @aop/content
- *   derives from the highest-tier available unit (see `turretUnitId`). Appended
- *   last so the board's per-side stack cap sheds turrets before recruited troops.
+ *   derives from the highest-tier available unit (see `turretUnitId`). The turret
+ *   tier is the highest tier that actually exists in the arming roster at or
+ *   below the unlocked tier — @aop/content bakes a turret stat row for exactly
+ *   the tiers present in each roster, so a gappy roster (or a building unlocking
+ *   a tier with no unit) can never name a turret id with no stats behind it.
+ *   Appended last so the board's per-side stack cap sheds turrets before
+ *   recruited troops.
  *
  * `factionId` is the owning player's faction; `undefined` for a neutral (unowned)
  * city, which arms from the tuning's neutral roster. With no city-defense tuning
@@ -757,9 +762,11 @@ export function cityDefenderTroops(
   if (tier <= 0) return base
 
   const counts = new Map(base.map((t) => [t.unitId, t.count]))
+  let turretTier = 0
   for (const [unitId, def] of Object.entries(content.units)) {
     if (def.factionId === roster && def.tier <= tier) {
       counts.set(unitId, (counts.get(unitId) ?? 0) + cd.militiaPerType)
+      if (def.tier > turretTier) turretTier = def.tier
     }
   }
   const troops = [...counts.entries()]
@@ -767,8 +774,12 @@ export function cityDefenderTroops(
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([unitId, count]) => ({ unitId, count }))
 
-  const turretId = turretUnitId(roster, tier)
-  for (let i = 0; i < cd.turretCount; i++) troops.push({ unitId: turretId, count: 1 })
+  // turretTier is 0 only when the roster has no unit at or below the unlocked
+  // tier — then there is nothing to derive a turret from, and no militia either.
+  if (turretTier > 0) {
+    const turretId = turretUnitId(roster, turretTier)
+    for (let i = 0; i < cd.turretCount; i++) troops.push({ unitId: turretId, count: 1 })
+  }
   return troops
 }
 

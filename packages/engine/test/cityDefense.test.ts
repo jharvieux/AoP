@@ -44,6 +44,12 @@ const NEUTRAL_UNITS = [
   { id: 'k1', factionId: 'pirates', tier: 1 as const, attack: 3, defense: 0, health: 7, speed: 6 },
   { id: 'k2', factionId: 'pirates', tier: 2 as const, attack: 5, defense: 2, health: 12, speed: 6 },
 ]
+// A deliberately gappy roster (tiers 1 and 3, no tier 2): proves the turret id
+// is derived from tiers that actually exist, not from the raw unlocked tier.
+const GAPPY_UNITS = [
+  { id: 's1', factionId: 'spanish', tier: 1 as const, attack: 2, defense: 3, health: 8, speed: 4 },
+  { id: 's3', factionId: 'spanish', tier: 3 as const, attack: 8, defense: 6, health: 22, speed: 5 },
+]
 // Attacker's heavy troop — strong enough to storm a defended city.
 const BRUTE = { id: 'brute', factionId: 'pirates', tier: 3 as const, attack: 16, defense: 8, health: 44, speed: 5 } // prettier-ignore
 
@@ -72,10 +78,14 @@ const TURRETS = [
     stationary: true,
   },
   { id: 'turret:pirates:2', attack: 5, defense: 2, health: 12, speed: 3, range: 4, stationary: true }, // prettier-ignore
+  // Gappy roster: turret rows exist ONLY for the tiers the roster actually has
+  // (1 and 3) — exactly what @aop/content bakes. No turret:spanish:2.
+  { id: 'turret:spanish:1', attack: 2, defense: 3, health: 8, speed: 3, range: 4, stationary: true }, // prettier-ignore
+  { id: 'turret:spanish:3', attack: 8, defense: 6, health: 22, speed: 3, range: 4, stationary: true }, // prettier-ignore
 ]
 
 const STATS: CombatStatsData = {
-  units: [...DEFENDER_UNITS, ...NEUTRAL_UNITS, BRUTE].map((u) => ({
+  units: [...DEFENDER_UNITS, ...NEUTRAL_UNITS, ...GAPPY_UNITS, BRUTE].map((u) => ({
     id: u.id,
     attack: u.attack,
     defense: u.defense,
@@ -100,7 +110,7 @@ const CATALOG: ContentCatalog = {
     drill: { produces: {}, cost: { gold: 200 }, requires: 'barracks', unlocksTier: 2 },
     academy: { produces: {}, cost: { gold: 400 }, requires: 'drill', unlocksTier: 3 },
   },
-  units: Object.fromEntries([...DEFENDER_UNITS, ...NEUTRAL_UNITS, BRUTE].map(unitLike)),
+  units: Object.fromEntries([...DEFENDER_UNITS, ...NEUTRAL_UNITS, ...GAPPY_UNITS, BRUTE].map(unitLike)), // prettier-ignore
   ships: { sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 12, upgrades: {} } },
   skills: {},
   captainXpThresholds: [0, 150, 400, 800, 1400],
@@ -111,7 +121,7 @@ const CATALOG: ContentCatalog = {
 /** The same catalog with the city-defense tuning removed — the pre-#435 baseline. */
 const { cityDefense: _cityDefense, ...CATALOG_NO_DEFENSE } = CATALOG
 
-function baseConfig(): GameConfig {
+function baseConfig(p2Faction: 'british' | 'spanish' = 'british'): GameConfig {
   return {
     seed: 7,
     mapSize: 'small',
@@ -121,7 +131,7 @@ function baseConfig(): GameConfig {
     aiTuning: AI_TUNING,
     players: [
       { id: 'p1', name: 'P1', faction: 'pirates', isAI: false },
-      { id: 'p2', name: 'P2', faction: 'british', isAI: true },
+      { id: 'p2', name: 'P2', faction: p2Faction, isAI: true },
     ],
   }
 }
@@ -145,8 +155,9 @@ function assaultState(opts: {
   buildings: string[]
   garrison: Record<string, number>
   ownerId?: string
+  p2Faction?: 'british' | 'spanish'
 }): { state: GameState; p1capId: string; targetCityId: string } {
-  const state = createGame(baseConfig())
+  const state = createGame(baseConfig(opts.p2Faction))
   const p1cap = captainsOf(state, 'p1')[0]!
   const target = state.cities.find((c) => c.ownerId === 'p2')!
   const adjacent = { x: target.position.x + 1, y: target.position.y }
@@ -240,6 +251,22 @@ describe('cityDefenderTroops (#435)', () => {
     const troops = cityDefenderTroops(city(['townhall'], { b1: 1 }), CATALOG, 'british')
     expect(troops).toEqual([{ unitId: 'b1', count: 1 }])
   })
+
+  it('derives the turret from the highest tier that exists in a gappy roster', () => {
+    // Spanish roster has tiers 1 and 3 only. Unlocking tier 2 must field a
+    // tier-1 turret — never `turret:spanish:2`, which has no stats behind it.
+    const t2 = cityDefenderTroops(city(['townhall', 'barracks', 'drill'], {}), CATALOG, 'spanish')
+    expect(countOf(t2, 's1')).toBe(5)
+    expect(countOf(t2, 'turret:spanish:1')).toBe(2)
+    expect(idsOf(t2)).not.toContain('turret:spanish:2')
+    // Unlocking tier 3 reaches the roster's next real tier.
+    const t3 = cityDefenderTroops(
+      city(['townhall', 'barracks', 'drill', 'academy'], {}),
+      CATALOG,
+      'spanish',
+    )
+    expect(countOf(t3, 'turret:spanish:3')).toBe(2)
+  })
 })
 
 describe('attackCity — militia stops the free capture (#435)', () => {
@@ -328,6 +355,54 @@ describe('attackCity — militia stops the free capture (#435)', () => {
     expect(Object.keys(c.garrison).every((id) => id === 'b3')).toBe(true)
     expect(c.garrison.b3 ?? 0).toBeLessThanOrEqual(2)
     expect(Object.keys(c.garrison).some((id) => id.startsWith('turret:'))).toBe(false)
+  })
+
+  it('a defense won with real casualties still never persists militia or turrets', () => {
+    // 12 recruited b1 + 5 militia b1 + 2 turrets defend against a force strong
+    // enough to inflict genuine losses but not to take the city.
+    const { state, p1capId, targetCityId } = assaultState({
+      attackerTroops: [{ unitId: 'brute', count: 1 }],
+      buildings: ['townhall', 'barracks'],
+      garrison: { b1: 12 },
+    })
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCity',
+      playerId: 'p1',
+      captainId: p1capId,
+      targetCityId,
+    })
+    const c = next.cities.find((x) => x.id === targetCityId)!
+    expect(c.ownerId).toBe('p2') // the defense held...
+    const survivors = battleReport!.survivingTroops!.defender
+    const initial = 12 + 5 + 2 // recruited + militia + turrets
+    const survivedTotal = survivors.reduce((s, t) => s + t.count, 0)
+    expect(survivedTotal).toBeLessThan(initial) // ...but took real casualties.
+    // The persisted garrison is each unit's survivors clamped to what was
+    // recruited: casualties land on the free militia first, and neither
+    // militia surplus nor turrets ever leak into city state.
+    const survivedB1 = countOf(survivors, 'b1')
+    expect(c.garrison).toEqual(survivedB1 > 0 ? { b1: Math.min(12, survivedB1) } : {})
+    expect(c.garrison.b1 ?? 0).toBeLessThanOrEqual(12)
+  })
+
+  it('an assault on a gappy-roster city resolves instead of crashing (#435 audit)', () => {
+    // p2 plays the spanish roster (tiers 1 and 3 only) with tier 2 unlocked:
+    // the defender must field a tier-1 turret and the battle must resolve.
+    const { state, p1capId, targetCityId } = assaultState({
+      attackerTroops: [{ unitId: 'brute', count: 14 }],
+      buildings: ['townhall', 'barracks', 'drill'],
+      garrison: {},
+      p2Faction: 'spanish',
+    })
+    const { state: next, battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCity',
+      playerId: 'p1',
+      captainId: p1capId,
+      targetCityId,
+    })
+    const board = battleReport!.board!
+    expect(board.stacks.filter((s) => s.unitId === 'turret:spanish:1')).toHaveLength(2)
+    expect(next.cities.find((x) => x.id === targetCityId)!.ownerId).toBe('p1')
   })
 })
 
