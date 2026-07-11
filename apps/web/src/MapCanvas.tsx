@@ -1009,8 +1009,16 @@ export function MapCanvas(props: MapCanvasProps) {
           sprite.position.set(cx, cy)
           continue
         }
+        // Fallback flat swatch (no city art loaded yet): faction primaryColor (#428) as the
+        // base, with an own-city highlight ring on top so own-vs-enemy stays legible even
+        // when two factions' colors are close.
+        const cityFaction = FACTIONS[factionOf(city.ownerId)]
         entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
-        entities.fill(own ? OWN_CITY : ENEMY_CITY)
+        entities.fill(cityFaction?.primaryColor ?? (own ? OWN_CITY : ENEMY_CITY))
+        if (own) {
+          entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
+          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+        }
       }
       cityPool.end()
 
@@ -1080,8 +1088,15 @@ export function MapCanvas(props: MapCanvasProps) {
           shipSpritesRef.current.set(cap.id, { sprite, baseX: cx, baseY: cy })
           continue
         }
+        // Fallback flat circle (no ship art loaded yet): faction primaryColor (#428) as the
+        // base, with an own-ship highlight ring on top so own-vs-enemy stays legible even
+        // when two factions' colors are close.
         entities.circle(cx, cy, TILE / 2.6)
-        entities.fill(own ? OWN_SHIP : ENEMY_SHIP)
+        entities.fill(faction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP))
+        if (own) {
+          entities.circle(cx, cy, TILE / 2.6)
+          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+        }
       }
       // Drop tracking for captains that no longer exist at all (sunk, eliminated seat, …) —
       // mirrors SpritePool's own end()-time cleanup so this doesn't grow unbounded over a
