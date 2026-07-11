@@ -434,6 +434,68 @@ describe('economy AI', () => {
   })
 })
 
+// --- Tavern gate on AI captain recovery (#433) ---
+
+/** ECON_CATALOG plus the tavern that gates recruitCaptain (#433). */
+const TAVERN_CATALOG: ContentCatalog = {
+  ...ECON_CATALOG,
+  buildings: {
+    ...ECON_CATALOG.buildings,
+    tavern: { produces: {}, cost: { gold: 100 }, requires: 'townhall', unlocksCaptains: true },
+  },
+}
+
+/**
+ * Captain-less p1 under a configured content catalog — the tavern-gated
+ * recruit path, unlike the catalog-less captain-recovery tests above which
+ * exercise the legacy ungated branch.
+ */
+function captainlessState(catalog: ContentCatalog): GameState {
+  const base = createGame({ ...econConfig(), content: catalog })
+  return { ...base, captains: base.captains.filter((c) => c.ownerId !== 'p1') }
+}
+
+describe('AI tavern gate (#433)', () => {
+  it('never proposes recruitCaptain at a tavern-less city, and its turn completes without throwing', () => {
+    // Mark the city built-this-round so the AI cannot fix its tavern gap this
+    // turn: the only way back to a captain is a recruitCaptain the reducer
+    // would reject. Without bestRecruitCity's tavern filter this is exactly
+    // the crash class the gate introduced — planRecruitCaptain proposes it,
+    // and runAiTurn's uncaught applyAction throws mid-turn.
+    let state = captainlessState(TAVERN_CATALOG)
+    const city = homeCity(state, 'p1')
+    state = {
+      ...state,
+      cities: state.cities.map((c) => (c.id === city.id ? { ...c, builtThisRound: true } : c)),
+    }
+    expect(nextAiAction(state, 'p1').type).not.toBe('recruitCaptain')
+    const after = runAiTurn(state, 'p1')
+    expect(captainsOf(after, 'p1')).toHaveLength(0)
+  })
+
+  it('builds the tavern first when captain-less, then recruits once it stands', () => {
+    // buildTavernBonus (30) must outrank every other constructible here —
+    // shipyard's flat bonus (25), barracks' tier unlock (20), and the raw
+    // production buildings — so a captain-less AI actually unblocks its own
+    // recovery instead of never prioritizing a building that produces nothing.
+    let state = captainlessState(TAVERN_CATALOG)
+    const city = homeCity(state, 'p1')
+    const first = nextAiAction(state, 'p1')
+    expect(first).toEqual({
+      type: 'construct',
+      playerId: 'p1',
+      cityId: city.id,
+      buildingId: 'tavern',
+    })
+    state = applyAction(state, first)
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: city.id,
+    })
+  })
+})
+
 // --- Personalities, difficulty, and alliances (#25) ---
 
 /** Attach an AI profile to p1 (and optionally p2) plus the content tables the profile keys on. */
