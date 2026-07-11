@@ -1,6 +1,7 @@
 import {
   BUILDINGS,
   CAPTAIN_XP_THRESHOLDS,
+  CITY_DEFENSE_TUNING,
   ENCOUNTERS,
   FACTIONS,
   RESOURCE_NODES,
@@ -67,5 +68,10 @@ export function buildCatalog(): ContentCatalog {
     resourceNodes: Object.fromEntries(
       Object.values(RESOURCE_NODES).map((node) => [node.id, { yield: node.yield }]),
     ),
+    cityDefense: {
+      militiaPerType: CITY_DEFENSE_TUNING.militiaPerType,
+      turretCount: CITY_DEFENSE_TUNING.turretCount,
+      neutralRosterFactionId: CITY_DEFENSE_TUNING.neutralRosterFactionId,
+    },
   }
 }

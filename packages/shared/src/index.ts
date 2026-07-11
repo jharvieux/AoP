@@ -102,6 +102,18 @@ export const FACTION_IDS: readonly FactionId[] = [
 ]
 
 /**
+ * Board unit id of a defensive city turret (#435), derived from the arming
+ * faction and the city's unlocked recruit tier. A single convention shared by
+ * the engine (which names the turret when building a city defender) and
+ * @aop/content (which bakes the turret's stats into the combat snapshot under
+ * this id), so the two never drift. Turrets are synthetic units: they exist
+ * only in the combat-stats roster, never in the recruitable unit catalog.
+ */
+export function turretUnitId(factionId: string, tier: number): string {
+  return `turret:${factionId}:${tier}`
+}
+
+/**
  * Hard cap on seats per match (#219): factions are unique per match and there
  * are exactly `FACTION_IDS.length` of them, so a 6th+ seat can never be
  * assigned a faction — every 6-8 player lobby or queue bucket was unfillable

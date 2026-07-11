@@ -219,7 +219,11 @@ export function probeCityAssault(
     const result = resolveBoardCombat(
       {
         attacker: captainToCombatant(attacker, content),
-        defender: cityToCombatant(city, content),
+        defender: cityToCombatant(
+          city,
+          content,
+          game.players.find((p) => p.id === city.ownerId)?.faction,
+        ),
       },
       stats,
       game.rngState,

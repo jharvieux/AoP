@@ -34,6 +34,14 @@ export interface UnitCombatStats {
    * sight, takes no retaliation at range, and fights at a penalty in melee.
    */
   range?: number
+  /**
+   * A stationary defender piece (#435): a city turret. It deploys at the
+   * defender's edge, fires each round like any ranged unit, but never moves —
+   * the board resolver drives it directly instead of asking the side's driver.
+   * Only ever set on the synthetic turret units @aop/content bakes into the
+   * combat snapshot; real recruitable units never carry it.
+   */
+  stationary?: boolean
 }
 
 export interface ShipCombatStats {

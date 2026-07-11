@@ -115,6 +115,20 @@ export interface ResourceNodeLike {
   yield: Partial<ResourcePool>
 }
 
+/**
+ * Automatic city-defense tuning (#435), injected from @aop/content. Its presence
+ * is what arms an attacked city with militia and turrets *on top of* its
+ * recruited garrison; a catalog without it (pre-#435 snapshots, minimal test
+ * catalogs) fields the garrison alone, exactly as before. All balance numbers —
+ * the engine holds none — so the derivation reads them from here.
+ */
+export interface CityDefenseTuning {
+  militiaPerType: number
+  turretCount: number
+  /** Faction whose roster arms a neutral (unowned) city's militia and turrets. */
+  neutralRosterFactionId: string
+}
+
 export interface ContentCatalog {
   buildings: Record<string, BuildingLike>
   units: Record<string, UnitLike>
@@ -130,4 +144,9 @@ export interface ContentCatalog {
    * map carries nodes.
    */
   resourceNodes?: Partial<Record<ResourceNodeKind, ResourceNodeLike>>
+  /**
+   * Automatic city-defense tuning (#435). Optional: a catalog without it fields
+   * an attacked city's recruited garrison alone (no militia, no turrets).
+   */
+  cityDefense?: CityDefenseTuning
 }

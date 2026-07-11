@@ -1,7 +1,9 @@
-import { FACTIONS } from './factions'
+import { turretUnitId } from '@aop/shared'
+import { FACTIONS, type UnitDef } from './factions'
 import { SHIP_CLASSES } from './ships'
 import {
   BATTLE_TUNING,
+  CITY_DEFENSE_TUNING,
   COMBAT_TUNING,
   TACTICS_TUNING,
   type BattleTuning,
@@ -24,6 +26,54 @@ export interface UnitCombatStats {
   speed: number
   /** Battle-board attack range in hexes (#94); omitted/1 = melee, 2+ = ranged. */
   range?: number
+  /** A stationary defender piece (#435) — a city turret; deploys but never moves. */
+  stationary?: boolean
+}
+
+/**
+ * The highest-tier unit a city recruiting up to `maxTier` can field — the unit a
+ * defensive turret's stats derive from (#435). Ties (two units at the same top
+ * tier) break to the tougher one, then by id, so the choice is deterministic.
+ */
+function highestUnitUpToTier(units: readonly UnitDef[], maxTier: number): UnitDef | undefined {
+  return units
+    .filter((u) => u.tier <= maxTier)
+    .reduce<UnitDef | undefined>((best, u) => {
+      if (!best) return u
+      if (u.tier !== best.tier) return u.tier > best.tier ? u : best
+      if (u.health !== best.health) return u.health > best.health ? u : best
+      return u.id < best.id ? u : best
+    }, undefined)
+}
+
+/**
+ * Synthetic turret units (#435), one per (faction, unlocked recruit tier), baked
+ * into the combat snapshot so every consumer that resolves board stats — the
+ * battle resolver, the AI's assault scoring, the client's strength preview —
+ * reads a turret's numbers from the same frozen source. Turret stats are derived
+ * from the faction's highest available unit and scaled by the city-defense
+ * tuning knobs; the turret is a stationary, ranged, destructible piece.
+ */
+function turretUnitStats(): UnitCombatStats[] {
+  const cd = CITY_DEFENSE_TUNING
+  const out: UnitCombatStats[] = []
+  for (const faction of Object.values(FACTIONS)) {
+    const tiers = [...new Set(faction.units.map((u) => u.tier))].sort((a, b) => a - b)
+    for (const tier of tiers) {
+      const rep = highestUnitUpToTier(faction.units, tier)
+      if (!rep) continue
+      out.push({
+        id: turretUnitId(faction.id, tier),
+        attack: Math.round(rep.attack * cd.turretAttackMult),
+        defense: Math.round(rep.defense * cd.turretDefenseMult),
+        health: Math.round(rep.health * cd.turretHealthMult),
+        speed: cd.turretSpeed,
+        range: cd.turretRange,
+        stationary: true,
+      })
+    }
+  }
+  return out
 }
 
 export interface ShipCombatStats {
@@ -42,16 +92,18 @@ export interface CombatStatsData {
 }
 
 export function combatStatsData(): CombatStatsData {
-  const units: UnitCombatStats[] = Object.values(FACTIONS).flatMap((faction) =>
-    faction.units.map((u) => ({
-      id: u.id,
-      attack: u.attack,
-      defense: u.defense,
-      health: u.health,
-      speed: u.speed,
-      ...(u.range !== undefined ? { range: u.range } : {}),
-    })),
-  )
+  const units: UnitCombatStats[] = Object.values(FACTIONS)
+    .flatMap((faction) =>
+      faction.units.map((u) => ({
+        id: u.id,
+        attack: u.attack,
+        defense: u.defense,
+        health: u.health,
+        speed: u.speed,
+        ...(u.range !== undefined ? { range: u.range } : {}),
+      })),
+    )
+    .concat(turretUnitStats())
   const ships: ShipCombatStats[] = SHIP_CLASSES.map((s) => ({
     id: s.id,
     hull: s.hull,
