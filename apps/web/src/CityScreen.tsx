@@ -161,7 +161,11 @@ export function CityScreen({
   const recruitCost = Math.ceil(
     setup.recruitCaptainBaseCost * setup.recruitCaptainCostGrowth ** liveCaptainCount,
   )
-  const canRecruitCaptain = canAfford(resources, { gold: recruitCost })
+  // Tavern gate (#433): recruiting/rehiring a captain needs a tavern-flagged
+  // building in this city — derived from content data, not a hardcoded id,
+  // same as the shipyard's unlocksShipyard check below.
+  const hasTavern = city.buildings.some((id) => BUILDINGS[id]?.unlocksCaptains)
+  const canRecruitCaptain = hasTavern && canAfford(resources, { gold: recruitCost })
 
   // Every committed action gets a light tap so the sheet's dense button rows
   // (recruit/load/unload/build/upgrade) feel responsive on touch (#27).
@@ -252,6 +256,7 @@ export function CityScreen({
               </button>
             </div>
           </div>
+          {!hasTavern && <p className="building-option__hint">Requires Tavern</p>}
           {captains.length === 0 && (
             <p className="building-option__hint">No captains commissioned yet.</p>
           )}
@@ -297,7 +302,7 @@ export function CityScreen({
                     <div className="garrison-row__actions">
                       {eligibleNow ? (
                         <button
-                          disabled={!canAfford(resources, { gold: recruitCost })}
+                          disabled={!hasTavern || !canAfford(resources, { gold: recruitCost })}
                           onClick={() => recruitCaptain(cap.id)}
                         >
                           Rehire ({recruitCost}g)

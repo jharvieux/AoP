@@ -28,6 +28,9 @@ const STATS: CombatStatsData = {
   units: [
     { id: 'grunt', attack: 5, defense: 2, health: 12 },
     { id: 'elite', attack: 12, defense: 8, health: 40 },
+    // Matches ECON_CATALOG's deckhand: recruitable from turn 1 via the starting
+    // barracks (#434), so AI strength evaluation must be able to price it.
+    { id: 'deckhand', attack: 2, defense: 1, health: 6 },
   ],
   ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
   combat: COMBAT_TUNING,
@@ -431,6 +434,60 @@ describe('economy AI', () => {
   it('plays combat-only (no economy actions) when no content catalog is configured', () => {
     const state = createGame(config(1, 999))
     expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+})
+
+// --- Tavern gate on AI captain recovery (#433) ---
+
+/** ECON_CATALOG plus the tavern that gates recruitCaptain (#433). */
+const TAVERN_CATALOG: ContentCatalog = {
+  ...ECON_CATALOG,
+  buildings: {
+    ...ECON_CATALOG.buildings,
+    tavern: { produces: {}, cost: { gold: 100 }, requires: 'townhall', unlocksCaptains: true },
+  },
+}
+
+/**
+ * Captain-less p1 under a configured content catalog — the tavern-gated
+ * recruit path, unlike the catalog-less captain-recovery tests above which
+ * exercise the legacy ungated branch.
+ */
+function captainlessState(catalog: ContentCatalog): GameState {
+  const base = createGame({ ...econConfig(), content: catalog })
+  return { ...base, captains: base.captains.filter((c) => c.ownerId !== 'p1') }
+}
+
+describe('AI tavern gate (#433)', () => {
+  it('never proposes recruitCaptain at a tavern-less city, and its turn completes without throwing', () => {
+    // Mark the city built-this-round so the AI cannot fix its tavern gap this
+    // turn: the only way back to a captain is a recruitCaptain the reducer
+    // would reject. Without bestRecruitCity's tavern filter this is exactly
+    // the crash class the gate introduced — planRecruitCaptain proposes it,
+    // and runAiTurn's uncaught applyAction throws mid-turn.
+    let state = captainlessState(TAVERN_CATALOG)
+    const city = homeCity(state, 'p1')
+    state = {
+      ...state,
+      cities: state.cities.map((c) => (c.id === city.id ? { ...c, builtThisRound: true } : c)),
+    }
+    expect(nextAiAction(state, 'p1').type).not.toBe('recruitCaptain')
+    const after = runAiTurn(state, 'p1')
+    expect(captainsOf(after, 'p1')).toHaveLength(0)
+  })
+
+  it('unblocks its own recovery: constructs the tavern during its turn and recruits a captain', () => {
+    // buildTavernBonus must outrank every other constructible so a captain-less
+    // AI prioritizes a building that produces nothing. The AI may recruit
+    // garrison troops first (the starting barracks makes deckhands available
+    // from turn 1, #434) — what matters is that the recovery arc completes
+    // within the turn: tavern stands, captain hired.
+    const state = captainlessState(TAVERN_CATALOG)
+    const city = homeCity(state, 'p1')
+    const after = runAiTurn(state, 'p1')
+    const cityAfter = after.cities.find((c) => c.id === city.id)!
+    expect(cityAfter.buildings).toContain('tavern')
+    expect(captainsOf(after, 'p1').length).toBeGreaterThan(0)
   })
 })
 
