@@ -307,6 +307,17 @@ describe('economy & cities', () => {
     expect(state.players[0]!.resources.gold).toBe(startGold + 100)
   })
 
+  it('starts every city with townhall and barracks, enabling tier-1 recruitment from turn 1', () => {
+    const state = createGame(econConfig())
+    const city = homeCity(state, 'p1')
+    // Starting buildings include both townhall and barracks (#434).
+    expect(city.buildings).toEqual(['townhall', 'barracks', 'shipyard'])
+    // Barracks unlocks tier-1 recruitment (deckhand).
+    expect(city.unitAvailability.deckhand).toBeGreaterThan(0)
+    // Tier-3 units require a higher-tier building, still unavailable.
+    expect(city.unitAvailability.buccaneer ?? 0).toBe(0)
+  })
+
   it('grants a resource-node bonus (#101) on top of city income to whichever player holds the tile', () => {
     const base = createGame(econConfig())
     const captain = captainsOf(base, 'p1')[0]!
