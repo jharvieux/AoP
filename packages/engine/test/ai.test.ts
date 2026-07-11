@@ -305,7 +305,7 @@ const ECON_CATALOG: ContentCatalog = {
  * p1 starts overwhelmingly weaker than p2 (mirrors the "holds" combat test), so
  * no attack/advance candidate ever outscores the economy decision under test.
  */
-function econConfig(startingBuildings: string[] = ['townhall']): GameConfig {
+function econConfig(startingBuildings: string[] = ['townhall', 'barracks']): GameConfig {
   return {
     ...config(1, 999),
     setup: { ...GAME_SETUP, startingBuildings },
@@ -320,7 +320,7 @@ function homeCity(state: GameState, playerId: string) {
 
 describe('economy AI', () => {
   it('builds the highest-utility affordable building when idle', () => {
-    const state = createGame(econConfig())
+    const state = createGame(econConfig(['townhall']))
     const city = homeCity(state, 'p1')
     // shipyard's flat unlock bonus (25) beats barracks' tier unlock (20), which
     // beats distillery/sawmill's raw production (18/16) — tradehouse needs
