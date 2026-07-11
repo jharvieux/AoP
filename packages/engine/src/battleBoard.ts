@@ -57,6 +57,13 @@ export interface BoardStack {
   retaliatedRound: number
   /** True after a hold command, until the stack's next activation. */
   holding: boolean
+  /**
+   * A stationary defender piece (#435) — a city turret. The resolver drives it
+   * directly (fire the best in-range shot, else hold) instead of asking the
+   * side's driver, so it never moves regardless of which driver the defender
+   * uses. Absent for every ordinary troop stack.
+   */
+  stationary?: boolean
 }
 
 /**
@@ -365,6 +372,7 @@ function setupBattle(
         position: { col, row: rows[i]! },
         retaliatedRound: 0,
         holding: false,
+        ...(stats.unit(t.unitId).stationary ? { stationary: true } : {}),
       })
     })
   }
@@ -768,8 +776,12 @@ export function resolveBoardBattle(
       if (stack.count <= 0) continue
       stack.holding = false
       const view = buildView(battle, stack)
-      const driver = stack.side === 'attacker' ? drivers.attacker : drivers.defender
-      state = executeCommand(battle, stack, driver.choose(view), view, events, state)
+      // A turret (#435) fires on its own line, ignoring the side's driver, so it
+      // stays put whether the defender is the AI, a plan, or standing orders.
+      const command = stack.stationary
+        ? turretCommand(view)
+        : (stack.side === 'attacker' ? drivers.attacker : drivers.defender).choose(view)
+      state = executeCommand(battle, stack, command, view, events, state)
       if (!bothAlive()) break
     }
   }
@@ -859,6 +871,16 @@ function rangedShotCommand(view: BoardActivationView): BoardCommand | null {
   if (move?.rangedFrom)
     return { stackId: view.stack.id, to: move.rangedFrom, targetId: move.targetId }
   return null
+}
+
+/**
+ * A city turret's action each round (#435): shoot the weakest enemy in a clear
+ * line of fire, else hold. Never moves and never chases a firing hex — a turret
+ * is bolted to the wall. Purely deterministic, like every other board driver.
+ */
+function turretCommand(view: BoardActivationView): BoardCommand {
+  const shot = lowestHpTarget(clearShotTargets(view.targets))
+  return shot ? { stackId: view.stack.id, targetId: shot.targetId } : { stackId: view.stack.id }
 }
 
 /** Keep maximum distance from the nearest enemy — the skirmisher's kite (#18/#94). */

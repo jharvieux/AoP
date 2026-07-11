@@ -3,6 +3,7 @@ import {
   canAfford,
   coordsEqual,
   subtractResources,
+  turretUnitId,
   type Coord,
   type ResourcePool,
 } from '@aop/shared'
@@ -723,27 +724,85 @@ export function garrisonToTroops(garrison: Record<string, number>): TroopStack[]
     .map(([unitId, count]) => ({ unitId, count }))
 }
 
-/** Fold a surviving troop list back into a garrison record. */
-function troopsToGarrison(troops: TroopStack[]): Record<string, number> {
-  const garrison: Record<string, number> = {}
-  for (const t of troops) if (t.count > 0) garrison[t.unitId] = t.count
-  return garrison
+/**
+ * The full defender troop list for a city assault (#435): its recruited garrison,
+ * plus — when the catalog carries city-defense tuning — automatic militia and
+ * turrets it fields for free, reconstituted fresh every battle. Derived here at
+ * battle time from the city's own state so nothing new is persisted in
+ * GameState:
+ *
+ * - **Militia**: `militiaPerType` of every unit the city can recruit (the arming
+ *   faction's units at or below the city's unlocked recruit tier), merged into
+ *   the garrison counts. Merging (rather than a separate stack) means combat
+ *   casualties fall on the free militia before the recruited troops — the
+ *   garrison a successful defense keeps is clamped back to what was recruited.
+ * - **Turrets**: `turretCount` stationary ranged pieces whose stats @aop/content
+ *   derives from the highest-tier available unit (see `turretUnitId`). The turret
+ *   tier is the highest tier that actually exists in the arming roster at or
+ *   below the unlocked tier — @aop/content bakes a turret stat row for exactly
+ *   the tiers present in each roster, so a gappy roster (or a building unlocking
+ *   a tier with no unit) can never name a turret id with no stats behind it.
+ *   Appended last so the board's per-side stack cap sheds turrets before
+ *   recruited troops.
+ *
+ * `factionId` is the owning player's faction; `undefined` for a neutral (unowned)
+ * city, which arms from the tuning's neutral roster. With no city-defense tuning
+ * (pre-#435 snapshots, minimal catalogs) this is just the sorted garrison.
+ */
+export function cityDefenderTroops(
+  city: CityState,
+  content: ContentCatalog | undefined,
+  factionId: string | undefined,
+): TroopStack[] {
+  const base = garrisonToTroops(city.garrison)
+  const cd = content?.cityDefense
+  if (!content || !cd) return base
+  const roster = factionId ?? cd.neutralRosterFactionId
+  const tier = unlockedRecruitTier(city, content)
+  if (tier <= 0) return base
+
+  const counts = new Map(base.map((t) => [t.unitId, t.count]))
+  let turretTier = 0
+  for (const [unitId, def] of Object.entries(content.units)) {
+    if (def.factionId === roster && def.tier <= tier) {
+      counts.set(unitId, (counts.get(unitId) ?? 0) + cd.militiaPerType)
+      if (def.tier > turretTier) turretTier = def.tier
+    }
+  }
+  const troops = [...counts.entries()]
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([unitId, count]) => ({ unitId, count }))
+
+  // turretTier is 0 only when the roster has no unit at or below the unlocked
+  // tier — then there is nothing to derive a turret from, and no militia either.
+  if (turretTier > 0) {
+    const turretId = turretUnitId(roster, turretTier)
+    for (let i = 0; i < cd.turretCount; i++) troops.push({ unitId: turretId, count: 1 })
+  }
+  return troops
 }
 
 /**
- * Build the defending combatant for a city assault (#344): the garrison as
- * troops, no ship (a city has none — zeroed ship stats keep it out of the
- * strength math), and a fortification defense bonus summed from the city's
- * standing buildings. Fortification numbers are balance data — they live in
- * @aop/content's building defs (`defenseBonus`), never hardcoded here. Exported
- * so the AI can score an assault against the same defender the reducer resolves.
+ * Build the defending combatant for a city assault (#344): the garrison plus its
+ * automatic militia and turrets (#435, see {@link cityDefenderTroops}), no ship
+ * (a city has none — zeroed ship stats keep it out of the strength math), and a
+ * fortification defense bonus summed from the city's standing buildings.
+ * Fortification numbers are balance data — they live in @aop/content's building
+ * defs (`defenseBonus`), never hardcoded here. Exported so the AI can score an
+ * assault against the same defender the reducer resolves. `factionId` is the
+ * city owner's faction (`undefined` for a neutral city → tuning's neutral roster).
  */
-export function cityToCombatant(city: CityState, content: ContentCatalog | undefined): Combatant {
+export function cityToCombatant(
+  city: CityState,
+  content: ContentCatalog | undefined,
+  factionId?: string,
+): Combatant {
   const combatant: Combatant = {
     captainId: city.id,
     ownerId: city.ownerId,
     shipClassId: '',
-    troops: garrisonToTroops(city.garrison),
+    troops: cityDefenderTroops(city, content, factionId),
     shipStats: { hull: 0, cannons: 0, speed: 0 },
   }
   if (content) {
@@ -1032,10 +1091,11 @@ function attackCity(
   // The attacker plays its recorded land-melee plan, or its saved board doctrine,
   // or the board AI — the same fallback chain as a boarding melee (#39/#93). The
   // garrison has no owner-supplied board orders, so it is always the board AI.
+  const defenderFaction = state.players.find((p) => p.id === target.ownerId)?.faction
   const result = resolveBoardCombat(
     {
       attacker: captainToCombatant(attacker, content),
-      defender: cityToCombatant(target, content),
+      defender: cityToCombatant(target, content, defenderFaction),
     },
     stats,
     state.rngState,
@@ -1074,7 +1134,18 @@ function attackCity(
         unitAvailability: {},
       }
     }
-    return { ...c, garrison: troopsToGarrison(result.defenderTroops) }
+    // A successful defense keeps only recruited troops: militia and turrets
+    // (#435) are free and never persist, and casualties are absorbed by the
+    // militia first, so each surviving unit is clamped back to what the city
+    // actually recruited. Without city-defense tuning this is a no-op (survivors
+    // can only be ≤ the recruited count), preserving the pre-#435 behavior.
+    const survivors = new Map(result.defenderTroops.map((t) => [t.unitId, t.count]))
+    const garrison: Record<string, number> = {}
+    for (const [unitId, recruited] of Object.entries(c.garrison)) {
+      const kept = Math.min(recruited, survivors.get(unitId) ?? 0)
+      if (kept > 0) garrison[unitId] = kept
+    }
+    return { ...c, garrison }
   })
 
   const players = betrayal

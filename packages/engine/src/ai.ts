@@ -295,7 +295,8 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     // board tuning (matches without it resolve combat naval-only).
     if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
       for (const city of enemyCities) {
-        const ratio = cityAssaultRatio(cap, city, stats, catalog)
+        const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
+        const ratio = cityAssaultRatio(cap, city, stats, catalog, cityFaction)
         if (mapDistance(state.map, cap.position, city.position) <= 1) {
           if (ratio >= engageMinRatio) {
             consider({
@@ -390,21 +391,24 @@ function toCombatant(c: Captain) {
 }
 
 /**
- * A captain's assault strength against a city's garrison (#344), including the
- * city's fortification defense bonus via {@link cityToCombatant} so the AI
- * respects walls. Infinity when there are no stats to judge by, or the garrison
- * is empty (a free capture). The caller has already verified the captain carries
- * troops.
+ * A captain's assault strength against a city's defenders (#344), scored against
+ * the very combatant the reducer resolves via {@link cityToCombatant} — garrison,
+ * fortification defense bonus, and the automatic militia and turrets (#435). The
+ * militia mean an "empty" city is no longer a free capture, so the AI stops
+ * throwing hopeless landing forces at one. Infinity only when there are no stats
+ * to judge by, or the defender's strength is truly zero. The caller has already
+ * verified the captain carries troops.
  */
 function cityAssaultRatio(
   cap: Captain,
   city: CityState,
   stats: CombatStats | null,
   content: ContentCatalog | undefined,
+  factionId: string | undefined,
 ): number {
   if (!stats) return Infinity
   const mine = combatantStrength(toCombatant(cap), stats)
-  const garrison = combatantStrength(cityToCombatant(city, content), stats)
+  const garrison = combatantStrength(cityToCombatant(city, content, factionId), stats)
   if (garrison <= 0) return Infinity
   return mine / garrison
 }

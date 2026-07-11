@@ -601,7 +601,14 @@ export function GameScreen({
     const stats = createCombatStats(game.config.combatStats)
     return {
       attacker: combatantStrength(captainToCombatant(selectedCaptain, game.config.content), stats),
-      garrison: combatantStrength(cityToCombatant(assaultCity, game.config.content), stats),
+      garrison: combatantStrength(
+        cityToCombatant(
+          assaultCity,
+          game.config.content,
+          game.players.find((p) => p.id === assaultCity.ownerId)?.faction,
+        ),
+        stats,
+      ),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaptain, assaultCity, game])

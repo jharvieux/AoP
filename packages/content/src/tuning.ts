@@ -1,3 +1,4 @@
+import type { FactionId } from '@aop/shared'
 import { STARTING_BUILDINGS } from './buildings'
 
 /**
@@ -251,6 +252,49 @@ export interface GameSetup {
    * client-side UI gate — the engine itself never reads this field.
    */
   battleResolution?: 'tactical' | 'auto'
+}
+
+/**
+ * Automatic city-defense tuning (#435) — the militia and turrets every attacked
+ * city fields *in addition to* its recruited garrison, so no city is ever a free
+ * capture. Every number here is balance data: the engine derives the defenders
+ * at battle time from these knobs plus the city's own faction and unlocked
+ * recruit tier, and never hardcodes any of them.
+ */
+export interface CityDefenseTuning {
+  /** Free militia troops of each unit type available in the city (per type). */
+  militiaPerType: number
+  /** Number of stationary defensive turrets deployed at the defender's edge. */
+  turretCount: number
+  /**
+   * Faction whose roster arms a neutral (unowned) city's militia and turrets
+   * (operator decision, 2026-07-11): expansion always costs troops, and a
+   * neutral city defends from this roster. A content-data choice, not hardcoded.
+   */
+  neutralRosterFactionId: FactionId
+  /** Board attack range (hexes) of a turret — makes it a ranged defender piece. */
+  turretRange: number
+  /** Board initiative speed of a turret (it never moves; this only ranks its shot). */
+  turretSpeed: number
+  /** Turret health as a multiple of the highest-tier available unit's health. */
+  turretHealthMult: number
+  /** Turret attack as a multiple of the highest-tier available unit's attack. */
+  turretAttackMult: number
+  /** Turret defense as a multiple of the highest-tier available unit's defense. */
+  turretDefenseMult: number
+}
+
+export const CITY_DEFENSE_TUNING: CityDefenseTuning = {
+  militiaPerType: 5,
+  turretCount: 2,
+  neutralRosterFactionId: 'pirates',
+  // Long enough to open fire before the attacker crosses an 11-wide board, but
+  // short of covering the whole field, so an attacker can still stage out of arc.
+  turretRange: 4,
+  turretSpeed: 3,
+  turretHealthMult: 1,
+  turretAttackMult: 1,
+  turretDefenseMult: 1,
 }
 
 export const COMBAT_TUNING: CombatTuning = {
