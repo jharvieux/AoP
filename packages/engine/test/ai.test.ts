@@ -28,6 +28,9 @@ const STATS: CombatStatsData = {
   units: [
     { id: 'grunt', attack: 5, defense: 2, health: 12 },
     { id: 'elite', attack: 12, defense: 8, health: 40 },
+    // Matches ECON_CATALOG's deckhand: recruitable from turn 1 via the starting
+    // barracks (#434), so AI strength evaluation must be able to price it.
+    { id: 'deckhand', attack: 2, defense: 1, health: 6 },
   ],
   ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
   combat: COMBAT_TUNING,
@@ -473,26 +476,18 @@ describe('AI tavern gate (#433)', () => {
     expect(captainsOf(after, 'p1')).toHaveLength(0)
   })
 
-  it('builds the tavern first when captain-less, then recruits once it stands', () => {
-    // buildTavernBonus (30) must outrank every other constructible here —
-    // shipyard's flat bonus (25), barracks' tier unlock (20), and the raw
-    // production buildings — so a captain-less AI actually unblocks its own
-    // recovery instead of never prioritizing a building that produces nothing.
-    let state = captainlessState(TAVERN_CATALOG)
+  it('unblocks its own recovery: constructs the tavern during its turn and recruits a captain', () => {
+    // buildTavernBonus must outrank every other constructible so a captain-less
+    // AI prioritizes a building that produces nothing. The AI may recruit
+    // garrison troops first (the starting barracks makes deckhands available
+    // from turn 1, #434) — what matters is that the recovery arc completes
+    // within the turn: tavern stands, captain hired.
+    const state = captainlessState(TAVERN_CATALOG)
     const city = homeCity(state, 'p1')
-    const first = nextAiAction(state, 'p1')
-    expect(first).toEqual({
-      type: 'construct',
-      playerId: 'p1',
-      cityId: city.id,
-      buildingId: 'tavern',
-    })
-    state = applyAction(state, first)
-    expect(nextAiAction(state, 'p1')).toEqual({
-      type: 'recruitCaptain',
-      playerId: 'p1',
-      cityId: city.id,
-    })
+    const after = runAiTurn(state, 'p1')
+    const cityAfter = after.cities.find((c) => c.id === city.id)!
+    expect(cityAfter.buildings).toContain('tavern')
+    expect(captainsOf(after, 'p1').length).toBeGreaterThan(0)
   })
 })
 
