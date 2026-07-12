@@ -71,7 +71,11 @@ export interface AiTuning {
   buildRecruitTierWeight: number
   buildDefenseBonusWeight: number
   buildShipyardBonus: number
-  /** Flat utility bonus for the building that unlocks captain recruitment (#433). */
+  /**
+   * Utility bonus for the building that unlocks captain recruitment (#433).
+   * Applied only while the seat is captain-less with no such building anywhere
+   * (#439) — see {@link planConstruct}.
+   */
   buildTavernBonus: number
   buildScoreScale: number
   recruitScoreBase: number
@@ -395,9 +399,12 @@ function toCombatant(c: Captain) {
  * the very combatant the reducer resolves via {@link cityToCombatant} — garrison,
  * fortification defense bonus, and the automatic militia and turrets (#435). The
  * militia mean an "empty" city is no longer a free capture, so the AI stops
- * throwing hopeless landing forces at one. Infinity only when there are no stats
- * to judge by, or the defender's strength is truly zero. The caller has already
- * verified the captain carries troops.
+ * throwing hopeless landing forces at one. The attacker's ship is excluded from
+ * its own strength (#442): the assault resolves on the land board where the ship
+ * never fights, and counting its hull/cannons made the AI storm cities its
+ * landing party alone could not take — a failed assault costs the captain.
+ * Infinity only when there are no stats to judge by, or the defender's strength
+ * is truly zero. The caller has already verified the captain carries troops.
  */
 function cityAssaultRatio(
   cap: Captain,
@@ -407,7 +414,10 @@ function cityAssaultRatio(
   factionId: string | undefined,
 ): number {
   if (!stats) return Infinity
-  const mine = combatantStrength(toCombatant(cap), stats)
+  const mine = combatantStrength(
+    { ...toCombatant(cap), shipStats: { hull: 0, cannons: 0, speed: 0 } },
+    stats,
+  )
   const garrison = combatantStrength(cityToCombatant(city, content, factionId), stats)
   if (garrison <= 0) return Infinity
   return mine / garrison
@@ -563,14 +573,22 @@ function planRecruitCaptain(
  * Ransom policy (#309): "always ransom when affordable and outnumbered, else
  * wait" — the simple single-player AI policy the issue calls for. Ransoms
  * the cheapest-to-free captive (lowest XP) when this seat fields fewer live
- * captains than the best-fielded living rival.
+ * captains than the best-fielded living rival. Captives already eligible for
+ * `recruitCaptain` (ransomed earlier, or captivity served out) are excluded
+ * (#439): ransoming one again is legal but buys nothing — the AI was observed
+ * paying its captor over and over for the same captive.
  */
 function planRansomCaptain(
   state: GameState,
   playerId: string,
   scoreBase: number,
 ): ScoredAction | null {
-  const myCaptives = state.captains.filter((c) => c.ownerId === playerId && c.captured)
+  const myCaptives = state.captains.filter(
+    (c) =>
+      c.ownerId === playerId &&
+      c.captured &&
+      !(c.captivityReturnRound !== undefined && state.round >= c.captivityReturnRound),
+  )
   if (myCaptives.length === 0) return null
 
   const myLive = captainsOf(state, playerId).filter((c) => !c.captured).length
@@ -606,7 +624,11 @@ function constructibleBuildings(
 }
 
 /** Raw utility of constructing a building: weighted production plus tier/defense/shipyard/tavern value. */
-function buildingUtility(def: ContentCatalog['buildings'][string], tuning: AiTuning): number {
+function buildingUtility(
+  def: ContentCatalog['buildings'][string],
+  tuning: AiTuning,
+  tavernBonusApplies: boolean,
+): number {
   const produces = def.produces
   return (
     (produces.gold ?? 0) * tuning.buildGoldWeight +
@@ -616,7 +638,7 @@ function buildingUtility(def: ContentCatalog['buildings'][string], tuning: AiTun
     (def.unlocksTier ?? 0) * tuning.buildRecruitTierWeight +
     (def.defenseBonus ?? 0) * tuning.buildDefenseBonusWeight +
     (def.unlocksShipyard ? tuning.buildShipyardBonus : 0) +
-    (def.unlocksCaptains ? tuning.buildTavernBonus : 0)
+    (def.unlocksCaptains && tavernBonusApplies ? tuning.buildTavernBonus : 0)
   )
 }
 
@@ -630,11 +652,34 @@ function planConstruct(
   const player = requirePlayer(state, playerId)
   let best: { cityId: string; buildingId: string; utility: number } | null = null
 
+  // Captain-less recovery (#439): the tavern bonus applies only while the seat
+  // is locked out of recruitCaptain entirely — no live captain AND no city that
+  // unlocks captains. Then it must outrank every ordinary building (validated
+  // against the full tree in the sim harness), because nothing else matters
+  // until the seat can sail again. A seat that already holds a tavern, or still
+  // has captains, gains nothing existential from one, so the building scores
+  // its plain (zero-production) utility and is never built proactively.
+  // While captain-less, ordinary construction also may not dip into the
+  // comeback captain's price (the same recovery fund planRecruit holds) —
+  // observed in sims: steady building otherwise eats the income that should
+  // pay for the captain, stretching recovery from ~4 rounds to 15+.
+  const captainless = isCaptainless(state, playerId)
+  const tavernBonusApplies =
+    captainless &&
+    !state.cities.some((c) => c.ownerId === playerId && cityUnlocksCaptains(c, catalog))
+  const heldResources = captainless
+    ? {
+        ...player.resources,
+        gold: player.resources.gold - state.config.setup.recruitCaptainBaseCost,
+      }
+    : player.resources
+
   for (const city of state.cities) {
     if (city.ownerId !== playerId || city.builtThisRound) continue
     for (const [buildingId, def] of constructibleBuildings(city, catalog)) {
-      if (!canAfford(player.resources, def.cost)) continue
-      const utility = buildingUtility(def, tuning)
+      const budget = def.unlocksCaptains ? player.resources : heldResources
+      if (!canAfford(budget, def.cost)) continue
+      const utility = buildingUtility(def, tuning, tavernBonusApplies)
       if (!best || utility > best.utility) best = { cityId: city.id, buildingId, utility }
     }
   }
@@ -646,7 +691,18 @@ function planConstruct(
   }
 }
 
-/** Recruit-vs-save (#67): spend a bounded fraction of spare gold on the strongest affordable unit. */
+/** No live captain left — the recovery states of #308/#439. */
+function isCaptainless(state: GameState, playerId: string): boolean {
+  return captainsOf(state, playerId).every((c) => c.captured)
+}
+
+/**
+ * Recruit-vs-save (#67): spend a bounded fraction of spare gold on the strongest
+ * affordable unit. A captain-less seat first sets aside the price of its comeback
+ * captain (#439): steady garrison recruiting otherwise pins gold below
+ * `recruitCaptainBaseCost` forever — income arrives, troops soak it up, and the
+ * seat never returns to sea.
+ */
 function planRecruit(
   state: GameState,
   playerId: string,
@@ -654,7 +710,10 @@ function planRecruit(
   tuning: AiTuning,
 ): ScoredAction | null {
   const player = requirePlayer(state, playerId)
-  const spare = player.resources.gold - tuning.minGoldReserve
+  const recoveryFund = isCaptainless(state, playerId)
+    ? state.config.setup.recruitCaptainBaseCost
+    : 0
+  const spare = player.resources.gold - tuning.minGoldReserve - recoveryFund
   if (spare <= 0) return null
   const budget = spare * tuning.recruitSpendFraction
 
@@ -697,8 +756,13 @@ function planGarrisonToShip(
 
   for (const city of state.cities) {
     if (city.ownerId !== playerId) continue
+    // Captured captains (#309) cannot act — proposing a transfer to one would
+    // be rejected by the reducer and crash the AI's turn.
     const captain = state.captains.find(
-      (c) => c.ownerId === playerId && mapDistance(state.map, c.position, city.position) <= 1,
+      (c) =>
+        c.ownerId === playerId &&
+        !c.captured &&
+        mapDistance(state.map, c.position, city.position) <= 1,
     )
     if (!captain) continue
 
@@ -754,7 +818,7 @@ function planUpgrade(
       continue
     }
     for (const captain of state.captains) {
-      if (captain.ownerId !== playerId) continue
+      if (captain.ownerId !== playerId || captain.captured) continue
       if (mapDistance(state.map, captain.position, city.position) > 1) continue
       const ship = catalog.ships[captain.shipClassId]
       if (!ship) continue
@@ -791,6 +855,7 @@ function planSkillPick(
   const player = requirePlayer(state, playerId)
 
   for (const captain of captainsOf(state, playerId)) {
+    if (captain.captured) continue
     if (availableSkillPicks(captain, catalog.captainXpThresholds) < 1) continue
     const level = levelForXp(captain.xp, catalog.captainXpThresholds)
 

@@ -179,6 +179,33 @@ describe('captain recovery (#308/#309)', () => {
     })
   })
 
+  it('does not re-ransom a captive that is already eligible for recruitment (#439)', () => {
+    // Same outnumbered setup as the ransom test above, but the captive has
+    // already served out its captivity — a second ransom is legal yet buys
+    // nothing. Before the fix the AI paid its captor for the same captive
+    // every time it had the gold, pinning itself below the recruitCaptain
+    // price forever (observed in the full-game sims).
+    const base = createGame(config(5, 5))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const eligibleCaptive: Captain = {
+      ...p1cap,
+      id: `${p1cap.id}-captive`,
+      captured: true,
+      capturedBy: 'p2',
+      troops: [],
+      movementPoints: 0,
+      maxMovementPoints: 0,
+      captivityReturnRound: base.round,
+    }
+    const extraP2Captain: Captain = { ...p2cap, id: `${p2cap.id}-2` }
+    const state: GameState = {
+      ...base,
+      captains: [p1cap, eligibleCaptive, p2cap, extraP2Captain],
+    }
+    expect(nextAiAction(state, 'p1').type).not.toBe('ransomCaptain')
+  })
+
   it('does not ransom when not outnumbered', () => {
     const base = createGame(config(5, 5))
     const p1cap = captainsOf(base, 'p1')[0]!
@@ -488,6 +515,134 @@ describe('AI tavern gate (#433)', () => {
     const cityAfter = after.cities.find((c) => c.id === city.id)!
     expect(cityAfter.buildings).toContain('tavern')
     expect(captainsOf(after, 'p1').length).toBeGreaterThan(0)
+  })
+})
+
+// --- Captain-less recovery balance (#439) ---
+
+/**
+ * TAVERN_CATALOG plus a gold building whose utility (80) matches the real
+ * tree's ceiling (grandArsenal: unlocksTier 4 × weight 20) — the competitor
+ * class that starved tavern construction at the old buildTavernBonus of 30.
+ */
+const RICH_CATALOG: ContentCatalog = {
+  ...TAVERN_CATALOG,
+  buildings: {
+    ...TAVERN_CATALOG.buildings,
+    goldmine: { produces: { gold: 80 }, cost: { gold: 300 }, requires: 'townhall' },
+  },
+}
+
+describe('captain-less recovery (#439)', () => {
+  it('a seat with a live captain builds economy, never an insurance tavern', () => {
+    // The tavern bonus is need-aware: with a captain alive it scores its plain
+    // utility (0 — it produces nothing), so the 80-utility goldmine wins.
+    const state = createGame({ ...econConfig(), content: RICH_CATALOG })
+    const city = homeCity(state, 'p1')
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'construct',
+      playerId: 'p1',
+      cityId: city.id,
+      buildingId: 'goldmine',
+    })
+  })
+
+  it('recovers within its turn even when the richest ordinary building competes', () => {
+    // The failure the sims exposed at buildTavernBonus 30: a captain-less
+    // mid-game seat kept picking higher-utility buildings and stayed locked
+    // out of recruitCaptain for rounds. The tuned bonus (100) must outrank
+    // the 80-utility ceiling so tavern-then-captain completes in one turn.
+    const state = captainlessState(RICH_CATALOG)
+    const after = runAiTurn(state, 'p1')
+    expect(homeCity(after, 'p1').buildings).toContain('tavern')
+    expect(captainsOf(after, 'p1').some((c) => !c.captured)).toBe(true)
+  })
+
+  it('holds the comeback captain’s price instead of spending it on garrison troops', () => {
+    // Gold 500 covers the reserve (150) but not reserve + captain (550): a
+    // captain-less seat must not recruit. The same gold with a live captain
+    // is spent freely — the fund only exists while recovering.
+    const decide = (captainless: boolean) => {
+      let state = createGame(econConfig(['townhall', 'barracks']))
+      const city = homeCity(state, 'p1')
+      state = {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === 'p1' ? { ...p, resources: { ...p.resources, gold: 500 } } : p,
+        ),
+        cities: state.cities.map((c) =>
+          c.id === city.id ? { ...c, builtThisRound: true, unitAvailability: { deckhand: 10 } } : c,
+        ),
+        captains: captainless ? state.captains.filter((c) => c.ownerId !== 'p1') : state.captains,
+      }
+      return nextAiAction(state, 'p1')
+    }
+    expect(decide(false).type).toBe('recruit')
+    expect(decide(true).type).not.toBe('recruit')
+  })
+
+  it('a gold-poor seat saves income up to its comeback captain instead of idling (full arc)', () => {
+    // The end-to-end arc #439 called out as untested: the AI lost its last
+    // captain, has no tavern, and starts with only 250 gold — enough for the
+    // tavern (100) but far short of the captain (400). It must build the
+    // tavern, hold the recovery fund against troop recruitment and ordinary
+    // construction, and hire the captain once townhall income accumulates.
+    let state = captainlessState(TAVERN_CATALOG)
+    state = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === 'p1' ? { ...p, resources: { ...p.resources, gold: 250 } } : p,
+      ),
+    }
+    const recovered = (s: GameState) => captainsOf(s, 'p1').some((c) => !c.captured)
+    let guard = 0
+    while (!recovered(state) && state.round <= 8 && guard++ < 40) {
+      state = runAiTurn(state, currentPlayer(state).id)
+    }
+    expect(homeCity(state, 'p1').buildings).toContain('tavern')
+    expect(recovered(state)).toBe(true)
+    // Income is 100/round from the townhall: tavern on round 1, captain as
+    // soon as the fund reaches 400 — round 4. Idling past that means the
+    // recovery fund leaked somewhere.
+    expect(state.round).toBeLessThanOrEqual(5)
+  })
+})
+
+describe('AI planners ignore captured captains (#439)', () => {
+  it('a docked captured captain draws no skill picks, transfers, or upgrades — the turn completes', () => {
+    // The crash class the sims hit: a captured captain sitting beside its own
+    // city satisfied planSkillPick (unspent pick), planGarrisonToShip (docked,
+    // garrison waiting), and planUpgrade (shipyard, affordable track), and the
+    // reducer rejects all three for captured captains — runAiTurn threw.
+    let state = createGame(econConfig(['townhall', 'barracks', 'shipyard']))
+    const city = homeCity(state, 'p1')
+    const cap = captainsOf(state, 'p1')[0]!
+    state = {
+      ...state,
+      cities: state.cities.map((c) =>
+        c.id === city.id ? { ...c, garrison: { deckhand: 10 } } : c,
+      ),
+      captains: state.captains.map((c) =>
+        c.id === cap.id
+          ? {
+              ...c,
+              position: { ...city.position },
+              captured: true,
+              capturedBy: 'p2',
+              movementPoints: 0,
+              maxMovementPoints: 0,
+              xp: 200,
+              captivityReturnRound: state.round + 5,
+            }
+          : c,
+      ),
+    }
+    const after = runAiTurn(state, 'p1')
+    const capAfter = after.captains.find((c) => c.id === cap.id)!
+    expect(capAfter.captured).toBe(true)
+    expect(capAfter.skills).toEqual([])
+    expect(capAfter.shipUpgrades).toEqual({})
+    expect(capAfter.troops).toEqual(cap.troops)
   })
 })
 

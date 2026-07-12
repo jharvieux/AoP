@@ -341,4 +341,27 @@ describe('attackCity — AI conquest behavior', () => {
     const action = nextAiAction(state, 'p1')
     expect(action.type).not.toBe('attackCity')
   })
+
+  it('scores an assault on troops alone — a strong ship cannot carry a weak landing party (#442)', () => {
+    // 2 grunts (strength 12) against a 4-grunt garrison (24) is hopeless on
+    // the land board. Counting the sloop's hull+cannons (16) used to push the
+    // scored ratio to 1.17, so the AI stormed anyway and lost its captain.
+    // The ship never fights in a land assault; it must not tip the decision.
+    const state = assaultState({
+      attackerTroops: [{ unitId: 'grunt', count: 2 }],
+      garrison: { grunt: 4 },
+      p2HasCaptain: false,
+    })
+    expect(nextAiAction(state, 'p1').type).not.toBe('attackCity')
+  })
+
+  it('still assaults when the landing party alone matches the garrison', () => {
+    // 4 grunts vs 4 grunts: troops-only ratio 1.0 clears the 0.9 engage gate.
+    const state = assaultState({
+      attackerTroops: [{ unitId: 'grunt', count: 4 }],
+      garrison: { grunt: 4 },
+      p2HasCaptain: false,
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('attackCity')
+  })
 })
