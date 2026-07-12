@@ -16,7 +16,11 @@ import {
 } from '../src'
 import { GAME_SETUP, MAP_VALIDATION_LIMITS } from './fixtures'
 
-/** Wrap the generator with the home-island radius and ring factor the engine now receives from content. */
+/**
+ * Wrap the generator with the home-island radius and ring factor the engine now
+ * receives from content — including the #468 per-size radius override, mirroring
+ * how `createGame` resolves it in `game.ts`.
+ */
 const generateMap = (
   seed: number,
   mapSize: MapSize,
@@ -27,7 +31,7 @@ const generateMap = (
     seed,
     mapSize,
     playerCount,
-    GAME_SETUP.homeIslandRadius,
+    GAME_SETUP.homeIslandRadiusOverrides?.[mapSize] ?? GAME_SETUP.homeIslandRadius,
     GAME_SETUP.homeIslandRingRadiusFactor,
     topology,
   )
@@ -39,6 +43,15 @@ function landCount(map: GameMap): number {
 function homeIslandLand(map: GameMap, island: number): number {
   return map.tiles.filter((t) => t.island === island && (t.type === 'land' || t.type === 'port'))
     .length
+}
+
+function neutralIslandCount(map: GameMap, playerCount: number): number {
+  const islands = new Set(
+    map.tiles
+      .filter((t) => (t.type === 'land' || t.type === 'port') && t.island >= playerCount)
+      .map((t) => t.island),
+  )
+  return islands.size
 }
 
 describe('generateMap determinism', () => {
@@ -54,7 +67,7 @@ describe('generateMap determinism', () => {
   })
 
   it('respects the size table', () => {
-    for (const size of ['small', 'medium', 'large'] as MapSize[]) {
+    for (const size of ['small', 'medium', 'large', 'xlarge'] as MapSize[]) {
       const map = generateMap(7, size, 2)
       expect(map.width).toBe(MAP_DIMENSIONS[size])
       expect(map.height).toBe(MAP_DIMENSIONS[size])
@@ -210,5 +223,60 @@ describe('generation topology (#348)', () => {
         expect(touchesDeep).toBe(false)
       }
     }
+  })
+})
+
+describe('extra-large size (#468)', () => {
+  it('is a pure function of (seed, mapSize, playerCount), like every other size', () => {
+    expect(generateMap(1, 'xlarge', 4)).toEqual(generateMap(1, 'xlarge', 4))
+    expect(generateMap(1, 'xlarge', 4)).not.toEqual(generateMap(2, 'xlarge', 4))
+  })
+
+  it('is the widest board and stays a sane land ratio', () => {
+    for (const seed of [1, 2, 3, 42, 100]) {
+      const map = generateMap(seed, 'xlarge', 4)
+      expect(map.width).toBe(MAP_DIMENSIONS.xlarge)
+      expect(map.width).toBeGreaterThan(MAP_DIMENSIONS.large)
+      const ratio = landCount(map) / map.tiles.length
+      expect(ratio).toBeGreaterThan(0.03)
+      expect(ratio).toBeLessThan(0.45)
+    }
+  })
+
+  it('gives home islands more interior land than large — bigger islands, not just bigger sea', () => {
+    const large = generateMap(11, 'large', 4)
+    const xlarge = generateMap(11, 'xlarge', 4)
+    expect(homeIslandLand(xlarge, 0)).toBeGreaterThan(homeIslandLand(large, 0))
+  })
+
+  it('is fair: every xlarge home island is identically sized', () => {
+    const map = generateMap(11, 'xlarge', 4)
+    const sizes = map.startPositions.map((_, i) => homeIslandLand(map, i))
+    expect(Math.max(...sizes)).toBe(Math.min(...sizes))
+  })
+
+  it('scales the neutral island count up from large, per the size/6..size/4 formula', () => {
+    const large = generateMap(11, 'large', 4)
+    const xlarge = generateMap(11, 'xlarge', 4)
+    expect(neutralIslandCount(xlarge, 4)).toBeGreaterThanOrEqual(neutralIslandCount(large, 4))
+  })
+
+  it('gives one water start per player, for every supported player count', () => {
+    for (const count of [2, 3, 4, 6, 8]) {
+      const map = generateMap(21, 'xlarge', count)
+      expect(map.startPositions).toHaveLength(count)
+      for (const s of map.startPositions) {
+        expect(isWaterTile(tileAt(map, s))).toBe(true)
+      }
+    }
+  })
+
+  it('validates as an authored map definition, aside from the deliberately-untouched size ceiling', () => {
+    const map = generateMap(11, 'xlarge', 4)
+    const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
+    // xlarge (48) exceeds MAP_VALIDATION_LIMITS.maxSize (40, the authored/community-map
+    // ceiling — deliberately untouched by #468, see PR notes), so a size-range error is
+    // expected here; anything else would mean the generated map itself is malformed.
+    expect(result.errors.filter((e) => !e.message.includes('must be between'))).toEqual([])
   })
 })

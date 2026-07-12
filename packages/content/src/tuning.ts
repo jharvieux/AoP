@@ -1,4 +1,4 @@
-import type { FactionId } from '@aop/shared'
+import type { FactionId, MapSize } from '@aop/shared'
 import { STARTING_BUILDINGS } from './buildings'
 
 /**
@@ -192,6 +192,12 @@ export interface GameSetup {
   startingShipClass: string
   /** Radius (in tiles) of each identical home-island disc. */
   homeIslandRadius: number
+  /**
+   * Per-`MapSize` override of {@link homeIslandRadius} (#468) — only sizes
+   * present here deviate from the flat radius, so small/medium/large
+   * generation stays byte-identical to pre-#468 output.
+   */
+  homeIslandRadiusOverrides?: Partial<Record<MapSize, number>>
   /**
    * Fraction of map size used as the ring radius for placing home island centers
    * around the map centre. Larger values push starts farther apart, delaying first
@@ -387,6 +393,13 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
+  // #468: doubling xlarge's home-island radius roughly quadruples its usable
+  // land per island (disc area scales with r²) — the point of the XL size is
+  // more interior land for the #469 epic, not just a wider empty-sea canvas.
+  // Neutral islands scale the same way, since generateMap derives their
+  // radius from this same resolved value. small/medium/large are absent here
+  // so their generation stays byte-identical to pre-#468 output.
+  homeIslandRadiusOverrides: { xlarge: 4 },
   // Increased from 0.34 to 0.40 to slow first contact (#322); home islands now
   // sit ~2 tiles farther apart, reducing early rush timing pressure.
   homeIslandRingRadiusFactor: 0.4,
