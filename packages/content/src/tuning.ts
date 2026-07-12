@@ -403,6 +403,21 @@ export const GAME_SETUP: GameSetup = {
   battleResolution: 'tactical',
 }
 
+/**
+ * How many rounds elapse between city recruit-pool replenishments (#453).
+ *
+ * A city's `unitAvailability` (the recruits it may buy) is seeded when the match
+ * starts and then tops up by each unit's `weeklyGrowth` on a cadence. At `1` it
+ * refreshes every round; raising it to `5` slows the defender-garrison snowball
+ * five-fold, so a crew-capacity-capped landing party can actually reach the
+ * strength of a besieged city's garrison. Balance data, not an engine constant —
+ * the reducer reads it from the frozen catalog so replays stay deterministic.
+ *
+ * Changing this alters the meaning of the round counter for recruitment, so it
+ * is a replay-breaking change: bump `RULES_VERSION` in lock-step (currently v4).
+ */
+export const RECRUIT_REPLENISH_INTERVAL = 5
+
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
   attackScoreBase: 100,

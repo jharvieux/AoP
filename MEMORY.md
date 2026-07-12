@@ -1,3 +1,38 @@
+## D-032 — 2026-07-12 — Conquest reachability (#453): 5-round recruit cadence + ×5 ship capacity; RULES_VERSION→4
+
+**Decision** (operator, verbatim): "have troops populate every 5 turns instead of every turn,
+quintuple troop capacity of each ship." Implemented as two @aop/content balance levers:
+`RECRUIT_REPLENISH_INTERVAL = 5` (city recruit pools top up every 5 rounds instead of every
+round — a "turn" maps to a full-round wrap, the cadence the reducer already replenished on)
+and `SHIP_CLASSES.crewCapacity` ×5 (sloop 4→20, brig 6→30, frigate 8→40, galleon 12→60; the
+crewCapacity upgrade track's per-level amounts ×5 too, 1/1/2→5/5/10, so refits stay
+meaningful). The interval is read by the reducer's turn-advance from the frozen catalog;
+`?? 1` keeps pre-#453 catalogs at every-round.
+
+**Why / replay**: #453 proved conquest was structurally impossible in full-content AI-vs-AI
+sims (0 captures / 48+ matches) — unbounded defender garrison vs crew-capped landing party,
+the engage-ratio gate correctly refusing every hopeless assault. The cadence change alters
+the meaning of the round counter for recruitment → replay-breaking → `RULES_VERSION` 3→4,
+ENGINE_VERSION regenerated, new engine replay tests pin the cadence, new apps/web full-content
+conquest test (`conquestReachable.test.ts`) is the regression guard.
+
+**Sim evidence (judgment call, flagged to operator)**: the two levers move conquest from
+0 → reachable but NOT common — 3 captures / 96 deterministic full-content matches (both
+seatings, small map, opportunist/normal), all landing by round ~17 in the early window before
+the garrison snowballs. Pushing the cadence harder (interval 10/20) does NOT raise the rate
+(captures cluster early regardless); the residual bottleneck is the AI's single-captain
+offensive landing model, exactly the design work #453 enumerated (garrison caps/upkeep,
+multi-captain/staged assaults, AI recruit throttling). No-free-capture holds — militia/turrets
+(#435/#442) stay effective, garrisons peak ~320. Recommend a follow-up issue for a
+bounded-garrison mechanism if a higher conquest rate is wanted; not added here per scope
+("do not add new mechanics").
+
+**Rejected**: inflating the operator's 5/×5 numbers to force a higher rate (data shows it
+doesn't help and would overwrite the operator's decision); adding a garrison cap/upkeep
+mechanism (out of scope).
+
+---
+
 ## D-031 — 2026-07-11 — Local SD art pipeline: MPS requires pinned torch 2.3.1; city-art v1 approved
 
 **Decision**: The local AUTOMATIC1111 install runs MPS-accelerated ONLY with the torch build

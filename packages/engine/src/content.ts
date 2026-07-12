@@ -151,4 +151,11 @@ export interface ContentCatalog {
    * an attacked city's recruited garrison alone (no militia, no turrets).
    */
   cityDefense?: CityDefenseTuning
+  /**
+   * Rounds between city recruit-pool replenishments (#453). Optional: absent or
+   * `1` means every round (the pre-#453 behaviour); higher values slow the
+   * garrison snowball. Read at turn advance; belongs in content, not the engine,
+   * because it is a tuned balance number.
+   */
+  recruitReplenishInterval?: number
 }
