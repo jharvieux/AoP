@@ -36,7 +36,7 @@ import { UI_ICON } from './uiIcons'
  * decision on #429), everything else = a description of its function.
  */
 
-export function costLabel(cost: BuildingDef['cost']): string {
+function costLabel(cost: BuildingDef['cost']): string {
   const parts = Object.entries(cost)
     .filter(([, amount]) => amount)
     .map(([resource, amount]) => `${amount} ${resource}`)
@@ -158,7 +158,7 @@ const UPGRADE_TRACK_LABELS: Record<string, string> = {
   crewCapacity: 'Crew capacity',
 }
 
-export interface CityBuildingModalProps {
+interface CityBuildingModalProps {
   buildingId: string
   city: CityState
   captain: Captain | undefined
