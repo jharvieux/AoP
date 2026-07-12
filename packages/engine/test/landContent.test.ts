@@ -84,7 +84,7 @@ const CATALOG: ContentCatalog = {
     spawnDensity: 0.02,
     minStartDistance: 3,
   },
-  inlandSettlements: { density: 1, buildings: ['townhall', 'barracks'] },
+  inlandSettlements: { density: 1, buildings: ['townhall', 'barracks'], minStartDistance: 2 },
 }
 
 /** The same 8×4 island as landingParties.test.ts, with (11,5) a port for p2's city. */

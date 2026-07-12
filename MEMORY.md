@@ -7,7 +7,7 @@ GENERATED maps only (authored/community maps untouched):
 - **Land resource sites (#466)** — `GameState.landSites`, scattered on `land` tiles.
   Content `LAND_SITES` (`@aop/content/landSites.ts`) defines two behaviours:
   **hold** sites (mine → gold+iron, sawmill → timber) pay ongoing income each round to
-  whoever last *claimed* them, and **haul** sites (lumberCamp, ruins) pay a one-time
+  whoever last _claimed_ them, and **haul** sites (lumberCamp, ruins) pay a one-time
   reward on capture then go inactive. New action `captureSite` (party stands on the
   site): a hold claim is a **persistent marker** — it keeps paying after the party
   marches off and only flips when a rival party recaptures it (operator's likely-intent,
@@ -19,7 +19,7 @@ GENERATED maps only (authored/community maps untouched):
   `resolveEncounterChoice` reused, crediting party troops (no crew cap ashore, no captain
   XP). Kept a separate domain so the sea encounter stream is untouched.
 - **Inland settlements (#467)** — neutral cities (`ownerId: 'neutral'`) seeded on
-  *interior* land tiles (every neighbour is land ⇒ ≥2 tiles from water ⇒ **no sea assault
+  _interior_ land tiles (every neighbour is land ⇒ ≥2 tiles from water ⇒ **no sea assault
   can reach them by construction**; still land-path-reachable on a solid island). Capture
   is **overland-only** via `partyAssaultCity` against the full militia+turret neutral
   defense (D-030/#435). No port tile, no shipyard: a new `construct` rule refuses an

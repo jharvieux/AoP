@@ -166,7 +166,7 @@ export function seedInlandSettlements(
   startPositions: readonly Coord[],
   occupied: ReadonlySet<number>,
 ): { positions: Coord[]; rng: RngState } {
-  const candidates = interiorLandTiles(map, startPositions, 2, occupied)
+  const candidates = interiorLandTiles(map, startPositions, tuning.minStartDistance, occupied)
   const count = Math.min(Math.floor(candidates.length * tuning.density), candidates.length)
   const state = shuffle(candidates, rng)
   return { positions: candidates.slice(0, count).map((c) => ({ ...c })), rng: state }

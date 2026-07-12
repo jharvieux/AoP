@@ -491,11 +491,14 @@ export interface InlandSettlementTuning {
    * deliberately no `shipyard` (a landlocked city has no use for one).
    */
   buildings: readonly string[]
+  /** Keep settlements this many tiles clear of any start position. */
+  minStartDistance: number
 }
 
 export const INLAND_SETTLEMENTS: InlandSettlementTuning = {
   density: 0.08,
   buildings: [...STARTING_BUILDINGS],
+  minStartDistance: 2,
 }
 
 export const AI_TUNING: AiTuning = {

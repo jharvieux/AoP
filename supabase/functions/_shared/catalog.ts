@@ -102,6 +102,7 @@ export function buildCatalog(): ContentCatalog {
     inlandSettlements: {
       density: INLAND_SETTLEMENTS.density,
       buildings: [...INLAND_SETTLEMENTS.buildings],
+      minStartDistance: INLAND_SETTLEMENTS.minStartDistance,
     },
   }
 }

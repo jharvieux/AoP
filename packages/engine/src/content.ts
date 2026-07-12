@@ -157,6 +157,8 @@ export interface InlandSettlementLike {
   density: number
   /** Buildings a freshly-seeded neutral settlement carries (never a shipyard — landlocked). */
   buildings: readonly string[]
+  /** Keep settlements this many tiles clear of any start position. */
+  minStartDistance: number
 }
 
 /** The four map-editor resource-marker kinds (#41, #101). */
