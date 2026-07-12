@@ -5,7 +5,6 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
-  findLandPath,
   mapDistance,
   nextAiAction,
   partyToCombatant,
@@ -31,6 +30,8 @@ import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
+import { planPartyMarch } from '../partyMarch'
+import { classifyPartyRangeOverlay } from '../partyRange'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
@@ -434,6 +435,43 @@ export function GameScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaptain, game, viewer.id, visibleKeys, exploredKeys])
 
+  // Movement-range shading for a selected landing party (#476), the land twin
+  // of the ship overlay above. Same fog rules; "other parties" blocks
+  // movement for every party regardless of owner, mirroring `moveParty`'s own
+  // blocked set (own parties are always known, enemy ones only in vision).
+  const partyRangeOverlay = useMemo(() => {
+    if (!selectedParty) return undefined
+    const otherParties = game.parties.filter(
+      (p) =>
+        p.id !== selectedParty.id &&
+        (p.ownerId === viewer.id || visibleKeys.has(`${p.position.x},${p.position.y}`)),
+    )
+    return classifyPartyRangeOverlay({
+      map: game.map,
+      from: selectedParty.position,
+      movementPoints: selectedParty.movementPoints,
+      otherParties: otherParties.map((p) => p.position),
+      enemies: otherParties.filter((p) => p.ownerId !== viewer.id).map((p) => p.position),
+      enemyCities: game.cities
+        .filter(
+          (c) => c.ownerId !== viewer.id && exploredKeys.has(`${c.position.x},${c.position.y}`),
+        )
+        .map((c) => c.position),
+      encounters: game.landEncounters
+        .filter((e) => e.active && visibleKeys.has(`${e.position.x},${e.position.y}`))
+        .map((e) => e.position),
+      capturableSites: game.landSites
+        .filter(
+          (s) =>
+            s.active &&
+            s.claimedBy !== viewer.id &&
+            visibleKeys.has(`${s.position.x},${s.position.y}`),
+        )
+        .map((s) => s.position),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedParty, game, viewer.id, visibleKeys, exploredKeys])
+
   // Paused sail orders (#372): own ships halted on a new sighting, awaiting the
   // player's Resume (re-issue the order, refreshing the seen-contacts baseline)
   // or Cancel (drop it).
@@ -527,6 +565,15 @@ export function GameScreen({
       (p) => p.ownerId === viewer.id && p.position.x === x && p.position.y === y,
     )
     if (ownPartyHere) {
+      // Re-tapping the already-selected party's own tile (#476) is an action
+      // tap (capture the site it's standing on, resolve an encounter it's
+      // sharing a tile with, …), not a re-select — this tile always matches
+      // `ownPartyHere` first, so without this branch those actions could never
+      // fire from a tap at all.
+      if (selectedParty && selectedParty.id === ownPartyHere.id) {
+        handlePartyTileClick(x, y, selectedParty)
+        return
+      }
       setSelectedPartyId(ownPartyHere.id)
       setSelectedCaptainId(null)
       setAttackTargetId(null)
@@ -643,8 +690,11 @@ export function GameScreen({
   /**
    * A tap while a landing party is selected (#465): attack an adjacent enemy
    * party, open the land-assault confirm on an adjacent enemy city, or march
-   * to a reachable land tile. No multi-turn march orders yet — a destination
-   * beyond this turn's movement simply doesn't move (follow-up UX work).
+   * toward a land tile. Marching beyond this turn's movement (#476) covers as
+   * much of the route as the party can this turn — no engine-side standing
+   * order exists yet for parties (unlike a ship's `setSailOrder`), so getting
+   * the rest of the way there takes a re-tap on the same destination next
+   * turn, once movement refreshes.
    */
   function handlePartyTileClick(x: number, y: number, party: LandingParty) {
     const key = `${x},${y}`
@@ -701,17 +751,23 @@ export function GameScreen({
       setLandEncounterId(landEncHere.id)
       return
     }
-    // March: the engine's own land route (around every other party), only if it
-    // fits this turn's remaining movement.
+    // March (#476): the engine's own land route (around every other party),
+    // as far as this turn's movement covers — the rest waits for a re-tap
+    // next turn (see the doc comment above).
     const blocked = new Set(
       game.parties
         .filter((p) => p.id !== party.id)
         .map((p) => tileIndex(game.map, p.position.x, p.position.y)),
     )
-    const path = findLandPath(game.map, party.position, { x, y }, blocked)
-    if (!path || path.length - 1 > party.movementPoints || path.length < 2) return
+    const plan = planPartyMarch(game.map, party.position, { x, y }, party.movementPoints, blocked)
+    if (!plan) return
     shipMoveFeedback()
-    onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: { x, y } })
+    onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: plan.to })
+    if (plan.remainingSteps > 0) {
+      pushEvent(
+        `${party.name} marches on — ${plan.remainingSteps} tile${plan.remainingSteps === 1 ? '' : 's'} left; tap the destination again next turn`,
+      )
+    }
   }
 
   function confirmDisembark() {
@@ -1266,7 +1322,7 @@ export function GameScreen({
           selectedCaptainId={selectedCaptainId}
           selectedPartyId={selectedPartyId}
           onTileClick={handleTileClick}
-          rangeOverlay={rangeOverlay}
+          rangeOverlay={rangeOverlay ?? partyRangeOverlay}
           onSetCourse={(cell) => {
             if (!selectedCaptain) return
             shipMoveFeedback()
@@ -1335,6 +1391,17 @@ export function GameScreen({
       {/* Primary actions live in a bottom bar, not the header, so they sit in
           the thumb-reach zone on one-handed phone use (#27). */}
       <div className="bottom-action-bar">
+        {/* Movement-points readout (#476): the selected ship/party's remaining
+            vs. max movement had no display anywhere before this — the only
+            feedback was the dotted route preview, which needs a mouse hover to
+            see at all. Shown for either selection kind (never both at once). */}
+        {(selectedCaptain || selectedParty) && (
+          <div className="selection-info" role="status">
+            {selectedCaptain
+              ? `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
+              : `${selectedParty!.name} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`}
+          </div>
+        )}
         {idleCityHint && (
           <div className="idle-city-hint" role="status">
             {idleCityHint}

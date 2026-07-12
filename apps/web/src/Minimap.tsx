@@ -1,4 +1,10 @@
-import { mapTopology, type Captain, type CityState, type GameMap } from '@aop/engine'
+import {
+  mapTopology,
+  type Captain,
+  type CityState,
+  type GameMap,
+  type LandingParty,
+} from '@aop/engine'
 import type { Coord } from '@aop/shared'
 import { useEffect, useRef, type RefObject } from 'react'
 import { cssToken } from './colorTokens'
@@ -19,6 +25,10 @@ import { TILE_COLOR } from './MapCanvas'
  * topology-independent — it maps main-camera world pixels through `worldPx /
  * tileSize` into the same unit space the minimap scales — so it needed no change
  * beyond taking the layout-derived scale/height.
+ *
+ * Landing parties (#476) get their own small square marker, fog-gated exactly
+ * like a captain dot (own always, enemy only currently visible) — before this
+ * they simply didn't appear on the minimap at all.
  */
 
 const MINIMAP_W = 150
@@ -32,6 +42,9 @@ interface MinimapProps {
   map: GameMap
   cities: CityState[]
   captains: Captain[]
+  /** Landing parties ashore (#465). Optional, like `MapCanvasProps.parties`,
+   * so any consumer predating parties needs no change. */
+  parties?: LandingParty[] | undefined
   viewerId: string
   exploredKeys: Set<string>
   visibleKeys: Set<string>
@@ -48,6 +61,7 @@ export function Minimap({
   map,
   cities,
   captains,
+  parties = [],
   viewerId,
   exploredKeys,
   visibleKeys,
@@ -108,6 +122,13 @@ export function Minimap({
       ctx.arc(c.x * scale, c.y * scale, r, 0, Math.PI * 2)
       ctx.fill()
     }
+    // A small square, not a dot — legible at this scale as "not a ship"
+    // without needing a second color per faction.
+    const square = (pos: Coord, color: string, r: number) => {
+      const c = cellCenter(topology, pos.x, pos.y, 1)
+      ctx.fillStyle = color
+      ctx.fillRect(c.x * scale - r, c.y * scale - r, r * 2, r * 2)
+    }
     for (const city of cities) {
       const own = city.ownerId === viewerId
       if (!own && !exploredKeys.has(`${city.position.x},${city.position.y}`)) continue
@@ -118,7 +139,12 @@ export function Minimap({
       if (!own && !visibleKeys.has(`${cap.position.x},${cap.position.y}`)) continue
       dot(cap.position, own ? OWN_SHIP : ENEMY_SHIP, 2)
     }
-  }, [map, topology, cities, captains, viewerId, exploredKeys, visibleKeys, scale, height])
+    for (const party of parties) {
+      const own = party.ownerId === viewerId
+      if (!own && !visibleKeys.has(`${party.position.x},${party.position.y}`)) continue
+      square(party.position, own ? OWN_SHIP : ENEMY_SHIP, 1.8)
+    }
+  }, [map, topology, cities, captains, parties, viewerId, exploredKeys, visibleKeys, scale, height])
 
   // Track the main camera every frame and position the viewport rectangle.
   useEffect(() => {
