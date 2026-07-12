@@ -4,6 +4,7 @@ import {
   cityBackdropContentId,
   cityContentId,
   encounterContentId,
+  factionFlagContentId,
   resolveSpriteUrl,
   tileContentId,
 } from './mapSprites'
@@ -30,6 +31,11 @@ describe('mapSprites content ids', () => {
   it('has a fixed content id for the city scene backdrop', () => {
     expect(cityBackdropContentId()).toBe('cityScene:backdrop')
   })
+
+  it('uses the faction id directly as the flag content id', () => {
+    expect(factionFlagContentId('pirates')).toBe('pirates')
+    expect(factionFlagContentId('british')).toBe('british')
+  })
 })
 
 describe('resolveSpriteUrl', () => {
@@ -55,5 +61,27 @@ describe('resolveSpriteUrl', () => {
   it('an override wins even when there is no default art for that content id', () => {
     const spriteUrl = (id: string) => (id === 'tile:deep' ? '/override/deep.png' : undefined)
     expect(resolveSpriteUrl(spriteUrl, 'tile:deep', undefined)).toBe('/override/deep.png')
+  })
+
+  it('resolves a faction flag override over the default flag art', () => {
+    const spriteUrl = (id: string) => (id === 'pirates' ? '/override/pirates-flag.png' : undefined)
+    expect(
+      resolveSpriteUrl(
+        spriteUrl,
+        factionFlagContentId('pirates'),
+        '/art/factions/pirates/flag.png',
+      ),
+    ).toBe('/override/pirates-flag.png')
+  })
+
+  it('falls back to the default flag art when no faction override is set', () => {
+    const spriteUrl = () => undefined
+    expect(
+      resolveSpriteUrl(
+        spriteUrl,
+        factionFlagContentId('british'),
+        '/art/factions/british/flag.png',
+      ),
+    ).toBe('/art/factions/british/flag.png')
   })
 })

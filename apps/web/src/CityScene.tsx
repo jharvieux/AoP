@@ -1,6 +1,11 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
-import { buildingContentId, cityBackdropContentId, resolveSpriteUrl } from './mapSprites'
+import {
+  buildingContentId,
+  cityBackdropContentId,
+  factionFlagContentId,
+  resolveSpriteUrl,
+} from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
 
 /**
@@ -48,20 +53,27 @@ const SCENE_SLOTS: Record<string, SceneSlot> = {
   shipyard: { left: 76, top: 70, width: 18, height: 18 },
 }
 
-/** The faction flag flown on the town hall (#428/#429). The flag PNG may not
- * exist yet — the cloth keeps the faction's primary color when the image 404s. */
+/** The faction flag flown on the town hall (#428/#429). Routes through the
+ * theme-pack override chain (#459) the same way building sprites do — a
+ * theme pack's faction art wins over `FactionDef.flagSpriteUrl` when set.
+ * The flag PNG may not exist yet — the cloth keeps the faction's primary
+ * color when the image 404s or no URL resolves at all. */
 function FactionFlag({ faction }: { faction: FactionId }) {
+  const { spriteUrl: themeSpriteUrl } = useTheme()
   const def = FACTIONS[faction]
+  const flagUrl = resolveSpriteUrl(themeSpriteUrl, factionFlagContentId(faction), def.flagSpriteUrl)
   return (
     <span className="city-scene__flagpole" aria-hidden>
       <span className="city-scene__flag" style={{ backgroundColor: def.primaryColor }}>
-        <img
-          src={def.flagSpriteUrl}
-          alt=""
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
-        />
+        {flagUrl && (
+          <img
+            src={flagUrl}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        )}
       </span>
     </span>
   )

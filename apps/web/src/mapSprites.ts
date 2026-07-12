@@ -13,6 +13,8 @@
  * get a namespaced id here to avoid ever colliding with a faction/unit/ship id.
  */
 
+import type { FactionId } from '@aop/shared'
+
 /** Theme-pack content id for a map tile type's sprite override. */
 export function tileContentId(tileType: string): string {
   return `tile:${tileType}`
@@ -47,6 +49,18 @@ export function buildingContentId(buildingId: string): string {
 /** Theme-pack content id for the city scene's backdrop image override (#447). */
 export function cityBackdropContentId(): string {
   return 'cityScene:backdrop'
+}
+
+/**
+ * Theme-pack content id for a faction's flag sprite override (#459). Faction
+ * ids are already the sprite-override key the Theme Packs editor uses for
+ * faction art (`ThemePackEditor`'s "Factions" section, #64), so this follows
+ * the unnamespaced convention ship sprites use (keyed directly by
+ * SHIP_CLASSES id) rather than the `tile:`/`city:`/`encounter:`/`building:`
+ * namespaced ids above.
+ */
+export function factionFlagContentId(factionId: FactionId): string {
+  return factionId
 }
 
 /**
