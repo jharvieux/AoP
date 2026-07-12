@@ -15,7 +15,6 @@ Cross of Burgundy, Dutch banner rebuilt to canonical tricolor after one rejectio
 WIP branch deleted post-merge; provenance MANIFEST in-repo. Follow-up filed: #486
 (ThemePackEditor lacks an upload slot for the new party override). MEMORY through D-040.
 
-
 **The land-expansion epic (#469) went from operator vision to fully shipped in one
 evening**, on top of the earlier waves (sweep + city rework completion + conquest levers —
 see PRs #456/#464 SESSION versions for the morning/afternoon detail):
