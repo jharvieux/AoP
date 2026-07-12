@@ -1,3 +1,48 @@
+## D-036 — 2026-07-12 — #465 landing parties: new land-piece domain, five actions, RULES_VERSION→5
+
+**What shipped** (engine foundation of the land-expansion epic #469, PR pending):
+a new `GameState.parties` piece domain — `LandingParty` (troops, position on a `land`
+tile, movement points; no XP/skills/orders, captains stay ship pieces) — and five
+actions through `applyAction()`:
+
+1. **disembark** — a captain on water lands chosen troops on an adjacent empty `land`
+   tile for 1 ship movement point; the party lands with 0 MP (marches from next turn).
+2. **moveParty** — deterministic land A* (`findLandPath`, same tie-breaks as naval
+   `findPath`; shared `aStar` core) over `land` tiles only; never enters or crosses a
+   tile any party holds; port/city tiles are never walkable.
+3. **embark** — a friendly ship on an adjacent water tile re-boards the party;
+   **partial re-board** (capacity-clamped in the party's stack order, remainder stays
+   ashore); free of movement cost.
+4. **attackParty** — adjacent land-board battle (auto or recorded boardCommands);
+   decisive: the loser's party is destroyed outright (no capture — no captain ashore).
+5. **partyAssaultCity** — land-side assault against the **full** `cityToCombatant`
+   defense (militia + turrets, operator decision on #469); capture semantics identical
+   to a sea assault; a failed assault destroys the party.
+
+**Key semantics choices** (mine, flagged in the PR):
+
+- Enemy parties are engaged by explicit attack, never by moving onto them (the issue
+  floated enter-triggers-auto-battle; explicit attack matches attackCaptain/attackCity UX).
+- Stranded-until-rescued (operator): parties persist indefinitely, no attrition, and a
+  party ashore **keeps its seat alive** (it can still take a city) — elimination now
+  requires no live captain AND no city AND no party. Elimination/resign sweeps remove
+  parties (#450 interplay tested).
+- Parties see with `captainVisionRadius` (no separate knob yet) and count as sail-order
+  contacts; PlayerView filters them exactly like ships (own = full, enemy = sighting).
+- `partyMovementPoints: 3` in @aop/content GAME_SETUP (marching slower than sailing's 5).
+
+**Contract**: RULES_VERSION 4→5 (new required GameState field + elimination-rule change);
+replay/serialization tests in `packages/engine/test/landingParties.test.ts`;
+ENGINE_VERSION regenerated; multiplayer `sanitizeAction` extended.
+
+**UI (minimal but playable, single-player)**: banner-token rendering + selection pulse
+in MapCanvas, disembark troop-picker sheet, tap-to-march, tap-ship-to-embark, party
+attack/assault confirm sheets. **Deferred** (issues filed): AI stays ignorant of
+parties (#475); march orders, tactical land-battle planner, range shading, party art,
+multiplayer action UX (#476).
+
+---
+
 ## D-035 — 2026-07-12 — #462 attrition warfare: AI values garrison-thinning assaults; %-of-base ship refits
 
 **What shipped** (the operator's answer to D-034's residual bottleneck — "conquest is
