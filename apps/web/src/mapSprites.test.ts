@@ -5,6 +5,7 @@ import {
   cityContentId,
   encounterContentId,
   factionFlagContentId,
+  partyContentId,
   resolveSpriteUrl,
   tileContentId,
 } from './mapSprites'
@@ -35,6 +36,12 @@ describe('mapSprites content ids', () => {
   it('uses the faction id directly as the flag content id', () => {
     expect(factionFlagContentId('pirates')).toBe('pirates')
     expect(factionFlagContentId('british')).toBe('british')
+  })
+
+  it('namespaces party content ids by faction id, distinct from the flag content id', () => {
+    expect(partyContentId('pirates')).toBe('party:pirates')
+    expect(partyContentId('british')).toBe('party:british')
+    expect(partyContentId('pirates')).not.toBe(factionFlagContentId('pirates'))
   })
 })
 
@@ -83,5 +90,20 @@ describe('resolveSpriteUrl', () => {
         '/art/factions/british/flag.png',
       ),
     ).toBe('/art/factions/british/flag.png')
+  })
+
+  it('resolves a party token override over the default party art', () => {
+    const spriteUrl = (id: string) =>
+      id === 'party:pirates' ? '/override/pirates-party.png' : undefined
+    expect(resolveSpriteUrl(spriteUrl, partyContentId('pirates'), '/art/parties/pirates.png')).toBe(
+      '/override/pirates-party.png',
+    )
+  })
+
+  it('falls back to the default party art when no party override is set', () => {
+    const spriteUrl = () => undefined
+    expect(resolveSpriteUrl(spriteUrl, partyContentId('dutch'), '/art/parties/dutch.png')).toBe(
+      '/art/parties/dutch.png',
+    )
   })
 })
