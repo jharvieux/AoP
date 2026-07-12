@@ -343,13 +343,17 @@ describe('attackCity — AI conquest behavior', () => {
   })
 
   it('scores an assault on troops alone — a strong ship cannot carry a weak landing party (#442)', () => {
-    // 2 grunts (strength 12) against a 4-grunt garrison (24) is hopeless on
-    // the land board. Counting the sloop's hull+cannons (16) used to push the
-    // scored ratio to 1.17, so the AI stormed anyway and lost its captain.
-    // The ship never fights in a land assault; it must not tip the decision.
+    // 2 grunts (strength 12) against an 8-grunt garrison (strength 48): a
+    // troops-only ratio of 0.25, below even the attrition floor (0.40, #462), so
+    // the AI holds. Counting the sloop's hull+cannons (~16) would push the ratio
+    // to 28/48 ≈ 0.58 — over the attrition floor — and the AI would storm and
+    // lose its captain. The ship never fights in a land assault; it must not tip
+    // the decision. (Retargeted for #462: the old 4-grunt garrison put this at
+    // ratio 0.5, which is now inside the attrition band; the ship-exclusion
+    // invariant this guards is unchanged, just measured with a wider margin.)
     const state = assaultState({
       attackerTroops: [{ unitId: 'grunt', count: 2 }],
-      garrison: { grunt: 4 },
+      garrison: { grunt: 8 },
       p2HasCaptain: false,
     })
     expect(nextAiAction(state, 'p1').type).not.toBe('attackCity')
@@ -363,5 +367,31 @@ describe('attackCity — AI conquest behavior', () => {
       p2HasCaptain: false,
     })
     expect(nextAiAction(state, 'p1').type).toBe('attackCity')
+  })
+
+  it('launches an attrition assault it does not expect to win (#462)', () => {
+    // 6 grunts (36) vs an 8-grunt garrison (48): a troops-only ratio of 0.75 —
+    // below the 0.9 engage gate (no clean win) but above the 0.40 attrition floor.
+    // The failed assault will thin the recruited garrison, and that damage
+    // persists between assaults, so the wave is worth launching. Before #462 the
+    // absolute engage gate refused this outright.
+    const state = assaultState({
+      attackerTroops: [{ unitId: 'grunt', count: 6 }],
+      garrison: { grunt: 8 },
+      p2HasCaptain: false,
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('attackCity')
+  })
+
+  it('holds when the landing party is too weak to dent the garrison (#462)', () => {
+    // 3 grunts (18) vs a 12-grunt garrison (72): ratio 0.25, below the attrition
+    // floor. Landing here would just feed the captain to the defenders for
+    // negligible depletion — the cost-effectiveness bound the floor enforces.
+    const state = assaultState({
+      attackerTroops: [{ unitId: 'grunt', count: 3 }],
+      garrison: { grunt: 12 },
+      p2HasCaptain: false,
+    })
+    expect(nextAiAction(state, 'p1').type).not.toBe('attackCity')
   })
 })

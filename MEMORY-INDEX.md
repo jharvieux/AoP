@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-035 — 2026-07-12 — #462 attrition warfare: AI attritionMinRatio floor + %-of-base ship refits (all 4 tracks); sim 3→13 captures/96 (4.3×), planner+content only, no RULES_VERSION bump
 - D-034 — 2026-07-12 — #453 conquest levers implemented (RULES_VERSION→4); sim result: reachable but rare (3/96), follow-up #462 (PR #461)
 - D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5
 - D-032 — 2026-07-12 — City art v1 shipped: cutouts, harbor backdrop, citadel corner tower (amends D-031's fortification-art detail)

@@ -109,6 +109,26 @@ export interface BattleTuning {
 export interface AiTuning {
   /** Minimum strength ratio (mine ÷ enemy) before the AI will attack or advance on a target. */
   engageMinRatio: number
+  /**
+   * Attrition floor for city assaults (#462): the minimum troops-only strength
+   * ratio (mine ÷ garrison) at which the AI will land an assault it does NOT
+   * expect to win outright, purely to thin a garrison that persists between
+   * assaults (recruit pools replenish only every {@link RECRUIT_REPLENISH_INTERVAL}
+   * rounds). Below `engageMinRatio` but above this, the assault is a deliberate
+   * attrition wave; below this the landing party is too weak to dent the
+   * defenders and would just feed the captain to the turrets, so the AI holds.
+   * Kept strictly below `engageMinRatio` (else the band is empty). Scaled by the
+   * same personality `engageMinRatioMult` as `engageMinRatio`.
+   */
+  attritionMinRatio: number
+  /**
+   * Score multiplier (<1) applied to an attrition assault/approach relative to a
+   * winning one (#462), so a genuine win is always preferred and a doomed
+   * attrition wave still outranks idling. Because the assault score rises with
+   * the ratio, each successful thinning makes the next wave on the weakened city
+   * score higher — the "follow-up assaults score higher" behavior, for free.
+   */
+  attritionScoreMult: number
   /** Score for a legal attack, scaled by strength ratio. */
   attackScoreBase: number
   /** Base score for advancing toward a beatable but distant enemy. */
@@ -420,6 +440,16 @@ export const RECRUIT_REPLENISH_INTERVAL = 5
 
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
+  // 0.40: a landing party at ≥40% of the defenders' troops-only strength kills a
+  // meaningful chunk before falling, so successive waves (or fresh captains) grind
+  // a city the AI can't yet beat outright down to beatable — the #462 attrition
+  // arc. Sim-tuned: on the 96-match battery this lifts conquest from 3 → 13 with
+  // visible multi-wave arcs; below ~0.38 conquest roughly doubles again but the AI
+  // sheds noticeably more captains (less cost-effective), so 0.40 is the bounded
+  // choice. A party weaker than this floor is too slight to dent the garrison and
+  // just feeds its captain to the turrets. (Scaled by personality engageMinRatioMult.)
+  attritionMinRatio: 0.4,
+  attritionScoreMult: 0.5,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,
