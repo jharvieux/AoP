@@ -129,6 +129,16 @@ export interface AiTuning {
    * score higher — the "follow-up assaults score higher" behavior, for free.
    */
   attritionScoreMult: number
+  /**
+   * Siege-commitment bonus (#471): a ratio-scaled score bonus on a conquest
+   * approach/assault so a loaded captain presses a reachable siege instead of
+   * dithering on economy, and converges on the softest (most ground-down)
+   * reachable city. The pull decays for free as a thinned garrison rebuilds, so
+   * the AI sustains successive waves on one target without any cross-turn planner
+   * memory. Personality-scaled by `combatScoreMult`; still gated by
+   * `attritionMinRatio`, so it never lowers the cost floor into suicide runs.
+   */
+  siegeStickinessBonus: number
   /** Score for a legal attack, scaled by strength ratio. */
   attackScoreBase: number
   /** Base score for advancing toward a beatable but distant enemy. */
@@ -463,6 +473,22 @@ export const AI_TUNING: AiTuning = {
   // garrison and just feeds its captain to the turrets. (Scaled by engageMinRatioMult.)
   attritionMinRatio: 0.4,
   attritionScoreMult: 0.5,
+  // Siege commitment (#471), applied only to an *attrition* wave (a city the captain
+  // can't yet win). Without it a loaded captain's attrition approach (combatMult 0.5)
+  // scores below the economy verbs (~25-40), so it lingers at sea and never delivers a
+  // second wave — the observed cap of one assault per (attacker, city), even at a
+  // 40-round cap. Sim-tuned on the 96-match battery: 40 sits on a wide, stable plateau
+  // (32-44 all give ~77 captures / 27 matches with multi-wave sieges); below it the
+  // effect is noisy and cliff-y, above ~48 the multi-wave count decays as the AI
+  // over-commits to doomed waves. Ratio-scaled (40×ratio: 16 at the 0.40 floor, ~36
+  // near-even) so the captain converges on the softest (most ground-down) reachable
+  // city and the pull decays for free as that garrison rebuilds — sustaining
+  // successive waves on one target with no cross-turn planner memory. Scoped to the
+  // attrition case on purpose: adding it to winnable cities makes the AI beeline and
+  // trade cities in a runaway churn (measured 300+ captures). Still gated by
+  // attritionMinRatio, so it never lowers the cost floor into suicide runs.
+  // (Scaled by combatScoreMult.)
+  siegeStickinessBonus: 40,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,
