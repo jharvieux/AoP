@@ -869,6 +869,7 @@ function sailState(
     alliances: { pairs: [], proposals: [] },
     cities: [],
     captains,
+    parties: [],
     encounters: [],
     resourceNodes: [],
     exploredTiles: {},

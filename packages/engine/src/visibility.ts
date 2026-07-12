@@ -57,6 +57,11 @@ export function currentlyVisibleTiles(state: GameState, playerId: string): Coord
   for (const captain of state.captains) {
     if (captain.ownerId === playerId) add(captain.position, captainVisionRadius)
   }
+  // A landing party (#465) sees as far as a captain — a scouting detachment,
+  // not a fortress. Its own knob would be pure ceremony until play demands one.
+  for (const party of state.parties) {
+    if (party.ownerId === playerId) add(party.position, captainVisionRadius)
+  }
   return tiles
 }
 
@@ -136,6 +141,11 @@ export function currentContacts(state: GameState, playerId: string): string[] {
     ) {
       ids.push(captain.id)
     }
+  }
+  // Enemy landing parties (#465) are contacts exactly like enemy captains: a
+  // hostile force sighted ashore is worth pausing a standing sail order for.
+  for (const party of state.parties) {
+    if (isEnemy(party.ownerId) && visibleKeys.has(tileKey(party.position))) ids.push(party.id)
   }
   for (const encounter of state.encounters) {
     if (encounter.active && visibleKeys.has(tileKey(encounter.position))) ids.push(encounter.id)

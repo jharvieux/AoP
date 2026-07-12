@@ -13,12 +13,17 @@ import {
   type Action,
   type AttackCaptainAction,
   type AttackCityAction,
+  type AttackPartyAction,
   type ChooseCaptainSkillAction,
   type ClearSailOrderAction,
   type ConstructBuildingAction,
+  type DisembarkAction,
+  type EmbarkAction,
   type GainCaptainXpAction,
   type LeaveAllianceAction,
   type MoveCaptainAction,
+  type MovePartyAction,
+  type PartyAssaultCityAction,
   type ProposeAllianceAction,
   type RansomCaptainAction,
   type RecruitCaptainAction,
@@ -65,7 +70,7 @@ import {
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
 import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex, type GameMap } from './map'
-import { findPath, pathCost } from './pathfinding'
+import { findLandPath, findPath, pathCost } from './pathfinding'
 import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
 import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
@@ -88,6 +93,7 @@ import type {
   CityState,
   GameSetup,
   GameState,
+  LandingParty,
   PlayerState,
   SailOrder,
   TroopStack,
@@ -166,6 +172,27 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
     }
     case 'attackCity': {
       const result = attackCity(state, action)
+      next = result.state
+      battleReport = result.battleReport
+      break
+    }
+    case 'disembark':
+      next = disembark(state, action)
+      break
+    case 'moveParty':
+      next = moveParty(state, action)
+      break
+    case 'embark':
+      next = embark(state, action)
+      break
+    case 'attackParty': {
+      const result = attackParty(state, action)
+      next = result.state
+      battleReport = result.battleReport
+      break
+    }
+    case 'partyAssaultCity': {
+      const result = partyAssaultCity(state, action)
       next = result.state
       battleReport = result.battleReport
       break
@@ -591,6 +618,7 @@ function eliminatePlayer(state: GameState, playerId: string): GameState {
       state.round,
     ),
     cities: state.cities.filter((c) => c.ownerId !== playerId),
+    parties: state.parties.filter((p) => p.ownerId !== playerId),
     // A dead seat leaves every alliance and drops its pending proposals (#136).
     alliances: pruneAlliancesForSeats(state.alliances, new Set([playerId])),
   }
@@ -887,17 +915,6 @@ function attackCaptain(
     }
   }
 
-  // Betrayal (#138, #177): attacking an ally is legal — no leave step required —
-  // but the alliance dissolves and the attacker pays the reputation price, in
-  // the same action as the battle itself (never an intermediate state where an
-  // ally was attacked and the alliance stands). It is equally a betrayal to
-  // strike an ex-ally still inside the truce window (#177): leaving first no
-  // longer buys a free same-turn backstab — only waiting out the window does.
-  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
-  const betrayal =
-    areAllied(state, attacker.ownerId, target.ownerId) ||
-    wasAllyWithinTruce(state.alliances, attacker.ownerId, target.ownerId, state.round, truceRounds)
-
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
 
@@ -994,30 +1011,7 @@ function attackCaptain(
   const prize = prizeSpawnFor(report, attacker, target, state.actionCount, state.config.setup)
   const captainsWithPrize = prize ? [...captains, prize.captain] : captains
 
-  const players = betrayal
-    ? state.players.map((p) =>
-        p.id === attacker.ownerId
-          ? {
-              ...p,
-              reputation: Math.max(0, p.reputation - state.config.setup.betrayalReputationPenalty),
-            }
-          : p,
-      )
-    : state.players
-  // On a betrayal, drop any live pair (the current-ally case) and clear the
-  // truce entry (the ex-ally case) so the same window can't be billed twice.
-  const alliances = betrayal
-    ? clearBrokenAlliance(
-        {
-          ...state.alliances,
-          pairs: state.alliances.pairs.filter(
-            (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
-          ),
-        },
-        attacker.ownerId,
-        target.ownerId,
-      )
-    : state.alliances
+  const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
 
   const settled = settleEliminations({
     ...state,
@@ -1077,14 +1071,6 @@ function attackCity(
     }
   }
 
-  // Betrayal (#138/#177): assaulting an ally's city breaks the alliance and
-  // costs reputation in the same action as the battle, keyed on the city's
-  // owner — the same rule as a ship duel against an ally (attackCaptain).
-  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
-  const betrayal =
-    areAllied(state, attacker.ownerId, target.ownerId) ||
-    wasAllyWithinTruce(state.alliances, attacker.ownerId, target.ownerId, state.round, truceRounds)
-
   const stats = createCombatStats(state.config.combatStats)
   const content = state.config.content
 
@@ -1121,55 +1107,12 @@ function attackCity(
 
   const cities = state.cities.map((c) => {
     if (c.id !== target.id) return c
-    if (attackerWon) {
-      // The city changes hands with a wiped garrison, its build spent for the
-      // round (so the captor can't also build with it this turn), and its stale
-      // recruit pool cleared — next round replenishes it for the new owner's
-      // faction.
-      return {
-        ...c,
-        ownerId: attacker.ownerId,
-        garrison: {},
-        builtThisRound: true,
-        unitAvailability: {},
-      }
-    }
-    // A successful defense keeps only recruited troops: militia and turrets
-    // (#435) are free and never persist, and casualties are absorbed by the
-    // militia first, so each surviving unit is clamped back to what the city
-    // actually recruited. Without city-defense tuning this is a no-op (survivors
-    // can only be ≤ the recruited count), preserving the pre-#435 behavior.
-    const survivors = new Map(result.defenderTroops.map((t) => [t.unitId, t.count]))
-    const garrison: Record<string, number> = {}
-    for (const [unitId, recruited] of Object.entries(c.garrison)) {
-      const kept = Math.min(recruited, survivors.get(unitId) ?? 0)
-      if (kept > 0) garrison[unitId] = kept
-    }
-    return { ...c, garrison }
+    return attackerWon
+      ? cityCaptured(c, attacker.ownerId)
+      : cityAfterDefense(c, result.defenderTroops)
   })
 
-  const players = betrayal
-    ? state.players.map((p) =>
-        p.id === attacker.ownerId
-          ? {
-              ...p,
-              reputation: Math.max(0, p.reputation - state.config.setup.betrayalReputationPenalty),
-            }
-          : p,
-      )
-    : state.players
-  const alliances = betrayal
-    ? clearBrokenAlliance(
-        {
-          ...state.alliances,
-          pairs: state.alliances.pairs.filter(
-            (p) => !pairEquals(p, attacker.ownerId, target.ownerId),
-          ),
-        },
-        attacker.ownerId,
-        target.ownerId,
-      )
-    : state.alliances
+  const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
 
   const settled = settleEliminations({
     ...state,
@@ -1180,6 +1123,400 @@ function attackCity(
     rngState: result.rng,
   })
   return { state: settled, battleReport: report }
+}
+
+/**
+ * Betrayal accounting (#138/#177), shared by every attack action: striking an
+ * ally is legal — no leave step required — but the alliance dissolves and the
+ * attacker pays the reputation price in the same action as the battle itself
+ * (never an intermediate state where an ally was attacked and the alliance
+ * stands). Striking an ex-ally still inside the truce window counts equally
+ * (#177): leaving first buys no free same-turn backstab. On a betrayal the
+ * live pair is dropped and the truce entry cleared (so the same window can't
+ * be billed twice); otherwise players/alliances pass through untouched.
+ */
+function betrayalAdjusted(
+  state: GameState,
+  attackerOwnerId: string,
+  targetOwnerId: string,
+): { players: PlayerState[]; alliances: AllianceState } {
+  const truceRounds = state.config.setup.betrayalTruceRounds ?? 0
+  const betrayal =
+    areAllied(state, attackerOwnerId, targetOwnerId) ||
+    wasAllyWithinTruce(state.alliances, attackerOwnerId, targetOwnerId, state.round, truceRounds)
+  if (!betrayal) return { players: state.players, alliances: state.alliances }
+  return {
+    players: state.players.map((p) =>
+      p.id === attackerOwnerId
+        ? {
+            ...p,
+            reputation: Math.max(0, p.reputation - state.config.setup.betrayalReputationPenalty),
+          }
+        : p,
+    ),
+    alliances: clearBrokenAlliance(
+      {
+        ...state.alliances,
+        pairs: state.alliances.pairs.filter((p) => !pairEquals(p, attackerOwnerId, targetOwnerId)),
+      },
+      attackerOwnerId,
+      targetOwnerId,
+    ),
+  }
+}
+
+/**
+ * A captured city changes hands with a wiped garrison, its build spent for the
+ * round (so the captor can't also build with it this turn), and its stale
+ * recruit pool cleared — next round replenishes it for the new owner's faction.
+ * Shared by sea (#344) and land (#465) assaults so both capture identically.
+ */
+function cityCaptured(city: CityState, newOwnerId: string): CityState {
+  return { ...city, ownerId: newOwnerId, garrison: {}, builtThisRound: true, unitAvailability: {} }
+}
+
+/**
+ * A successful defense keeps only recruited troops: militia and turrets (#435)
+ * are free and never persist, and casualties are absorbed by the militia
+ * first, so each surviving unit is clamped back to what the city actually
+ * recruited. Without city-defense tuning this is a no-op (survivors can only
+ * be ≤ the recruited count), preserving the pre-#435 behavior.
+ */
+function cityAfterDefense(city: CityState, defenderTroops: TroopStack[]): CityState {
+  const survivors = new Map(defenderTroops.map((t) => [t.unitId, t.count]))
+  const garrison: Record<string, number> = {}
+  for (const [unitId, recruited] of Object.entries(city.garrison)) {
+    const kept = Math.min(recruited, survivors.get(unitId) ?? 0)
+    if (kept > 0) garrison[unitId] = kept
+  }
+  return { ...city, garrison }
+}
+
+// --- Landing parties (#465) ---------------------------------------------------
+
+function ownedParty(state: GameState, partyId: string, action: Action): LandingParty {
+  const party = state.parties.find((p) => p.id === partyId)
+  if (!party || party.ownerId !== action.playerId) {
+    throw new InvalidActionError(`No landing party ${partyId} owned by ${action.playerId}`, action)
+  }
+  return party
+}
+
+/**
+ * A landing party as a board combatant (#465): troops only — no ship (zeroed
+ * ship stats keep it out of the strength math, exactly like a city defender)
+ * and no captain skill/upgrade bonuses, because there is no captain ashore.
+ * Exported so the client can preview a land battle against the same combatant
+ * the reducer resolves.
+ */
+export function partyToCombatant(party: LandingParty): Combatant {
+  return {
+    captainId: party.id,
+    ownerId: party.ownerId,
+    shipClassId: '',
+    troops: party.troops,
+    shipStats: { hull: 0, cannons: 0, speed: 0 },
+  }
+}
+
+/**
+ * Put a landing party ashore (#465): the captain detaches `troops` onto an
+ * adjacent empty `land` tile for one movement point. The fresh party lands
+ * with zero movement — it marches from the owner's next turn — so a single
+ * turn can never sail, land, and strike inland in one breath.
+ */
+function disembark(state: GameState, action: DisembarkAction): GameState {
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (captain.movementPoints < 1) {
+    throw new InvalidActionError('Captain has no movement left to land a party', action)
+  }
+  const tile = tileAt(state.map, action.to)
+  if (!tile) {
+    throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
+  }
+  if (tile.type !== 'land') {
+    throw new InvalidActionError('A landing party can only step ashore onto open land', action)
+  }
+  if (mapDistance(state.map, captain.position, action.to) !== 1) {
+    throw new InvalidActionError('Landing tile is not adjacent to the ship', action)
+  }
+  if (state.parties.some((p) => coordsEqual(p.position, action.to))) {
+    throw new InvalidActionError('Another party already holds the landing tile', action)
+  }
+  if (action.troops.length === 0) {
+    throw new InvalidActionError('A landing party needs troops', action)
+  }
+
+  let aboard = captain.troops
+  const landed: TroopStack[] = []
+  for (const stack of action.troops) {
+    if (!Number.isInteger(stack.count) || stack.count <= 0) {
+      throw new InvalidActionError('Landing troop counts must be positive integers', action)
+    }
+    if (landed.some((t) => t.unitId === stack.unitId)) {
+      throw new InvalidActionError(`Duplicate unit ${stack.unitId} in landing troops`, action)
+    }
+    const held = troopCount(aboard, stack.unitId)
+    if (stack.count > held) {
+      throw new InvalidActionError(`Only ${held} ${stack.unitId} aboard to land`, action)
+    }
+    aboard = adjustTroops(aboard, stack.unitId, -stack.count)
+    landed.push({ unitId: stack.unitId, count: stack.count })
+  }
+
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const party: LandingParty = {
+    id: `party-${state.actionCount}`,
+    ownerId: action.playerId,
+    name: `${player.name}'s Landing Party`,
+    position: { ...action.to },
+    movementPoints: 0,
+    maxMovementPoints: state.config.setup.partyMovementPoints,
+    troops: landed,
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, troops: aboard, movementPoints: c.movementPoints - 1 } : c,
+    ),
+    parties: [...state.parties, party],
+  }
+}
+
+/**
+ * March a landing party overland (#465). The engine computes the shortest land
+ * path deterministically — `land` tiles only, never through a tile any other
+ * party holds — and validates it fits the party's remaining movement points.
+ * Tiles marched over are revealed like a ship's wake (#295).
+ */
+function moveParty(state: GameState, action: MovePartyAction): GameState {
+  const party = ownedParty(state, action.partyId, action)
+  if (!tileAt(state.map, action.to)) {
+    throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
+  }
+
+  const blocked = new Set(
+    state.parties
+      .filter((p) => p.id !== party.id)
+      .map((p) => tileIndex(state.map, p.position.x, p.position.y)),
+  )
+  const path = findLandPath(state.map, party.position, action.to, blocked)
+  if (!path) throw new InvalidActionError('Destination is not reachable overland', action)
+
+  const cost = path.length - 1
+  if (cost > party.movementPoints) {
+    throw new InvalidActionError(
+      `March costs ${cost} but party has ${party.movementPoints} movement`,
+      action,
+    )
+  }
+
+  const { captainVisionRadius } = state.config.setup
+  const explored = new Set(state.exploredTiles[action.playerId] ?? [])
+  for (const step of path) {
+    for (const tile of tilesInRadius(step, captainVisionRadius, state.map)) {
+      explored.add(tileKey(tile))
+    }
+  }
+
+  return {
+    ...state,
+    parties: state.parties.map((p) =>
+      p.id === party.id
+        ? { ...p, position: { ...action.to }, movementPoints: p.movementPoints - cost }
+        : p,
+    ),
+    exploredTiles: { ...state.exploredTiles, [action.playerId]: Array.from(explored) },
+  }
+}
+
+/**
+ * Re-board a landing party onto a friendly ship on an adjacent water tile
+ * (#465) — the rescue half of the stranded-until-rescued rule (epic #469).
+ * Loads as many troops as the ship's remaining crew capacity allows, in the
+ * party's stack order: if everything fits the party leaves the map, otherwise
+ * the remainder stays ashore as the same party. Costs no movement on either
+ * piece — the ship's boats do the work.
+ */
+function embark(state: GameState, action: EmbarkAction): GameState {
+  const party = ownedParty(state, action.partyId, action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (mapDistance(state.map, party.position, captain.position) !== 1) {
+    throw new InvalidActionError(`${captain.id} is not adjacent to the party`, action)
+  }
+
+  const shipDef = state.config.content?.ships[captain.shipClassId]
+  const capacity = shipDef
+    ? effectiveShipStats(shipDef, captain.shipUpgrades).crewCapacity
+    : Infinity
+  let room = capacity - captain.troops.reduce((sum, t) => sum + t.count, 0)
+  if (room <= 0) {
+    throw new InvalidActionError(`${captain.id}'s ship has no room to embark the party`, action)
+  }
+
+  let aboard = captain.troops
+  const ashore: TroopStack[] = []
+  for (const stack of party.troops) {
+    const take = Math.min(stack.count, room)
+    if (take > 0) {
+      aboard = adjustTroops(aboard, stack.unitId, take)
+      room -= take
+    }
+    if (take < stack.count) ashore.push({ unitId: stack.unitId, count: stack.count - take })
+  }
+
+  return {
+    ...state,
+    captains: state.captains.map((c) => (c.id === captain.id ? { ...c, troops: aboard } : c)),
+    parties:
+      ashore.length > 0
+        ? state.parties.map((p) => (p.id === party.id ? { ...p, troops: ashore } : p))
+        : state.parties.filter((p) => p.id !== party.id),
+  }
+}
+
+/**
+ * Attack an adjacent enemy landing party (#465): a land battle on the tactical
+ * board, same combat math as a city assault's melee. Decisive by construction
+ * (the board resolver always names a winner): the loser's party is destroyed
+ * outright — there is no captain ashore to capture — and the winner keeps its
+ * survivors. The attacker's movement is spent whatever the outcome.
+ */
+function attackParty(
+  state: GameState,
+  action: AttackPartyAction,
+): { state: GameState; battleReport: BattleReport } {
+  const attacker = ownedParty(state, action.partyId, action)
+  if (attacker.movementPoints < 1) {
+    throw new InvalidActionError('Party has no movement left to attack', action)
+  }
+  const target = state.parties.find((p) => p.id === action.targetPartyId)
+  if (!target) throw new InvalidActionError(`No landing party ${action.targetPartyId}`, action)
+  if (target.ownerId === action.playerId) {
+    throw new InvalidActionError('Cannot attack your own party', action)
+  }
+  if (mapDistance(state.map, attacker.position, target.position) > 1) {
+    throw new InvalidActionError('Target is not within attack range', action)
+  }
+  requireBoardTuning(state, action)
+  for (const command of action.boardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
+
+  const stats = createCombatStats(state.config.combatStats!)
+  const result = resolveBoardCombat(
+    { attacker: partyToCombatant(attacker), defender: partyToCombatant(target) },
+    stats,
+    state.rngState,
+    action.boardCommands?.length ? { attacker: boardPlanDriver(action.boardCommands) } : {},
+    'land',
+  )
+  const { report } = result
+  const attackerWon = report.attackerSurvived
+
+  const parties = state.parties
+    .filter((p) => p.id !== (attackerWon ? target.id : attacker.id))
+    .map((p) => {
+      if (attackerWon && p.id === attacker.id) {
+        return { ...p, troops: result.attackerTroops, movementPoints: 0 }
+      }
+      if (!attackerWon && p.id === target.id) {
+        return { ...p, troops: result.defenderTroops }
+      }
+      return p
+    })
+
+  const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
+  const settled = settleEliminations({
+    ...state,
+    players,
+    alliances,
+    parties,
+    rngState: result.rng,
+  })
+  return { state: settled, battleReport: report }
+}
+
+/**
+ * Assault an adjacent enemy city from the land side (#465). The party faces
+ * the FULL city defense — recruited garrison plus automatic militia and
+ * turrets, the same {@link cityToCombatant} defender a sea assault meets
+ * (operator decision, epic #469). A win flips the city exactly like a sea
+ * assault; a loss destroys the party (no captain ashore to capture).
+ */
+function partyAssaultCity(
+  state: GameState,
+  action: PartyAssaultCityAction,
+): { state: GameState; battleReport: BattleReport } {
+  const attacker = ownedParty(state, action.partyId, action)
+  if (attacker.movementPoints < 1) {
+    throw new InvalidActionError('Party has no movement left to assault', action)
+  }
+  const target = state.cities.find((c) => c.id === action.targetCityId)
+  if (!target) throw new InvalidActionError(`No city ${action.targetCityId}`, action)
+  if (target.ownerId === action.playerId) {
+    throw new InvalidActionError('Cannot assault your own city', action)
+  }
+  if (mapDistance(state.map, attacker.position, target.position) > 1) {
+    throw new InvalidActionError('City is not within assault range', action)
+  }
+  requireBoardTuning(state, action)
+  for (const command of action.boardCommands ?? []) {
+    if (!isValidBoardCommand(command)) {
+      throw new InvalidActionError('Malformed board command in attacker plan', action)
+    }
+  }
+
+  const stats = createCombatStats(state.config.combatStats!)
+  const content = state.config.content
+  const defenderFaction = state.players.find((p) => p.id === target.ownerId)?.faction
+  const result = resolveBoardCombat(
+    {
+      attacker: partyToCombatant(attacker),
+      defender: cityToCombatant(target, content, defenderFaction),
+    },
+    stats,
+    state.rngState,
+    action.boardCommands?.length ? { attacker: boardPlanDriver(action.boardCommands) } : {},
+    'land',
+  )
+  const { report } = result
+  const attackerWon = report.attackerSurvived
+
+  const parties = attackerWon
+    ? state.parties.map((p) =>
+        p.id === attacker.id ? { ...p, troops: result.attackerTroops, movementPoints: 0 } : p,
+      )
+    : state.parties.filter((p) => p.id !== attacker.id)
+  const cities = state.cities.map((c) => {
+    if (c.id !== target.id) return c
+    return attackerWon
+      ? cityCaptured(c, attacker.ownerId)
+      : cityAfterDefense(c, result.defenderTroops)
+  })
+
+  const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
+  const settled = settleEliminations({
+    ...state,
+    players,
+    alliances,
+    parties,
+    cities,
+    rngState: result.rng,
+  })
+  return { state: settled, battleReport: report }
+}
+
+/** A land board battle needs combat stats with board tuning; fail loud without them. */
+function requireBoardTuning(state: GameState, action: Action): void {
+  if (!state.config.combatStats) {
+    throw new InvalidActionError('No combat stats configured for this match', action)
+  }
+  if (!state.config.combatStats.battle) {
+    throw new InvalidActionError('No board tuning configured — land battle is unavailable', action)
+  }
 }
 
 const MAX_STANDING_ORDERS = 8
@@ -1837,19 +2174,21 @@ function matchResult(
 }
 
 /**
- * After a battle: a player is eliminated only once they hold no live captain
- * AND no city (#308) — a captured captain doesn't count as "having a
- * captain" (it can't act), but a city alone keeps a seat alive even at zero
- * live captains, exactly the "rehire at the tavern while you hold a town"
- * recovery #308 was written to enable. The game ends per {@link matchResult},
- * and if the acting player was just eliminated the turn advances so play can
- * continue.
+ * After a battle: a player is eliminated only once they hold no live captain,
+ * no city (#308), AND no landing party (#465) — a captured captain doesn't
+ * count as "having a captain" (it can't act), but a city alone keeps a seat
+ * alive even at zero live captains (the "rehire at the tavern while you hold
+ * a town" recovery #308 enables), and a party ashore does too: a stranded
+ * party can still march on a city and take it, so it is a live piece, not a
+ * remnant. The game ends per {@link matchResult}, and if the acting player
+ * was just eliminated the turn advances so play can continue.
  */
 function settleEliminations(state: GameState): GameState {
   const players = state.players.map((p) =>
     !p.eliminated &&
     !state.captains.some((c) => c.ownerId === p.id && !c.captured) &&
-    !state.cities.some((c) => c.ownerId === p.id)
+    !state.cities.some((c) => c.ownerId === p.id) &&
+    !state.parties.some((c) => c.ownerId === p.id)
       ? { ...p, eliminated: true }
       : p,
   )
@@ -1872,6 +2211,7 @@ function settleEliminations(state: GameState): GameState {
     players,
     captains,
     cities: state.cities.filter((c) => !eliminatedIds.has(c.ownerId)),
+    parties: state.parties.filter((p) => !eliminatedIds.has(p.ownerId)),
     alliances: pruneAlliancesForSeats(state.alliances, eliminatedIds),
   }
 
@@ -1972,12 +2312,15 @@ function difficultyIncome(state: GameState, player: PlayerState, content: Conten
   }
 }
 
-/** Restore a player's captains to full movement at the start of their turn. */
+/** Restore a player's captains and landing parties to full movement at the start of their turn. */
 function refreshMovement(state: GameState, playerId: string): GameState {
   return {
     ...state,
     captains: state.captains.map((c) =>
       c.ownerId === playerId ? { ...c, movementPoints: c.maxMovementPoints } : c,
+    ),
+    parties: state.parties.map((p) =>
+      p.ownerId === playerId ? { ...p, movementPoints: p.maxMovementPoints } : p,
     ),
   }
 }

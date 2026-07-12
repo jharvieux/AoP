@@ -8,7 +8,7 @@ import type { Coord } from '@aop/shared'
 import type { BoardCommand, BoardOrder } from './battleBoard'
 import type { EncounterChoice } from './content'
 import type { StandingOrder, TacticId } from './tactics'
-import type { SailTargetKind } from './types'
+import type { SailTargetKind, TroopStack } from './types'
 
 export interface EndTurnAction {
   type: 'endTurn'
@@ -111,6 +111,88 @@ export interface AttackCityAction {
   type: 'attackCity'
   playerId: string
   captainId: string
+  targetCityId: string
+  boardCommands?: BoardCommand[]
+}
+
+/**
+ * Put a landing party ashore (#465): a captain on a water tile detaches
+ * `troops` from its ship's hold onto the adjacent `land` tile `to`, creating a
+ * new {@link LandingParty} piece there. Costs the captain one movement point;
+ * the fresh party lands with zero movement (it marches from the owner's next
+ * turn), so a single turn can never sail-land-strike in one breath. The tile
+ * must be empty land — never water, a port (cities are assaulted, not walked
+ * into), or a tile another party already holds.
+ */
+export interface DisembarkAction {
+  type: 'disembark'
+  playerId: string
+  captainId: string
+  /** The land tile the party steps ashore onto; must be adjacent to the ship. */
+  to: Coord
+  /** Troops to land, drawn from the ship's hold. Must be non-empty. */
+  troops: TroopStack[]
+}
+
+/**
+ * March a landing party overland (#465). The engine computes the shortest
+ * land path deterministically — across `land` tiles only, never through a
+ * tile any other party (friend or foe) holds — and validates it fits the
+ * party's remaining movement points, so the log only needs the destination.
+ * Enemy-held tiles are never entered: engaging an adjacent enemy party is the
+ * explicit {@link AttackPartyAction}.
+ */
+export interface MovePartyAction {
+  type: 'moveParty'
+  playerId: string
+  partyId: string
+  to: Coord
+}
+
+/**
+ * Re-board a landing party onto a friendly ship on an adjacent water tile
+ * (#465) — the rescue half of the stranded-until-rescued rule (epic #469).
+ * Loads as many troops as the ship's remaining crew capacity allows, in the
+ * party's stack order (partial re-board): if everything fits the party piece
+ * leaves the map, otherwise the remainder stays ashore as the same party.
+ * Free of movement cost for both pieces — boarding is done by the ship's boats.
+ */
+export interface EmbarkAction {
+  type: 'embark'
+  playerId: string
+  partyId: string
+  captainId: string
+}
+
+/**
+ * Attack an enemy landing party with your own (#465): an adjacent land battle
+ * on the tactical board, same combat math as a city assault's melee. Decisive
+ * by construction — the loser's party is destroyed outright (there is no
+ * captain to capture ashore); the winner keeps its survivors and its movement
+ * is spent. `boardCommands` mirrors {@link AttackCityAction.boardCommands}:
+ * the attacker's recorded melee plan, or omitted for the board AI.
+ */
+export interface AttackPartyAction {
+  type: 'attackParty'
+  playerId: string
+  partyId: string
+  targetPartyId: string
+  boardCommands?: BoardCommand[]
+}
+
+/**
+ * Assault an adjacent enemy city from the land side (#465). Faces the FULL
+ * city defense — recruited garrison plus automatic militia and turrets, the
+ * exact same `cityToCombatant` defender a sea assault meets (operator
+ * decision, epic #469: land is another approach vector, not a blind spot).
+ * A decisive win flips the city's ownership exactly like a sea assault; a
+ * loss destroys the party (no captain ashore to capture). `boardCommands` is
+ * the attacker's recorded melee plan, as in {@link AttackCityAction}.
+ */
+export interface PartyAssaultCityAction {
+  type: 'partyAssaultCity'
+  playerId: string
+  partyId: string
   targetCityId: string
   boardCommands?: BoardCommand[]
 }
@@ -295,6 +377,11 @@ export type Action =
   | MoveCaptainAction
   | AttackCaptainAction
   | AttackCityAction
+  | DisembarkAction
+  | MovePartyAction
+  | EmbarkAction
+  | AttackPartyAction
+  | PartyAssaultCityAction
   | SetSailOrderAction
   | ClearSailOrderAction
   | SetStandingOrdersAction

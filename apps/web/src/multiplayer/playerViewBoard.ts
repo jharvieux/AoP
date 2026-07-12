@@ -4,6 +4,7 @@ import {
   type CityState,
   type EncounterState,
   type GameMap,
+  type LandingParty,
   type PlayerView,
 } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
@@ -17,6 +18,7 @@ export interface BoardFromView {
   map: GameMap
   captains: Captain[]
   cities: CityState[]
+  parties: LandingParty[]
   encounters: EncounterState[]
   visibleKeys: Set<string>
   exploredKeys: Set<string>
@@ -98,6 +100,16 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     unitAvailability: c.unitAvailability ?? {},
   }))
 
+  const parties: LandingParty[] = view.parties.map((p) => ({
+    id: p.id,
+    ownerId: p.ownerId,
+    name: p.name,
+    position: p.position,
+    movementPoints: p.movementPoints ?? 0,
+    maxMovementPoints: p.maxMovementPoints ?? 0,
+    troops: p.troops ?? [],
+  }))
+
   const encounters: EncounterState[] = view.encounters.map((e) => ({
     id: e.id,
     kind: e.kind as EncounterState['kind'],
@@ -110,5 +122,5 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
   const fallbackFaction = view.players[0]?.faction ?? 'pirates'
   const factionOf = (ownerId: string): FactionId => factionById.get(ownerId) ?? fallbackFaction
 
-  return { map, captains, cities, encounters, visibleKeys, exploredKeys, factionOf }
+  return { map, captains, cities, parties, encounters, visibleKeys, exploredKeys, factionOf }
 }

@@ -7,6 +7,7 @@ import {
   type EncounterKind,
   type EncounterState,
   type GameMap,
+  type LandingParty,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
@@ -327,10 +328,14 @@ export interface MapCanvasProps {
   captains: Captain[]
   cities: CityState[]
   encounters: EncounterState[]
+  /** Landing parties ashore (#465). Optional so read-only consumers predating parties need no change. */
+  parties?: LandingParty[] | undefined
   viewerId: string
   visibleKeys: Set<string>
   exploredKeys: Set<string>
   selectedCaptainId: string | null
+  /** The selected landing party (#465), pulsed like the selected ship. */
+  selectedPartyId?: string | null | undefined
   onTileClick: (x: number, y: number) => void
   /**
    * Movement-range shading for the selected ship (#371): three `"x,y"` key
@@ -420,7 +425,7 @@ export function MapCanvas(props: MapCanvasProps) {
   const [touchPreviewHint, setTouchPreviewHint] = useState<string | null>(null)
 
   function announceTile(tile: Coord) {
-    const { map, captains, cities, encounters, viewerId } = props
+    const { map, captains, cities, encounters, parties, viewerId } = props
     setAnnouncement(
       describeMapTile({
         tile,
@@ -428,6 +433,7 @@ export function MapCanvas(props: MapCanvasProps) {
         captains,
         cities,
         encounters,
+        ...(parties ? { parties } : {}),
         viewerId,
         factionNameOf: (ownerId) => {
           const id = props.factionOf(ownerId)
@@ -693,10 +699,12 @@ export function MapCanvas(props: MapCanvasProps) {
         captains,
         cities,
         encounters,
+        parties = [],
         viewerId,
         visibleKeys,
         exploredKeys,
         selectedCaptainId,
+        selectedPartyId,
         rangeOverlay,
         factionOf,
       } = propsRef.current
@@ -1108,13 +1116,40 @@ export function MapCanvas(props: MapCanvasProps) {
       }
       shipPool.end()
 
+      // Landing parties (#465): a flat triangular banner token — the same
+      // faction-color fallback vocabulary ships (circle) and cities (square)
+      // use, no art needed. Own parties always; enemy only in current vision,
+      // exactly like ships.
+      for (const party of parties) {
+        const key = `${party.position.x},${party.position.y}`
+        const own = party.ownerId === viewerId
+        if (!own && !visibleKeys.has(key)) continue
+        const pc = centerOf(party.position.x, party.position.y)
+        entities.ellipse(pc.x, pc.y + TILE * 0.22, TILE * 0.24, TILE * 0.08).fill({
+          color: 0x000000,
+          alpha: 0.25,
+        })
+        const r = TILE * 0.3
+        const points = [pc.x, pc.y - r, pc.x + r, pc.y + r * 0.8, pc.x - r, pc.y + r * 0.8]
+        const partyFaction = FACTIONS[factionOf(party.ownerId)]
+        entities.poly(points)
+        entities.fill(partyFaction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP))
+        if (own) {
+          entities.poly(points)
+          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+        }
+      }
+
       pathPreview.clear()
       highlight.clear()
       selectionPulse.clear()
       const selected = selectedCaptainId
         ? captains.find((c) => c.id === selectedCaptainId)
         : undefined
-      hasSelectionRef.current = !!selected
+      const selectedParty = selectedPartyId
+        ? parties.find((p) => p.id === selectedPartyId)
+        : undefined
+      hasSelectionRef.current = !!selected || !!selectedParty
 
       // Dotted course preview (#375): mouse hover wins live, else the keyboard
       // cursor while the map has focus, else a sticky touch tap — see the
@@ -1203,6 +1238,12 @@ export function MapCanvas(props: MapCanvasProps) {
         // Geometry only — the ambient tick below animates this layer's alpha
         // into a pulse (#298) every frame, not just on a dirty redraw.
         strokeCell(selectionPulse, selected.position.x, selected.position.y, {
+          width: 3,
+          color: HIGHLIGHT_COLOR,
+        })
+      }
+      if (selectedParty) {
+        strokeCell(selectionPulse, selectedParty.position.x, selectedParty.position.y, {
           width: 3,
           color: HIGHLIGHT_COLOR,
         })

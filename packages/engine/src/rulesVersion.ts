@@ -29,8 +29,13 @@
  * v4 — city recruit pools replenish on a multi-round cadence
  * (`ContentCatalog.recruitReplenishInterval`, #453) instead of every round,
  * changing the meaning of the round counter for recruitment.
+ * v5 — landing parties (#465): a new required `GameState.parties` piece
+ * domain with five new actions (disembark, moveParty, embark, attackParty,
+ * partyAssaultCity); elimination now also requires holding no party, parties
+ * extend vision and sail-order contacts, and `GameSetup` gains the required
+ * `partyMovementPoints` knob — pre-#465 snapshots lack the field entirely.
  */
-export const RULES_VERSION = 4
+export const RULES_VERSION = 5
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`
