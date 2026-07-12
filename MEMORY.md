@@ -1,35 +1,60 @@
-## D-032 — 2026-07-12 — Conquest reachability (#453): 5-round recruit cadence + ×5 ship capacity; RULES_VERSION→4
+## D-034 — 2026-07-12 — #453 conquest levers implemented (RULES_VERSION→4); sim result: reachable but rare, follow-up #462
 
-**Decision** (operator, verbatim): "have troops populate every 5 turns instead of every turn,
-quintuple troop capacity of each ship." Implemented as two @aop/content balance levers:
-`RECRUIT_REPLENISH_INTERVAL = 5` (city recruit pools top up every 5 rounds instead of every
-round — a "turn" maps to a full-round wrap, the cadence the reducer already replenished on)
-and `SHIP_CLASSES.crewCapacity` ×5 (sloop 4→20, brig 6→30, frigate 8→40, galleon 12→60; the
-crewCapacity upgrade track's per-level amounts ×5 too, 1/1/2→5/5/10, so refits stay
-meaningful). The interval is read by the reducer's turn-advance from the frozen catalog;
-`?? 1` keeps pre-#453 catalogs at every-round.
+**What shipped** (implements the D-033 decision): two @aop/content levers —
+`RECRUIT_REPLENISH_INTERVAL = 5` (city recruit pools top up every 5 rounds, not every round;
+"every 5 turns" maps to a 5× slower per-round-wrap cadence, read by the reducer's turn-advance
+from the frozen catalog, `?? 1` preserves old behaviour) and `SHIP_CLASSES.crewCapacity` ×5
+(sloop 4→20 … galleon 12→60; the crewCapacity upgrade amounts ×5 too, 1/1/2→5/5/10). The
+cadence changes the round counter's meaning for recruitment → replay-breaking → `RULES_VERSION`
+3→4, ENGINE_VERSION regenerated, engine replay tests pin the cadence, `conquestReachable.test.ts`
+guards it.
 
-**Why / replay**: #453 proved conquest was structurally impossible in full-content AI-vs-AI
-sims (0 captures / 48+ matches) — unbounded defender garrison vs crew-capped landing party,
-the engage-ratio gate correctly refusing every hopeless assault. The cadence change alters
-the meaning of the round counter for recruitment → replay-breaking → `RULES_VERSION` 3→4,
-ENGINE_VERSION regenerated, new engine replay tests pin the cadence, new apps/web full-content
-conquest test (`conquestReachable.test.ts`) is the regression guard.
+**Sim result (honest, tempers D-033's expectation)**: the levers move conquest from 0 →
+_reachable but rare_ — 3 captures / 96 deterministic full-content matches, all by round ~17 in
+the early window. Pushing the cadence harder (interval 10/20) does NOT help; the residual
+bottleneck is the single-captain offensive-landing model + a still-unbounded garrison (peaks
+~320), exactly the design work #453 enumerated. No-free-capture holds — militia/turrets
+(#435/#442) stay effective. Tracked the gap as follow-up **#462** for the operator's scope
+decision (garrison caps/upkeep or multi-captain assaults) — deliberately not added here
+("no new mechanics").
 
-**Sim evidence (judgment call, flagged to operator)**: the two levers move conquest from
-0 → reachable but NOT common — 3 captures / 96 deterministic full-content matches (both
-seatings, small map, opportunist/normal), all landing by round ~17 in the early window before
-the garrison snowballs. Pushing the cadence harder (interval 10/20) does NOT raise the rate
-(captures cluster early regardless); the residual bottleneck is the AI's single-captain
-offensive landing model, exactly the design work #453 enumerated (garrison caps/upkeep,
-multi-captain/staged assaults, AI recruit throttling). No-free-capture holds — militia/turrets
-(#435/#442) stay effective, garrisons peak ~320. Recommend a follow-up issue for a
-bounded-garrison mechanism if a higher conquest rate is wanted; not added here per scope
-("do not add new mechanics").
+**Artifacts**: PR #461 (implementation + tests); follow-up #462. D-033 is the decision; this
+records the measured outcome.
 
-**Rejected**: inflating the operator's 5/×5 numbers to force a higher rate (data shows it
-doesn't help and would overwrite the operator's decision); adding a garrison cap/upkeep
-mechanism (out of scope).
+---
+
+## D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5
+
+**Decision** (operator): make AI-vs-AI conquest reachable with two levers — city troop
+availability replenishes every **5 turns** instead of every turn, and every ship's troop
+capacity is **quintupled**. **Why**: #455's sim probes proved conquest was structurally
+impossible in full-economy matches — per-turn garrison recruitment always outgrows
+crew-capacity-capped landing forces, at any militia/turret tuning. **Rejected**: a hard
+garrison cap and a new siege/attrition mechanic (larger scope; the operator chose the
+two-lever economy change). **Artifacts**: #453; implementation ships with a RULES_VERSION
+bump, replay tests, and sim validation that conquest occurs without trivializing the
+#435/#455 city-defense calibration.
+
+---
+
+## D-032 — 2026-07-12 — City art v1 shipped: cutouts, harbor backdrop, citadel corner tower (amends D-031's fortification-art detail)
+
+**Decision**: the city-art production line (#445–#447) closed out with operator sign-off.
+Cutouts approved after one revision round (sawmill keeps its logs/trees; wallseg-citadel
+split into a tower-free tileable strip + an extracted `citadel-tower` sprite). Backdrop:
+candidate seed 2928388781 with water confined to a lower-left harbor pocket (sized to seat
+the shipyard sprite) and a continuous sand shore band — `backdrop-final-v4` approved.
+**Amendment to D-031**: ring corners use the extracted **citadel corner-tower** sprite
+(`BuildingDef.cornerTowerSpriteUrl`), not the turret sprite as D-031 recorded; `turret.png`
+shipped but is deliberately unwired (battle-board turrets are synthetic units with no
+BuildingDef — wiring tactical-board turret art would extend #441). **Rejected**: AI
+inpainting for coastline edits (reliably hallucinated buildings even with negative
+prompts); PIL flood-fill + one light img2img blend pass (denoise ~0.3) is the working
+recipe for backdrop surgery. **Artifacts**: PR #458 (assets + `BuildingDef.spriteUrl`
+wiring + CityScene rendering with color-block fallback); #436/#445/#446/#447 closed; epic
+#427 closed; WIP branch `art/city-assets-v1-wip` deleted after merge; generation
+provenance preserved in the MANIFEST copied into `apps/web`; follow-up #459 (FactionFlag
+bypasses the theme-override chain, pre-existing).
 
 ---
 

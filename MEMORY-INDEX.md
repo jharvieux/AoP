@@ -10,7 +10,9 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
-- D-032 — 2026-07-12 — Conquest reachability (#453): 5-round recruit cadence + ×5 ship capacity; RULES_VERSION→4 (levers move conquest 0→3/96, residual bottleneck is single-captain assault model — follow-up design work)
+- D-034 — 2026-07-12 — #453 conquest levers implemented (RULES_VERSION→4); sim result: reachable but rare (3/96), follow-up #462 (PR #461)
+- D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5
+- D-032 — 2026-07-12 — City art v1 shipped: cutouts, harbor backdrop, citadel corner tower (amends D-031's fortification-art detail)
 - D-031 — 2026-07-11 — Local SD art pipeline: MPS requires pinned torch 2.3.1; city-art v1 approved (#436, #444–#447)
 - D-030 — 2026-07-11 — City rework Wave 1 shipped: tavern gates captains, militia+turrets, starting barracks, faction identity (#427–#443)
 - D-029 — 2026-07-10 — Interactive defender seat: product decisions signed off (#410)

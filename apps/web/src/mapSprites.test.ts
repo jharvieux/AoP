@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import {
+  buildingContentId,
+  cityBackdropContentId,
+  cityContentId,
+  encounterContentId,
+  resolveSpriteUrl,
+  tileContentId,
+} from './mapSprites'
 
 describe('mapSprites content ids', () => {
   it('namespaces tile content ids by tile type', () => {
@@ -14,6 +21,14 @@ describe('mapSprites content ids', () => {
 
   it('namespaces encounter content ids by kind', () => {
     expect(encounterContentId('merchant')).toBe('encounter:merchant')
+  })
+
+  it('namespaces building content ids by building id', () => {
+    expect(buildingContentId('townhall')).toBe('building:townhall')
+  })
+
+  it('has a fixed content id for the city scene backdrop', () => {
+    expect(cityBackdropContentId()).toBe('cityScene:backdrop')
   })
 })
 

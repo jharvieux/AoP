@@ -88,8 +88,12 @@ jobs:
       # without also provisioning and rotating a dedicated smoke-test account's
       # credentials as a secret — a persistent-test-account decision left to the operator
       # (see docs/runbooks/deploy.md). What this DOES prove without that: the function is
-      # deployed, reachable, and its auth boundary is executing (a structured 403, not a
-      # crash/5xx/timeout). Treat anything else as a failed deploy.
+      # deployed, reachable, and its auth boundary is executing. list-open-matches has no
+      # `verify_jwt = false` override in supabase/config.toml, so a request with no
+      # Authorization header is rejected at the platform gateway (401
+      # UNAUTHORIZED_NO_AUTH_HEADER) before the function's own code ever runs — same
+      # gateway behavior documented for stripe-webhook/compact-snapshots in config.toml
+      # (#218). Treat anything else as a failed deploy.
       - name: Smoke test — list-open-matches is deployed and enforcing auth
         run: |
           status=$(curl -s -o /tmp/smoke.json -w '%{http_code}' \
@@ -100,8 +104,8 @@ jobs:
           echo "HTTP $status"
           cat /tmp/smoke.json
           echo
-          if [ "$status" != "403" ]; then
-            echo "::error::expected 403 FORBIDDEN (no Authorization header supplied), got $status"
+          if [ "$status" != "401" ]; then
+            echo "::error::expected 401 UNAUTHORIZED (no Authorization header supplied), got $status"
             exit 1
           fi
           if ! grep -q '"code"' /tmp/smoke.json; then

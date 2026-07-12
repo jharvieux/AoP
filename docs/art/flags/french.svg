@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f5f0e6"/>
+  <g fill="#D4A017">
+    <g id="fleur" transform="translate(256 148) scale(1.05)">
+      <path d="M0 -64 C14 -44 16 -26 8 -8 C22 -20 40 -22 52 -12 C64 -2 62 16 48 24 C36 31 20 28 10 18 C12 30 18 40 28 48 L-28 48 C-18 40 -12 30 -10 18 C-20 28 -36 31 -48 24 C-62 16 -64 -2 -52 -12 C-40 -22 -22 -20 -8 -8 C-16 -26 -14 -44 0 -64 Z"/>
+      <rect x="-32" y="52" width="64" height="12" rx="6"/>
+      <path d="M-10 64 C-12 80 -18 92 -26 100 L26 100 C18 92 12 80 10 64 Z"/>
+    </g>
+    <use href="#fleur" transform="translate(-120 216)"/>
+    <use href="#fleur" transform="translate(120 216)"/>
+  </g>
+</svg>

@@ -1196,6 +1196,39 @@ button.primary.secondary {
   background: var(--city-building-shipyard);
 }
 
+/* Building art (#447): layered over the category-colored block set above, which
+   stays visible around/behind the art (transparent cutout) and as the fallback if
+   the sprite 404s (removed from the DOM by CityScene's onError handler). */
+.city-scene__sprite {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+  pointer-events: none;
+}
+
+.city-scene__sprite--tower {
+  /* The citadel's corner-tower accessory (#447) renders beside its wall segment
+     rather than covering it — nudged to the slot's edge, smaller than the wall. */
+  width: 38%;
+  left: auto;
+  right: -6%;
+  object-position: bottom right;
+}
+
+/* City-scene backdrop (#447): sits behind every building slot, replacing the
+   sky/ground/water gradient above (kept as the fallback if this 404s). */
+.city-scene__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
 .city-scene__label {
   font-size: 0.62rem;
   font-weight: 700;
