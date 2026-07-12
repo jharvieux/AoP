@@ -1,3 +1,57 @@
+## D-039 — 2026-07-12 — #475 AI becomes a land player: planner uses/counters landing parties
+
+**What shipped** (planner + content only; `runAiTurn` stays a pure per-turn function of
+state, no cross-turn memory; no reducer change in this PR — RULES_VERSION is 6, bumped by
+sibling #466/#467 land content merged separately, not by this work; ENGINE_VERSION regen).
+`nextAiAction` now emits all five party verbs (#465):
+
+- **Offense — the captain-preserving attrition vector.** On an _attrition_ wave (a city
+  it can't yet win outright, ratio in `[attritionMinRatio, engageMinRatio)`), a loaded
+  captain beside the target's landmass now prefers to **disembark** a party rather than
+  storm by sea. Rationale, and the whole point: a repelled _sea_ assault captures the
+  captain (ship + crew lost); a repelled _land_ assault destroys only the party. Parties
+  then **march** (`moveParty`, land A*) and **assault** (`partyAssaultCity`) over the
+  next turns, reusing the same attrition/siege-stickiness scoring the captain uses.
+- **Counter.** A party **intercepts** an adjacent enemy party it can beat (`attackParty`);
+  a city an enemy party marches on (within `partyThreatRadius`) is **reinforced** by a
+  docked captain handing troops to its garrison (`transferTroops` toGarrison). To stop a
+  reinforce/garrison-to-ship oscillation and avoid stripping defenders under threat,
+  `planGarrisonToShip` now skips threatened cities.
+- **Logistics.** A party with no reachable enemy city and no beatable foe **re-embarks**
+  onto an adjacent friendly ship with room (`embark`); otherwise it holds
+  (stranded-until-rescued). `runAiTurn` is crash-safe for every party state — extended
+  the ai.test.ts crash-safety battery (six party scenarios) + determinism, alongside
+  behavior tests for each verb.
+
+**New AI_TUNING knobs** (all in @aop/content, personality-scaled where it's combat):
+`landAssaultBonus` (30, ×combatScoreMult), `partyRescueScoreBase` (15),
+`reinforceCityScoreBase` (60), `partyThreatRadius` (3), `partyThreatMinRatio` (0.4, audit
+fix: a party below 40% of a city's intrinsic auto-defence is no threat — without the
+floor a 1-troop nuisance party froze that city's garrison→ship logistics forever;
+garrison-independent basis so the verdict can't oscillate with reinforce/unload).
+
+**Measured (honest).** The `conquestReachable` battery is unchanged: its authored
+`STARTING_MAP_HEX` has single-tile _port_ islands with **zero land**, so parties are
+structurally impossible there and #475 is inert — no regression on the sea-assault
+contract, and the no-free-capture / siege / multi-wave assertions stay green. Land
+behavior is measured on a new **generated-map** 96-match battery (`landConquest.test.ts`,
+small+medium, 30-round cap): vs the sea-only baseline (89 captures, 67 captains captured
+on failed waves, 0 party actions), the land vector gives **75 captures — 25 of them by a
+landing party — with captains captured down to 44 (−34%) and 62 failed waves costing only
+troops, not captains**; 56/96 matches disembark. So the AI trades ~14 raw city-flips for a
+markedly better captain economy: it spends cheap parties, not captains, to grind defended
+cities. `landAssaultBonus`'s magnitude is not outcome-sensitive on radius-2 islands (a
+party lands adjacent and assaults immediately, no march); it matters on larger islands.
+
+**Related:** PR #479, branch `feature/sweep-ai-land-475`. Sibling work #466/#467 (land
+sites/settlements) is independent — the planner degrades to no-ops if those targets are
+absent. Follow-up candidates: escort/rescue-sailing a captain toward a stranded friendly
+party; land targets for sites/settlements once they land.
+
+**Merge note (2026-07-12, merging into main behind #480/D-038 below).** Checked the semantic interaction #480 flagged: unlike the captain planner's `approachCity` (sea-only, returns null for a water-neighbourless inland city), the party planner's land-only pathing (`cityLandApproaches`/`landStepTowardCity`, filtered by tile type, not water adjacency) already reaches inland neutral settlements — confirmed empirically (xlarge, 15 seeds: every seed's parties targeted an inland settlement, most captured one). That surfaced a real crash: `planConstruct`'s `constructibleBuildings` didn't know about #467's landlocked-shipyard reducer rule, so once the AI owned a captured inland settlement it could propose a `construct shipyard` action there and `applyAction` would throw `InvalidActionError`. Fixed inline (`constructibleBuildings` now filters `unlocksShipyard` buildings at a city with no adjacent water tile, mirroring the reducer check) with a regression test (`ai.test.ts` — landlocked-city construct planning). Planner-only change, no reducer/RULES_VERSION impact.
+
+---
+
 ## D-038 — 2026-07-12 — #466/#467 land content: resource sites, land encounters, inland settlements, RULES_VERSION→6
 
 **What shipped** (land-expansion epic #469, on top of #465 parties). Two new required

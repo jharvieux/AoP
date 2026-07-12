@@ -369,18 +369,23 @@ describe('attackCity — AI conquest behavior', () => {
     expect(nextAiAction(state, 'p1').type).toBe('attackCity')
   })
 
-  it('launches an attrition assault it does not expect to win (#462)', () => {
+  it('commits to an attrition wave it does not expect to win, via the land vector (#462/#475)', () => {
     // 6 grunts (36) vs an 8-grunt garrison (48): a troops-only ratio of 0.75 —
     // below the 0.9 engage gate (no clean win) but above the 0.40 attrition floor.
     // The failed assault will thin the recruited garrison, and that damage
     // persists between assaults, so the wave is worth launching. Before #462 the
-    // absolute engage gate refused this outright.
+    // absolute engage gate refused this outright. #475: the captain sits on this
+    // generated map's shore beside the city's land ring, so it now prefers to put
+    // a party ashore (disembark) rather than storm by sea — a repelled land
+    // assault costs only the party, not the captain. The pure sea-attrition path
+    // (attackCity when no land approach exists) is guarded by conquestReachable's
+    // land-free authored-map battery.
     const state = assaultState({
       attackerTroops: [{ unitId: 'grunt', count: 6 }],
       garrison: { grunt: 8 },
       p2HasCaptain: false,
     })
-    expect(nextAiAction(state, 'p1').type).toBe('attackCity')
+    expect(nextAiAction(state, 'p1').type).toBe('disembark')
   })
 
   it('holds when the landing party is too weak to dent the garrison (#462)', () => {
