@@ -35,6 +35,13 @@ import type { AiPersonality, Captain, CityState, GameState, PlayerState } from '
  * belong; the engine holds none of its own.
  */
 const FALLBACK_ENGAGE_MIN_RATIO = 0.9
+/**
+ * With no tuning configured, the attrition floor equals the engage gate, so the
+ * attrition band is empty and the AI behaves exactly as before (#462) — it only
+ * assaults cities it expects to win. Real matches inject a lower floor.
+ */
+const FALLBACK_ATTRITION_MIN_RATIO = FALLBACK_ENGAGE_MIN_RATIO
+const FALLBACK_ATTRITION_SCORE_MULT = 0.5
 const FALLBACK_ATTACK_SCORE_BASE = 100
 const FALLBACK_ADVANCE_SCORE_BASE = 10
 const FALLBACK_ADVANCE_DISTANCE_BONUS = 10
@@ -60,6 +67,14 @@ const FALLBACK_RANSOM_SCORE_BASE = 50
  */
 export interface AiTuning {
   engageMinRatio: number
+  /**
+   * Attrition floor for city assaults (#462): the lowest troops-only strength
+   * ratio at which the AI lands an assault it does not expect to win, to thin a
+   * garrison that persists between assaults. Strictly below {@link engageMinRatio}.
+   */
+  attritionMinRatio: number
+  /** Score multiplier (<1) on an attrition assault relative to a winning one (#462). */
+  attritionScoreMult: number
   attackScoreBase: number
   advanceScoreBase: number
   advanceDistanceBonus: number
@@ -226,6 +241,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
 
   const engageMinRatio =
     (baseTuning?.engageMinRatio ?? FALLBACK_ENGAGE_MIN_RATIO) * weights.engageMinRatioMult
+  // Attrition floor scales with the same personality appetite as the engage gate
+  // (an aggressive seat both fights and attrits at worse odds).
+  const attritionMinRatio =
+    (baseTuning?.attritionMinRatio ?? FALLBACK_ATTRITION_MIN_RATIO) * weights.engageMinRatioMult
+  const attritionScoreMult = baseTuning?.attritionScoreMult ?? FALLBACK_ATTRITION_SCORE_MULT
   const attackScoreBase =
     (baseTuning?.attackScoreBase ?? FALLBACK_ATTACK_SCORE_BASE) * weights.combatScoreMult
   const advanceScoreBase =
@@ -301,31 +321,42 @@ export function nextAiAction(state: GameState, playerId: string): Action {
       for (const city of enemyCities) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
         const ratio = cityAssaultRatio(cap, city, stats, catalog, cityFaction)
+        // Attrition warfare (#462): a landing party that can't win outright is
+        // still worth landing when it will meaningfully thin a garrison that
+        // persists between assaults (recruited-troop casualties stick, and pools
+        // replenish only every few rounds — #453), so a later wave or captain
+        // finishes the weakened city. `attritionMinRatio` is the cost floor:
+        // below it the party is too weak to dent the defenders and would just
+        // feed the captain to the turrets. Attrition scores below any winning
+        // assault and rises with the ratio, so each successful thinning makes the
+        // next wave score higher.
+        const winning = ratio >= engageMinRatio
+        const attrition = !winning && ratio >= attritionMinRatio
+        if (!winning && !attrition) continue
+        const combatMult = winning ? 1 : attritionScoreMult
         if (mapDistance(state.map, cap.position, city.position) <= 1) {
-          if (ratio >= engageMinRatio) {
-            consider({
-              action: {
-                type: 'attackCity',
-                playerId,
-                captainId: cap.id,
-                targetCityId: city.id,
-              },
-              score: attackScoreBase * ratio,
-            })
-          }
+          consider({
+            action: {
+              type: 'attackCity',
+              playerId,
+              captainId: cap.id,
+              targetCityId: city.id,
+            },
+            score: attackScoreBase * ratio * combatMult,
+          })
           continue
         }
-        if (ratio >= engageMinRatio) {
-          const step = approachCity(state, cap, city, pathCache)
-          if (step) {
-            const score =
-              advanceScoreBase +
-              (1 / (1 + mapDistance(state.map, cap.position, city.position))) * advanceDistanceBonus
-            consider({
-              action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
-              score,
-            })
-          }
+        const step = approachCity(state, cap, city, pathCache)
+        if (step) {
+          const score =
+            (advanceScoreBase +
+              (1 / (1 + mapDistance(state.map, cap.position, city.position))) *
+                advanceDistanceBonus) *
+            combatMult
+          consider({
+            action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
+            score,
+          })
         }
       }
     }

@@ -88,6 +88,8 @@ export const GAME_SETUP: GameSetup = {
 
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
+  attritionMinRatio: 0.4,
+  attritionScoreMult: 0.5,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,
