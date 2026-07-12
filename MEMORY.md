@@ -6,8 +6,8 @@ possible by attacking multiple times in a row and winning a war of attrition"). 
 
 1. **AI attrition planner** (`ai.ts` + `AI_TUNING`): the city-assault engage gate is no
    longer absolute. New `attritionMinRatio` (0.40, scaled by personality `engageMinRatioMult`)
-   is a floor *below* `engageMinRatio` (0.90): a landing party at ≥40% of the defenders'
-   troops-only strength lands an assault it does not expect to win, because a *failed* assault
+   is a floor _below_ `engageMinRatio` (0.90): a landing party at ≥40% of the defenders'
+   troops-only strength lands an assault it does not expect to win, because a _failed_ assault
    permanently thins the recruited garrison (militia/turrets are free and don't persist —
    reducer.ts:1142) and that damage carries between assaults (pools replenish every 5 rounds,
    #461). Attrition assaults score `attackScoreBase·ratio·attritionScoreMult` (mult 0.50), so
@@ -25,11 +25,11 @@ possible by attacking multiple times in a row and winning a war of attrition"). 
    brig speed L1, frigate speed L1+L2, galleon speed L1+L2 hit the round→0 floor specifically.
 
 **Sim result (honest)**: deterministic 96-match full-content battery, 25-round cap.
-Baseline (main/#461) 3 captures / 96 (3 assaults, 0 repelled). Capacity rebase *alone* moves
+Baseline (main/#461) 3 captures / 96 (3 assaults, 0 repelled). Capacity rebase _alone_ moves
 it to 4/96 — barely. Adding attrition → **13/96 (4.3×)**, 29 assaults, 16 repelled: attrition
 willingness is the driver, not the bigger holds. **Caveat**: same-city multi-wave sieges
 stay rare (max 1 assault per (attacker,city) across all 96 matches even at 40 rounds) — the
-AI seldom sails a *second* loaded captain back to one target, so conquest rises via more
+AI seldom sails a _second_ loaded captain back to one target, so conquest rises via more
 first-shots at beatable-ish cities rather than sustained sieges. That is an offensive-logistics
 / target-persistence limit, not a scoring bug; flagged as a follow-up. No-free-capture
 (#435/#442) holds — the change is attacker-side eagerness only; defence (militia/turrets) is
@@ -39,7 +39,7 @@ conquest again but sheds noticeably more captains (less cost-effective); 0.40 is
 choice, dialable in `AI_TUNING`.
 
 **Determinism**: planner + content only. RULES_VERSION unchanged (4); ENGINE_VERSION
-regenerated (`e4673cf7b451c3be` → `16f04d0e9dc6b11b`) for the content data change. Catalog
+regenerated (`e4673cf7b451c3be` → `24eb9ecbc76ed60c`) for the content data change. Catalog
 twins (apps/web + supabase _shared) derive ship stats generically from @aop/content, so both
 pick up the new numbers with no edit; parity test green. **Artifacts**: PR for #462;
 `conquestReachable.test.ts` extended to the 96-match before/after guard + an attrition-behavior
