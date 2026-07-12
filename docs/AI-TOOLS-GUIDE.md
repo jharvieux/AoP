@@ -60,8 +60,12 @@ Create a `.env` or `config.txt` file to persist launch options:
 # For NVIDIA CUDA:
 python launch.py --xformers --lowram  # if <10GB VRAM
 
-# For Apple Silicon (macOS):
-python launch.py --use-cpu=torch --lowram
+# For Apple Silicon (macOS) — MPS/Metal acceleration (~12s per 512² image).
+# WORKS ONLY with the torch build this webui pins (torch 2.3.1 + torchvision 0.18.1,
+# per webui-macos-env.sh). Newer torch (e.g. 2.12) makes MPS emit corrupted output
+# (smeared blobs to pure noise) while CPU stays correct — verified 2026-07-11 by
+# same-seed comparison. NEVER `pip install --upgrade torch` in this venv.
+python launch.py --api --skip-torch-cuda-test --upcast-sampling --no-half-vae --use-cpu interrogate
 
 # For faster startup and inference:
 python launch.py --listen 127.0.0.1 --port 7860
@@ -178,7 +182,12 @@ python launch.py --lowram --autolaunch
 
 **Black/corrupted images**:
 
-- Update PyTorch: `pip install --upgrade torch torchvision`
+- On Apple Silicon, corrupted/noise output almost always means the venv's torch no longer
+  matches the version `webui-macos-env.sh` pins. Fix by DOWNGRADING to the pinned build
+  (`pip install torch==2.3.1 torchvision==0.18.1`), or fall back to CPU
+  (`--use-cpu all --no-half`, ~50s per 512² image — slow but always correct).
+  Do NOT `pip install --upgrade torch` — a newer torch is what breaks MPS here, and this
+  guide previously recommending the upgrade is how the install got broken (2026-07-11).
 - Try a different sampler (e.g., DPM++ 2M Karras)
 
 ### Workflow Integration
