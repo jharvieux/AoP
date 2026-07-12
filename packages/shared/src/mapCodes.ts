@@ -48,7 +48,7 @@ const CODE_PATTERN = /^AOPMAP(\d+):/
 
 /**
  * Structural cap on declared map dimensions, well above the engine's playable
- * maximum (40, `MAP_VALIDATION_LIMITS.maxSize` in @aop/content). This is a
+ * maximum (48, `MAP_VALIDATION_LIMITS.maxSize` in @aop/content). This is a
  * decode-bomb guard, not a balance rule: without it a tiny hand-forged code
  * declaring a 10^9-wide map would make `decodeMapCodePayload` allocate that
  * many tiles before any semantic validation could reject it.

@@ -7,7 +7,11 @@ import {
   type EncounterKind,
   type EncounterState,
   type GameMap,
+  type LandEncounterKind,
+  type LandEncounterState,
   type LandingParty,
+  type LandSiteKind,
+  type LandSiteState,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
 import { coordsEqual, type Coord, type FactionId } from '@aop/shared'
@@ -107,6 +111,30 @@ const ENCOUNTER_SPRITE_URL: Record<EncounterKind, string> = {
   merchant: '/art/encounters/merchant.png',
   natives: '/art/encounters/natives.png',
   settlers: '/art/encounters/settlers.png',
+}
+// Land content (#466): tokens over land tiles. Sprite URLs follow the #458
+// pattern — they 404-fall-back to the flat-color token until art ships.
+export const LAND_ENCOUNTER_COLOR = {
+  nativeVillage: cssToken('--map-land-encounter-village', '#7fae5a'),
+  hermit: cssToken('--map-land-encounter-hermit', '#8f7fd0'),
+  banditCamp: cssToken('--map-land-encounter-bandit', '#c2603a'),
+} as const
+export const LAND_SITE_COLOR = {
+  mine: cssToken('--map-land-site-mine', '#d9b64a'),
+  sawmill: cssToken('--map-land-site-sawmill', '#8a9b58'),
+  lumberCamp: cssToken('--map-land-site-lumber', '#6f8f4a'),
+  ruins: cssToken('--map-land-site-ruins', '#b8a98f'),
+} as const
+const LAND_ENCOUNTER_SPRITE_URL: Record<LandEncounterKind, string> = {
+  nativeVillage: '/art/encounters/native-village.png',
+  hermit: '/art/encounters/hermit.png',
+  banditCamp: '/art/encounters/bandit-camp.png',
+}
+const LAND_SITE_SPRITE_URL: Record<LandSiteKind, string> = {
+  mine: '/art/sites/mine.png',
+  sawmill: '/art/sites/sawmill.png',
+  lumberCamp: '/art/sites/lumber-camp.png',
+  ruins: '/art/sites/ruins.png',
 }
 
 // Ship sprites scale a little by class (#26/#89) so a galleon visibly reads bigger than a
@@ -328,6 +356,10 @@ export interface MapCanvasProps {
   captains: Captain[]
   cities: CityState[]
   encounters: EncounterState[]
+  /** Land resource sites (#466). Optional so consumers predating land content need no change. */
+  landSites?: LandSiteState[] | undefined
+  /** Land random encounters (#466). Optional, like {@link landSites}. */
+  landEncounters?: LandEncounterState[] | undefined
   /** Landing parties ashore (#465). Optional so read-only consumers predating parties need no change. */
   parties?: LandingParty[] | undefined
   viewerId: string
@@ -514,6 +546,8 @@ export function MapCanvas(props: MapCanvasProps) {
     const entities = new Graphics()
     const citySprites = new Container()
     const encounterSprites = new Container()
+    const landSiteSprites = new Container()
+    const landEncounterSprites = new Container()
     const shipSprites = new Container()
     const fog = new Graphics() // Feathered fog overlay (#299/#394)
     // Dotted course preview (#375), above fog so it reads clearly over dimmed
@@ -538,6 +572,8 @@ export function MapCanvas(props: MapCanvasProps) {
       entities,
       citySprites,
       encounterSprites,
+      landSiteSprites,
+      landEncounterSprites,
       shipSprites,
       fog,
       pathPreview,
@@ -627,6 +663,8 @@ export function MapCanvas(props: MapCanvasProps) {
     const causticPool = new SpritePool(caustics)
     const cityPool = new SpritePool(citySprites)
     const encounterPool = new SpritePool(encounterSprites)
+    const landSitePool = new SpritePool(landSiteSprites)
+    const landEncounterPool = new SpritePool(landEncounterSprites)
     const shipPool = new SpritePool(shipSprites)
 
     const view = viewRef.current
@@ -699,6 +737,8 @@ export function MapCanvas(props: MapCanvasProps) {
         captains,
         cities,
         encounters,
+        landSites = [],
+        landEncounters = [],
         parties = [],
         viewerId,
         visibleKeys,
@@ -987,6 +1027,67 @@ export function MapCanvas(props: MapCanvasProps) {
         entities.fill(ENCOUNTER_COLOR[enc.kind])
       }
       encounterPool.end()
+
+      // Land resource sites (#466): a square token over the land tile, ringed in
+      // the claimant's faction color when a hold site is claimed. Sprite when
+      // theme/default art resolves (404-falls-back to the token), like encounters.
+      landSitePool.begin()
+      for (const s of landSites) {
+        if (!s.active) continue
+        const key = `${s.position.x},${s.position.y}`
+        if (!visibleKeys.has(key)) continue
+        const c = centerOf(s.position.x, s.position.y)
+        const spriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          `landSite:${s.kind}`,
+          LAND_SITE_SPRITE_URL[s.kind],
+        )
+        const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        const ring = s.claimedBy ? FACTIONS[factionOf(s.claimedBy)]?.primaryColor : undefined
+        if (texture) {
+          const sprite = landSitePool.get(s.id)
+          sprite.texture = texture
+          sprite.width = TILE * 0.7
+          sprite.height = TILE * 0.7
+          sprite.position.set(c.x, c.y)
+        } else {
+          const r = TILE / 3.2
+          entities.rect(c.x - r, c.y - r, r * 2, r * 2).fill(LAND_SITE_COLOR[s.kind])
+        }
+        if (ring) {
+          const rr = TILE / 2.6
+          entities.rect(c.x - rr, c.y - rr, rr * 2, rr * 2).stroke({ width: 2, color: ring })
+        }
+      }
+      landSitePool.end()
+
+      // Land random encounters (#466): a flat diamond (or art sprite), the
+      // overland twin of the sea-encounter token.
+      landEncounterPool.begin()
+      for (const enc of landEncounters) {
+        if (!enc.active) continue
+        const key = `${enc.position.x},${enc.position.y}`
+        if (!visibleKeys.has(key)) continue
+        const c = centerOf(enc.position.x, enc.position.y)
+        const spriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          encounterContentId(enc.kind),
+          LAND_ENCOUNTER_SPRITE_URL[enc.kind],
+        )
+        const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        if (texture) {
+          const sprite = landEncounterPool.get(enc.id)
+          sprite.texture = texture
+          sprite.width = TILE * 0.7
+          sprite.height = TILE * 0.7
+          sprite.position.set(c.x, c.y)
+        } else {
+          const r = TILE / 3
+          entities.poly([c.x, c.y - r, c.x + r, c.y, c.x, c.y + r, c.x - r, c.y])
+          entities.fill(LAND_ENCOUNTER_COLOR[enc.kind])
+        }
+      }
+      landEncounterPool.end()
 
       cityPool.begin()
       for (const city of cities) {

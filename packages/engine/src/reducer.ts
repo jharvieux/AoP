@@ -14,6 +14,7 @@ import {
   type AttackCaptainAction,
   type AttackCityAction,
   type AttackPartyAction,
+  type CaptureSiteAction,
   type ChooseCaptainSkillAction,
   type ClearSailOrderAction,
   type ConstructBuildingAction,
@@ -29,6 +30,7 @@ import {
   type RecruitCaptainAction,
   type RecruitUnitAction,
   type ResolveEncounterAction,
+  type ResolvePartyEncounterAction,
   type SetSailOrderAction,
   type SetStandingOrdersAction,
   type TransferTroopsAction,
@@ -60,7 +62,7 @@ import {
   type CombatResult,
   type TacticsTuning,
 } from './combat'
-import type { ContentCatalog, EncounterKind } from './content'
+import type { ContentCatalog, EncounterKind, LandEncounterKind } from './content'
 import {
   cityUnlocksCaptains,
   playerIncome,
@@ -107,7 +109,7 @@ import { accumulateExploredTiles, currentContacts, tileKey, tilesInRadius } from
  */
 export interface EncounterOutcome {
   encounterId: string
-  kind: EncounterKind
+  kind: EncounterKind | LandEncounterKind
   choice: string
   success: boolean
   reward: Partial<ResourcePool>
@@ -232,6 +234,15 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       break
     case 'resolveEncounter': {
       const result = resolveEncounter(state, action)
+      next = result.state
+      encounterOutcome = result.outcome
+      break
+    }
+    case 'captureSite':
+      next = captureSite(state, action)
+      break
+    case 'resolvePartyEncounter': {
+      const result = resolvePartyEncounter(state, action)
       next = result.state
       encounterOutcome = result.outcome
       break
@@ -1776,6 +1787,15 @@ function construct(state: GameState, action: ConstructBuildingAction): GameState
   if (def.requires && !city.buildings.includes(def.requires)) {
     throw new InvalidActionError(`${action.buildingId} requires ${def.requires} first`, action)
   }
+  // A shipyard needs a coastline (#467): an inland settlement — no port tile,
+  // no adjacent water — can build the full tree except this. Data-flag-driven
+  // (unlocksShipyard), never hardcoded to the 'shipyard' id.
+  if (
+    def.unlocksShipyard &&
+    !mapNeighbors(state.map, city.position).some((n) => isWaterTile(tileAt(state.map, n)))
+  ) {
+    throw new InvalidActionError(`${action.buildingId} needs a coastline; ${city.id} is landlocked`, action) // prettier-ignore
+  }
   const player = state.players.find((p) => p.id === action.playerId)!
   if (!canAfford(player.resources, def.cost)) {
     throw new InvalidActionError(`${action.playerId} cannot afford ${action.buildingId}`, action)
@@ -2050,6 +2070,136 @@ function resolveEncounter(
 }
 
 /**
+ * Capture a land resource site (#466) the party stands on. A **hold** site
+ * (mine/sawmill) sets its persistent claim to this seat — it keeps paying each
+ * round after the party marches off, and only flips when a rival party captures
+ * it in turn. A **haul** site (lumber camp/ruin) pays its one-time reward and is
+ * then spent. Either way it costs the party its remaining movement, so a party
+ * takes at most one site per turn. No RNG — a site capture is deterministic.
+ */
+function captureSite(state: GameState, action: CaptureSiteAction): GameState {
+  const content = requireContent(state, action)
+  if (!content.landSites) {
+    throw new InvalidActionError('No land-site content configured for this match', action)
+  }
+  const party = ownedParty(state, action.partyId, action)
+  if (party.movementPoints < 1) {
+    throw new InvalidActionError('Party has no movement left to capture a site', action)
+  }
+  const site = state.landSites.find((s) => s.id === action.siteId)
+  if (!site || !site.active) {
+    throw new InvalidActionError(`No active land site ${action.siteId}`, action)
+  }
+  if (!coordsEqual(party.position, site.position)) {
+    throw new InvalidActionError('A party must stand on a site to capture it', action)
+  }
+  const def = content.landSites.sites[site.kind]
+  if (!def) throw new InvalidActionError(`Unknown land site kind ${site.kind}`, action)
+
+  const spentParties = state.parties.map((p) =>
+    p.id === party.id ? { ...p, movementPoints: 0 } : p,
+  )
+
+  if (def.mode === 'hold') {
+    if (site.claimedBy === action.playerId) {
+      throw new InvalidActionError('This party already holds the site', action)
+    }
+    return {
+      ...state,
+      landSites: state.landSites.map((s) =>
+        s.id === site.id ? { ...s, claimedBy: action.playerId } : s,
+      ),
+      parties: spentParties,
+    }
+  }
+
+  // Haul: one-time payout into the treasury, then the site is spent for good.
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId ? { ...p, resources: addResources(p.resources, def.yield) } : p,
+    ),
+    landSites: state.landSites.map((s) => (s.id === site.id ? { ...s, active: false } : s)),
+    parties: spentParties,
+  }
+}
+
+/**
+ * Resolve a land random encounter (#466) with an adjacent landing party — the
+ * overland twin of {@link resolveEncounter}, routed through the same seeded
+ * {@link resolveEncounterChoice} roll but crediting the party's troops (there is
+ * no ship crew-capacity cap ashore, so `grantCount` alone bounds a recruit) and
+ * no captain XP. Spends the party's movement for the turn.
+ */
+function resolvePartyEncounter(
+  state: GameState,
+  action: ResolvePartyEncounterAction,
+): { state: GameState; outcome: EncounterOutcome } {
+  const content = requireContent(state, action)
+  if (!content.landEncounters) {
+    throw new InvalidActionError('No land-encounter content configured for this match', action)
+  }
+  const party = ownedParty(state, action.partyId, action)
+  if (party.movementPoints < 1) {
+    throw new InvalidActionError('Party has no movement left to engage', action)
+  }
+  const encounter = state.landEncounters.find((e) => e.id === action.encounterId)
+  if (!encounter || !encounter.active) {
+    throw new InvalidActionError(`No active land encounter ${action.encounterId}`, action)
+  }
+  if (mapDistance(state.map, party.position, encounter.position) > 1) {
+    throw new InvalidActionError('Land encounter is not within reach', action)
+  }
+  const kindDef = content.landEncounters[encounter.kind]
+  const choiceDef = kindDef.choices[action.choice]
+  if (!choiceDef) {
+    throw new InvalidActionError(`'${action.choice}' is not a ${encounter.kind} choice`, action)
+  }
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const cost = choiceDef.cost ?? {}
+  if (!canAfford(player.resources, cost)) {
+    throw new InvalidActionError(`${action.playerId} cannot afford this encounter choice`, action)
+  }
+
+  const result = resolveEncounterChoice(
+    choiceDef,
+    player.faction,
+    party.troops,
+    Infinity,
+    state.rngState,
+  )
+
+  const respawnRound = kindDef.respawnDelay > 0 ? state.round + kindDef.respawnDelay : null
+  const settled: GameState = {
+    ...state,
+    rngState: result.rng,
+    players: state.players.map((p) =>
+      p.id === player.id
+        ? { ...p, resources: addResources(subtractResources(p.resources, cost), result.reward) }
+        : p,
+    ),
+    parties: state.parties.map((p) =>
+      p.id === party.id ? { ...p, troops: result.troops, movementPoints: 0 } : p,
+    ),
+    landEncounters: state.landEncounters.map((e) =>
+      e.id === encounter.id ? { ...e, active: false, respawnRound } : e,
+    ),
+  }
+
+  const outcome: EncounterOutcome = {
+    encounterId: encounter.id,
+    kind: encounter.kind,
+    choice: action.choice,
+    success: result.success,
+    reward: result.reward,
+    xpGained: result.xpGained,
+    troopsLost: result.troopsLost,
+  }
+  if (result.troopsGained) outcome.troopsGained = result.troopsGained
+  return { state: settled, outcome }
+}
+
+/**
  * The reputation gate on forming NEW alliances (#138): a seat below
  * `setup.allianceReputationMin` can neither propose nor be allied with.
  * Checked at both propose and accept time (reputation can drop between the
@@ -2277,17 +2427,21 @@ function advanceTurn(state: GameState): GameState {
       })
     : state.cities
 
-  // Consumed encounters respawn once their delay elapses (#23).
+  // Consumed encounters respawn once their delay elapses (#23) — sea and land
+  // (#466) alike, on the same cadence.
   const encounters = roundAdvanced
     ? reactivateEncounters(state.encounters, round)
     : state.encounters
+  const landEncounters = roundAdvanced
+    ? reactivateEncounters(state.landEncounters, round)
+    : state.landEncounters
 
   const newPlayerId = state.players[index]!.id
   // Refresh the incoming seat's movement, then auto-continue any standing sail
   // orders (#372) with the points they just regained.
   return autoContinueSailOrders(
     refreshMovement(
-      { ...state, currentPlayerIndex: index, round, players, cities, encounters },
+      { ...state, currentPlayerIndex: index, round, players, cities, encounters, landEncounters },
       newPlayerId,
     ),
     newPlayerId,

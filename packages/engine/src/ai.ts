@@ -1076,13 +1076,25 @@ function planRansomCaptain(
   }
 }
 
-/** A city's not-yet-built options whose prerequisite (if any) is already standing. */
+/**
+ * A city's not-yet-built options whose prerequisite (if any) is already standing.
+ * Excludes `unlocksShipyard` buildings at a landlocked city (#467): the reducer's
+ * `construct` rule refuses those (no adjacent water tile), and once parties can
+ * capture inland neutral settlements (#475+#467, merged) the AI can come to own
+ * one — without this filter, `planConstruct` would propose a shipyard there and
+ * every subsequent `applyAction` call would throw.
+ */
 function constructibleBuildings(
+  state: GameState,
   city: CityState,
   catalog: ContentCatalog,
 ): [string, ContentCatalog['buildings'][string]][] {
+  const hasCoastline = mapNeighbors(state.map, city.position).some((n) =>
+    isWaterTile(tileAt(state.map, n)),
+  )
   return Object.entries(catalog.buildings).filter(([id, def]) => {
     if (city.buildings.includes(id)) return false
+    if (def.unlocksShipyard && !hasCoastline) return false
     return !def.requires || city.buildings.includes(def.requires)
   })
 }
@@ -1140,7 +1152,7 @@ function planConstruct(
 
   for (const city of state.cities) {
     if (city.ownerId !== playerId || city.builtThisRound) continue
-    for (const [buildingId, def] of constructibleBuildings(city, catalog)) {
+    for (const [buildingId, def] of constructibleBuildings(state, city, catalog)) {
       const budget = def.unlocksCaptains ? player.resources : heldResources
       if (!canAfford(budget, def.cost)) continue
       const utility = buildingUtility(def, tuning, tavernBonusApplies)

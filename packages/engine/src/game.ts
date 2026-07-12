@@ -2,6 +2,12 @@ import { EMPTY_RESOURCES, type Coord } from '@aop/shared'
 import { pairsContain, seedAlliances } from './alliances'
 import { replenishAvailability } from './economy'
 import { spawnEncounters } from './encounters'
+import {
+  seedForLandContent,
+  seedInlandSettlements,
+  spawnLandEncounters,
+  spawnLandSites,
+} from './landContent'
 import { generateMap, tileIndex, type GameMap } from './map'
 import { mapToDefinition } from './mapDefinition'
 import { seedRng, type RngState } from './rng'
@@ -12,9 +18,23 @@ import type {
   EncounterState,
   GameConfig,
   GameState,
+  LandEncounterState,
+  LandSiteState,
   ResourceNodeState,
 } from './types'
 import { accumulateExploredTiles } from './visibility'
+
+/** Evocative names cycled deterministically across seeded inland settlements (#467). */
+const INLAND_SETTLEMENT_NAMES: readonly string[] = [
+  'Hollow Ridge',
+  'Thornvale',
+  'Ashfen',
+  'Greywater',
+  'Duskhaven',
+  'Ironhollow',
+  'Blackthorn',
+  'Mistcairn',
+]
 
 /** The port tile of a home island — where that seat's capital city sits. */
 function portForIsland(map: GameMap, island: number): Coord {
@@ -132,6 +152,61 @@ export function createGame(config: GameConfig): GameState {
     }),
   )
 
+  // Land content (#466/#467) — resource sites, land encounters, and inland
+  // neutral settlements — is scattered on GENERATED maps only (authored/community
+  // maps stay exactly as their author drew them). It draws from a SEPARATE RNG
+  // stream (see landContent.ts), so `rngState` above — the live combat/encounter
+  // stream — is byte-identical to a pre-#466 match of the same seed, and the
+  // conquest-sim battery is unperturbed (the AI ignores land content, #475).
+  let landSites: LandSiteState[] = []
+  let landEncounters: LandEncounterState[] = []
+  const inlandCities: CityState[] = []
+  if (!config.mapDefinition) {
+    const occupied = new Set<number>()
+    let landRng = seedForLandContent(config.seed)
+    if (content?.landSites) {
+      const spawned = spawnLandSites(map, content.landSites, landRng, map.startPositions, occupied)
+      landSites = spawned.sites
+      landRng = spawned.rng
+      for (const s of landSites) occupied.add(tileIndex(map, s.position.x, s.position.y))
+    }
+    if (content?.landEncounters) {
+      const spawned = spawnLandEncounters(
+        map,
+        content.landEncounters,
+        landRng,
+        map.startPositions,
+        occupied,
+      )
+      landEncounters = spawned.encounters
+      landRng = spawned.rng
+      for (const e of landEncounters) occupied.add(tileIndex(map, e.position.x, e.position.y))
+    }
+    if (content?.inlandSettlements) {
+      const settlementBuildings = content.inlandSettlements.buildings
+      const seeded = seedInlandSettlements(
+        map,
+        content.inlandSettlements,
+        landRng,
+        map.startPositions,
+        occupied,
+      )
+      landRng = seeded.rng
+      seeded.positions.forEach((position, i) => {
+        inlandCities.push({
+          id: `neutral-settlement-${i}`,
+          ownerId: 'neutral',
+          name: `${INLAND_SETTLEMENT_NAMES[i % INLAND_SETTLEMENT_NAMES.length]!} (Free)`,
+          position,
+          buildings: [...settlementBuildings],
+          builtThisRound: false,
+          garrison: {},
+          unitAvailability: {},
+        })
+      })
+    }
+  }
+
   const withoutVision: GameState = {
     // Stamp the current RULES_VERSION regardless of what the caller passed
     // (#213) — it is not caller-settable, only asserted against.
@@ -154,10 +229,12 @@ export function createGame(config: GameConfig): GameState {
     // Alliance graph (#136): seed mutual alliances from same-team players, then
     // it is the source of truth (config.team is never re-read after this).
     alliances: seedAlliances(config.players),
-    cities,
+    cities: [...cities, ...inlandCities],
     captains,
     parties: [],
     encounters,
+    landSites,
+    landEncounters,
     resourceNodes,
     exploredTiles: {},
     rngState,

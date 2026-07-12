@@ -4,11 +4,13 @@ import {
   captainsOf,
   createGame,
   currentPlayer,
+  mapNeighbors,
   nextAiAction,
   replay,
   RULES_VERSION,
   runAiTurn,
   seedRng,
+  tileIndex,
   type Action,
   type AiProfile,
   type Captain,
@@ -469,6 +471,34 @@ describe('economy AI', () => {
   it('plays combat-only (no economy actions) when no content catalog is configured', () => {
     const state = createGame(config(1, 999))
     expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+
+  it('never proposes a shipyard at a landlocked city, and the turn completes without throwing (#467/#475 merge regression)', () => {
+    // A city can only become landlocked via an inland neutral settlement
+    // (#467) — reachable and capturable by an AI landing party (#475) once
+    // both features are live together. The reducer's construct rule refuses
+    // unlocksShipyard at a city with no adjacent water tile; before this
+    // filter, the AI's construct planner didn't know that and would propose
+    // it anyway, crashing applyAction the moment the AI owned such a city.
+    let state = createGame(econConfig(['townhall']))
+    const city = homeCity(state, 'p1')
+    const landlockedNeighbors = new Set(
+      mapNeighbors(state.map, city.position).map((n) => tileIndex(state.map, n.x, n.y)),
+    )
+    state = {
+      ...state,
+      map: {
+        ...state.map,
+        tiles: state.map.tiles.map((tile, idx) =>
+          landlockedNeighbors.has(idx) ? { ...tile, type: 'land' as TileType } : tile,
+        ),
+      },
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).not.toEqual(
+      expect.objectContaining({ type: 'construct', buildingId: 'shipyard' }),
+    )
+    expect(() => applyAction(state, action)).not.toThrow()
   })
 })
 
@@ -952,6 +982,8 @@ function landState(opts: {
     captains: opts.captains ?? [],
     parties: opts.parties ?? [],
     encounters: [],
+    landSites: [],
+    landEncounters: [],
     resourceNodes: [],
     exploredTiles: {},
     rngState: seedRng(1),

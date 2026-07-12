@@ -514,6 +514,40 @@ export const GAME_SETUP: GameSetup = {
  */
 export const RECRUIT_REPLENISH_INTERVAL = 5
 
+/**
+ * Inland unaffiliated settlements (#467) — neutral cities the map generator
+ * seeds on island *interior* land tiles (every neighbour is land, so they sit
+ * at least two tiles from any water and no sea assault can ever reach them;
+ * they are captured only overland by a landing party). They are cities without
+ * a harbor: no port tile and no shipyard, but the full building tree otherwise,
+ * and — seeded with {@link buildings} — they field the same militia + turret
+ * defence as any city (D-030/#435, via `CITY_DEFENSE_TUNING`).
+ */
+export interface InlandSettlementTuning {
+  /**
+   * Target count ≈ floor(interiorLandTiles * density), capped by how many
+   * interior tiles the generated islands actually offer. Small/medium/large
+   * maps (home-island radius 2) have almost no interior, so they seed few or
+   * none; the extra-large board (#468, radius 4) is where they appear in
+   * numbers — exactly the land gameplay space the epic (#469) opened up.
+   */
+  density: number
+  /**
+   * Buildings a freshly-seeded neutral settlement carries. `barracks` unlocks
+   * tier-1 recruits, which is what arms its militia and turrets on defence;
+   * deliberately no `shipyard` (a landlocked city has no use for one).
+   */
+  buildings: readonly string[]
+  /** Keep settlements this many tiles clear of any start position. */
+  minStartDistance: number
+}
+
+export const INLAND_SETTLEMENTS: InlandSettlementTuning = {
+  density: 0.08,
+  buildings: [...STARTING_BUILDINGS],
+  minStartDistance: 2,
+}
+
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
   // 0.40: a landing party at ≥40% of the defenders' troops-only strength kills a
@@ -666,12 +700,12 @@ export interface MapValidationLimits {
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   // The authored/community-map size range. minSize matches the smallest
-  // MAP_DIMENSIONS entry (map.ts); maxSize is deliberately BELOW the largest
-  // procedural size since #468 added xlarge (48) — raising the authored-map
-  // ceiling implicates the community-map wire format's size budget and is
-  // tracked separately in #473.
+  // MAP_DIMENSIONS entry (map.ts); maxSize now matches the largest (xlarge,
+  // 48) too — #473 raised it from 40 after confirming the community-map
+  // wire format's RLE size budget (MAP_CODE_MAX_BYTES in
+  // @aop/shared/communityMaps.ts) tolerates a 48x48 map with room to spare.
   minSize: 24,
-  maxSize: 40,
+  maxSize: 48,
   minPlayers: 2,
   maxPlayers: 8,
   // Same crowding floor the generated-map fairness tests enforce (map.test.ts).

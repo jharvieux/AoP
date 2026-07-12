@@ -188,6 +188,8 @@ function islandState(opts: {
     captains: opts.captains ?? [],
     parties: opts.parties ?? [],
     encounters: [],
+    landSites: [],
+    landEncounters: [],
     resourceNodes: [],
     exploredTiles: {},
     rngState: seedRng(1),

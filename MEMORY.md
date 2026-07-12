@@ -1,8 +1,9 @@
-## D-038 — 2026-07-12 — #475 AI becomes a land player: planner uses/counters landing parties
+## D-039 — 2026-07-12 — #475 AI becomes a land player: planner uses/counters landing parties
 
 **What shipped** (planner + content only; `runAiTurn` stays a pure per-turn function of
-state, no cross-turn memory; no reducer change, RULES_VERSION stays 5; ENGINE_VERSION
-regen). `nextAiAction` now emits all five party verbs (#465):
+state, no cross-turn memory; no reducer change in this PR — RULES_VERSION is 6, bumped by
+sibling #466/#467 land content merged separately, not by this work; ENGINE_VERSION regen).
+`nextAiAction` now emits all five party verbs (#465):
 
 - **Offense — the captain-preserving attrition vector.** On an _attrition_ wave (a city
   it can't yet win outright, ratio in `[attritionMinRatio, engageMinRatio)`), a loaded
@@ -46,6 +47,59 @@ party lands adjacent and assaults immediately, no march); it matters on larger i
 sites/settlements) is independent — the planner degrades to no-ops if those targets are
 absent. Follow-up candidates: escort/rescue-sailing a captain toward a stranded friendly
 party; land targets for sites/settlements once they land.
+
+**Merge note (2026-07-12, merging into main behind #480/D-038 below).** Checked the semantic interaction #480 flagged: unlike the captain planner's `approachCity` (sea-only, returns null for a water-neighbourless inland city), the party planner's land-only pathing (`cityLandApproaches`/`landStepTowardCity`, filtered by tile type, not water adjacency) already reaches inland neutral settlements — confirmed empirically (xlarge, 15 seeds: every seed's parties targeted an inland settlement, most captured one). That surfaced a real crash: `planConstruct`'s `constructibleBuildings` didn't know about #467's landlocked-shipyard reducer rule, so once the AI owned a captured inland settlement it could propose a `construct shipyard` action there and `applyAction` would throw `InvalidActionError`. Fixed inline (`constructibleBuildings` now filters `unlocksShipyard` buildings at a city with no adjacent water tile, mirroring the reducer check) with a regression test (`ai.test.ts` — landlocked-city construct planning). Planner-only change, no reducer/RULES_VERSION impact.
+
+---
+
+## D-038 — 2026-07-12 — #466/#467 land content: resource sites, land encounters, inland settlements, RULES_VERSION→6
+
+**What shipped** (land-expansion epic #469, on top of #465 parties). Two new required
+`GameState` piece domains plus inland neutral cities, all placed at match creation on
+GENERATED maps only (authored/community maps untouched):
+
+- **Land resource sites (#466)** — `GameState.landSites`, scattered on `land` tiles.
+  Content `LAND_SITES` (`@aop/content/landSites.ts`) defines two behaviours:
+  **hold** sites (mine → gold+iron, sawmill → timber) pay ongoing income each round to
+  whoever last _claimed_ them, and **haul** sites (lumberCamp, ruins) pay a one-time
+  reward on capture then go inactive. New action `captureSite` (party stands on the
+  site): a hold claim is a **persistent marker** — it keeps paying after the party
+  marches off and only flips when a rival party recaptures it (operator's likely-intent,
+  chosen for simplicity + replay-safety over "party must stay present"). Hold-site income
+  flows through the existing per-round `playerIncome` path (`economy.ts landSiteIncome`).
+- **Land encounters (#466)** — `GameState.landEncounters` (separate array from sea
+  `encounters`), content `LAND_ENCOUNTERS` (nativeVillage/hermit/banditCamp), resolved by
+  an adjacent party via `resolvePartyEncounter` — the sea encounter's seeded
+  `resolveEncounterChoice` reused, crediting party troops (no crew cap ashore, no captain
+  XP). Kept a separate domain so the sea encounter stream is untouched.
+- **Inland settlements (#467)** — neutral cities (`ownerId: 'neutral'`) seeded on
+  _interior_ land tiles (every neighbour is land ⇒ ≥2 tiles from water ⇒ **no sea assault
+  can reach them by construction**; still land-path-reachable on a solid island). Capture
+  is **overland-only** via `partyAssaultCity` against the full militia+turret neutral
+  defense (D-030/#435). No port tile, no shipyard: a new `construct` rule refuses an
+  `unlocksShipyard` building at a city with no adjacent water (data-flag-driven, not
+  hardcoded). Once captured they behave as normal cities minus ship functions. Counts are
+  `INLAND_SETTLEMENTS.density`-scaled and capped by available interior tiles, so
+  small/medium/large (home-island radius 2) seed few/none and **xlarge (#468, radius 4)**
+  is where they appear in numbers.
+
+**Determinism / no-perturbation**: all three placers draw from a **separate RNG stream**
+(`seedForLandContent`, `landContent.ts`), never the live `GameState.rngState` — so combat
+and sea-encounter roll order is byte-identical to a pre-#466 match of the same seed, and
+the conquest-sim battery is unperturbed (verified: 587 engine tests green, incl. the sim
+suites; the AI is party-ignorant #475, and `approachCity` returns null for the
+water-neighbourless inland cities so the AI never even scores them). `RULES_VERSION 5→6`
+(new required fields + reducer semantics; ENGINE_VERSION regenerated). New replay/mapgen/
+economy tests in `landContent.test.ts`. UI: sites/land encounters render as tokens with
+`resolveSpriteUrl` art fallbacks (#458 pattern) across all four map screens; GameScreen
+wires party capture + a land-encounter choice sheet; CityScene degrades for no-shipyard
+cities by construction (renders only present buildings).
+
+**Rejected**: reusing the map-editor `resourceNodes` system for sites (occupation-based,
+hold-only, editor-placed — wrong shape); folding land encounters into the sea `encounters`
+array (risked AI/sim perturbation and cross-resolution bugs); folding land placement into
+the live RNG the way sea encounters do (would shift every downstream roll and the sim
+battery). Follow-up: AI valuing inland targets is out of scope here (#462/#475).
 
 ---
 

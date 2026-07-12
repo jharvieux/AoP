@@ -135,11 +135,15 @@ export function resolveEncounterChoice(
   return result
 }
 
-/** Reactivate any encounters whose respawn round has arrived (called on round advance). */
-export function reactivateEncounters(
-  encounters: readonly EncounterState[],
+/**
+ * Reactivate any encounters whose respawn round has arrived (called on round
+ * advance). Generic over the shared active/respawn shape so it serves both sea
+ * {@link EncounterState} and land `LandEncounterState` (#466) alike.
+ */
+export function reactivateEncounters<T extends { active: boolean; respawnRound: number | null }>(
+  encounters: readonly T[],
   round: number,
-): EncounterState[] {
+): T[] {
   return encounters.map((e) =>
     !e.active && e.respawnRound !== null && e.respawnRound <= round
       ? { ...e, active: true, respawnRound: null }
