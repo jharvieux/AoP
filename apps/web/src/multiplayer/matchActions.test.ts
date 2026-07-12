@@ -104,6 +104,8 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
     ],
     parties: [],
     encounters: [{ id: 'enc-0', kind: 'merchant', position: { x: 0, y: 1 }, active: true }],
+    landSites: [],
+    landEncounters: [],
     alliances: { allies: [], outgoingProposals: [], incomingProposals: [] },
     rngState: null,
     ...over,
@@ -314,6 +316,8 @@ describe('interpretTileClick on a hex map (#370: mapDistance, not chebyshevDista
       ],
       parties: [],
       encounters: [],
+      landSites: [],
+      landEncounters: [],
       alliances: { allies: [], outgoingProposals: [], incomingProposals: [] },
       rngState: null,
     }

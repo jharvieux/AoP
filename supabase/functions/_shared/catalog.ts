@@ -6,6 +6,9 @@ import {
   ENCOUNTERS,
   FACTIONS,
   GAME_SETUP,
+  INLAND_SETTLEMENTS,
+  LAND_ENCOUNTERS,
+  LAND_SITES,
   RECRUIT_REPLENISH_INTERVAL,
   RESOURCE_NODES,
   SHIP_CLASSES,
@@ -79,6 +82,27 @@ export function buildCatalog(): ContentCatalog {
       neutralRosterFactionId: CITY_DEFENSE_TUNING.neutralRosterFactionId,
     },
     recruitReplenishInterval: RECRUIT_REPLENISH_INTERVAL,
+    landSites: {
+      sites: Object.fromEntries(
+        Object.values(LAND_SITES.sites).map((s) => [
+          s.id,
+          { mode: s.mode, yield: s.yield, weight: s.weight },
+        ]),
+      ),
+      spawnDensity: LAND_SITES.spawnDensity,
+      minStartDistance: LAND_SITES.minStartDistance,
+    },
+    landEncounters: {
+      nativeVillage: LAND_ENCOUNTERS.nativeVillage,
+      hermit: LAND_ENCOUNTERS.hermit,
+      banditCamp: LAND_ENCOUNTERS.banditCamp,
+      spawnDensity: LAND_ENCOUNTERS.spawnDensity,
+      minStartDistance: LAND_ENCOUNTERS.minStartDistance,
+    },
+    inlandSettlements: {
+      density: INLAND_SETTLEMENTS.density,
+      buildings: [...INLAND_SETTLEMENTS.buildings],
+    },
   }
 }
 

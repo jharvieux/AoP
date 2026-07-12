@@ -109,6 +109,56 @@ export interface EncounterCatalogLike {
   minStartDistance: number
 }
 
+/** Land resource-site kinds (#466), scattered on `land` tiles by mapgen. */
+export type LandSiteKind = 'mine' | 'sawmill' | 'lumberCamp' | 'ruins'
+
+/** How a land site pays out (#466): ongoing while claimed, or a one-time haul on capture. */
+export type LandSiteMode = 'hold' | 'haul'
+
+/** One land-site kind's balance data, injected from @aop/content. */
+export interface LandSiteDefLike {
+  mode: LandSiteMode
+  /** hold → resources per round while claimed; haul → the one-time capture payout. */
+  yield: Partial<ResourcePool>
+  /** Relative weight for the seeded kind roll at map generation. */
+  weight: number
+}
+
+/** Land-site balance data injected from @aop/content (#466), like the other catalogs. */
+export interface LandSiteCatalogLike {
+  sites: Partial<Record<LandSiteKind, LandSiteDefLike>>
+  /** Sites spawned ≈ floor(landTiles * spawnDensity). */
+  spawnDensity: number
+  /** Keep sites this many tiles clear of any start position. */
+  minStartDistance: number
+}
+
+/** Land random-encounter kinds (#466), resolved by landing parties. */
+export type LandEncounterKind = 'nativeVillage' | 'hermit' | 'banditCamp'
+
+/**
+ * Land-encounter balance data injected from @aop/content (#466). Reuses the
+ * sea encounters' per-kind {@link EncounterKindLike} shape (seeded choices with
+ * the same outcome parameters); only the kinds and spawn knobs differ.
+ */
+export interface LandEncounterCatalogLike {
+  nativeVillage: EncounterKindLike
+  hermit: EncounterKindLike
+  banditCamp: EncounterKindLike
+  /** Land encounters spawned ≈ floor(landTiles * spawnDensity). */
+  spawnDensity: number
+  /** Keep land encounters this many tiles clear of any start position. */
+  minStartDistance: number
+}
+
+/** Inland-settlement seeding tuning injected from @aop/content (#467). */
+export interface InlandSettlementLike {
+  /** Target count ≈ floor(interiorLandTiles * density), capped by available interior tiles. */
+  density: number
+  /** Buildings a freshly-seeded neutral settlement carries (never a shipyard — landlocked). */
+  buildings: readonly string[]
+}
+
 /** The four map-editor resource-marker kinds (#41, #101). */
 export type ResourceNodeKind = 'gold' | 'timber' | 'iron' | 'rum'
 
@@ -140,6 +190,21 @@ export interface ContentCatalog {
   captainXpThresholds: number[]
   /** Random-encounter tables (#23). Optional: matches without it spawn no encounters. */
   encounters?: EncounterCatalogLike
+  /**
+   * Land resource-site tables (#466). Optional: matches without it scatter no
+   * land sites and grant no site income even if the state carries some.
+   */
+  landSites?: LandSiteCatalogLike
+  /**
+   * Land random-encounter tables (#466). Optional: matches without it scatter
+   * no land encounters.
+   */
+  landEncounters?: LandEncounterCatalogLike
+  /**
+   * Inland unaffiliated settlement seeding (#467). Optional: matches without it
+   * seed no inland neutral cities.
+   */
+  inlandSettlements?: InlandSettlementLike
   /**
    * Per-round yield for authored resource nodes (#101), keyed by kind.
    * Optional: matches without it grant no resource-node income even if the

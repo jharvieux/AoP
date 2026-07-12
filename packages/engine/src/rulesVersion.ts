@@ -34,8 +34,15 @@
  * partyAssaultCity); elimination now also requires holding no party, parties
  * extend vision and sail-order contacts, and `GameSetup` gains the required
  * `partyMovementPoints` knob — pre-#465 snapshots lack the field entirely.
+ * v6 — land content (#466/#467): two new required `GameState` piece domains
+ * (`landSites`, `landEncounters`) with two new actions (`captureSite`,
+ * `resolvePartyEncounter`), hold-site claims add to per-round income, inland
+ * neutral settlements are seeded into `cities`, and a shipyard now requires a
+ * coastline. Land placement draws from a separate RNG stream, so the live
+ * combat/encounter roll order is unchanged — but the new required fields and
+ * reducer semantics make a pre-#466 snapshot replay differently, so it bumps.
  */
-export const RULES_VERSION = 5
+export const RULES_VERSION = 6
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

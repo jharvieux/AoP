@@ -53,7 +53,34 @@ export function resourceNodeIncome(
   }, EMPTY_RESOURCES)
 }
 
-/** Total per-round production across every city a player owns, plus any resource nodes they control. */
+/**
+ * Per-round production from land resource sites (#466): every **hold** site
+ * (mine/sawmill) whose persistent claim marker names `playerId` yields its
+ * `def.yield` each round — the claim keeps paying after the claiming party has
+ * marched away, and only stops when a rival party captures the site (flipping
+ * `claimedBy`). Haul sites (lumber camp/ruin) never appear here: they pay once
+ * on capture and are marked inactive, so they carry no `claimedBy`. Fully
+ * derived from replayable state — no RNG.
+ */
+export function landSiteIncome(
+  state: GameState,
+  playerId: string,
+  catalog: ContentCatalog,
+): ResourcePool {
+  const sites = catalog.landSites
+  if (!sites) return EMPTY_RESOURCES
+  return state.landSites.reduce((total, site) => {
+    if (!site.active || site.claimedBy !== playerId) return total
+    const def = sites.sites[site.kind]
+    if (!def || def.mode !== 'hold') return total
+    return addResources(total, def.yield)
+  }, EMPTY_RESOURCES)
+}
+
+/**
+ * Total per-round production across every city a player owns, plus any resource
+ * nodes they control (#101) and any land resource sites they hold (#466).
+ */
 export function playerIncome(
   state: GameState,
   playerId: string,
@@ -62,7 +89,10 @@ export function playerIncome(
   const cityTotal = state.cities
     .filter((c) => c.ownerId === playerId)
     .reduce((total, city) => addResources(total, cityIncome(city, catalog)), EMPTY_RESOURCES)
-  return addResources(cityTotal, resourceNodeIncome(state, playerId, catalog))
+  return addResources(
+    addResources(cityTotal, resourceNodeIncome(state, playerId, catalog)),
+    landSiteIncome(state, playerId, catalog),
+  )
 }
 
 /** Highest unit recruitment tier unlocked by a city's standing buildings (0 = none). */

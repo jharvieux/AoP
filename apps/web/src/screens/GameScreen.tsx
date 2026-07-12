@@ -191,6 +191,8 @@ export function GameScreen({
   const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
   const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
   const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
+  // Land encounter (#466) a selected party is about to resolve.
+  const [landEncounterId, setLandEncounterId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
   // The city the roster/City button currently targets (#373). Null falls back to
@@ -315,6 +317,12 @@ export function GameScreen({
     : null
   const encounterChoices = encounter
     ? Object.keys(game.config.content?.encounters?.[encounter.kind]?.choices ?? {})
+    : []
+  const landEncounter = landEncounterId
+    ? (game.landEncounters.find((e) => e.id === landEncounterId && e.active) ?? null)
+    : null
+  const landEncounterChoices = landEncounter
+    ? Object.keys(game.config.content?.landEncounters?.[landEncounter.kind]?.choices ?? {})
     : []
 
   const isEncounterAudioPlaying = useEncounterAudio(encounterId, encounter?.kind)
@@ -664,6 +672,33 @@ export function GameScreen({
       } else {
         setEnemyCityInfoId(cityHere.id)
       }
+      return
+    }
+    // Capture a land resource site (#466) the party is standing on.
+    const siteHere = game.landSites.find(
+      (s) => s.active && s.position.x === x && s.position.y === y,
+    )
+    if (
+      siteHere &&
+      party.position.x === x &&
+      party.position.y === y &&
+      party.movementPoints >= 1 &&
+      siteHere.claimedBy !== viewer.id
+    ) {
+      tapFeedback()
+      onAction({ type: 'captureSite', playerId: viewer.id, partyId: party.id, siteId: siteHere.id })
+      return
+    }
+    // Resolve an adjacent land encounter (#466): open its choice sheet.
+    const landEncHere = visibleKeys.has(key)
+      ? game.landEncounters.find((e) => e.active && e.position.x === x && e.position.y === y)
+      : undefined
+    if (
+      landEncHere &&
+      mapDistance(game.map, party.position, landEncHere.position) <= 1 &&
+      party.movementPoints >= 1
+    ) {
+      setLandEncounterId(landEncHere.id)
       return
     }
     // March: the engine's own land route (around every other party), only if it
@@ -1097,6 +1132,24 @@ export function GameScreen({
     setSelectedCaptainId(null)
   }
 
+  function resolvePartyEncounterChoice(choice: string) {
+    if (!selectedParty || !landEncounter) return
+    impactFeedback()
+    const reward =
+      game.config.content?.landEncounters?.[landEncounter.kind]?.choices?.[
+        choice as EncounterChoice
+      ]?.reward
+    if (reward?.gold) coinFeedback()
+    onAction({
+      type: 'resolvePartyEncounter',
+      playerId: viewer.id,
+      partyId: selectedParty.id,
+      encounterId: landEncounter.id,
+      choice: choice as EncounterChoice,
+    })
+    setLandEncounterId(null)
+  }
+
   function endTurn() {
     tapFeedback()
     setSelectedCaptainId(null)
@@ -1205,6 +1258,8 @@ export function GameScreen({
           cities={game.cities}
           parties={game.parties}
           encounters={game.encounters}
+          landSites={game.landSites}
+          landEncounters={game.landEncounters}
           viewerId={viewer.id}
           visibleKeys={visibleKeys}
           exploredKeys={exploredKeys}
@@ -1664,6 +1719,31 @@ export function GameScreen({
           <section className="button-group">
             {encounterChoices.map((choice) => (
               <button key={choice} className="secondary" onClick={() => resolveEncounter(choice)}>
+                {choice[0]!.toUpperCase() + choice.slice(1)}
+              </button>
+            ))}
+          </section>
+        </BottomSheet>
+      )}
+
+      {landEncounter && (
+        <BottomSheet
+          title={
+            landEncounter.kind === 'nativeVillage'
+              ? 'A native village inland'
+              : landEncounter.kind === 'hermit'
+                ? 'A hermit in the hills'
+                : 'A bandit camp astride the trail'
+          }
+          onClose={() => setLandEncounterId(null)}
+        >
+          <section className="button-group">
+            {landEncounterChoices.map((choice) => (
+              <button
+                key={choice}
+                className="secondary"
+                onClick={() => resolvePartyEncounterChoice(choice)}
+              >
                 {choice[0]!.toUpperCase() + choice.slice(1)}
               </button>
             ))}

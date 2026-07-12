@@ -4,7 +4,9 @@ import {
   type CityState,
   type EncounterState,
   type GameMap,
+  type LandEncounterState,
   type LandingParty,
+  type LandSiteState,
   type PlayerView,
 } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
@@ -20,6 +22,8 @@ export interface BoardFromView {
   cities: CityState[]
   parties: LandingParty[]
   encounters: EncounterState[]
+  landSites: LandSiteState[]
+  landEncounters: LandEncounterState[]
   visibleKeys: Set<string>
   exploredKeys: Set<string>
   factionOf: (ownerId: string) => FactionId
@@ -118,9 +122,35 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     respawnRound: null,
   }))
 
+  const landSites: LandSiteState[] = view.landSites.map((s) => ({
+    id: s.id,
+    kind: s.kind as LandSiteState['kind'],
+    position: s.position,
+    active: s.active,
+    ...(s.claimedBy !== undefined ? { claimedBy: s.claimedBy } : {}),
+  }))
+  const landEncounters: LandEncounterState[] = view.landEncounters.map((e) => ({
+    id: e.id,
+    kind: e.kind as LandEncounterState['kind'],
+    position: e.position,
+    active: e.active,
+    respawnRound: null,
+  }))
+
   const factionById = new Map(view.players.map((p) => [p.id, p.faction]))
   const fallbackFaction = view.players[0]?.faction ?? 'pirates'
   const factionOf = (ownerId: string): FactionId => factionById.get(ownerId) ?? fallbackFaction
 
-  return { map, captains, cities, parties, encounters, visibleKeys, exploredKeys, factionOf }
+  return {
+    map,
+    captains,
+    cities,
+    parties,
+    encounters,
+    landSites,
+    landEncounters,
+    visibleKeys,
+    exploredKeys,
+    factionOf,
+  }
 }

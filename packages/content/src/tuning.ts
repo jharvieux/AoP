@@ -467,6 +467,37 @@ export const GAME_SETUP: GameSetup = {
  */
 export const RECRUIT_REPLENISH_INTERVAL = 5
 
+/**
+ * Inland unaffiliated settlements (#467) — neutral cities the map generator
+ * seeds on island *interior* land tiles (every neighbour is land, so they sit
+ * at least two tiles from any water and no sea assault can ever reach them;
+ * they are captured only overland by a landing party). They are cities without
+ * a harbor: no port tile and no shipyard, but the full building tree otherwise,
+ * and — seeded with {@link buildings} — they field the same militia + turret
+ * defence as any city (D-030/#435, via `CITY_DEFENSE_TUNING`).
+ */
+export interface InlandSettlementTuning {
+  /**
+   * Target count ≈ floor(interiorLandTiles * density), capped by how many
+   * interior tiles the generated islands actually offer. Small/medium/large
+   * maps (home-island radius 2) have almost no interior, so they seed few or
+   * none; the extra-large board (#468, radius 4) is where they appear in
+   * numbers — exactly the land gameplay space the epic (#469) opened up.
+   */
+  density: number
+  /**
+   * Buildings a freshly-seeded neutral settlement carries. `barracks` unlocks
+   * tier-1 recruits, which is what arms its militia and turrets on defence;
+   * deliberately no `shipyard` (a landlocked city has no use for one).
+   */
+  buildings: readonly string[]
+}
+
+export const INLAND_SETTLEMENTS: InlandSettlementTuning = {
+  density: 0.08,
+  buildings: [...STARTING_BUILDINGS],
+}
+
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
   // 0.40: a landing party at ≥40% of the defenders' troops-only strength kills a
