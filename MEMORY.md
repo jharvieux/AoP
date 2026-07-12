@@ -1,3 +1,38 @@
+## D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5
+
+**Decision** (operator): make AI-vs-AI conquest reachable with two levers — city troop
+availability replenishes every **5 turns** instead of every turn, and every ship's troop
+capacity is **quintupled**. **Why**: #455's sim probes proved conquest was structurally
+impossible in full-economy matches — per-turn garrison recruitment always outgrows
+crew-capacity-capped landing forces, at any militia/turret tuning. **Rejected**: a hard
+garrison cap and a new siege/attrition mechanic (larger scope; the operator chose the
+two-lever economy change). **Artifacts**: #453; implementation ships with a RULES_VERSION
+bump, replay tests, and sim validation that conquest occurs without trivializing the
+#435/#455 city-defense calibration.
+
+---
+
+## D-032 — 2026-07-12 — City art v1 shipped: cutouts, harbor backdrop, citadel corner tower (amends D-031's fortification-art detail)
+
+**Decision**: the city-art production line (#445–#447) closed out with operator sign-off.
+Cutouts approved after one revision round (sawmill keeps its logs/trees; wallseg-citadel
+split into a tower-free tileable strip + an extracted `citadel-tower` sprite). Backdrop:
+candidate seed 2928388781 with water confined to a lower-left harbor pocket (sized to seat
+the shipyard sprite) and a continuous sand shore band — `backdrop-final-v4` approved.
+**Amendment to D-031**: ring corners use the extracted **citadel corner-tower** sprite
+(`BuildingDef.cornerTowerSpriteUrl`), not the turret sprite as D-031 recorded; `turret.png`
+shipped but is deliberately unwired (battle-board turrets are synthetic units with no
+BuildingDef — wiring tactical-board turret art would extend #441). **Rejected**: AI
+inpainting for coastline edits (reliably hallucinated buildings even with negative
+prompts); PIL flood-fill + one light img2img blend pass (denoise ~0.3) is the working
+recipe for backdrop surgery. **Artifacts**: PR #458 (assets + `BuildingDef.spriteUrl`
+wiring + CityScene rendering with color-block fallback); #436/#445/#446/#447 closed; epic
+#427 closed; WIP branch `art/city-assets-v1-wip` deleted after merge; generation
+provenance preserved in the MANIFEST copied into `apps/web`; follow-up #459 (FactionFlag
+bypasses the theme-override chain, pre-existing).
+
+---
+
 ## D-031 — 2026-07-11 — Local SD art pipeline: MPS requires pinned torch 2.3.1; city-art v1 approved
 
 **Decision**: The local AUTOMATIC1111 install runs MPS-accelerated ONLY with the torch build
