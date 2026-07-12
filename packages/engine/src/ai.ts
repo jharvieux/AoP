@@ -64,6 +64,7 @@ const FALLBACK_LAND_ASSAULT_BONUS = 0
 const FALLBACK_PARTY_RESCUE_SCORE_BASE = 15
 const FALLBACK_REINFORCE_CITY_SCORE_BASE = 60
 const FALLBACK_PARTY_THREAT_RADIUS = 3
+const FALLBACK_PARTY_THREAT_MIN_RATIO = 0.4
 const FALLBACK_ATTACK_SCORE_BASE = 100
 const FALLBACK_ADVANCE_SCORE_BASE = 10
 const FALLBACK_ADVANCE_DISTANCE_BONUS = 10
@@ -125,6 +126,20 @@ export interface AiTuning {
   reinforceCityScoreBase: number
   /** Map-distance at which a hostile party counts as marching on an owned city (#475). */
   partyThreatRadius: number
+  /**
+   * Minimum strength a hostile party needs — as a fraction of the city's
+   * intrinsic auto-defence (militia + turrets + fortification, garrison
+   * excluded) — to count as a threat (#475 audit). Below it the party is too
+   * slight to endanger the city, so it neither triggers reinforcement nor
+   * freezes the garrison→ship pipeline (without the floor, a single-troop
+   * party camped nearby locked a city's logistics forever). The basis is
+   * deliberately garrison-independent so the verdict stays stable while
+   * reinforce/garrison-to-ship move troops within a turn — a garrison-relative
+   * test oscillates: reinforcing un-threatens the city, unloading re-threatens
+   * it, looping until the action guard. Scaled by the same personality
+   * `engageMinRatioMult` as the other ratio floors.
+   */
+  partyThreatMinRatio: number
   attackScoreBase: number
   advanceScoreBase: number
   advanceDistanceBonus: number
@@ -308,6 +323,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   const reinforceCityScoreBase =
     baseTuning?.reinforceCityScoreBase ?? FALLBACK_REINFORCE_CITY_SCORE_BASE
   const partyThreatRadius = baseTuning?.partyThreatRadius ?? FALLBACK_PARTY_THREAT_RADIUS
+  // Threat floor scales with the same personality appetite as the other ratio
+  // floors: a cautious seat (mult > 1) shrugs off more nuisance parties.
+  const partyThreatMinRatio =
+    (baseTuning?.partyThreatMinRatio ?? FALLBACK_PARTY_THREAT_MIN_RATIO) *
+    weights.engageMinRatioMult
   const attackScoreBase =
     (baseTuning?.attackScoreBase ?? FALLBACK_ATTACK_SCORE_BASE) * weights.combatScoreMult
   const advanceScoreBase =
@@ -535,7 +555,14 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   }
 
   // A city an enemy party is marching on (#475). Recomputed per turn, no memory.
-  const threatenedCityIds = threatenedCities(state, playerId, partyThreatRadius)
+  const threatenedCityIds = threatenedCities(
+    state,
+    playerId,
+    partyThreatRadius,
+    partyThreatMinRatio,
+    stats,
+    catalog,
+  )
 
   // Economy verbs (#67) all need the content catalog and its tuning; without
   // both, the AI plays combat-only, exactly as it did before this feature.
@@ -775,16 +802,43 @@ function planEmbarkParty(
   return null
 }
 
-/** Ids of owned cities a hostile (non-allied) party is marching on, within `radius` (#475). */
-function threatenedCities(state: GameState, playerId: string, radius: number): Set<string> {
+/**
+ * Ids of owned cities a *dangerous* hostile (non-allied) party is marching on:
+ * within `radius`, and at least `minRatio` of the city's intrinsic auto-defence
+ * strength — militia, turrets and fortification, garrison excluded (#475 audit).
+ * The size floor stops a trivial party from freezing a city's garrison→ship
+ * pipeline forever; the garrison-independent basis keeps the verdict stable
+ * while reinforce/garrison-to-ship move troops within a turn (see
+ * {@link AiTuning.partyThreatMinRatio}). With no combat stats there is no way
+ * to judge size, so any party in radius counts — the defensively-safe reading.
+ */
+function threatenedCities(
+  state: GameState,
+  playerId: string,
+  radius: number,
+  minRatio: number,
+  stats: CombatStats | null,
+  catalog: ContentCatalog | undefined,
+): Set<string> {
   const foes = state.parties.filter(
     (p) => p.ownerId !== playerId && !areAllied(state, playerId, p.ownerId),
   )
   const threatened = new Set<string>()
   if (foes.length === 0) return threatened
+  const myFaction = state.players.find((p) => p.id === playerId)?.faction
   for (const city of state.cities) {
     if (city.ownerId !== playerId) continue
-    if (foes.some((p) => mapDistance(state.map, p.position, city.position) <= radius)) {
+    const near = foes.filter((p) => mapDistance(state.map, p.position, city.position) <= radius)
+    if (near.length === 0) continue
+    if (!stats) {
+      threatened.add(city.id)
+      continue
+    }
+    const basis = combatantStrength(
+      cityToCombatant({ ...city, garrison: {} }, catalog, myFaction),
+      stats,
+    )
+    if (near.some((p) => combatantStrength(partyToCombatant(p), stats) >= minRatio * basis)) {
       threatened.add(city.id)
     }
   }

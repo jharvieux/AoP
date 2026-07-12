@@ -173,6 +173,19 @@ export interface AiTuning {
    * an owned city, triggering the reinforce response above (#475).
    */
   partyThreatRadius: number
+  /**
+   * Minimum strength a hostile party needs — as a fraction of the city's
+   * intrinsic auto-defence strength (militia + turrets + fortification,
+   * garrison excluded) — before it counts as a threat at all (#475 audit).
+   * Below the floor the party is too slight to endanger the city, so it
+   * neither triggers reinforcement nor pauses the garrison→ship pipeline;
+   * without it, a single-troop nuisance party camped near a city froze that
+   * city's troop logistics forever (cheaply exploitable against the AI). The
+   * basis deliberately excludes the garrison so the verdict cannot flap while
+   * reinforce/garrison-to-ship move troops around within a turn. Scaled by the
+   * same personality `engageMinRatioMult` as the other ratio floors.
+   */
+  partyThreatMinRatio: number
   /** Score for a legal attack, scaled by strength ratio. */
   attackScoreBase: number
   /** Base score for advancing toward a beatable but distant enemy. */
@@ -546,6 +559,10 @@ export const AI_TUNING: AiTuning = {
   partyRescueScoreBase: 15,
   reinforceCityScoreBase: 60,
   partyThreatRadius: 3,
+  // 0.40, matching attritionMinRatio's floor by design: a party below ~40% of a
+  // city's intrinsic auto-defence can't meaningfully dent it — the same reasoning
+  // that keeps the AI from *launching* such a wave keeps it from *reacting* to one.
+  partyThreatMinRatio: 0.4,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,

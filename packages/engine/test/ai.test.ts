@@ -899,6 +899,19 @@ function p2CityAt(pos: { x: number; y: number }, garrison: Record<string, number
   }
 }
 
+function p1CityAt(pos: { x: number; y: number }, garrison: Record<string, number>): CityState {
+  return {
+    id: 'p1-city',
+    ownerId: 'p1',
+    name: 'Home',
+    position: pos,
+    buildings: ['townhall'],
+    builtThisRound: false,
+    garrison,
+    unitAvailability: {},
+  }
+}
+
 function landState(opts: {
   captains?: Captain[]
   parties?: LandingParty[]
@@ -1020,21 +1033,14 @@ describe('AI landing-party logistics & counter (#475)', () => {
   })
 
   it('reinforces a threatened city from a docked captain (transfer to garrison)', () => {
+    // The b1:5 party (strength 17.5) clears the threat floor — partyThreatMinRatio
+    // 0.4 (×1.1 opportunist) of the city's intrinsic defence (3 militia grunts +
+    // 2 turrets ≈ 24) is ≈ 10.6 — so the docked captain hands its troops to the
+    // garrison to meet it.
     const state = landState({
       captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
-      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 3 }])],
-      cities: [
-        {
-          id: 'p1-city',
-          ownerId: 'p1',
-          name: 'Home',
-          position: { x: 4, y: 5 },
-          buildings: ['townhall'],
-          builtThisRound: false,
-          garrison: {},
-          unitAvailability: {},
-        },
-      ],
+      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
     })
     const action = nextAiAction(state, 'p1')
     expect(action.type).toBe('transferTroops')
@@ -1043,6 +1049,36 @@ describe('AI landing-party logistics & counter (#475)', () => {
       expect(action.cityId).toBe('p1-city')
     }
     expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('ignores a trivial nuisance party — the garrison→ship pipeline is not frozen (#475 audit)', () => {
+    // A single-troop party (strength 3.5) camps within partyThreatRadius but far
+    // below the threat floor (≈ 10.6, see above). Before the size floor, ANY
+    // party in radius froze the city's garrison→ship loading forever — a cheap
+    // exploit against the AI. The docked captain must still load the surplus.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'b1', count: 1 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 10 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('transferTroops')
+    if (action.type === 'transferTroops') {
+      expect(action.direction).toBe('toShip')
+      expect(action.cityId).toBe('p1-city')
+    }
+  })
+
+  it('a dangerous party does pause garrison→ship loading for the threatened city', () => {
+    // Identical layout, but the party towers over the threat floor. The planner
+    // refuses to strip the threatened city, and the empty-hold captain has
+    // nothing to reinforce with, so the seat holds rather than loading.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 10 })],
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
   })
 })
 
@@ -1077,19 +1113,13 @@ describe('AI landing-party crash-safety & determinism (#475)', () => {
     'threatened city with a docked captain': () =>
       landState({
         captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
-        parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 3 }])],
-        cities: [
-          {
-            id: 'p1-city',
-            ownerId: 'p1',
-            name: 'Home',
-            position: { x: 4, y: 5 },
-            buildings: ['townhall'],
-            builtThisRound: false,
-            garrison: {},
-            unitAvailability: {},
-          },
-        ],
+        parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+        cities: [p1CityAt({ x: 4, y: 5 }, {})],
+      }),
+    'threatened city with no docked captain': () =>
+      landState({
+        parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+        cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 2 })],
       }),
   }
 

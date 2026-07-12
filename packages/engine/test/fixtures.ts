@@ -97,6 +97,7 @@ export const AI_TUNING: AiTuning = {
   partyRescueScoreBase: 15,
   reinforceCityScoreBase: 60,
   partyThreatRadius: 3,
+  partyThreatMinRatio: 0.4,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,

@@ -24,7 +24,10 @@ regen). `nextAiAction` now emits all five party verbs (#465):
 
 **New AI_TUNING knobs** (all in @aop/content, personality-scaled where it's combat):
 `landAssaultBonus` (30, ×combatScoreMult), `partyRescueScoreBase` (15),
-`reinforceCityScoreBase` (60), `partyThreatRadius` (3).
+`reinforceCityScoreBase` (60), `partyThreatRadius` (3), `partyThreatMinRatio` (0.4, audit
+fix: a party below 40% of a city's intrinsic auto-defence is no threat — without the
+floor a 1-troop nuisance party froze that city's garrison→ship logistics forever;
+garrison-independent basis so the verdict can't oscillate with reinforce/unload).
 
 **Measured (honest).** The `conquestReachable` battery is unchanged: its authored
 `STARTING_MAP_HEX` has single-tile _port_ islands with **zero land**, so parties are
@@ -39,7 +42,7 @@ markedly better captain economy: it spends cheap parties, not captains, to grind
 cities. `landAssaultBonus`'s magnitude is not outcome-sensitive on radius-2 islands (a
 party lands adjacent and assaults immediately, no march); it matters on larger islands.
 
-**Related:** PR #<TBD>, branch `feature/sweep-ai-land-475`. Sibling work #466/#467 (land
+**Related:** PR #479, branch `feature/sweep-ai-land-475`. Sibling work #466/#467 (land
 sites/settlements) is independent — the planner degrades to no-ops if those targets are
 absent. Follow-up candidates: escort/rescue-sailing a captain toward a stranded friendly
 party; land targets for sites/settlements once they land.
