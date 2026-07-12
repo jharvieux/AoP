@@ -39,6 +39,16 @@ export function encounterContentId(kind: string): string {
   return `encounter:${kind}`
 }
 
+/** Theme-pack content id for a city building's sprite override (#447). */
+export function buildingContentId(buildingId: string): string {
+  return `building:${buildingId}`
+}
+
+/** Theme-pack content id for the city scene's backdrop image override (#447). */
+export function cityBackdropContentId(): string {
+  return 'cityScene:backdrop'
+}
+
 /**
  * Resolve the sprite URL to actually render for one content id: the theme
  * pack's override (via `spriteUrl`, i.e. `useTheme().spriteUrl`) wins when
