@@ -275,8 +275,12 @@ describe('extra-large size (#468)', () => {
     const map = generateMap(11, 'xlarge', 4)
     const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
     // xlarge (48) exceeds MAP_VALIDATION_LIMITS.maxSize (40, the authored/community-map
-    // ceiling — deliberately untouched by #468, see PR notes), so a size-range error is
-    // expected here; anything else would mean the generated map itself is malformed.
-    expect(result.errors.filter((e) => !e.message.includes('must be between'))).toEqual([])
+    // ceiling — deliberately untouched by #468, see #473), so exactly the two
+    // dimension-ceiling errors are expected; anything else would mean the generated map
+    // itself is malformed.
+    expect(result.errors.map((e) => e.code).sort()).toEqual([
+      'height-out-of-bounds',
+      'width-out-of-bounds',
+    ])
   })
 })

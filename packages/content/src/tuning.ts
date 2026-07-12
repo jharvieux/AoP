@@ -565,8 +565,11 @@ export interface MapValidationLimits {
 }
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
-  // Matches the smallest/largest entries in the engine's MAP_DIMENSIONS table
-  // (see map.ts) so authored maps span the same range generated ones do.
+  // The authored/community-map size range. minSize matches the smallest
+  // MAP_DIMENSIONS entry (map.ts); maxSize is deliberately BELOW the largest
+  // procedural size since #468 added xlarge (48) — raising the authored-map
+  // ceiling implicates the community-map wire format's size budget and is
+  // tracked separately in #473.
   minSize: 24,
   maxSize: 40,
   minPlayers: 2,
