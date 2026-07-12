@@ -13,9 +13,11 @@ import {
   canAttackAfterApproach,
   captainFromView,
   cityFromView,
+  interpretPartyTileClick,
   interpretTileClick,
   matchAction,
   ownCaptains,
+  partyFromView,
 } from './matchActions'
 import { boardFromPlayerView } from './playerViewBoard'
 
@@ -535,6 +537,293 @@ describe('matchAction builders (playerId always the viewer seat)', () => {
       type: 'ransomCaptain',
       playerId: 'seat-0',
       captainId: 'cap-own',
+    })
+  })
+})
+
+/**
+ * Party verbs from a fog-locked view (#482): the party analogs of the ship
+ * intent tests above — selection, disembark, and every tap a selected party
+ * can mean, all pure and server-revalidated.
+ */
+function landView(over: Partial<PlayerView> = {}): PlayerView {
+  const tiles: PlayerView['tiles'] = []
+  for (let y = 0; y < 4; y++) {
+    for (let x = 0; x < 8; x++) {
+      tiles.push({ coord: { x, y }, type: y === 0 ? 'shallows' : 'land', island: 0, visible: true })
+    }
+  }
+  const base = view({
+    mapWidth: 8,
+    mapHeight: 4,
+    tiles,
+    cities: [{ id: 'city-foe', ownerId: 'seat-1', name: 'Kingston', position: { x: 0, y: 1 } }],
+    captains: [
+      {
+        id: 'cap-own',
+        ownerId: 'seat-0',
+        name: 'Anne',
+        position: { x: 1, y: 0 },
+        shipClassId: 'sloop',
+        troops: [{ unitId: 'swashbuckler', count: 6 }],
+        movementPoints: 2,
+        maxMovementPoints: 3,
+        xp: 0,
+        skills: [],
+        shipUpgrades: {},
+        captured: false,
+      },
+    ],
+    parties: [
+      {
+        id: 'lp-own',
+        ownerId: 'seat-0',
+        name: "Anne's Landing Party",
+        position: { x: 1, y: 1 },
+        troops: [{ unitId: 'swashbuckler', count: 3 }],
+        movementPoints: 2,
+        maxMovementPoints: 3,
+      },
+      // Enemy sighting: identity and location only, exactly as playerView emits it.
+      { id: 'lp-foe', ownerId: 'seat-1', name: 'Bart Company', position: { x: 2, y: 2 } },
+    ],
+    encounters: [],
+  })
+  return { ...base, ...over }
+}
+
+describe('party selection and disembark intents (#482)', () => {
+  it('selects an own party wherever it is tapped', () => {
+    const v = landView()
+    expect(interpretTileClick(v, mapOf(v), null, 1, 1)).toEqual({
+      kind: 'selectParty',
+      partyId: 'lp-own',
+    })
+  })
+
+  it('offers disembark on an adjacent empty land tile with troops aboard', () => {
+    const v = landView()
+    expect(interpretTileClick(v, mapOf(v), 'cap-own', 0, 1)).toEqual({
+      kind: 'disembark',
+      to: { x: 0, y: 1 },
+    })
+  })
+
+  it('never offers disembark onto a party-held tile or without troops', () => {
+    const held = landView()
+    // lp-own already stands on (1,1): tapping it selects the party, and a
+    // troopless captain gets no disembark at all.
+    expect(interpretTileClick(held, mapOf(held), 'cap-own', 1, 1)).toEqual({
+      kind: 'selectParty',
+      partyId: 'lp-own',
+    })
+    const empty = landView({
+      captains: [{ ...landView().captains[0]!, troops: [] }],
+      parties: [],
+    })
+    expect(interpretTileClick(empty, mapOf(empty), 'cap-own', 0, 1)).toBeNull()
+  })
+})
+
+describe('interpretPartyTileClick (#482: the PlayerView analog of GameScreen party handling)', () => {
+  const v = landView()
+  const party = () => v.parties.find((p) => p.id === 'lp-own')!
+
+  it('embarks onto an adjacent own ship, selects a distant one', () => {
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 1, 0)).toEqual({
+      kind: 'embark',
+      captainId: 'cap-own',
+    })
+    const far = landView({
+      captains: [{ ...landView().captains[0]!, position: { x: 6, y: 0 } }],
+    })
+    expect(
+      interpretPartyTileClick(
+        far,
+        mapOf(far),
+        far.parties.find((p) => p.id === 'lp-own')!,
+        6,
+        0,
+      ),
+    ).toEqual({ kind: 'selectCaptain', captainId: 'cap-own' })
+  })
+
+  it('attacks an adjacent visible enemy party, never a distant one', () => {
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 2, 2)).toEqual({
+      kind: 'attackParty',
+      targetPartyId: 'lp-foe',
+    })
+    const far = landView({
+      parties: [
+        party(),
+        { id: 'lp-far', ownerId: 'seat-1', name: 'Far', position: { x: 6, y: 2 } },
+      ],
+    })
+    expect(
+      interpretPartyTileClick(
+        far,
+        mapOf(far),
+        far.parties.find((p) => p.id === 'lp-own')!,
+        6,
+        2,
+      ),
+    ).toBeNull()
+  })
+
+  it('assaults an adjacent enemy city, never a distant one', () => {
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 0, 1)).toEqual({
+      kind: 'assaultCity',
+      targetCityId: 'city-foe',
+    })
+    const far = landView({
+      cities: [{ id: 'city-foe', ownerId: 'seat-1', name: 'Kingston', position: { x: 7, y: 1 } }],
+    })
+    expect(
+      interpretPartyTileClick(
+        far,
+        mapOf(far),
+        far.parties.find((p) => p.id === 'lp-own')!,
+        7,
+        1,
+      ),
+    ).toBeNull()
+  })
+
+  it('captures the site underfoot (site wins over the encounter, the #476 precedence)', () => {
+    const withBoth = landView({
+      landSites: [{ id: 'site-1', kind: 'mine', position: { x: 1, y: 1 }, active: true }],
+      landEncounters: [{ id: 'lenc-1', kind: 'hermit', position: { x: 1, y: 1 }, active: true }],
+    })
+    const p = withBoth.parties.find((x) => x.id === 'lp-own')!
+    expect(interpretPartyTileClick(withBoth, mapOf(withBoth), p, 1, 1)).toEqual({
+      kind: 'captureSite',
+      siteId: 'site-1',
+    })
+    // Own claim already: falls through to the encounter underfoot.
+    const claimed = landView({
+      landSites: [
+        { id: 'site-1', kind: 'mine', position: { x: 1, y: 1 }, active: true, claimedBy: 'seat-0' },
+      ],
+      landEncounters: [{ id: 'lenc-1', kind: 'hermit', position: { x: 1, y: 1 }, active: true }],
+    })
+    const p2 = claimed.parties.find((x) => x.id === 'lp-own')!
+    expect(interpretPartyTileClick(claimed, mapOf(claimed), p2, 1, 1)).toEqual({
+      kind: 'partyEncounter',
+      encounterId: 'lenc-1',
+    })
+    // Nothing underfoot: a plain re-select.
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 1, 1)).toEqual({
+      kind: 'selectParty',
+      partyId: 'lp-own',
+    })
+  })
+
+  it('opens an adjacent active land encounter', () => {
+    const withEnc = landView({
+      landEncounters: [
+        { id: 'lenc-2', kind: 'banditCamp', position: { x: 2, y: 1 }, active: true },
+      ],
+    })
+    const p = withEnc.parties.find((x) => x.id === 'lp-own')!
+    expect(interpretPartyTileClick(withEnc, mapOf(withEnc), p, 2, 1)).toEqual({
+      kind: 'partyEncounter',
+      encounterId: 'lenc-2',
+    })
+  })
+
+  it('marches within movement, queues a standing march order beyond it (#482)', () => {
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 3, 1)).toEqual({
+      kind: 'moveParty',
+      to: { x: 3, y: 1 },
+    })
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 6, 1)).toEqual({
+      kind: 'setMarchOrder',
+      destination: { x: 6, y: 1 },
+    })
+  })
+
+  it('does nothing for a tile unreachable overland (water, or blocked by parties)', () => {
+    expect(interpretPartyTileClick(v, mapOf(v), party(), 5, 0)).toBeNull()
+  })
+})
+
+describe('partyFromView (#482)', () => {
+  it('widens an own party — march order included — and rejects an enemy sighting', () => {
+    const withOrder = landView({
+      parties: [
+        {
+          ...landView().parties.find((p) => p.id === 'lp-own')!,
+          marchOrder: { destination: { x: 6, y: 1 }, knownContactIds: [] },
+        },
+        landView().parties.find((p) => p.id === 'lp-foe')!,
+      ],
+    })
+    const own = partyFromView(withOrder.parties[0]!)!
+    expect(own.marchOrder).toEqual({ destination: { x: 6, y: 1 }, knownContactIds: [] })
+    expect(own.maxMovementPoints).toBe(3)
+    expect(partyFromView(withOrder.parties[1]!)).toBeNull()
+  })
+})
+
+describe('party matchAction builders (#482)', () => {
+  const v = landView()
+  it('stamp the viewer id and the party ids', () => {
+    expect(matchAction.moveParty(v, 'lp-own', { x: 3, y: 1 })).toEqual({
+      type: 'moveParty',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      to: { x: 3, y: 1 },
+    })
+    expect(matchAction.setMarchOrder(v, 'lp-own', { x: 6, y: 1 })).toEqual({
+      type: 'setMarchOrder',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      destination: { x: 6, y: 1 },
+    })
+    expect(matchAction.clearMarchOrder(v, 'lp-own')).toEqual({
+      type: 'clearMarchOrder',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+    })
+    expect(matchAction.embark(v, 'lp-own', 'cap-own')).toEqual({
+      type: 'embark',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      captainId: 'cap-own',
+    })
+    expect(matchAction.attackParty(v, 'lp-own', 'lp-foe')).toEqual({
+      type: 'attackParty',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      targetPartyId: 'lp-foe',
+    })
+    expect(matchAction.partyAssaultCity(v, 'lp-own', 'city-foe')).toEqual({
+      type: 'partyAssaultCity',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      targetCityId: 'city-foe',
+    })
+    expect(
+      matchAction.disembark(v, 'cap-own', { x: 0, y: 1 }, [{ unitId: 'swashbuckler', count: 2 }]),
+    ).toEqual({
+      type: 'disembark',
+      playerId: 'seat-0',
+      captainId: 'cap-own',
+      to: { x: 0, y: 1 },
+      troops: [{ unitId: 'swashbuckler', count: 2 }],
+    })
+    expect(matchAction.captureSite(v, 'lp-own', 'site-1')).toEqual({
+      type: 'captureSite',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      siteId: 'site-1',
+    })
+    expect(matchAction.resolvePartyEncounter(v, 'lp-own', 'lenc-1', 'trade')).toEqual({
+      type: 'resolvePartyEncounter',
+      playerId: 'seat-0',
+      partyId: 'lp-own',
+      encounterId: 'lenc-1',
+      choice: 'trade',
     })
   })
 })

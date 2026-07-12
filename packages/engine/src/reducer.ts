@@ -16,6 +16,7 @@ import {
   type AttackPartyAction,
   type CaptureSiteAction,
   type ChooseCaptainSkillAction,
+  type ClearMarchOrderAction,
   type ClearSailOrderAction,
   type ConstructBuildingAction,
   type DisembarkAction,
@@ -31,6 +32,7 @@ import {
   type RecruitUnitAction,
   type ResolveEncounterAction,
   type ResolvePartyEncounterAction,
+  type SetMarchOrderAction,
   type SetSailOrderAction,
   type SetStandingOrdersAction,
   type TransferTroopsAction,
@@ -96,6 +98,7 @@ import type {
   GameSetup,
   GameState,
   LandingParty,
+  MarchOrder,
   PlayerState,
   SailOrder,
   TroopStack,
@@ -204,6 +207,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       break
     case 'clearSailOrder':
       next = clearSailOrder(state, action)
+      break
+    case 'setMarchOrder':
+      next = setMarchOrder(state, action)
+      break
+    case 'clearMarchOrder':
+      next = clearMarchOrder(state, action)
       break
     case 'setStandingOrders':
       next = setStandingOrders(state, action)
@@ -1306,12 +1315,7 @@ function moveParty(state: GameState, action: MovePartyAction): GameState {
     throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
   }
 
-  const blocked = new Set(
-    state.parties
-      .filter((p) => p.id !== party.id)
-      .map((p) => tileIndex(state.map, p.position.x, p.position.y)),
-  )
-  const path = findLandPath(state.map, party.position, action.to, blocked)
+  const path = findLandPath(state.map, party.position, action.to, partyBlockedFor(state, party.id))
   if (!path) throw new InvalidActionError('Destination is not reachable overland', action)
 
   const cost = path.length - 1
@@ -1334,11 +1338,195 @@ function moveParty(state: GameState, action: MovePartyAction): GameState {
     ...state,
     parties: state.parties.map((p) =>
       p.id === party.id
-        ? { ...p, position: { ...action.to }, movementPoints: p.movementPoints - cost }
+        ? // A manual march overrides any standing march order (#482).
+          withMarchOrder(
+            { ...p, position: { ...action.to }, movementPoints: p.movementPoints - cost },
+            undefined,
+          )
         : p,
     ),
     exploredTiles: { ...state.exploredTiles, [action.playerId]: Array.from(explored) },
   }
+}
+
+// --- Multi-turn march orders (#482) -------------------------------------------
+
+/** Tile indices every party other than `partyId` holds — impassable to it, as in `moveParty`. */
+function partyBlockedFor(state: GameState, partyId: string): Set<number> {
+  return new Set(
+    state.parties
+      .filter((p) => p.id !== partyId)
+      .map((p) => tileIndex(state.map, p.position.x, p.position.y)),
+  )
+}
+
+/** Set or drop a party's march order, leaving no stray `undefined` key when dropped. */
+function withMarchOrder(party: LandingParty, order: MarchOrder | undefined): LandingParty {
+  if (order) return { ...party, marchOrder: order }
+  if (party.marchOrder === undefined) return party
+  const next = { ...party }
+  delete next.marchOrder
+  return next
+}
+
+function clearMarchOrderOn(state: GameState, partyId: string): GameState {
+  return {
+    ...state,
+    parties: state.parties.map((p) => (p.id === partyId ? withMarchOrder(p, undefined) : p)),
+  }
+}
+
+/**
+ * Advance one party's standing march order (#482) as far as this turn's
+ * movement allows — the overland twin of {@link advanceSailOrder}, sharing its
+ * contract: re-path around the parties as they stand *now*, walk the route one
+ * tile at a time (revealing as it goes), and stop the instant it arrives, runs
+ * out of movement, or a NEW contact comes into view — pausing (`interrupted`)
+ * in that last case. Unlike a sail order, a route with no current land path at
+ * all (another party blocks every way through, or squats the destination)
+ * also pauses rather than waiting silently: a marching column stopped in its
+ * tracks is something the player should hear about. On arrival the order is
+ * cleared. Pure — returns new state.
+ *
+ * Used both for the first leg at set-order time and for every turn-start
+ * continuation, so both paths share one code path (and one replay contract).
+ */
+function advanceMarchOrder(state: GameState, partyId: string, playerId: string): GameState {
+  const party = state.parties.find((p) => p.id === partyId)
+  if (!party?.marchOrder) return state
+  const order = party.marchOrder
+
+  if (coordsEqual(party.position, order.destination)) {
+    return clearMarchOrderOn(state, partyId)
+  }
+
+  const { captainVisionRadius } = state.config.setup
+  const known = new Set(order.knownContactIds)
+  const explored = new Set(state.exploredTiles[playerId] ?? [])
+
+  let position = party.position
+  let movementPoints = party.movementPoints
+  // Pre-move: a new contact already in view at turn start pauses without a stray
+  // step (an enemy that moved adjacent while this party held position).
+  let contactsHere = currentContacts(state, playerId)
+  let interrupted = contactsHere.some((id) => !known.has(id))
+  let path: Coord[] | null = null
+  if (!interrupted) {
+    path = findLandPath(state.map, position, order.destination, partyBlockedFor(state, partyId))
+    // No land route right now (blocked, or the destination is occupied): pause.
+    if (!path) interrupted = true
+  }
+
+  if (!interrupted && path && path.length >= 2 && movementPoints > 0) {
+    for (const coord of tilesInRadius(position, captainVisionRadius, state.map)) {
+      explored.add(tileKey(coord))
+    }
+    // Walk one tile at a time so a new sighting stops the column AT the tile
+    // it appeared.
+    for (let i = 1; i < path.length && movementPoints > 0; i++) {
+      position = path[i]!
+      movementPoints -= 1
+      for (const coord of tilesInRadius(position, captainVisionRadius, state.map)) {
+        explored.add(tileKey(coord))
+      }
+      // Recompute from a state where only this party has advanced, so a
+      // sighting this very step (own movement uncovering an enemy) counts.
+      const scouted = withPartyProgress(state, partyId, position, explored, playerId)
+      contactsHere = currentContacts(scouted, playerId)
+      if (contactsHere.some((id) => !known.has(id))) {
+        interrupted = true
+        break
+      }
+      if (coordsEqual(position, order.destination)) break
+    }
+  }
+
+  const arrived = !interrupted && coordsEqual(position, order.destination)
+  const nextOrder: MarchOrder | undefined = arrived
+    ? undefined
+    : interrupted
+      ? { ...order, knownContactIds: contactsHere, interrupted: true }
+      : { ...order, knownContactIds: contactsHere }
+
+  return {
+    ...state,
+    parties: state.parties.map((p) =>
+      p.id === partyId ? withMarchOrder({ ...p, position, movementPoints }, nextOrder) : p,
+    ),
+    exploredTiles: { ...state.exploredTiles, [playerId]: Array.from(explored) },
+  }
+}
+
+/** State with just `partyId` moved to `position` and `playerId`'s explored set updated — for the per-step contact scan. */
+function withPartyProgress(
+  state: GameState,
+  partyId: string,
+  position: Coord,
+  explored: Set<string>,
+  playerId: string,
+): GameState {
+  return {
+    ...state,
+    parties: state.parties.map((p) => (p.id === partyId ? { ...p, position } : p)),
+    exploredTiles: { ...state.exploredTiles, [playerId]: Array.from(explored) },
+  }
+}
+
+/**
+ * Give a party a standing march order (#482) and immediately march this turn's
+ * leg. `destination` must be a `land` tile reachable overland from where the
+ * party stands, around the parties as they stand now.
+ */
+function setMarchOrder(state: GameState, action: SetMarchOrderAction): GameState {
+  const party = ownedParty(state, action.partyId, action)
+  const tile = tileAt(state.map, action.destination)
+  if (!tile) {
+    throw new InvalidActionError(
+      `Destination ${action.destination.x},${action.destination.y} is off-map`,
+      action,
+    )
+  }
+  if (tile.type !== 'land') {
+    throw new InvalidActionError('March destination is not open land', action)
+  }
+  if (coordsEqual(party.position, action.destination)) {
+    throw new InvalidActionError('March destination is already the current tile', action)
+  }
+  if (
+    !findLandPath(state.map, party.position, action.destination, partyBlockedFor(state, party.id))
+  ) {
+    throw new InvalidActionError('March destination is not reachable overland', action)
+  }
+
+  const order: MarchOrder = {
+    destination: { ...action.destination },
+    knownContactIds: currentContacts(state, action.playerId),
+  }
+  const withOrder: GameState = {
+    ...state,
+    parties: state.parties.map((p) => (p.id === party.id ? withMarchOrder(p, order) : p)),
+  }
+  return advanceMarchOrder(withOrder, party.id, action.playerId)
+}
+
+/** Cancel a party's standing march order (#482). Idempotent — valid with none set. */
+function clearMarchOrder(state: GameState, action: ClearMarchOrderAction): GameState {
+  ownedParty(state, action.partyId, action)
+  return clearMarchOrderOn(state, action.partyId)
+}
+
+/**
+ * At the start of `playerId`'s turn (after movement refresh), continue every one
+ * of their parties' standing march orders (#482). A paused (interrupted) order
+ * is skipped — it waits for the player to re-issue or clear it.
+ */
+function autoContinueMarchOrders(state: GameState, playerId: string): GameState {
+  const ids = state.parties
+    .filter((p) => p.ownerId === playerId && p.marchOrder && !p.marchOrder.interrupted)
+    .map((p) => p.id)
+  let working = state
+  for (const id of ids) working = advanceMarchOrder(working, id, playerId)
+  return working
 }
 
 /**
@@ -2438,10 +2626,13 @@ function advanceTurn(state: GameState): GameState {
 
   const newPlayerId = state.players[index]!.id
   // Refresh the incoming seat's movement, then auto-continue any standing sail
-  // orders (#372) with the points they just regained.
-  return autoContinueSailOrders(
-    refreshMovement(
-      { ...state, currentPlayerIndex: index, round, players, cities, encounters, landEncounters },
+  // orders (#372) and march orders (#482) with the points they just regained.
+  return autoContinueMarchOrders(
+    autoContinueSailOrders(
+      refreshMovement(
+        { ...state, currentPlayerIndex: index, round, players, cities, encounters, landEncounters },
+        newPlayerId,
+      ),
       newPlayerId,
     ),
     newPlayerId,

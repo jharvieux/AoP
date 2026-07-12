@@ -1,4 +1,5 @@
 import {
+  findLandPath,
   findPath,
   mapTopology,
   tileIndex,
@@ -32,6 +33,7 @@ import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLa
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
 import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import { partyBlockedSet } from './partyMarch'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
 import type { RangeOverlay } from './shipRange'
 import { easeInOutCubic, pathPixelAt, shipAnimDurationMs } from './shipAnimation'
@@ -1252,41 +1254,61 @@ export function MapCanvas(props: MapCanvasProps) {
         : undefined
       hasSelectionRef.current = !!selected || !!selectedParty
 
-      // Dotted course preview (#375): mouse hover wins live, else the keyboard
-      // cursor while the map has focus, else a sticky touch tap — see the
-      // hoverCellRef/touchPreviewRef doc comment above for why there are three.
+      // Route breadcrumbs shared by the hover/touch preview and the standing
+      // march-route preview (#375/#482): one dot per step, this-turn gold vs.
+      // later-turn muted, a ring at each turn boundary. Returns the segments so
+      // the preview can color its arrowhead by the final leg.
+      const drawRouteDots = (path: Coord[], movementPoints: number, maxMovementPoints: number) => {
+        const segments = pathToDotSegments(path, movementPoints, maxMovementPoints)
+        const boundaries = new Set(
+          turnBoundaryIndices(path.length, movementPoints, maxMovementPoints),
+        )
+        for (const seg of segments) {
+          const tile = path[seg.index]!
+          const c = centerOf(tile.x, tile.y)
+          const color = seg.thisTurn ? COURSE_NOW_COLOR : COURSE_LATER_COLOR
+          pathPreview.circle(c.x, c.y, TILE * 0.09).fill({ color, alpha: 0.9 })
+          if (boundaries.has(seg.index)) {
+            pathPreview.circle(c.x, c.y, TILE * 0.18).stroke({ width: 1.5, color, alpha: 0.9 })
+          }
+        }
+        return segments
+      }
+
+      // Dotted course preview (#375, land twin #482): mouse hover wins live,
+      // else the keyboard cursor while the map has focus, else a sticky touch
+      // tap — see the hoverCellRef/touchPreviewRef doc comment above for why
+      // there are three. A selected ship previews the sea route; a selected
+      // party previews the overland route around every other party — the same
+      // `findLandPath` inputs the engine's `moveParty`/`setMarchOrder` validate.
+      const previewMover = selected ?? selectedParty
       const previewTarget =
         hoverCellRef.current ??
         (hasFocusRef.current ? cursorRef.current : null) ??
         touchPreviewRef.current
       if (
-        selected &&
+        previewMover &&
         previewTarget &&
-        !coordsEqual(previewTarget, selected.position) &&
+        !coordsEqual(previewTarget, previewMover.position) &&
         previewTarget.x >= 0 &&
         previewTarget.x < map.width &&
         previewTarget.y >= 0 &&
         previewTarget.y < map.height
       ) {
-        const path = findPath(map, selected.position, previewTarget)
+        const path = selected
+          ? findPath(map, selected.position, previewTarget)
+          : findLandPath(
+              map,
+              previewMover.position,
+              previewTarget,
+              partyBlockedSet(map, parties, previewMover.id),
+            )
         if (path && path.length >= 2) {
-          const segments = pathToDotSegments(
+          const segments = drawRouteDots(
             path,
-            selected.movementPoints,
-            selected.maxMovementPoints,
+            previewMover.movementPoints,
+            previewMover.maxMovementPoints,
           )
-          const boundaries = new Set(
-            turnBoundaryIndices(path.length, selected.movementPoints, selected.maxMovementPoints),
-          )
-          for (const seg of segments) {
-            const tile = path[seg.index]!
-            const c = centerOf(tile.x, tile.y)
-            const color = seg.thisTurn ? COURSE_NOW_COLOR : COURSE_LATER_COLOR
-            pathPreview.circle(c.x, c.y, TILE * 0.09).fill({ color, alpha: 0.9 })
-            if (boundaries.has(seg.index)) {
-              pathPreview.circle(c.x, c.y, TILE * 0.18).stroke({ width: 1.5, color, alpha: 0.9 })
-            }
-          }
           // Arrowhead (#375): a filled triangle at the destination, pointing
           // along the final leg's direction.
           const lastTile = path[path.length - 1]!
@@ -1309,15 +1331,14 @@ export function MapCanvas(props: MapCanvasProps) {
         }
       }
 
-      // Destination flags (#372): every own ship steering a standing sail order
-      // flies a small pennant on the tile it's making for; a paused (interrupted)
+      // Destination flags (#372/#482): every own ship steering a standing sail
+      // order — and every own party under a standing march order — flies a
+      // small pennant on the tile it's making for; a paused (interrupted)
       // order flies it in the alert color so a halted voyage stands out at a
       // glance. Drawn in the preview layer so it stays legible over fog.
-      for (const cap of captains) {
-        if (cap.ownerId !== viewerId || !cap.sailOrder) continue
-        const dest = cap.sailOrder.destination
+      const drawDestinationFlag = (dest: Coord, interrupted: boolean | undefined) => {
         const fc = centerOf(dest.x, dest.y)
-        const flagColor = cap.sailOrder.interrupted ? ENEMY_SHIP : COURSE_NOW_COLOR
+        const flagColor = interrupted ? ENEMY_SHIP : COURSE_NOW_COLOR
         const poleTop = fc.y - TILE * 0.42
         pathPreview
           .moveTo(fc.x, fc.y)
@@ -1333,6 +1354,29 @@ export function MapCanvas(props: MapCanvasProps) {
             poleTop + TILE * 0.18,
           ])
           .fill({ color: flagColor, alpha: 0.95 })
+      }
+      for (const cap of captains) {
+        if (cap.ownerId !== viewerId || !cap.sailOrder) continue
+        drawDestinationFlag(cap.sailOrder.destination, cap.sailOrder.interrupted)
+      }
+      for (const p of parties) {
+        if (p.ownerId !== viewerId || !p.marchOrder) continue
+        drawDestinationFlag(p.marchOrder.destination, p.marchOrder.interrupted)
+        // The SELECTED party's queued route (#482) shows as dotted breadcrumbs
+        // to its flag, so a standing order reads as a planned course, not a
+        // mystery pennant. Derived from the same engine path the auto-march
+        // will walk; a currently-impassable route simply draws no dots.
+        if (p.id === selectedPartyId) {
+          const route = findLandPath(
+            map,
+            p.position,
+            p.marchOrder.destination,
+            partyBlockedSet(map, parties, p.id),
+          )
+          if (route && route.length >= 2) {
+            drawRouteDots(route, p.movementPoints, p.maxMovementPoints)
+          }
+        }
       }
 
       if (selected) {
@@ -1398,35 +1442,56 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     /**
-     * Touch's course-preview tap (#375/#372): a tap on an empty, out-of-range
-     * water tile sets a sticky preview (mouse gets this live from hover
-     * instead); tapping that same tile again confirms the multi-turn course via
-     * `onSetCourse`. Taps on anything already handled by #376's any-distance
-     * targeting (a captain, city, or active encounter) are left alone — those
-     * open their own confirm sheet, which is itself the confirmation step.
+     * Touch's course-preview tap (#375/#372, land twin #482): a tap on an
+     * empty, out-of-range tile sets a sticky preview (mouse gets this live
+     * from hover instead); tapping that same tile again confirms the
+     * multi-turn course via `onSetCourse` — a sail order for a selected ship,
+     * a march order for a selected party. Taps on anything already handled by
+     * #376's any-distance targeting (a captain, party, city, or active
+     * encounter) are left alone — those open their own confirm sheet, which is
+     * itself the confirmation step.
      *
      * Returns true if it *consumed* the tap (showed or confirmed a course), so
      * the caller skips the normal `onTileClick` dispatch — that's what keeps the
-     * first tap from also committing the sail order the second tap is meant to.
+     * first tap from also committing the order the second tap is meant to.
      */
     function updateTouchPreview(cell: Coord | null): boolean {
-      const { captains, cities, encounters, selectedCaptainId, map, onSetCourse } = propsRef.current
+      const {
+        captains,
+        cities,
+        encounters,
+        landEncounters = [],
+        parties = [],
+        selectedCaptainId,
+        selectedPartyId,
+        map,
+        onSetCourse,
+      } = propsRef.current
       const selected = selectedCaptainId
         ? captains.find((c) => c.id === selectedCaptainId)
         : undefined
+      const selectedParty =
+        !selected && selectedPartyId ? parties.find((p) => p.id === selectedPartyId) : undefined
+      const mover = selected ?? selectedParty
       const occupied =
         !!cell &&
         (captains.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
           cities.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
-          encounters.some((e) => e.active && e.position.x === cell.x && e.position.y === cell.y))
-      if (!cell || !selected || occupied) {
+          parties.some((p) => p.position.x === cell.x && p.position.y === cell.y) ||
+          encounters.some((e) => e.active && e.position.x === cell.x && e.position.y === cell.y) ||
+          landEncounters.some(
+            (e) => e.active && e.position.x === cell.x && e.position.y === cell.y,
+          ))
+      if (!cell || !mover || occupied) {
         touchPreviewRef.current = null
         setTouchPreviewHint(null)
         dirtyRef.current = true
         return false
       }
-      const path = findPath(map, selected.position, cell)
-      const outOfRange = !!path && path.length - 1 > selected.movementPoints
+      const path = selected
+        ? findPath(map, selected.position, cell)
+        : findLandPath(map, mover.position, cell, partyBlockedSet(map, parties, mover.id))
+      const outOfRange = !!path && path.length - 1 > mover.movementPoints
       const isSecondTap = !!touchPreviewRef.current && coordsEqual(touchPreviewRef.current, cell)
       if (!outOfRange) {
         // In range: a normal one-tap move — let `onTileClick` handle it.

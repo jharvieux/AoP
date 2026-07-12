@@ -5,7 +5,7 @@ import type { BattleReport, CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { GridTopology, TileType } from './map'
 import type { StandingOrder } from './tactics'
-import type { GameSetup, GameState, GameStatus, SailOrder, TroopStack } from './types'
+import type { GameSetup, GameState, GameStatus, MarchOrder, SailOrder, TroopStack } from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
 
 /**
@@ -224,6 +224,12 @@ export interface ViewParty {
   troops?: TroopStack[]
   movementPoints?: number
   maxMovementPoints?: number
+  /**
+   * The party's standing march order (#482), if any — own-seat disclosure
+   * only, like a captain's {@link ViewCaptain.sailOrder}: a rival's queued
+   * route is exactly the kind of intent §7 hides.
+   */
+  marchOrder?: MarchOrder
 }
 
 export interface ViewEncounter {
@@ -361,6 +367,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         troops: party.troops,
         movementPoints: party.movementPoints,
         maxMovementPoints: party.maxMovementPoints,
+        ...(party.marchOrder ? { marchOrder: party.marchOrder } : {}),
       })
     } else if (visibleKeys.has(tileKey(party.position))) {
       // Enemy party in current vision: a force sighted ashore at a location —

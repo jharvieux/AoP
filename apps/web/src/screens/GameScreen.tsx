@@ -5,12 +5,12 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
+  findLandPath,
   mapDistance,
   nextAiAction,
   partyToCombatant,
   pathCost,
   tileAt,
-  tileIndex,
   visibleState,
   type Action,
   type BattleReport,
@@ -30,7 +30,7 @@ import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
-import { planPartyMarch } from '../partyMarch'
+import { partyBlockedSet } from '../partyMarch'
 import { classifyPartyRangeOverlay } from '../partyRange'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
@@ -38,6 +38,8 @@ import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   probeBoardingBattle,
   probeCityAssault,
+  probePartyAssault,
+  probePartyBattle,
   probeTacticalBattle,
   stackLosses,
   type BoardingProbeOutcome,
@@ -98,6 +100,33 @@ interface BoardingState {
  */
 interface AssaultBoardingState {
   captainId: string
+  targetCityId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
+ * A party-vs-party land battle (#482) being fought on the tactical board,
+ * mid-command. Like {@link AssaultBoardingState} but both sides are landing
+ * parties; dispatched as an `attackParty` action with the recorded
+ * `boardCommands` once the probe resolves.
+ */
+interface PartyBattleBoardingState {
+  partyId: string
+  targetPartyId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
+ * A land-side city assault (#482) being fought on the tactical board,
+ * mid-command — the party twin of {@link AssaultBoardingState}. Dispatched as
+ * a `partyAssaultCity` action with the recorded `boardCommands`.
+ */
+interface PartyAssaultBoardingState {
+  partyId: string
   targetCityId: string
   commands: BoardCommand[]
   view: BoardActivationView
@@ -233,6 +262,13 @@ export function GameScreen({
   const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
   const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
   const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
+  // Interactive land battles (#482): the in-progress party-vs-party melee and
+  // party city-assault, mirrors of `boarding`/`assaultBoarding` above.
+  const [partyBattleBoarding, setPartyBattleBoarding] = useState<PartyBattleBoardingState | null>(
+    null,
+  )
+  const [partyAssaultBoarding, setPartyAssaultBoarding] =
+    useState<PartyAssaultBoardingState | null>(null)
   // Land encounter (#466) a selected party is about to resolve.
   const [landEncounterId, setLandEncounterId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
@@ -248,7 +284,12 @@ export function GameScreen({
   useBackgroundMusic(
     selectGameplayMusicContext({
       battleReportOpen: !!battleReport,
-      boardingOpen: !!boarding || !!tacticalRound || !!assaultBoarding,
+      boardingOpen:
+        !!boarding ||
+        !!tacticalRound ||
+        !!assaultBoarding ||
+        !!partyBattleBoarding ||
+        !!partyAssaultBoarding,
     }),
   )
 
@@ -751,11 +792,9 @@ export function GameScreen({
   /**
    * A tap while a landing party is selected (#465): attack an adjacent enemy
    * party, open the land-assault confirm on an adjacent enemy city, or march
-   * toward a land tile. Marching beyond this turn's movement (#476) covers as
-   * much of the route as the party can this turn — no engine-side standing
-   * order exists yet for parties (unlike a ship's `setSailOrder`), so getting
-   * the rest of the way there takes a re-tap on the same destination next
-   * turn, once movement refreshes.
+   * toward a land tile. A destination beyond this turn's movement sets a
+   * standing march order (#482) — the engine marches the first leg now and
+   * auto-continues each turn, exactly the ship idiom (`setSailOrder`, #372).
    */
   function handlePartyTileClick(x: number, y: number, party: LandingParty) {
     const key = `${x},${y}`
@@ -800,23 +839,48 @@ export function GameScreen({
       setLandEncounterId(landEncHere.id)
       return
     }
-    // March (#476): the engine's own land route (around every other party),
-    // as far as this turn's movement covers — the rest waits for a re-tap
-    // next turn (see the doc comment above).
-    const blocked = new Set(
-      game.parties
-        .filter((p) => p.id !== party.id)
-        .map((p) => tileIndex(game.map, p.position.x, p.position.y)),
-    )
-    const plan = planPartyMarch(game.map, party.position, { x, y }, party.movementPoints, blocked)
-    if (!plan) return
+    // March: reachable this turn moves outright; reachable but farther sets a
+    // standing march order (#482) the engine auto-continues each turn.
+    const blocked = partyBlockedSet(game.map, game.parties, party.id)
+    const path = findLandPath(game.map, party.position, { x, y }, blocked)
+    if (!path || path.length < 2) return
+    const cost = path.length - 1
     shipMoveFeedback()
-    onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: plan.to })
-    if (plan.remainingSteps > 0) {
-      pushEvent(
-        `${party.name} marches on — ${plan.remainingSteps} tile${plan.remainingSteps === 1 ? '' : 's'} left; tap the destination again next turn`,
-      )
+    if (cost <= party.movementPoints) {
+      onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: { x, y } })
+    } else {
+      onAction({
+        type: 'setMarchOrder',
+        playerId: viewer.id,
+        partyId: party.id,
+        destination: { x, y },
+      })
+      pushEvent(`${party.name} marches on — standing order set`)
     }
+  }
+
+  // Paused march orders (#482): own parties halted on a new sighting or a
+  // blocked route, awaiting Resume (re-issue, refreshing the seen-contacts
+  // baseline) or Cancel (drop it) — the land twin of the sail-order banner.
+  const interruptedParties = game.parties.filter(
+    (p) => p.ownerId === viewer.id && p.marchOrder?.interrupted,
+  )
+
+  function resumeMarchOrder(partyId: string) {
+    const order = game.parties.find((p) => p.id === partyId)?.marchOrder
+    if (!order) return
+    tapFeedback()
+    onAction({
+      type: 'setMarchOrder',
+      playerId: viewer.id,
+      partyId,
+      destination: order.destination,
+    })
+  }
+
+  function cancelMarchOrder(partyId: string) {
+    tapFeedback()
+    onAction({ type: 'clearMarchOrder', playerId: viewer.id, partyId })
   }
 
   function confirmDisembark() {
@@ -837,7 +901,18 @@ export function GameScreen({
     setSelectedCaptainId(null)
   }
 
+  /**
+   * Engage the enemy party (#465, interactive #482). Auto mode dispatches to
+   * the reducer, where the board AI fights the melee; Tactical mode routes it
+   * through the same interactive land-board planner as a city assault.
+   */
   function confirmPartyAttack() {
+    if (game.config.setup.battleResolution === 'tactical') startTacticalPartyAttack()
+    else autoResolvePartyAttack()
+  }
+
+  /** Auto-resolve the party battle, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolvePartyAttack() {
     if (!selectedParty || !partyAttackTarget) return
     impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
@@ -849,9 +924,86 @@ export function GameScreen({
     })
     setPartyAttackTargetId(null)
     setSelectedPartyId(null)
+    setPartyBattleBoarding(null)
   }
 
+  /** Tactical mode (#482): probe the land board instead of resolving outright. */
+  function startTacticalPartyAttack() {
+    if (!selectedParty || !partyAttackTarget) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const partyId = selectedParty.id
+    const targetPartyId = partyAttackTarget.id
+    setPartyAttackTargetId(null)
+    setSelectedPartyId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyBattle(game, { partyId, targetPartyId }, [])
+    } catch (err) {
+      // Fail-safe: a broken local simulation must never block the attack —
+      // dispatch without a plan and let the board AI fight the melee.
+      console.error('Party-battle simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyBattleBoarding({ partyId, targetPartyId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'attackParty', playerId: viewer.id, partyId, targetPartyId })
+  }
+
+  /** Dispatch the party battle with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchPartyBattle(current: PartyBattleBoardingState, commands: BoardCommand[]) {
+    setPartyBattleBoarding(null)
+    onAction({
+      type: 'attackParty',
+      playerId: viewer.id,
+      partyId: current.partyId,
+      targetPartyId: current.targetPartyId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+  }
+
+  /** One confirmed land-melee order: extend the plan and re-probe for the next activation. */
+  function orderPartyBattleCommand(command: BoardCommand) {
+    if (!partyBattleBoarding) return
+    const commands = [...partyBattleBoarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyBattle(
+        game,
+        {
+          partyId: partyBattleBoarding.partyId,
+          targetPartyId: partyBattleBoarding.targetPartyId,
+        },
+        commands,
+      )
+    } catch (err) {
+      console.error('Party-battle simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyBattleBoarding({
+        ...partyBattleBoarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(partyBattleBoarding.view, probe.view),
+      })
+      return
+    }
+    dispatchPartyBattle(partyBattleBoarding, commands)
+  }
+
+  /**
+   * Storm the city from the land side (#465, interactive #482): the same
+   * Tactical/Auto split as a sea assault, against the identical full defense.
+   */
   function confirmPartyAssault() {
+    if (game.config.setup.battleResolution === 'tactical') startTacticalPartyAssault()
+    else autoResolvePartyAssault()
+  }
+
+  /** Auto-resolve the land assault, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolvePartyAssault() {
     if (!selectedParty || !partyAssaultCity) return
     impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
@@ -863,6 +1015,68 @@ export function GameScreen({
     })
     setPartyAssaultCityId(null)
     setSelectedPartyId(null)
+    setPartyAssaultBoarding(null)
+  }
+
+  /** Tactical mode (#482): probe the land board instead of resolving outright. */
+  function startTacticalPartyAssault() {
+    if (!selectedParty || !partyAssaultCity) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const partyId = selectedParty.id
+    const targetCityId = partyAssaultCity.id
+    setPartyAssaultCityId(null)
+    setSelectedPartyId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyAssault(game, { partyId, targetCityId }, [])
+    } catch (err) {
+      console.error('Party-assault simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyAssaultBoarding({ partyId, targetCityId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'partyAssaultCity', playerId: viewer.id, partyId, targetCityId })
+  }
+
+  /** Dispatch the land assault with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchPartyAssault(current: PartyAssaultBoardingState, commands: BoardCommand[]) {
+    setPartyAssaultBoarding(null)
+    onAction({
+      type: 'partyAssaultCity',
+      playerId: viewer.id,
+      partyId: current.partyId,
+      targetCityId: current.targetCityId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+  }
+
+  /** One confirmed land-melee order: extend the plan and re-probe for the next activation. */
+  function orderPartyAssaultCommand(command: BoardCommand) {
+    if (!partyAssaultBoarding) return
+    const commands = [...partyAssaultBoarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyAssault(
+        game,
+        { partyId: partyAssaultBoarding.partyId, targetCityId: partyAssaultBoarding.targetCityId },
+        commands,
+      )
+    } catch (err) {
+      console.error('Party-assault simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyAssaultBoarding({
+        ...partyAssaultBoarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(partyAssaultBoarding.view, probe.view),
+      })
+      return
+    }
+    dispatchPartyAssault(partyAssaultBoarding, commands)
   }
 
   /**
@@ -1373,14 +1587,25 @@ export function GameScreen({
           onTileClick={handleTileClick}
           rangeOverlay={rangeOverlay ?? partyRangeOverlay}
           onSetCourse={(cell) => {
-            if (!selectedCaptain) return
-            shipMoveFeedback()
-            onAction({
-              type: 'setSailOrder',
-              playerId: viewer.id,
-              captainId: selectedCaptain.id,
-              destination: cell,
-            })
+            if (selectedCaptain) {
+              shipMoveFeedback()
+              onAction({
+                type: 'setSailOrder',
+                playerId: viewer.id,
+                captainId: selectedCaptain.id,
+                destination: cell,
+              })
+            } else if (selectedParty) {
+              // Touch's two-tap confirm on an out-of-range land tile (#482):
+              // the march twin of the sail order above.
+              shipMoveFeedback()
+              onAction({
+                type: 'setMarchOrder',
+                playerId: viewer.id,
+                partyId: selectedParty.id,
+                destination: cell,
+              })
+            }
           }}
           factionOf={factionOf}
           controlsRef={mapControlsRef}
@@ -1404,6 +1629,22 @@ export function GameScreen({
                   Resume
                 </button>
                 <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
+        {/* Paused march orders (#482): the land twin of the banner above — a
+            column halts on a new sighting OR a route another party now blocks. */}
+        {isViewerTurn &&
+          interruptedParties.map((p) => (
+            <div key={p.id} className="sail-interrupt-banner" role="status">
+              <span>{p.name} halted: new contact or blocked route</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
                   Cancel
                 </button>
               </div>
@@ -1449,6 +1690,17 @@ export function GameScreen({
             {selectedCaptain
               ? `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
               : `${selectedParty!.name} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`}
+            {/* Cancel affordance for a queued march (#482) — the route itself
+                shows as the dotted preview while the party stays selected. */}
+            {selectedParty?.marchOrder && isViewerTurn && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => cancelMarchOrder(selectedParty.id)}
+              >
+                Cancel march
+              </button>
+            )}
           </div>
         )}
         {idleCityHint && (
@@ -1539,6 +1791,30 @@ export function GameScreen({
           losses={assaultBoarding.losses}
           onCommand={orderAssaultCommand}
           onAutoResolve={() => dispatchAssault(assaultBoarding, assaultBoarding.commands)}
+        />
+      )}
+
+      {partyBattleBoarding && (
+        <BoardingCommandSheet
+          key={partyBattleBoarding.commands.length}
+          view={partyBattleBoarding.view}
+          losses={partyBattleBoarding.losses}
+          onCommand={orderPartyBattleCommand}
+          onAutoResolve={() =>
+            dispatchPartyBattle(partyBattleBoarding, partyBattleBoarding.commands)
+          }
+        />
+      )}
+
+      {partyAssaultBoarding && (
+        <BoardingCommandSheet
+          key={partyAssaultBoarding.commands.length}
+          view={partyAssaultBoarding.view}
+          losses={partyAssaultBoarding.losses}
+          onCommand={orderPartyAssaultCommand}
+          onAutoResolve={() =>
+            dispatchPartyAssault(partyAssaultBoarding, partyAssaultBoarding.commands)
+          }
         />
       )}
 
@@ -1730,8 +2006,13 @@ export function GameScreen({
                 {UI_ICON.attack && (
                   <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
                 )}
-                Attack
+                {game.config.setup.battleResolution === 'tactical' ? 'Fight tactically' : 'Attack'}
               </button>
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolvePartyAttack}>
+                  Auto-resolve
+                </button>
+              )}
             </div>
           </section>
         </BottomSheet>
@@ -1762,8 +2043,15 @@ export function GameScreen({
                 {UI_ICON.attack && (
                   <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
                 )}
-                Assault
+                {game.config.setup.battleResolution === 'tactical'
+                  ? 'Assault tactically'
+                  : 'Assault'}
               </button>
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolvePartyAssault}>
+                  Auto-resolve
+                </button>
+              )}
             </div>
           </section>
         </BottomSheet>

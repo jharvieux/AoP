@@ -1,4 +1,9 @@
-import type { AttackCaptainAction, AttackCityAction } from './actions'
+import type {
+  AttackCaptainAction,
+  AttackCityAction,
+  AttackPartyAction,
+  PartyAssaultCityAction,
+} from './actions'
 import {
   boardOrdersDriver,
   boardPlanDriver,
@@ -12,6 +17,7 @@ import {
   aiTacticDriverForOwner,
   captainToCombatant,
   cityToCombatant,
+  partyToCombatant,
   prizeSpawnFor,
 } from './reducer'
 import {
@@ -225,6 +231,94 @@ export function probeCityAssault(
           game.players.find((p) => p.id === city.ownerId)?.faction,
         ),
       },
+      stats,
+      game.rngState,
+      { attacker: recorder },
+      'land',
+    )
+    return { kind: 'resolved', report: result.report }
+  } catch (err) {
+    if (err instanceof AwaitingCommand) return { kind: 'awaitingCommand', view: err.view }
+    throw err
+  }
+}
+
+/**
+ * Interactive party-battle planner (#482). The party-vs-party analog of
+ * {@link probeCityAssault}: re-simulates the pending `attackParty` from the
+ * current GameState RNG with the player's recorded land-melee commands so far,
+ * pausing at the first un-commanded attacker activation. Mirrors the reducer's
+ * `attackParty` board invocation exactly — both parties as troop-only
+ * combatants on the `'land'` board, the defender always driven by the board AI
+ * (a party ashore has no captain, so no owner-supplied board doctrine) — so
+ * the recorded commands replay bit-for-bit when submitted as
+ * `AttackPartyAction.boardCommands`.
+ */
+export function probePartyBattle(
+  game: GameState,
+  action: Pick<AttackPartyAction, 'partyId' | 'targetPartyId'>,
+  commands: readonly BoardCommand[],
+): BoardingProbeOutcome {
+  const attacker = game.parties.find((p) => p.id === action.partyId)
+  const target = game.parties.find((p) => p.id === action.targetPartyId)
+  if (!attacker || !target) throw new Error('Attacker or target party not found')
+  if (!game.config.combatStats?.battle) {
+    throw new Error('No board tuning configured for a land battle')
+  }
+
+  return probeLandBoard(game, partyToCombatant(attacker), partyToCombatant(target), commands)
+}
+
+/**
+ * Interactive land-assault planner (#482). The landing-party twin of
+ * {@link probeCityAssault}: the party's troops against the city's FULL
+ * defense — recruited garrison plus militia and turrets, exactly the
+ * `cityToCombatant` defender the reducer's `partyAssaultCity` fields — so the
+ * recorded commands replay bit-for-bit when submitted as
+ * `PartyAssaultCityAction.boardCommands`.
+ */
+export function probePartyAssault(
+  game: GameState,
+  action: Pick<PartyAssaultCityAction, 'partyId' | 'targetCityId'>,
+  commands: readonly BoardCommand[],
+): BoardingProbeOutcome {
+  const attacker = game.parties.find((p) => p.id === action.partyId)
+  const city = game.cities.find((c) => c.id === action.targetCityId)
+  if (!attacker || !city) throw new Error('Attacker party or target city not found')
+  if (!game.config.combatStats?.battle) {
+    throw new Error('No board tuning configured for a land assault')
+  }
+
+  return probeLandBoard(
+    game,
+    partyToCombatant(attacker),
+    cityToCombatant(
+      city,
+      game.config.content,
+      game.players.find((p) => p.id === city.ownerId)?.faction,
+    ),
+    commands,
+  )
+}
+
+/** The shared record-and-pause `resolveBoardCombat('land', …)` run behind the two party probes. */
+function probeLandBoard(
+  game: GameState,
+  attacker: Parameters<typeof resolveBoardCombat>[0]['attacker'],
+  defender: Parameters<typeof resolveBoardCombat>[0]['defender'],
+  commands: readonly BoardCommand[],
+): BoardingProbeOutcome {
+  const stats = createCombatStats(game.config.combatStats!)
+  let cursor = 0
+  const recorder: BoardDriver = {
+    choose(view) {
+      if (cursor < commands.length) return commands[cursor++]!
+      throw new AwaitingCommand(view)
+    },
+  }
+  try {
+    const result = resolveBoardCombat(
+      { attacker, defender },
       stats,
       game.rngState,
       { attacker: recorder },

@@ -1,3 +1,54 @@
+## D-040 — 2026-07-12 — #482 party UX round 2: standing march orders (RULES_VERSION→7), interactive land battles, multiplayer party controls
+
+**What shipped** (PR for #482, code items; party art is separate work). Four pieces:
+
+- **Standing march orders (engine).** `LandingParty.marchOrder` (plain JSON:
+  `destination`, `knownContactIds`, `interrupted?`) + two actions, `setMarchOrder` /
+  `clearMarchOrder` — the overland twin of #372 sail orders, fixed-tile destinations only
+  (no intercept variant: parties don't chase; the AI re-plans each turn). Set-time first
+  leg and every turn-start continuation share one `advanceMarchOrder` code path; the party
+  walks tile by tile, revealing as it goes, and **pauses** (`interrupted`) on a NEW
+  fog-of-war contact — and, unlike sail orders, also when no land route currently exists
+  (another party blocks every path or squats the destination): a stopped column is loud,
+  surfaced as a Resume/Cancel banner. Manual `moveParty` clears the order; arrival clears
+  it; it dies with the party. Own-seat-only in player views, like `sailOrder`.
+  **RULES_VERSION 6→7**: `endTurn` gains the auto-march phase (after sail-order
+  continuation), so a v7 log replays differently on a v6 build. `sanitizeAction` extended
+  (Deno check+test run). New `marchOrders.test.ts`: replay determinism, JSON round-trip
+  resume at every prefix, all interruption edges, destroyed-marcher turn-start, view
+  filtering.
+- **Dotted march-route preview (web).** MapCanvas's #375 course preview now draws
+  overland routes for a selected party from the same `findLandPath` inputs the engine
+  validates (`partyBlockedSet`, the one shared block-set helper — #476's client-side
+  partial-march planner in partyMarch.ts is superseded and removed). A party with a queued
+  march shows breadcrumbs to a destination pennant (alert-colored when paused); tap-beyond-
+  range sets the order (mouse) or two-tap-confirms (touch), mirroring ships exactly.
+- **Interactive tactical land battles (engine probes + single-player web).** The reducer
+  already resolved `attackParty`/`partyAssaultCity` on the `'land'` board with attacker
+  `boardCommands` — what was missing was the probe/UI halves. New `probePartyBattle` /
+  `probePartyAssault` (shared `probeLandBoard` core) mirror `probeCityAssault`'s
+  record-and-pause contract; probe report == reducer `battleReport` bit-for-bit
+  (probe.test.ts parity + interleaved-prefix determinism). In Tactical mode (#305) both
+  fight kinds now play out through BoardingCommandSheet with the D-002 auto-resolve escape
+  hatch; Auto mode and AI-vs-AI resolve byte-identically to before (no reducer change).
+  **Both** fight kinds shipped interactively for single-player — no follow-up needed.
+- **Multiplayer party controls (web).** MatchScreen gains the full party surface via pure
+  PlayerView classifiers in matchActions.ts (`interpretPartyTileClick`, `selectParty` /
+  `disembark` intents, nine `matchAction` builders, `partyFromView`): disembark sheet,
+  march/march-order, embark, party attack + land assault confirms, site capture,
+  land encounters, range shading, march banners. Multiplayer land battles stay on the
+  async auto-resolve path — an interactive land board needs a battle session (#422
+  territory); noted, deliberately not built here.
+
+**Rejected:** intercept-style march orders (YAGNI until parties need to chase);
+RULES_VERSION-free framing (the task and the endTurn semantics change both demanded the
+bump); routing multiplayer land fights through battle sessions (out of scope, #422).
+
+**Related:** PR for #482, branch `feature/sweep-party-ux2-482`. Foundations: #465/#477
+parties, #480 land content, #479 AI land player, D-015/D-028 board conventions.
+
+---
+
 ## D-039 — 2026-07-12 — #475 AI becomes a land player: planner uses/counters landing parties
 
 **What shipped** (planner + content only; `runAiTurn` stays a pure per-turn function of

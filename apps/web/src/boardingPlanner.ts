@@ -22,6 +22,8 @@ import {
 export {
   probeBoardingBattle,
   probeCityAssault,
+  probePartyAssault,
+  probePartyBattle,
   probeTacticalBattle,
   type BoardingProbeOutcome,
   type TacticalProbeOutcome,
