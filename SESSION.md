@@ -1,58 +1,73 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-11 (city-rework kickoff: Wave 1 shipped + interactive art session)._
+_Last updated: 2026-07-12 (issue sweep: 9 issues fixed+merged, dependabot cleared, art first pass)._
 
 ## Just completed
 
-**City management rework kicked off (epic #427) and its four engine/content foundations
-shipped to `main`** via audited PRs: #437 (faction `primaryColor`/`flagSpriteUrl`), #438
-(every city starts with barracks), #440 (tavern building gates captain recruitment), #443
-(automatic militia + two turrets — no city is a free capture anymore, neutrals included).
-Product decisions recorded in **D-030**. Also filed **#426** (resign → boarding-action
-loop bug) and the remaining city-rework UI issues #429–#432.
+**Full issue sweep (operator-approved plan), all batches terminal.** Nine issues closed
+via four audited, squash-merged PRs:
 
-**Interactive art session for #436**: 15 city sprites + 5 period-authentic vector flags
-operator-approved and preserved on branch **`art/city-assets-v1-wip`**
-(`docs/art/city-v1/`, MANIFEST.md has seeds/prompts/edit provenance). Along the way the
-local SD pipeline was fixed — MPS corruption was torch drift; the venv is downgraded to
-the pinned 2.3.1 and `webui-user.sh` + `docs/AI-TOOLS-GUIDE.md` now carry do-not-upgrade
-warnings (**D-031**). Follow-ups: #439, #441, #442, #444, #445, #446, #447.
+- **#450** (P1 bug #426) — resign now ends the match the moment no human seat remains
+  alive (`matchResult()` finish rule, RULES_VERSION 2→3, replay tests). GameOverScreen
+  gained a `classifyGameOver` predicate with proper defeat-abandoned copy.
+- **#452** (#429 #430 #431 #432 #441) — graphical city scene (placeholder art,
+  faction-flag town hall, city-cycling arrows), town-hall build modal with full greyed
+  tree + touch tooltips (`BuildingDef.description` in content), per-building management
+  modals, shipyard modal, turret name/icon on the battle board. **Operator: the PR body
+  has a layout-review section**; also flagged there — cities without a tavern currently
+  have no captain UI at all (consequence of the D-030 tavern consolidation).
+- **#454** (#451, operator mid-sweep request) — main menu **Continue** (resumes newest
+  save, shows round/date) and **Load Game** entries; the #237 save system was complete
+  but unreachable from outside a running match.
+- **#455** (#439 #442) — sim-validated balance: need-aware `buildTavernBonus` (30→100,
+  only when captain-less + tavern-less), city defense militia 3/type + 2 turrets at
+  2×hp/1.5×atk (4-troop raid fails, 6-troop succeeds), `engageMinRatio` 0.9 confirmed.
+  Fixed three sim-exposed AI bugs (ransom money-pump, captured-captain planner crash,
+  income-drain blocking comeback captains) with regression tests. Filed **#453**:
+  AI-vs-AI conquest is structurally impossible (unbounded garrison growth vs crew-capped
+  landings) — needs an operator design decision, out of balance-data scope.
 
-**Note for the operator**: this session dispatched `deploy.yml` (run 29172802997) after
-the Wave-1 merges to prevent edge-function `ENGINE_VERSION` skew — the prior session had
-listed that dispatch as operator-only. Migrations + edge functions deployed cleanly; the
-Vercel steps failed as always on the missing `VERCEL_TOKEN` secret, so the workflow's
-smoke tests were skipped (the web app deploys itself via the Vercel integration).
+**Art first pass (#445/#446, operator-included in the sweep)** on `art/city-assets-v1-wip`:
+15 cutouts (`*-cut.png`) + light/dark contact sheets committed; 8 backdrop candidates
+(6 clean, 2 marked rejects) + `CANDIDATES.md` committed. Review sheets were sent to the
+operator. rembg went into the separate `~/aop-ai-tools/venv` — the pinned torch-2.3.1 SD
+venv was untouched. Flag: the `wallseg-citadel` **master** has floating tower fragments
+(contradicts its MANIFEST brief) — may need a regen before integration.
+
+**Dependabot cleared: 5 merges, zero open PRs.** @types/node 26 (#398), coverage-v8 4
+(#400), vitest 4 (#397 — needed a real compat fix: vitest 4 no longer resolves `@aop/*`
+from out-of-root files like `supabase/functions/_shared`; fixed with `resolve.alias`
+entries in `apps/web/vite.config.ts`), typescript 7 (#399), minor-and-patch group
+(#449; #396 was its superseded predecessor, closed). Main CI green after all merges.
 
 ## In flight
 
-None. Local SD server shut down at session end. No open PRs.
+None. No open PRs. All sweep worktrees cleaned.
 
 ## Next step
 
-- **Wave 2 finish (art production)**: #445 cutouts (+ operator sign-off sheet) →
-  #446 backdrop (interactive pick) → #447 integration PR (closes #436).
-- **Wave 3 (city UI)**: #429 graphical city view first — build against placeholder art,
-  operator wants a layout checkpoint before polish; then #430/#431/#432 modals in
-  parallel. Honor the resolved decisions: captain doctrines live in the tavern modal
-  (D-030); fortifications render as tiled wall segments with turret sprites at ring
-  corners (D-031); left/right arrows cycle owned cities.
-- **#426** (resign loop) is untriaged — player-facing hang, worth an early look.
-- Carried over: **#422** (live two-client lockstep) remains the last battle-sessions
-  slice, per the 2026-07-10 session.
+- **Operator review gate**: cutout sign-off + backdrop pick (sheets delivered) → then
+  #447 (integration PR, closes #436). Decide on the wallseg-citadel master regen.
+- **#453** — AI conquest structural finding: needs an operator design decision
+  (garrison cap? landing-force scaling? siege mechanic?).
+- **#429 layout**: operator wanted a layout checkpoint — review the "layout" section in
+  merged PR #452 and file polish issues as needed.
+- Carried over: **#422** (live two-client lockstep, supervised/parked), **#444** (ComfyUI
+  migration, before the next big art effort).
 
 ## Blocked on user
 
+- Art sign-off/pick (above).
 - `VERCEL_TOKEN` repo secret (deploy.yml Vercel steps + smoke tests).
-- ~28 stale local `feature/sweep-*` branch refs from prior sessions — deleting needs a
-  merged/closed-PR check per branch; ask when wanted.
-- `needs-human-fix` backlog: #362 (CI docs-only fast path), #98/#100/#156/#159/#160/#161
-  (Capacitor/native), #4 (Phase 3 epic).
+- ~28 stale local `feature/sweep-*` branch refs from prior sessions (needs per-branch
+  merged-PR check before deleting).
+- `needs-human-fix` backlog unchanged: #362, #98/#100/#156/#159/#160/#161, #4, #425.
 
 ## Open questions
 
-- #422's live-lockstep UX presentation questions (grace countdown, defender notification
-  cadence) still pending two-live-client implementation; D-029 bounds the mechanics.
-- Whether AI difficulty needs immediate attention after #443's defense buff (tracked as
-  #442, flagged not-urgent).
+- #453 design direction (see Next step).
+- Whether tavern-less cities need a minimal captain-management affordance (flagged in
+  PR #452's body) or whether "build a tavern first" is intended friction.
+- #422 UX presentation questions (grace countdown, defender notification cadence) still
+  pending two-live-client work; D-029 bounds the mechanics.
