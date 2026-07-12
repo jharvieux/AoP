@@ -5,12 +5,12 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
+  findLandPath,
   mapDistance,
   nextAiAction,
   partyToCombatant,
   pathCost,
   tileAt,
-  tileIndex,
   visibleState,
   type Action,
   type BattleReport,
@@ -30,7 +30,7 @@ import { canAfford, type Coord } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
-import { planPartyMarch } from '../partyMarch'
+import { partyBlockedSet } from '../partyMarch'
 import { classifyPartyRangeOverlay } from '../partyRange'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
@@ -751,11 +751,9 @@ export function GameScreen({
   /**
    * A tap while a landing party is selected (#465): attack an adjacent enemy
    * party, open the land-assault confirm on an adjacent enemy city, or march
-   * toward a land tile. Marching beyond this turn's movement (#476) covers as
-   * much of the route as the party can this turn — no engine-side standing
-   * order exists yet for parties (unlike a ship's `setSailOrder`), so getting
-   * the rest of the way there takes a re-tap on the same destination next
-   * turn, once movement refreshes.
+   * toward a land tile. A destination beyond this turn's movement sets a
+   * standing march order (#482) — the engine marches the first leg now and
+   * auto-continues each turn, exactly the ship idiom (`setSailOrder`, #372).
    */
   function handlePartyTileClick(x: number, y: number, party: LandingParty) {
     const key = `${x},${y}`
@@ -800,23 +798,48 @@ export function GameScreen({
       setLandEncounterId(landEncHere.id)
       return
     }
-    // March (#476): the engine's own land route (around every other party),
-    // as far as this turn's movement covers — the rest waits for a re-tap
-    // next turn (see the doc comment above).
-    const blocked = new Set(
-      game.parties
-        .filter((p) => p.id !== party.id)
-        .map((p) => tileIndex(game.map, p.position.x, p.position.y)),
-    )
-    const plan = planPartyMarch(game.map, party.position, { x, y }, party.movementPoints, blocked)
-    if (!plan) return
+    // March: reachable this turn moves outright; reachable but farther sets a
+    // standing march order (#482) the engine auto-continues each turn.
+    const blocked = partyBlockedSet(game.map, game.parties, party.id)
+    const path = findLandPath(game.map, party.position, { x, y }, blocked)
+    if (!path || path.length < 2) return
+    const cost = path.length - 1
     shipMoveFeedback()
-    onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: plan.to })
-    if (plan.remainingSteps > 0) {
-      pushEvent(
-        `${party.name} marches on — ${plan.remainingSteps} tile${plan.remainingSteps === 1 ? '' : 's'} left; tap the destination again next turn`,
-      )
+    if (cost <= party.movementPoints) {
+      onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: { x, y } })
+    } else {
+      onAction({
+        type: 'setMarchOrder',
+        playerId: viewer.id,
+        partyId: party.id,
+        destination: { x, y },
+      })
+      pushEvent(`${party.name} marches on — standing order set`)
     }
+  }
+
+  // Paused march orders (#482): own parties halted on a new sighting or a
+  // blocked route, awaiting Resume (re-issue, refreshing the seen-contacts
+  // baseline) or Cancel (drop it) — the land twin of the sail-order banner.
+  const interruptedParties = game.parties.filter(
+    (p) => p.ownerId === viewer.id && p.marchOrder?.interrupted,
+  )
+
+  function resumeMarchOrder(partyId: string) {
+    const order = game.parties.find((p) => p.id === partyId)?.marchOrder
+    if (!order) return
+    tapFeedback()
+    onAction({
+      type: 'setMarchOrder',
+      playerId: viewer.id,
+      partyId,
+      destination: order.destination,
+    })
+  }
+
+  function cancelMarchOrder(partyId: string) {
+    tapFeedback()
+    onAction({ type: 'clearMarchOrder', playerId: viewer.id, partyId })
   }
 
   function confirmDisembark() {
@@ -1373,14 +1396,25 @@ export function GameScreen({
           onTileClick={handleTileClick}
           rangeOverlay={rangeOverlay ?? partyRangeOverlay}
           onSetCourse={(cell) => {
-            if (!selectedCaptain) return
-            shipMoveFeedback()
-            onAction({
-              type: 'setSailOrder',
-              playerId: viewer.id,
-              captainId: selectedCaptain.id,
-              destination: cell,
-            })
+            if (selectedCaptain) {
+              shipMoveFeedback()
+              onAction({
+                type: 'setSailOrder',
+                playerId: viewer.id,
+                captainId: selectedCaptain.id,
+                destination: cell,
+              })
+            } else if (selectedParty) {
+              // Touch's two-tap confirm on an out-of-range land tile (#482):
+              // the march twin of the sail order above.
+              shipMoveFeedback()
+              onAction({
+                type: 'setMarchOrder',
+                playerId: viewer.id,
+                partyId: selectedParty.id,
+                destination: cell,
+              })
+            }
           }}
           factionOf={factionOf}
           controlsRef={mapControlsRef}
@@ -1404,6 +1438,22 @@ export function GameScreen({
                   Resume
                 </button>
                 <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
+        {/* Paused march orders (#482): the land twin of the banner above — a
+            column halts on a new sighting OR a route another party now blocks. */}
+        {isViewerTurn &&
+          interruptedParties.map((p) => (
+            <div key={p.id} className="sail-interrupt-banner" role="status">
+              <span>{p.name} halted: new contact or blocked route</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
                   Cancel
                 </button>
               </div>
@@ -1449,6 +1499,17 @@ export function GameScreen({
             {selectedCaptain
               ? `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
               : `${selectedParty!.name} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`}
+            {/* Cancel affordance for a queued march (#482) — the route itself
+                shows as the dotted preview while the party stays selected. */}
+            {selectedParty?.marchOrder && isViewerTurn && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => cancelMarchOrder(selectedParty.id)}
+              >
+                Cancel march
+              </button>
+            )}
           </div>
         )}
         {idleCityHint && (
