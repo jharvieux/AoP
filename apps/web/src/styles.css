@@ -1296,6 +1296,95 @@ button.primary.secondary {
   background: var(--city-building-shipyard);
 }
 
+/* Town-hall build modal rows (#430): full tree with greyed-out unmet
+   requirements and tap-to-reveal info tooltips. */
+.build-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-panel-alt);
+}
+
+.build-row--unavailable .build-row__text,
+.build-row--unavailable .building-graphic {
+  opacity: 0.45;
+}
+
+.build-row__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.build-row .building-graphic {
+  width: 40px;
+  height: 40px;
+}
+
+.build-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.build-row__build {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-raised);
+  color: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.build-row__build:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .build-row__build:not(:disabled):hover {
+    border-color: var(--color-gold);
+  }
+}
+
+.info-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.info-toggle[aria-expanded='true'] {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.building-info {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
+}
+
+.building-info ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 .battle-intro {
   display: flex;
   align-items: center;

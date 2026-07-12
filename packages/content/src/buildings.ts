@@ -18,6 +18,13 @@ export interface BuildingDef {
   id: string
   name: string
   category: BuildingCategory
+  /**
+   * What the building does, for build-modal tooltips and management modals
+   * (#430/#431). Flavor prose only — balance numbers (produces, defenseBonus,
+   * unlocksTier) stay in their data fields so the UI derives figures that can
+   * never drift from what the engine actually applies.
+   */
+  description: string
   /** Construction cost. */
   cost: Partial<ResourcePool>
   /** Resources produced each round this building is standing. */
@@ -38,6 +45,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   townhall: {
     id: 'townhall',
     name: 'Town Hall',
+    description:
+      'Seat of the governor. Fills the city treasury each round and directs all construction.',
     category: 'economy',
     cost: {},
     produces: { gold: 100 },
@@ -45,6 +54,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   sawmill: {
     id: 'sawmill',
     name: 'Sawmill',
+    description: 'Mills island lumber into timber for construction and shipwork.',
     category: 'economy',
     cost: { gold: 200 },
     produces: { timber: 4 },
@@ -53,6 +63,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   ironmine: {
     id: 'ironmine',
     name: 'Iron Mine',
+    description: 'Digs iron from the hills for heavy construction and armament.',
     category: 'economy',
     cost: { gold: 250, timber: 10 },
     produces: { iron: 3 },
@@ -61,6 +72,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   distillery: {
     id: 'distillery',
     name: 'Distillery',
+    description: 'Ferments cane into rum — the coin of morale in every port.',
     category: 'economy',
     cost: { gold: 220 },
     produces: { rum: 3 },
@@ -69,6 +81,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   tradehouse: {
     id: 'tradehouse',
     name: 'Trade House',
+    description: 'Brokers cargo through the harbor, adding gold to the treasury each round.',
     category: 'economy',
     cost: { gold: 350, timber: 15 },
     produces: { gold: 60 },
@@ -77,6 +90,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   barracks: {
     id: 'barracks',
     name: 'Barracks',
+    description: 'Musters the rank and file — opens basic recruitment in this city.',
     category: 'recruitment',
     cost: { gold: 150 },
     produces: {},
@@ -86,6 +100,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   garrisonHall: {
     id: 'garrisonHall',
     name: 'Garrison Hall',
+    description: 'Houses a standing garrison — opens tier-2 recruitment.',
     category: 'recruitment',
     cost: { gold: 400, timber: 20 },
     produces: {},
@@ -95,6 +110,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   fortressArmory: {
     id: 'fortressArmory',
     name: 'Fortress Armory',
+    description: 'Arms veteran companies — opens tier-3 recruitment.',
     category: 'recruitment',
     cost: { gold: 900, iron: 30 },
     produces: {},
@@ -104,6 +120,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   grandArsenal: {
     id: 'grandArsenal',
     name: 'Grand Arsenal',
+    description: 'Outfits the elite of the fleet — opens tier-4 recruitment.',
     category: 'recruitment',
     cost: { gold: 1800, iron: 60, rum: 20 },
     produces: {},
@@ -113,6 +130,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   palisade: {
     id: 'palisade',
     name: 'Palisade',
+    description: 'A rough timber wall that stiffens the garrison against assault.',
     category: 'fortification',
     cost: { gold: 120, timber: 20 },
     produces: {},
@@ -122,6 +140,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   stoneWall: {
     id: 'stoneWall',
     name: 'Stone Wall',
+    description: 'Cut-stone ramparts that turn cannon fire and boarding ladders alike.',
     category: 'fortification',
     cost: { gold: 500, iron: 15 },
     produces: {},
@@ -131,6 +150,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   citadel: {
     id: 'citadel',
     name: 'Citadel',
+    description: 'A commanding fortress that anchors the whole city defense.',
     category: 'fortification',
     cost: { gold: 1400, iron: 40 },
     produces: {},
@@ -140,6 +160,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   shipyard: {
     id: 'shipyard',
     name: 'Shipyard',
+    description:
+      'Drydock and rigging crews — refit a docked captain’s hull, guns, sails, and berths.',
     category: 'shipyard',
     cost: { gold: 300, timber: 20 },
     produces: {},
@@ -149,6 +171,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
   tavern: {
     id: 'tavern',
     name: 'Tavern',
+    description:
+      'Where captains are found — hire new captains, rehire ransomed ones, and manage their orders and skills.',
     category: 'economy',
     cost: { gold: 100 },
     produces: {},
@@ -164,13 +188,53 @@ export const STARTING_BUILDINGS: readonly string[] = ['townhall', 'barracks']
  * Per-faction flavor names layered over the shared building tree — e.g. the
  * Pirates' "Barracks" is the British "Drill Yard". Falls back to the
  * mechanical name in `BUILDINGS` when a faction has no override.
+ *
+ * All four recruitment buildings carry a flavor name per faction (#430) —
+ * they recruit faction-specific troops, so they're named in each faction's
+ * voice. Other buildings stay generic by design, bar the few flavor
+ * exceptions that predate that rule (palisade, tavern).
  */
 export const FACTION_BUILDING_NAMES: Partial<Record<FactionId, Record<string, string>>> = {
-  pirates: { barracks: 'Cutthroat Den', palisade: 'Driftwood Barricade', tavern: 'Grog House' },
-  british: { barracks: 'Drill Yard', palisade: 'Redoubt', tavern: 'The Crown & Anchor' },
-  spanish: { barracks: 'Cuartel', palisade: 'Empalizada', tavern: 'Taberna' },
-  dutch: { barracks: 'Schutterij Hall', palisade: 'Aardwerk', tavern: 'Herberg' },
-  french: { barracks: 'Caserne', palisade: 'Palissade', tavern: 'Auberge' },
+  pirates: {
+    barracks: 'Cutthroat Den',
+    garrisonHall: "Corsairs' Hold",
+    fortressArmory: "Buccaneers' Armory",
+    grandArsenal: 'Dread Arsenal',
+    palisade: 'Driftwood Barricade',
+    tavern: 'Grog House',
+  },
+  british: {
+    barracks: 'Drill Yard',
+    garrisonHall: 'Garrison House',
+    fortressArmory: 'Royal Armoury',
+    grandArsenal: 'Admiralty Arsenal',
+    palisade: 'Redoubt',
+    tavern: 'The Crown & Anchor',
+  },
+  spanish: {
+    barracks: 'Cuartel',
+    garrisonHall: 'Sala de Armas',
+    fortressArmory: 'Armería Real',
+    grandArsenal: 'Gran Arsenal',
+    palisade: 'Empalizada',
+    tavern: 'Taberna',
+  },
+  dutch: {
+    barracks: 'Schutterij Hall',
+    garrisonHall: 'Garnizoenshuis',
+    fortressArmory: 'Wapenkamer',
+    grandArsenal: 'Groot Arsenaal',
+    palisade: 'Aardwerk',
+    tavern: 'Herberg',
+  },
+  french: {
+    barracks: 'Caserne',
+    garrisonHall: 'Salle de Garde',
+    fortressArmory: 'Armurerie Royale',
+    grandArsenal: 'Grand Arsenal Royal',
+    palisade: 'Palissade',
+    tavern: 'Auberge',
+  },
 }
 
 /** The display name for a building, honoring per-faction flavor overrides. */

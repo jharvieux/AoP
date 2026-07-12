@@ -6,6 +6,7 @@ import {
   SHIP_UPGRADE_TRACKS,
   buildingDisplayName,
   skillsForFaction,
+  type BuildingCategory,
   type BuildingDef,
 } from '@aop/content'
 import {
@@ -20,7 +21,9 @@ import {
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
+import { useState } from 'react'
 import { tapFeedback } from './audio/feedback'
+import { buildUnavailableReason, buildingFacts } from './cityBuildingInfo'
 import { BottomSheet } from './components/BottomSheet'
 import { useTheme } from './theme/ThemeContext'
 import { UI_ICON } from './uiIcons'
@@ -55,6 +58,48 @@ function modalKind(def: BuildingDef | undefined): ModalKind {
 function BuildingGraphic({ buildingId }: { buildingId: string }) {
   const category = BUILDINGS[buildingId]?.category ?? 'economy'
   return <span className={`building-graphic building-graphic--${category}`} aria-hidden />
+}
+
+/** Tap-to-reveal info affordance (#430) — tooltips must work on touch, so the
+ * ⓘ button toggles an inline panel instead of relying on hover. */
+function InfoToggle({
+  label,
+  expanded,
+  onToggle,
+}: {
+  label: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className="info-toggle"
+      aria-label={`About ${label}`}
+      aria-expanded={expanded}
+      onClick={onToggle}
+    >
+      i
+    </button>
+  )
+}
+
+/** A building's description plus its data-derived function lines (#430). */
+function BuildingInfo({ def, faction }: { def: BuildingDef; faction: FactionId }) {
+  const { unitName } = useTheme()
+  const facts = buildingFacts(def, faction, unitName)
+  return (
+    <div className="building-info">
+      <p>{def.description}</p>
+      {facts.length > 0 && (
+        <ul>
+          {facts.map((fact) => (
+            <li key={fact}>{fact}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 /** Preset defensive plans (main's conditional standing orders, #20). */
@@ -152,7 +197,20 @@ export function CityBuildingModal(props: CityBuildingModalProps) {
   }
 }
 
-/** Town hall build modal (#430): the full building tree, unmet requirements greyed out. */
+const CATEGORY_ORDER: BuildingCategory[] = ['economy', 'recruitment', 'fortification', 'shipyard']
+const CATEGORY_LABELS: Record<BuildingCategory, string> = {
+  economy: 'Economy',
+  recruitment: 'Recruitment',
+  fortification: 'Fortifications',
+  shipyard: 'Shipyard',
+}
+
+/**
+ * Town hall build modal (#430): the full building tree, grouped by category.
+ * Every building is always visible — ones that can't be built right now are
+ * greyed out with the reason (already built, missing prerequisite, one build
+ * per round, cost), and each has a tap-to-reveal description tooltip.
+ */
 function BuildModal({
   buildingId,
   city,
@@ -161,40 +219,58 @@ function BuildModal({
   onBuild,
   onClose,
 }: CityBuildingModalProps) {
-  const buildable = Object.values(BUILDINGS).filter((def) => !city.buildings.includes(def.id))
+  const [infoId, setInfoId] = useState<string | null>(null)
   return (
     <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
-      <section>
-        <h3>Construct{city.builtThisRound ? ' (already built this turn)' : ''}</h3>
-        <ul className="building-list building-list--buildable">
-          {buildable.map((def) => {
-            const met = !def.requires || city.buildings.includes(def.requires)
-            const affordable = canAfford(resources, def.cost)
-            const disabled = city.builtThisRound || !met || !affordable
-            return (
-              <li key={def.id}>
-                <button
-                  className="building-option"
-                  disabled={disabled}
-                  onClick={() => {
-                    tapFeedback()
-                    onBuild(def.id)
-                  }}
-                >
-                  <span>
-                    {UI_ICON.build && (
-                      <img className="button-icon" src={UI_ICON.build} alt="" aria-hidden />
-                    )}
-                    {buildingDisplayName(def.id, faction)}
-                  </span>
-                  <span className="building-option__cost">{costLabel(def.cost)}</span>
-                </button>
-                {!met && <p className="building-option__hint">Requires {def.requires}</p>}
-              </li>
-            )
-          })}
-        </ul>
-      </section>
+      {CATEGORY_ORDER.map((category) => (
+        <section key={category}>
+          <h3>{CATEGORY_LABELS[category]}</h3>
+          <ul className="building-list">
+            {Object.values(BUILDINGS)
+              .filter((def) => def.category === category)
+              .map((def) => {
+                const reason = buildUnavailableReason(def, faction, city, resources)
+                const name = buildingDisplayName(def.id, faction)
+                return (
+                  <li
+                    key={def.id}
+                    className={reason ? 'build-row build-row--unavailable' : 'build-row'}
+                  >
+                    <div className="build-row__main">
+                      <BuildingGraphic buildingId={def.id} />
+                      <div className="build-row__text">
+                        <span className="garrison-row__name">{name}</span>
+                        <span className="garrison-row__counts">
+                          {costLabel(def.cost)}
+                          {reason ? ` — ${reason}` : ''}
+                        </span>
+                      </div>
+                      <InfoToggle
+                        label={name}
+                        expanded={infoId === def.id}
+                        onToggle={() => setInfoId(infoId === def.id ? null : def.id)}
+                      />
+                      <button
+                        className="build-row__build"
+                        disabled={!!reason}
+                        onClick={() => {
+                          tapFeedback()
+                          onBuild(def.id)
+                        }}
+                      >
+                        {UI_ICON.build && (
+                          <img className="button-icon" src={UI_ICON.build} alt="" aria-hidden />
+                        )}
+                        Build
+                      </button>
+                    </div>
+                    {infoId === def.id && <BuildingInfo def={def} faction={faction} />}
+                  </li>
+                )
+              })}
+          </ul>
+        </section>
+      ))}
     </BottomSheet>
   )
 }
