@@ -1704,6 +1704,7 @@ export function MapCanvas(props: MapCanvasProps) {
         map={props.map}
         cities={props.cities}
         captains={props.captains}
+        parties={props.parties}
         viewerId={props.viewerId}
         exploredKeys={props.exploredKeys}
         visibleKeys={props.visibleKeys}

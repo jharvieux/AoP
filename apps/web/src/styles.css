@@ -413,6 +413,17 @@ body {
   color: var(--color-gold);
 }
 
+/* Selected-unit movement readout (#476): name + remaining/max movement points
+   for whichever ship or landing party is selected, above the action buttons —
+   there was previously no numeric movement display anywhere in the UI. */
+.selection-info {
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-gold);
+}
+
 /* End-turn nudge (#373): a quiet, non-blocking idle-city reminder above the
    action buttons. */
 .idle-city-hint {

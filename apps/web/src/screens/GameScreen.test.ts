@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { hexDistance, type Captain, type GameMap } from '@aop/engine'
 import type { Coord } from '@aop/shared'
-import { findViewerCaptainAtCity } from './GameScreen'
+import { classifySelectedPartyTileTap, findViewerCaptainAtCity } from './GameScreen'
 
 /**
  * #385: `viewerCaptainAtCity` gates recruit/load-troops/unload-troops/
@@ -68,5 +68,80 @@ describe('findViewerCaptainAtCity on a hex map (#385: mapDistance, not chebyshev
       const found = findViewerCaptainAtCity([captainAt(position)], hexMap, 'seat-0', cityPosition)
       expect(found?.id).toBe('cap-own')
     }
+  })
+})
+
+/**
+ * #476: a tap on the already-selected party's own tile used to hit the
+ * own-party match in handleTileClick first and unconditionally re-select,
+ * which made capturing the site underfoot (and resolving a co-located land
+ * encounter) unreachable from any tap. `classifySelectedPartyTileTap` is the
+ * extracted act-vs-reselect decision (the findViewerCaptainAtCity pattern
+ * from #385) so that precedence stays unit-testable without rendering.
+ */
+describe('classifySelectedPartyTileTap (#476: act on own tile, not re-select)', () => {
+  const viewerId = 'seat-0'
+  const party = { position: { x: 3, y: 4 }, movementPoints: 2 }
+  const siteHere = { id: 'site-1', position: { x: 3, y: 4 }, active: true }
+  const encounterHere = { id: 'enc-1', position: { x: 3, y: 4 }, active: true }
+
+  it('chooses captureSite for a capturable site underfoot', () => {
+    expect(classifySelectedPartyTileTap(party, viewerId, [siteHere], [])).toEqual({
+      action: 'captureSite',
+      siteId: 'site-1',
+    })
+  })
+
+  it('chooses resolveEncounter for an unresolved land encounter sharing the tile', () => {
+    expect(classifySelectedPartyTileTap(party, viewerId, [], [encounterHere])).toEqual({
+      action: 'resolveEncounter',
+      encounterId: 'enc-1',
+    })
+  })
+
+  it('re-selects on an empty own tile (the pre-existing behavior)', () => {
+    expect(classifySelectedPartyTileTap(party, viewerId, [], [])).toEqual({ action: 'reselect' })
+  })
+
+  it('regression: a capturable site underfoot must never fall through to re-select', () => {
+    // Before the fix, every tap on this tile behaved as 'reselect' — exactly
+    // the unconditional own-party match this classifier now front-runs.
+    const tap = classifySelectedPartyTileTap(party, viewerId, [siteHere], [encounterHere])
+    expect(tap.action).not.toBe('reselect')
+    // Site wins over a co-located encounter, preserving the tap handler's
+    // long-standing site-before-encounter order.
+    expect(tap).toEqual({ action: 'captureSite', siteId: 'site-1' })
+  })
+
+  it('re-selects when nothing underfoot is actionable: spent party, own claim, inactive, elsewhere', () => {
+    const spent = { ...party, movementPoints: 0 }
+    expect(classifySelectedPartyTileTap(spent, viewerId, [siteHere], [encounterHere])).toEqual({
+      action: 'reselect',
+    })
+    expect(
+      classifySelectedPartyTileTap(party, viewerId, [{ ...siteHere, claimedBy: viewerId }], []),
+    ).toEqual({ action: 'reselect' })
+    expect(
+      classifySelectedPartyTileTap(
+        party,
+        viewerId,
+        [{ ...siteHere, active: false }],
+        [{ ...encounterHere, active: false }],
+      ),
+    ).toEqual({ action: 'reselect' })
+    expect(
+      classifySelectedPartyTileTap(
+        party,
+        viewerId,
+        [{ ...siteHere, position: { x: 4, y: 4 } }],
+        [{ ...encounterHere, position: { x: 4, y: 4 } }],
+      ),
+    ).toEqual({ action: 'reselect' })
+  })
+
+  it('a site claimed by an enemy is still capturable underfoot', () => {
+    expect(
+      classifySelectedPartyTileTap(party, viewerId, [{ ...siteHere, claimedBy: 'seat-1' }], []),
+    ).toEqual({ action: 'captureSite', siteId: 'site-1' })
   })
 })
