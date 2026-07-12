@@ -10,6 +10,8 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-031 — 2026-07-11 — Local SD art pipeline: MPS requires pinned torch 2.3.1; city-art v1 approved (#436, #444–#447)
+- D-030 — 2026-07-11 — City rework Wave 1 shipped: tavern gates captains, militia+turrets, starting barracks, faction identity (#427–#443)
 - D-029 — 2026-07-10 — Interactive defender seat: product decisions signed off (#410)
 - D-028 — 2026-07-10 — Battle sessions design approved (#321): 3–5 min deadline, cyclic forced finish, interactive defender
 - D-027 — 2026-07-07 — Naval navigation UX batch: seven ready-to-execute issue designs (#370–#376)

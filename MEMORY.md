@@ -1,3 +1,57 @@
+## D-031 — 2026-07-11 — Local SD art pipeline: MPS requires pinned torch 2.3.1; city-art v1 approved
+
+**Decision**: The local AUTOMATIC1111 install runs MPS-accelerated ONLY with the torch build
+it pins (2.3.1/0.18.1); the venv had drifted to torch 2.12.1, which makes MPS emit
+corrupted output (smeared blobs → pure noise) while CPU stays correct — proven by same-seed
+CPU-vs-MPS comparison. Downgraded the venv, restored MPS flags in `webui-user.sh` (with a
+do-not-upgrade warning), and corrected `docs/AI-TOOLS-GUIDE.md`, whose "black/corrupted
+images → upgrade PyTorch" advice is the likely origin of the breakage. Also corrected the
+false beliefs that CPU generation takes hours (it's ~50s per 512² image; MPS ~12s) and that
+several "DreamShaper can't do X" caveats from 2026-07-06 were model limits (some were MPS
+corruption). A1111 v1.10.1 is the project's final release — migration to ComfyUI tracked as
+#444, triggered by the next large art effort or a torch-pin failure.
+
+**Also decided (operator, art session)**: city-view v1 asset set approved — 15 sprites +
+5 flags, preserved with regen manifest on branch `art/city-assets-v1-wip`
+(`docs/art/city-v1/`). Product calls made interactively: fortification tiers render as
+tiled straight WALL SEGMENTS around the city (not standalone buildings), citadel ring gets
+its towers from the turret sprite at corners; troop buildings must show tiny troops; flags
+are period-authentic vectors (Jolly Roger bones-behind-skull, pre-1801 Union Jack, Cross of
+Burgundy, Dutch tricolor, French royal fleurs-de-lis) — SVG sources are canonical, edit
+those, never repaint PNGs. Production tracked in #445 (cutouts) → #446 (backdrop) → #447
+(integration, closes #436).
+
+**Rejected**: upgrading the webui instead of downgrading torch (no newer A1111 exists);
+web-sourced art (licensing/style drift); SD-generated flags (muddy at small sizes).
+
+---
+
+## D-030 — 2026-07-11 — City rework Wave 1 shipped: tavern gates captains, militia+turrets, starting barracks, faction identity
+
+**Decision**: Four gameplay foundations of epic #427 merged to main via audited PRs:
+#437 (faction `primaryColor`/`flagSpriteUrl` in content, #428), #438 (every city starts
+with townhall+barracks, #434), #440 (tavern building; `recruitCaptain` and rehire require
+a tavern via a generic `unlocksCaptains` building flag mirroring `unlocksShipyard`; ransom
+stays ungated; #433), #443 (automatic city militia — 5 per recruitable unit type at the
+city's unlocked tiers — plus two stationary ranged turrets derived at battle time in
+`cityDefenderTroops`, no new GameState fields, all tuning in `CITY_DEFENSE_TUNING`; #435).
+Operator product calls: tavern REQUIRED for new captains (starting captain unaffected);
+NEUTRAL cities field the full militia from a neutral roster (default pirate units, content
+data); standing orders / boarding defence / captain skills consolidate into the tavern
+modal in the future city view (#429). No city is a free capture anymore — AI conquest
+aggression re-tune deferred to #442; AI tavern-priority tuning to #439; turret sprite
+naming to #441.
+
+**Why**: engine/content foundations land first so gameplay improves behind the existing
+UI while the graphical city view (#429-#432) is built; battle-time derivation keeps saves
+compatible and replay determinism intact (new `cityDefense.test.ts`, 15 tests, bit-exact
+replay assertions).
+
+**Rejected**: persisting militia in GameState (save-format churn for derivable data);
+hardcoding 'tavern' in engine logic (used the content-flag pattern instead).
+
+---
+
 ## D-029 — 2026-07-10 — Interactive defender seat: product decisions signed off (#410)
 
 **Decision.** The operator reviewed the §10 interactive-defender design extension
