@@ -1,73 +1,69 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-12 evening (city rework COMPLETE; conquest levers shipped; 16 issues closed today)._
+_Last updated: 2026-07-12 night (land-expansion epic #469 shipped end-to-end; 24 issues closed today)._
 
 ## Just completed
 
-**Epic #427 (city management rework) is fully done and closed.** Beyond the morning
-sweep (see PR #456's SESSION version), the afternoon shipped:
+**The land-expansion epic (#469) went from operator vision to fully shipped in one
+evening**, on top of the earlier waves (sweep + city rework completion + conquest levers —
+see PRs #456/#464 SESSION versions for the morning/afternoon detail):
 
-- **#458** — city art integrated: 15 building cutouts + citadel corner tower +
-  harbor backdrop live in `apps/web`, `BuildingDef.spriteUrl` /
-  `citadel.cornerTowerSpriteUrl` in content, CityScene renders real art with the
-  color-block fallback. Art WIP branch deleted; provenance MANIFEST copied into the
-  repo. Interactive rounds: sawmill cutout redone (props kept), wallseg-citadel split
-  into strip + extracted corner tower (operator-directed, recorded as **D-032**),
-  backdrop = candidate seed 2928388781 with lower-left harbor pocket + sand shore
-  (v4 approved). `turret.png` shipped but unwired (no BuildingDef for battle-board
-  turrets; wiring tactical-board turret art would extend #441).
-- **#461** — conquest levers (operator decision **D-033**): recruit pools replenish
-  every **5 rounds** (`RECRUIT_REPLENISH_INTERVAL`, catalog-threaded), ship
-  `crewCapacity` **×5** (upgrade track scaled too). RULES_VERSION 3→4.
-  **Measured outcome (D-034): conquest is now reachable but rare** — 3 captures/96
-  sim matches (was 0/96); residual bottleneck = single-captain landings vs
-  still-unbounded garrisons (peaks ~320). Filed **#462** for the operator's scope
-  decision (garrison cap/upkeep vs multi-captain assaults). No-free-capture holds.
-- **#457** — deploy.yml smoke test fixed to expect 401 (gateway verify_jwt), runbook
-  aligned. #425 remains open ONLY for the `VERCEL_TOKEN` secret (operator action).
-- **#463** — faction flags now respect the theme-pack override chain (closed #459,
-  found by #458's audit).
-- **#362** closed as already-fixed (PR #378, 2026-07-08) with live evidence.
-- MEMORY: **D-032, D-033, D-034** recorded (PRs #460, #461).
+- **#477** (#465, built at Fable) — landing parties: `GameState.parties`, five new actions
+  (disembark/moveParty/embark/attackParty/partyAssaultCity), RULES_VERSION 4→5, replay
+  tests, playable UI. Operator decisions: land assaults face FULL defenses; stranded
+  parties persist until rescued.
+- **#480** (#466 #467) — land content: mines (ongoing income via persistent claims that
+  flip on enemy recapture), one-time haul sites, land encounters, inland neutral
+  settlements (sea-unreachable by construction, party-capture only, no shipyards when
+  landlocked). Separate placement-RNG stream keeps same-seed pre-existing matches
+  byte-identical. RULES_VERSION 5→6.
+- **#479** (#475) — the AI plays land: disembarks attrition parties (captain-preserving:
+  −34% captains lost in sims), marches/assaults incl. inland settlements, intercepts
+  enemy parties, reinforces threatened cities (with a `partyThreatMinRatio` floor so
+  nuisance parties can't freeze logistics). Two real crashes caught pre-merge by the
+  audit/reconciliation loop: AI shipyard-at-landlocked-city, and multiplayer
+  `sanitizeAction` missing the two new actions (#480).
+- **#472/#478** (#468 #473) — extra-large maps (48-wide, doubled home-island radius)
+  everywhere: single-player, private multiplayer, quick-match (migration file
+  `20260712000000_matchmaking_queue_xlarge_map_size.sql` — **applies on next deploy
+  dispatch**), and authored maps (ceiling 40→48, size budget CI-pinned at ~3KiB margin).
+- **#481** (#476) — party UX: partial-march, range shading, minimap presence, MP readout,
+  and a real bug fix (site capture was unreachable via tap; now a tested pure classifier).
+- **MEMORY through D-039** (D-037 landing parties, D-038 land content, D-039 AI land).
 
-**Today's totals**: 16 issues closed, 10 feature/docs PRs + 5 dependabot PRs merged,
-main CI green throughout. Save/load is player-reachable (main-menu Continue/Load,
-#454), resign bug fixed (#450), city UI rebuilt graphical (#452), balance
-sim-validated (#455).
+**Day totals**: 24 issues closed, 15 feature/docs PRs + 5 dependabot PRs merged, main
+green throughout. RULES_VERSION 2→6 over the day (resign fix, conquest cadence, land
+domain, land content).
 
 ## In flight
 
-None. No open PRs, no worktrees, no background art processes (SD server down,
-torch pin intact; rembg lives in the separate `~/aop-ai-tools/venv`).
+None. No open PRs, no worktrees, no background processes.
 
 ## Next step
 
-- **#462** — needs an operator DESIGN decision before any code: make conquest common,
-  not just reachable. Options analyzed in the issue: garrison cap or upkeep vs
-  multi-captain/escorted assaults. The 5-turn/×5 levers are already in; sims show
-  pushing them further doesn't help.
-- **#444** — ComfyUI migration, before the next large art effort.
-- **#422** — live-defender lockstep: needs a dedicated session with two live clients
-  (engine collect-pass + supervised edge functions).
-- Operator to eyeball the new city scene + conquest pacing in a real playthrough —
-  tavern-less cities having no captain UI (PR #452 note) is intended friction unless
-  play says otherwise.
+- **Operator playthrough** is the real next gate: new city scene, conquest pacing
+  (`siegeStickinessBonus` 40 — dial down if too aggressive), land gameplay on an
+  xlarge map (interiors are tiny below xlarge), inland settlements, mine claims.
+- **#482** — party UX round 2 (standing march orders need engine state; tactical land
+  battles; party art; multiplayer party controls).
+- **#444** — ComfyUI migration before the next art batch (party/site art wants it).
+- **#422** — live-defender lockstep (dedicated two-client session).
+- Dispatch `deploy.yml` when convenient — the xlarge quick-match migration and all of
+  today's engine changes need an edge-function deploy (ENGINE_VERSION moved many times).
 
 ## Blocked on user
 
-- `VERCEL_TOKEN` repo secret (last piece of #425; deploy.yml Vercel steps + smoke
-  tests).
-- #462 design direction (above).
-- ~28 stale local `feature/sweep-*` branch refs from PRIOR sessions (today's were
-  cleaned as merged); deleting needs a per-branch merged-PR check.
-- `needs-human-fix` backlog: #98/#100/#156/#159/#160/#161 (Capacitor/native), #4
-  (Phase 3 epic), #425 (secret only).
+- `VERCEL_TOKEN` repo secret (#425 — the only remaining piece).
+- ~28 stale local `feature/sweep-*` branch refs from PRIOR sessions + two old stashes
+  (`stash@{0}` 2026-07-07, `stash@{1}` older) — one popped itself onto the checkout
+  mid-session and was restored; say the word to clear them after a merged-PR check.
+- `needs-human-fix` backlog: Capacitor/native cluster (#98 #100 #156 #159 #160 #161),
+  #4 (Phase 3 epic).
 
 ## Open questions
 
-- #462: how aggressive should AI conquest be? (3/96 today; what rate feels right?)
-- Whether battle-board turrets should get the shipped-but-unwired `turret.png` art
-  (extends #441's name/icon fix).
-- #422 UX presentation questions (grace countdown, notification cadence) — D-029
-  bounds the mechanics.
+- Conquest/land pacing after a real playthrough (all dials are single content numbers).
+- Mine claims: persistent-claim semantics (pays after the party leaves, flips on enemy
+  recapture) was the executor's reading of "held" — operator veto welcome (#480 PR body).
+- Whether battle-board turrets should use the shipped-but-unwired `turret.png`.
