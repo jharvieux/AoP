@@ -6,6 +6,7 @@ import {
   ENCOUNTERS,
   FACTIONS,
   GAME_SETUP,
+  RECRUIT_REPLENISH_INTERVAL,
   RESOURCE_NODES,
   SHIP_CLASSES,
   SKILLS,
@@ -77,6 +78,7 @@ export function buildCatalog(): ContentCatalog {
       turretCount: CITY_DEFENSE_TUNING.turretCount,
       neutralRosterFactionId: CITY_DEFENSE_TUNING.neutralRosterFactionId,
     },
+    recruitReplenishInterval: RECRUIT_REPLENISH_INTERVAL,
   }
 }
 

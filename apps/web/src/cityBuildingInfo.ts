@@ -1,4 +1,10 @@
-import { FACTIONS, buildingDisplayName, type BuildingDef, type UnitDef } from '@aop/content'
+import {
+  FACTIONS,
+  RECRUIT_REPLENISH_INTERVAL,
+  buildingDisplayName,
+  type BuildingDef,
+  type UnitDef,
+} from '@aop/content'
 import { canAfford, type FactionId, type ResourcePool } from '@aop/shared'
 
 /**
@@ -57,9 +63,15 @@ export function buildingFacts(
 
 /** Stat lines for a unit's tap-to-reveal tooltip in the recruit modal (#431). */
 export function unitFacts(unit: UnitDef): string[] {
+  const plural = unit.weeklyGrowth === 1 ? '' : 's'
+  // Recruits top up on the catalog's replenishment cadence (#453): every round
+  // at interval 1, otherwise every N rounds — so the tooltip can't imply a
+  // per-round trickle when the pool actually refills in a lump.
+  const cadence =
+    RECRUIT_REPLENISH_INTERVAL <= 1 ? 'per round' : `every ${RECRUIT_REPLENISH_INTERVAL} rounds`
   return [
     `Attack ${unit.attack} · Defense ${unit.defense} · Health ${unit.health}`,
     `Speed ${unit.speed}${unit.range ? ` · Range ${unit.range} (ranged)` : ''}`,
-    `${unit.weeklyGrowth} new recruit${unit.weeklyGrowth === 1 ? '' : 's'} available per round`,
+    `${unit.weeklyGrowth} new recruit${plural} available ${cadence}`,
   ]
 }

@@ -1915,6 +1915,14 @@ function advanceTurn(state: GameState): GameState {
         )
       : state.players
 
+  // Recruit pools top up on a cadence (#453): every `recruitReplenishInterval`
+  // rounds, defaulting to 1 (every round, the pre-#453 behaviour). The pool is
+  // seeded at round 1 by `createGame`, so the phase `(round - 1) % interval`
+  // puts the next top-up exactly `interval` rounds later (round 6, 11, … at 5).
+  // Slowing this is what stops the defender garrison from outgrowing any
+  // crew-capacity-capped landing party. `builtThisRound` still resets every round.
+  const replenishInterval = content?.recruitReplenishInterval ?? 1
+  const replenishThisRound = roundAdvanced && (round - 1) % replenishInterval === 0
   const cities = roundAdvanced
     ? state.cities.map((c) => {
         const owner = state.players.find((p) => p.id === c.ownerId)
@@ -1922,7 +1930,7 @@ function advanceTurn(state: GameState): GameState {
           ...c,
           builtThisRound: false,
           unitAvailability:
-            content && owner
+            content && owner && replenishThisRound
               ? replenishAvailability(c, owner.faction, content)
               : c.unitAvailability,
         }

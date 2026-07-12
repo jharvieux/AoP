@@ -347,6 +347,46 @@ describe('economy & cities', () => {
     expect(city.unitAvailability.buccaneer ?? 0).toBe(0)
   })
 
+  it('replenishes the recruit pool every round when no cadence is configured (default = 1)', () => {
+    let state = createGame(econConfig())
+    const seeded = homeCity(state, 'p1').unitAvailability.deckhand!
+    // Wrap one full round; with the default cadence the pool tops up immediately.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' }) // -> round 2
+    expect(state.round).toBe(2)
+    expect(homeCity(state, 'p1').unitAvailability.deckhand).toBe(seeded + 8)
+  })
+
+  it('replenishes only every recruitReplenishInterval rounds when a cadence is set (#453)', () => {
+    // Same catalog, but recruits top up every 5 rounds instead of every round.
+    const catalog: ContentCatalog = { ...TEST_CATALOG, recruitReplenishInterval: 5 }
+    const cadenced = (): GameConfig => ({ ...econConfig(), content: catalog })
+    let state = createGame(cadenced())
+    const seeded = homeCity(state, 'p1').unitAvailability.deckhand!
+    // Rounds 2-5: no top-up. The pool the match seeded at round 1 is unchanged.
+    for (let round = 2; round <= 5; round++) {
+      state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+      state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+      expect(state.round).toBe(round)
+      expect(homeCity(state, 'p1').unitAvailability.deckhand).toBe(seeded)
+    }
+    // Entering round 6 — five rounds after the round-1 seed — the pool tops up once.
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
+    state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
+    expect(state.round).toBe(6)
+    expect(homeCity(state, 'p1').unitAvailability.deckhand).toBe(seeded + 8)
+  })
+
+  it('replays the cadenced recruit pool bit-exact from the action log (#453)', () => {
+    const catalog: ContentCatalog = { ...TEST_CATALOG, recruitReplenishInterval: 5 }
+    const config = (): GameConfig => ({ ...econConfig(), content: catalog })
+    const log: Action[] = []
+    for (let i = 0; i < 12; i++) log.push({ type: 'endTurn', playerId: i % 2 === 0 ? 'p1' : 'p2' })
+    const a = replay(createGame(config()), log)
+    const b = replay(createGame(config()), log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+  })
+
   it('grants a resource-node bonus (#101) on top of city income to whichever player holds the tile', () => {
     const base = createGame(econConfig())
     const captain = captainsOf(base, 'p1')[0]!
