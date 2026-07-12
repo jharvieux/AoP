@@ -20,9 +20,11 @@ import { AI_TUNING, BATTLE_TUNING, COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } f
 
 /**
  * Automatic city militia + turrets (#435). Whenever a city is attacked it fields,
- * on top of its recruited garrison, 5 free militia of every recruitable unit type
- * and two stationary ranged turrets derived from its highest available unit. This
- * is the replay contract for that defense: an empty city is no longer a free
+ * on top of its recruited garrison, `militiaPerType` free militia of every
+ * recruitable unit type and `turretCount` stationary ranged turrets derived from
+ * its highest available unit (5 and 2 in these fixtures; the shipped values live
+ * in @aop/content and were retuned by #442). This is the replay contract for
+ * that defense: an empty city is no longer a free
  * capture, militia scales with unlocked tiers, neutral cities defend from the
  * neutral roster, turrets fire, a sufficient force still wins, and none of the
  * free defenders are ever looted, transferred, or persisted — all bit-exact.

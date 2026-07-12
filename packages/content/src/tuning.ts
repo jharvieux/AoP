@@ -289,16 +289,25 @@ export interface CityDefenseTuning {
   turretDefenseMult: number
 }
 
+// Calibrated against the #442 assault probes (landing party vs militia-only
+// city, 20 seeds per cell, both roster directions): a base-capacity raid of 4
+// tier-1 troops loses (0-55% win, and it scores below the AI's 0.9 engage
+// gate), a committed starting party of 6 wins (90-100% at ratio 0.95-1.06, so
+// the AI engages), and anything bigger takes the city reliably. The original
+// guess (militiaPerType 5, plain turrets) made a 6-troop assault score 0.86 —
+// the AI refused fights it would actually win, and the militia wall, not the
+// turrets, did all the work. Fewer militia + meaner turrets keeps "no free
+// capture" while restoring conquest appetite.
 export const CITY_DEFENSE_TUNING: CityDefenseTuning = {
-  militiaPerType: 5,
+  militiaPerType: 3,
   turretCount: 2,
   neutralRosterFactionId: 'pirates',
   // Long enough to open fire before the attacker crosses an 11-wide board, but
   // short of covering the whole field, so an attacker can still stage out of arc.
   turretRange: 4,
   turretSpeed: 3,
-  turretHealthMult: 1,
-  turretAttackMult: 1,
+  turretHealthMult: 2,
+  turretAttackMult: 1.5,
   turretDefenseMult: 1,
 }
 

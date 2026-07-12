@@ -399,9 +399,12 @@ function toCombatant(c: Captain) {
  * the very combatant the reducer resolves via {@link cityToCombatant} — garrison,
  * fortification defense bonus, and the automatic militia and turrets (#435). The
  * militia mean an "empty" city is no longer a free capture, so the AI stops
- * throwing hopeless landing forces at one. Infinity only when there are no stats
- * to judge by, or the defender's strength is truly zero. The caller has already
- * verified the captain carries troops.
+ * throwing hopeless landing forces at one. The attacker's ship is excluded from
+ * its own strength (#442): the assault resolves on the land board where the ship
+ * never fights, and counting its hull/cannons made the AI storm cities its
+ * landing party alone could not take — a failed assault costs the captain.
+ * Infinity only when there are no stats to judge by, or the defender's strength
+ * is truly zero. The caller has already verified the captain carries troops.
  */
 function cityAssaultRatio(
   cap: Captain,
@@ -411,7 +414,10 @@ function cityAssaultRatio(
   factionId: string | undefined,
 ): number {
   if (!stats) return Infinity
-  const mine = combatantStrength(toCombatant(cap), stats)
+  const mine = combatantStrength(
+    { ...toCombatant(cap), shipStats: { hull: 0, cannons: 0, speed: 0 } },
+    stats,
+  )
   const garrison = combatantStrength(cityToCombatant(city, content, factionId), stats)
   if (garrison <= 0) return Infinity
   return mine / garrison
