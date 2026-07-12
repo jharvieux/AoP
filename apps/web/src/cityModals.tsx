@@ -411,6 +411,10 @@ function ShipyardModal({
     captain && shipClass ? effectiveShipStats(shipClass, captain.shipUpgrades) : undefined
   return (
     <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
+      <section className="building-modal__intro">
+        <BuildingGraphic buildingId={buildingId} />
+        <p className="building-option__hint">{BUILDINGS[buildingId]?.description}</p>
+      </section>
       <section>
         {captain && shipClass && shipStats ? (
           <>
