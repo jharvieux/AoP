@@ -89,8 +89,9 @@ cd ../..
 curl -s -o /dev/null -w '%{http_code}\n' \
   -X POST "$SUPABASE_URL/functions/v1/list-open-matches" \
   -H "apikey: $SUPABASE_ANON_KEY" -H 'Content-Type: application/json' -d '{}'
-# Expect 403 (no Authorization header) with a { error: { code, message } } JSON body —
-# that's the function deployed and enforcing its auth boundary, not a crash. Confirming
+# Expect 401 (no Authorization header) with a { error: { code, message } } JSON body —
+# the platform gateway (verify_jwt = true) rejects the request before function code runs.
+# That's the function deployed and enforcing its auth boundary, not a crash. Confirming
 # the full authenticated 200 happy path needs a real user JWT; there's no persistent
 # smoke-test account provisioned (see note below).
 ```

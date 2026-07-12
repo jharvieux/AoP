@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#141414"/>
+  <g fill="#f2ede4">
+    <!-- crossbones BEHIND the skull -->
+    <g id="bone" transform="rotate(38 256 256)">
+      <rect x="46" y="238" width="420" height="36" rx="18"/>
+      <circle cx="56" cy="238" r="24"/><circle cx="56" cy="274" r="24"/>
+      <circle cx="456" cy="238" r="24"/><circle cx="456" cy="274" r="24"/>
+    </g>
+    <use href="#bone" transform="rotate(-76 256 256)"/>
+    <!-- skull on top -->
+    <path d="M256 106 c-64 0 -104 41 -104 96 c0 36 20 62 44 76 l0 27 c0 9 7 16 16 16 l88 0 c9 0 16 -7 16 -16 l0 -27 c24 -14 44 -40 44 -76 c0 -55 -40 -96 -104 -96 z"/>
+  </g>
+  <g fill="#141414">
+    <ellipse cx="221" cy="205" rx="23" ry="28"/>
+    <ellipse cx="291" cy="205" rx="23" ry="28"/>
+    <path d="M256 236 l-14 26 l28 0 z"/>
+    <rect x="226" y="284" width="9" height="23" rx="4"/>
+    <rect x="244" y="284" width="9" height="27" rx="4"/>
+    <rect x="262" y="284" width="9" height="27" rx="4"/>
+    <rect x="280" y="284" width="9" height="23" rx="4"/>
+  </g>
+</svg>
