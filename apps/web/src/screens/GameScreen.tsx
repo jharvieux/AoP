@@ -1383,6 +1383,8 @@ export function GameScreen({
           setup={game.config.setup}
           round={game.round}
           playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
+          cities={viewerCities}
+          onSelectCity={openCity}
           onClose={() => setCityOpen(false)}
           {...cityCallbacks}
         />
