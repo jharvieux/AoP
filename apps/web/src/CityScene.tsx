@@ -1,13 +1,21 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
+import { buildingContentId, cityBackdropContentId, resolveSpriteUrl } from './mapSprites'
+import { useTheme } from './theme/ThemeContext'
 
 /**
- * Graphical city scene (#429): every constructed building drawn in a fixed
- * scene layout, data-driven from `city.buildings`. Building art doesn't exist
- * yet (#436's city-art issue), so each building renders as a category-colored
- * placeholder block with its flavor-name label — the layout, tap targets, and
- * flag are real; only the art is a stand-in.
+ * Graphical city scene (#429, art wired in #447): every constructed building
+ * drawn in a fixed scene layout, data-driven from `city.buildings`. Each slot
+ * renders its `BUILDINGS[id].spriteUrl` art (theme-pack override via
+ * `resolveSpriteUrl` wins when set) over the category-colored placeholder
+ * block, which stays visible as the fallback if the art 404s or a building
+ * has no art yet (e.g. any future building added without a sprite).
  */
+
+/** The backdrop image behind the whole scene (#447). Falls back to the
+ * existing sky/ground/water CSS gradient (see `.city-scene` in styles.css)
+ * if the sprite 404s or a theme pack clears it without supplying its own. */
+const BACKDROP_URL = '/art/city/backdrop.png'
 
 interface SceneSlot {
   /** Position and size in % of the scene box. Tap targets get a 44px CSS floor regardless. */
@@ -66,15 +74,37 @@ interface CitySceneProps {
 }
 
 export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps) {
+  const { spriteUrl: themeSpriteUrl } = useTheme()
   const known = buildings.filter((id) => BUILDINGS[id])
   const placed = known.filter((id) => SCENE_SLOTS[id])
   const overflow = known.filter((id) => !SCENE_SLOTS[id])
+  const backdropUrl = resolveSpriteUrl(themeSpriteUrl, cityBackdropContentId(), BACKDROP_URL)
   return (
     <>
       <div className="city-scene" role="group" aria-label="City buildings">
+        {backdropUrl && (
+          <img
+            className="city-scene__backdrop"
+            src={backdropUrl}
+            alt=""
+            aria-hidden
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        )}
         {placed.map((id) => {
           const slot = SCENE_SLOTS[id]!
           const def = BUILDINGS[id]!
+          const spriteUrl = resolveSpriteUrl(themeSpriteUrl, buildingContentId(id), def.spriteUrl)
+          const towerUrl =
+            id === 'citadel'
+              ? resolveSpriteUrl(
+                  themeSpriteUrl,
+                  buildingContentId('citadel:tower'),
+                  def.cornerTowerSpriteUrl,
+                )
+              : undefined
           return (
             <button
               key={id}
@@ -88,6 +118,28 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
               }}
               onClick={() => onOpenBuilding(id)}
             >
+              {spriteUrl && (
+                <img
+                  className="city-scene__sprite"
+                  src={spriteUrl}
+                  alt=""
+                  aria-hidden
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
+              {towerUrl && (
+                <img
+                  className="city-scene__sprite city-scene__sprite--tower"
+                  src={towerUrl}
+                  alt=""
+                  aria-hidden
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
               {id === 'townhall' && <FactionFlag faction={faction} />}
               <span className="city-scene__label">{buildingDisplayName(id, faction)}</span>
             </button>

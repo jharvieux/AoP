@@ -39,6 +39,20 @@ export interface BuildingDef {
   unlocksShipyard?: boolean
   /** True for the building that unlocks the recruitCaptain action at this city (#433). */
   unlocksCaptains?: boolean
+  /**
+   * Generated art (#427/#436/#447), served from apps/web/public. Follows the same
+   * `resolveSpriteUrl` theme-pack override chain as other content art (mapSprites.ts).
+   * Every building in `BUILDINGS` has one; CityScene.tsx falls back to its existing
+   * category-colored placeholder block if the URL 404s or a theme pack clears it.
+   */
+  spriteUrl?: string
+  /**
+   * Corner-tower accessory art (#447, fortification only): the citadel's wall segment
+   * sprite is towerless by design (see docs/art/city-v1/MANIFEST.md's wallseg-citadel
+   * entry) — this supplies the one clean ring-corner tower rendered alongside it in the
+   * city scene. Not a separate BuildingDef; only `citadel` sets it.
+   */
+  cornerTowerSpriteUrl?: string
 }
 
 export const BUILDINGS: Record<string, BuildingDef> = {
@@ -50,6 +64,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     category: 'economy',
     cost: {},
     produces: { gold: 100 },
+    spriteUrl: '/art/city/townhall.png',
   },
   sawmill: {
     id: 'sawmill',
@@ -59,6 +74,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 200 },
     produces: { timber: 4 },
     requires: 'townhall',
+    spriteUrl: '/art/city/sawmill.png',
   },
   ironmine: {
     id: 'ironmine',
@@ -68,6 +84,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 250, timber: 10 },
     produces: { iron: 3 },
     requires: 'townhall',
+    spriteUrl: '/art/city/ironmine.png',
   },
   distillery: {
     id: 'distillery',
@@ -77,6 +94,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 220 },
     produces: { rum: 3 },
     requires: 'townhall',
+    spriteUrl: '/art/city/distillery.png',
   },
   tradehouse: {
     id: 'tradehouse',
@@ -86,6 +104,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 350, timber: 15 },
     produces: { gold: 60 },
     requires: 'townhall',
+    spriteUrl: '/art/city/tradehouse.png',
   },
   barracks: {
     id: 'barracks',
@@ -96,6 +115,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksTier: 1,
+    spriteUrl: '/art/city/barracks.png',
   },
   garrisonHall: {
     id: 'garrisonHall',
@@ -106,6 +126,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'barracks',
     unlocksTier: 2,
+    spriteUrl: '/art/city/garrisonHall.png',
   },
   fortressArmory: {
     id: 'fortressArmory',
@@ -116,6 +137,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'garrisonHall',
     unlocksTier: 3,
+    spriteUrl: '/art/city/fortressArmory.png',
   },
   grandArsenal: {
     id: 'grandArsenal',
@@ -126,6 +148,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'fortressArmory',
     unlocksTier: 4,
+    spriteUrl: '/art/city/grandArsenal.png',
   },
   palisade: {
     id: 'palisade',
@@ -136,6 +159,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     defenseBonus: 10,
+    spriteUrl: '/art/city/palisade.png',
   },
   stoneWall: {
     id: 'stoneWall',
@@ -146,6 +170,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'palisade',
     defenseBonus: 30,
+    spriteUrl: '/art/city/stoneWall.png',
   },
   citadel: {
     id: 'citadel',
@@ -156,6 +181,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'stoneWall',
     defenseBonus: 70,
+    spriteUrl: '/art/city/citadel.png',
+    cornerTowerSpriteUrl: '/art/city/citadel-tower.png',
   },
   shipyard: {
     id: 'shipyard',
@@ -167,6 +194,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksShipyard: true,
+    spriteUrl: '/art/city/shipyard.png',
   },
   tavern: {
     id: 'tavern',
@@ -178,6 +206,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksCaptains: true,
+    spriteUrl: '/art/city/tavern.png',
   },
 }
 
