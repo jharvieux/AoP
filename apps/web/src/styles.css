@@ -1949,6 +1949,52 @@ button.primary.secondary {
   transform: scale(0.98);
 }
 
+/* #451: resumes the latest save — sits above New Game when one exists. */
+.main-menu__continue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 60px;
+  justify-content: center;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: var(--font-body);
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--accent-glow);
+  transition:
+    filter 150ms ease,
+    transform 100ms ease;
+}
+
+.main-menu__continue:active {
+  filter: brightness(0.85);
+  transform: scale(0.98);
+}
+
+.main-menu__continue-title {
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 1px;
+}
+
+.main-menu__continue-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.main-menu__continue-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--color-alert-bg);
+  border: 1px solid var(--color-alert-border);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .main-menu__outlined {
   flex: 1;
   height: 44px;
