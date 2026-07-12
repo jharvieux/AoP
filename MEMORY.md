@@ -1,3 +1,28 @@
+## D-034 — 2026-07-12 — #453 conquest levers implemented (RULES_VERSION→4); sim result: reachable but rare, follow-up #462
+
+**What shipped** (implements the D-033 decision): two @aop/content levers —
+`RECRUIT_REPLENISH_INTERVAL = 5` (city recruit pools top up every 5 rounds, not every round;
+"every 5 turns" maps to a 5× slower per-round-wrap cadence, read by the reducer's turn-advance
+from the frozen catalog, `?? 1` preserves old behaviour) and `SHIP_CLASSES.crewCapacity` ×5
+(sloop 4→20 … galleon 12→60; the crewCapacity upgrade amounts ×5 too, 1/1/2→5/5/10). The
+cadence changes the round counter's meaning for recruitment → replay-breaking → `RULES_VERSION`
+3→4, ENGINE_VERSION regenerated, engine replay tests pin the cadence, `conquestReachable.test.ts`
+guards it.
+
+**Sim result (honest, tempers D-033's expectation)**: the levers move conquest from 0 →
+_reachable but rare_ — 3 captures / 96 deterministic full-content matches, all by round ~17 in
+the early window. Pushing the cadence harder (interval 10/20) does NOT help; the residual
+bottleneck is the single-captain offensive-landing model + a still-unbounded garrison (peaks
+~320), exactly the design work #453 enumerated. No-free-capture holds — militia/turrets
+(#435/#442) stay effective. Tracked the gap as follow-up **#462** for the operator's scope
+decision (garrison caps/upkeep or multi-captain assaults) — deliberately not added here
+("no new mechanics").
+
+**Artifacts**: PR #461 (implementation + tests); follow-up #462. D-033 is the decision; this
+records the measured outcome.
+
+---
+
 ## D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5
 
 **Decision** (operator): make AI-vs-AI conquest reachable with two levers — city troop

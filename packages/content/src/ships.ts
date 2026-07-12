@@ -49,10 +49,13 @@ function upgradeTable(scale: number): Record<ShipUpgradeTrack, ShipUpgradeLevel[
       { goldCost: Math.round(450 * scale), amount: 1 },
       { goldCost: Math.round(900 * scale), amount: 1 },
     ],
+    // Troop-capacity refits scale with the ×5 base capacity (#453): each level
+    // adds five times what it did before, so a fully-refitted hull stays a
+    // meaningful multiple of its base rather than a rounding error next to it.
     crewCapacity: [
-      { goldCost: Math.round(220 * scale), amount: 1 },
-      { goldCost: Math.round(500 * scale), amount: 1 },
-      { goldCost: Math.round(1000 * scale), amount: 2 },
+      { goldCost: Math.round(220 * scale), amount: 5 },
+      { goldCost: Math.round(500 * scale), amount: 5 },
+      { goldCost: Math.round(1000 * scale), amount: 10 },
     ],
   }
 }
@@ -64,7 +67,9 @@ export const SHIP_CLASSES: ShipClassDef[] = [
     hull: 40,
     cannons: 6,
     speed: 5,
-    crewCapacity: 4,
+    // Troop capacity ×5 (#453): a landing party capped by crew capacity could
+    // never approach a garrisoned city's defence, so conquest was unreachable.
+    crewCapacity: 20,
     goldCost: 400,
     upgrades: upgradeTable(1),
   },
@@ -74,7 +79,7 @@ export const SHIP_CLASSES: ShipClassDef[] = [
     hull: 70,
     cannons: 12,
     speed: 4,
-    crewCapacity: 6,
+    crewCapacity: 30,
     goldCost: 900,
     upgrades: upgradeTable(1.5),
   },
@@ -84,7 +89,7 @@ export const SHIP_CLASSES: ShipClassDef[] = [
     hull: 110,
     cannons: 24,
     speed: 3,
-    crewCapacity: 8,
+    crewCapacity: 40,
     goldCost: 1800,
     upgrades: upgradeTable(2.25),
   },
@@ -94,7 +99,7 @@ export const SHIP_CLASSES: ShipClassDef[] = [
     hull: 160,
     cannons: 36,
     speed: 2,
-    crewCapacity: 12,
+    crewCapacity: 60,
     goldCost: 3200,
     upgrades: upgradeTable(3),
   },

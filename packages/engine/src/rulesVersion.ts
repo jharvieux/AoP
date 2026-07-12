@@ -26,8 +26,11 @@
  * no combat XP on an escape (#209), pool-based crew casualties (#210).
  * v3 — a match whose living seats are all AI (in a match that had a human
  * seat) finishes at once, with no winner declared (#426).
+ * v4 — city recruit pools replenish on a multi-round cadence
+ * (`ContentCatalog.recruitReplenishInterval`, #453) instead of every round,
+ * changing the meaning of the round counter for recruitment.
  */
-export const RULES_VERSION = 3
+export const RULES_VERSION = 4
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`
