@@ -23,7 +23,7 @@ import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 import { useState } from 'react'
 import { tapFeedback } from './audio/feedback'
-import { buildUnavailableReason, buildingFacts } from './cityBuildingInfo'
+import { buildUnavailableReason, buildingFacts, unitFacts } from './cityBuildingInfo'
 import { BottomSheet } from './components/BottomSheet'
 import { useTheme } from './theme/ThemeContext'
 import { UI_ICON } from './uiIcons'
@@ -297,8 +297,13 @@ function RecruitModal({
   const troopsAboard = (unitId: string) =>
     captain?.troops.find((t) => t.unitId === unitId)?.count ?? 0
   const tierIconUrl = FACTIONS[faction].unitTierSpriteUrls?.[def.unlocksTier!]
+  const [infoId, setInfoId] = useState<string | null>(null)
   return (
     <BottomSheet title={buildingDisplayName(def.id, faction)} onClose={onClose}>
+      <section className="building-modal__intro">
+        <BuildingGraphic buildingId={def.id} />
+        <p className="building-option__hint">{def.description}</p>
+      </section>
       <section>
         <h3>
           Recruit{captain ? ` — ${captain.name} (${aboardTotal}/${crewCapacity} aboard)` : ''}
@@ -316,17 +321,34 @@ function RecruitModal({
             const canRecruit = available > 0 && canAfford(resources, { gold: unit.goldCost })
             const canLoad = garrisoned > 0 && !!captain && aboardTotal < crewCapacity
             const canUnload = aboard > 0 && !!captain
+            const displayName = unitName(unit.id, unit.name)
             return (
               <li key={unit.id} className="garrison-row">
-                <span className="garrison-row__name">
-                  {tierIconUrl && (
-                    <img className="garrison-row__icon" src={tierIconUrl} alt="" aria-hidden />
-                  )}
-                  {unitName(unit.id, unit.name)}
-                </span>
+                <div className="garrison-row__header">
+                  <span className="garrison-row__name">
+                    {tierIconUrl && (
+                      <img className="garrison-row__icon" src={tierIconUrl} alt="" aria-hidden />
+                    )}
+                    {displayName}
+                  </span>
+                  <InfoToggle
+                    label={displayName}
+                    expanded={infoId === unit.id}
+                    onToggle={() => setInfoId(infoId === unit.id ? null : unit.id)}
+                  />
+                </div>
                 <span className="garrison-row__counts">
                   Avail {available} · Garrison {garrisoned} · Aboard {aboard}
                 </span>
+                {infoId === unit.id && (
+                  <div className="building-info">
+                    <ul>
+                      {unitFacts(unit).map((fact) => (
+                        <li key={fact}>{fact}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="garrison-row__actions">
                   <button
                     disabled={!canRecruit}
@@ -672,12 +694,15 @@ function TavernModal({
   )
 }
 
-/** Passive building modal (#431): what the building does. */
+/** Passive building modal (#431): the building's graphic and what it does —
+ * description prose plus its data-derived production/defense figures. */
 function PassiveModal({ buildingId, faction, onClose }: CityBuildingModalProps) {
+  const def = BUILDINGS[buildingId]
   return (
     <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
       <section className="building-modal__intro">
         <BuildingGraphic buildingId={buildingId} />
+        {def && <BuildingInfo def={def} faction={faction} />}
       </section>
     </BottomSheet>
   )

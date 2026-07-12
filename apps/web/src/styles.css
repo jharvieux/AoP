@@ -1385,6 +1385,19 @@ button.primary.secondary {
   padding-left: 18px;
 }
 
+.building-modal__intro .building-info {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Recruit-modal rows (#431): unit name plus its info toggle on one line. */
+.garrison-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .battle-intro {
   display: flex;
   align-items: center;

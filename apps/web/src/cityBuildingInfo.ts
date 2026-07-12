@@ -1,4 +1,4 @@
-import { FACTIONS, buildingDisplayName, type BuildingDef } from '@aop/content'
+import { FACTIONS, buildingDisplayName, type BuildingDef, type UnitDef } from '@aop/content'
 import { canAfford, type FactionId, type ResourcePool } from '@aop/shared'
 
 /**
@@ -53,4 +53,13 @@ export function buildingFacts(
   if (def.unlocksShipyard) facts.push('Enables ship refits for docked captains')
   if (def.unlocksCaptains) facts.push('Enables captain hiring and management')
   return facts
+}
+
+/** Stat lines for a unit's tap-to-reveal tooltip in the recruit modal (#431). */
+export function unitFacts(unit: UnitDef): string[] {
+  return [
+    `Attack ${unit.attack} · Defense ${unit.defense} · Health ${unit.health}`,
+    `Speed ${unit.speed}${unit.range ? ` · Range ${unit.range} (ranged)` : ''}`,
+    `${unit.weeklyGrowth} new recruit${unit.weeklyGrowth === 1 ? '' : 's'} available per round`,
+  ]
 }
