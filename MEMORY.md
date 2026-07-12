@@ -7,18 +7,18 @@ one garrison down over waves until it falls) never actually happened.
 
 **Diagnosis (sim-instrumented, not the #462 executor's guess).** The #462 hand-off blamed
 offensive logistics / target-persistence. Instrumenting the battery showed the real cause is
-a **scoring gap**: a loaded captain's attrition *approach* is scored `combatMult` 0.5, which
+a **scoring gap**: a loaded captain's attrition _approach_ is scored `combatMult` 0.5, which
 lands below the economy verbs (~25-40), so the captain lingers at sea instead of pressing a
 reachable siege. In seed 3 a captain sat at distance 13 from a city it could still attrit
 (ratio 0.43-0.82) for many turns doing economy while the defender rebuilt its garrison. (Two
 compounding facts, reported but not "fixed": the free militia+turret floor resets every
 battle so only recruited-troop thinning persists, and defenders rebuild that garrison faster
-than an attacker reloads a party — so waves must be *pressed*, not merely enabled.)
+than an attacker reloads a party — so waves must be _pressed_, not merely enabled.)
 
 **Decision.** New `AI_TUNING.siegeStickinessBonus` (= 40, personality-scaled by
 `combatScoreMult`): a ratio-scaled score bonus (`bonus × ratio`) added to a conquest
 approach/assault, **applied only to the attrition case** (a city the captain can't yet win).
-Scaling by the assault ratio makes the captain converge on the *softest* (most ground-down)
+Scaling by the assault ratio makes the captain converge on the _softest_ (most ground-down)
 reachable city and the pull decays for free as that garrison rebuilds — target persistence
 with zero cross-turn planner memory (engine stays a pure function of GameState). Planner +
 content only; **no reducer/replay change, RULES_VERSION stays 4** (ENGINE_VERSION regen only,
@@ -30,15 +30,16 @@ garrison thins, so "prefer the most-weakened reachable city" falls out of ratio-
 current GameState alone.
 
 **Sim outcome (deterministic 96-match battery, 25-round cap; CAP=40 identical):**
-| metric | baseline | #462 (D-035) | #471 |
-| --- | --- | --- | --- |
-| captures / 96 | 3 | 13 | **77** |
-| repelled assaults | 0 | 16 | 52 |
-| repelled per capture | — | 1.23 | **0.68** |
-| max same-city assaults | 1 | 1 | **2** |
-| matches with a multi-wave siege | 0 | 0 | **27** |
 
-Conquest rose ~6× *and* got more cost-effective (repelled/capture 1.23→0.68): the extra
+| metric                          | baseline | #462 (D-035) | #471     |
+| ------------------------------- | -------- | ------------ | -------- |
+| captures / 96                   | 3        | 13           | **77**   |
+| repelled assaults               | 0        | 16           | 52       |
+| repelled per capture            | —        | 1.23         | **0.68** |
+| max same-city assaults          | 1        | 1            | **2**    |
+| matches with a multi-wave siege | 0        | 0            | **27**   |
+
+Conquest rose ~6× _and_ got more cost-effective (repelled/capture 1.23→0.68): the extra
 captains spent convert into captures rather than feeding the turrets — not a captain-
 hemorrhage. Tuned on a wide stable plateau (bonus 32-44 all give ~77/27); below it noisy,
 above ~48 multi-wave decays. **Rejected**: applying the bonus to winnable cities too — that
