@@ -1,5 +1,6 @@
 import { FACTIONS } from '@aop/content'
 import type { HexCoord } from '@aop/engine'
+import { UI_ICON } from './uiIcons'
 
 /**
  * Shared SVG primitives for the hex battle board (#39/#93): geometry, the
@@ -162,18 +163,35 @@ export function TerrainHex({ hex, terrain, onClick }: TerrainHexProps) {
   )
 }
 
-export function unitDefinition(unitId: string) {
+function unitDefinition(unitId: string) {
   return Object.values(FACTIONS)
     .flatMap((f) => f.units)
     .find((u) => u.id === unitId)
 }
 
+/** Synthetic city-turret board id (#435/#441): `turret:<faction>:<tier>`, built
+ * by @aop/shared's `turretUnitId`. It exists only in the combat-stats snapshot,
+ * never in `FACTIONS`, so the roster lookups above can't name it. */
+function isTurretUnitId(unitId: string): boolean {
+  return unitId.startsWith('turret:')
+}
+
+/** Display-name fallback for a board unit id (#441): roster name, a themed
+ * name for the synthetic turret pieces, else the raw id. Callers still wrap
+ * this in the theme resolver so packs can rename roster units. */
+export function boardUnitFallbackName(unitId: string): string {
+  if (isTurretUnitId(unitId)) return 'Turret'
+  return unitDefinition(unitId)?.name ?? unitId
+}
+
 /**
  * Per-unit-tier troop icon (#26/#89): every tier 1-4 across all 5 factions has art;
  * undefined only for a future faction/tier added without art, in which case the token
- * keeps its plain 2-letter fallback.
+ * keeps its plain 2-letter fallback. Turrets (#441) reuse the crossed-cannons
+ * attack icon — no dedicated turret art exists yet.
  */
 export function unitTierIconUrl(unitId: string): string | undefined {
+  if (isTurretUnitId(unitId)) return UI_ICON.attack
   for (const faction of Object.values(FACTIONS)) {
     const def = faction.units.find((u) => u.id === unitId)
     if (def) return faction.unitTierSpriteUrls?.[def.tier]
