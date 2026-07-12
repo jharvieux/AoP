@@ -1,73 +1,73 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-12 (issue sweep: 9 issues fixed+merged, dependabot cleared, art first pass)._
+_Last updated: 2026-07-12 evening (city rework COMPLETE; conquest levers shipped; 16 issues closed today)._
 
 ## Just completed
 
-**Full issue sweep (operator-approved plan), all batches terminal.** Nine issues closed
-via four audited, squash-merged PRs:
+**Epic #427 (city management rework) is fully done and closed.** Beyond the morning
+sweep (see PR #456's SESSION version), the afternoon shipped:
 
-- **#450** (P1 bug #426) — resign now ends the match the moment no human seat remains
-  alive (`matchResult()` finish rule, RULES_VERSION 2→3, replay tests). GameOverScreen
-  gained a `classifyGameOver` predicate with proper defeat-abandoned copy.
-- **#452** (#429 #430 #431 #432 #441) — graphical city scene (placeholder art,
-  faction-flag town hall, city-cycling arrows), town-hall build modal with full greyed
-  tree + touch tooltips (`BuildingDef.description` in content), per-building management
-  modals, shipyard modal, turret name/icon on the battle board. **Operator: the PR body
-  has a layout-review section**; also flagged there — cities without a tavern currently
-  have no captain UI at all (consequence of the D-030 tavern consolidation).
-- **#454** (#451, operator mid-sweep request) — main menu **Continue** (resumes newest
-  save, shows round/date) and **Load Game** entries; the #237 save system was complete
-  but unreachable from outside a running match.
-- **#455** (#439 #442) — sim-validated balance: need-aware `buildTavernBonus` (30→100,
-  only when captain-less + tavern-less), city defense militia 3/type + 2 turrets at
-  2×hp/1.5×atk (4-troop raid fails, 6-troop succeeds), `engageMinRatio` 0.9 confirmed.
-  Fixed three sim-exposed AI bugs (ransom money-pump, captured-captain planner crash,
-  income-drain blocking comeback captains) with regression tests. Filed **#453**:
-  AI-vs-AI conquest is structurally impossible (unbounded garrison growth vs crew-capped
-  landings) — needs an operator design decision, out of balance-data scope.
+- **#458** — city art integrated: 15 building cutouts + citadel corner tower +
+  harbor backdrop live in `apps/web`, `BuildingDef.spriteUrl` /
+  `citadel.cornerTowerSpriteUrl` in content, CityScene renders real art with the
+  color-block fallback. Art WIP branch deleted; provenance MANIFEST copied into the
+  repo. Interactive rounds: sawmill cutout redone (props kept), wallseg-citadel split
+  into strip + extracted corner tower (operator-directed, recorded as **D-032**),
+  backdrop = candidate seed 2928388781 with lower-left harbor pocket + sand shore
+  (v4 approved). `turret.png` shipped but unwired (no BuildingDef for battle-board
+  turrets; wiring tactical-board turret art would extend #441).
+- **#461** — conquest levers (operator decision **D-033**): recruit pools replenish
+  every **5 rounds** (`RECRUIT_REPLENISH_INTERVAL`, catalog-threaded), ship
+  `crewCapacity` **×5** (upgrade track scaled too). RULES_VERSION 3→4.
+  **Measured outcome (D-034): conquest is now reachable but rare** — 3 captures/96
+  sim matches (was 0/96); residual bottleneck = single-captain landings vs
+  still-unbounded garrisons (peaks ~320). Filed **#462** for the operator's scope
+  decision (garrison cap/upkeep vs multi-captain assaults). No-free-capture holds.
+- **#457** — deploy.yml smoke test fixed to expect 401 (gateway verify_jwt), runbook
+  aligned. #425 remains open ONLY for the `VERCEL_TOKEN` secret (operator action).
+- **#463** — faction flags now respect the theme-pack override chain (closed #459,
+  found by #458's audit).
+- **#362** closed as already-fixed (PR #378, 2026-07-08) with live evidence.
+- MEMORY: **D-032, D-033, D-034** recorded (PRs #460, #461).
 
-**Art first pass (#445/#446, operator-included in the sweep)** on `art/city-assets-v1-wip`:
-15 cutouts (`*-cut.png`) + light/dark contact sheets committed; 8 backdrop candidates
-(6 clean, 2 marked rejects) + `CANDIDATES.md` committed. Review sheets were sent to the
-operator. rembg went into the separate `~/aop-ai-tools/venv` — the pinned torch-2.3.1 SD
-venv was untouched. Flag: the `wallseg-citadel` **master** has floating tower fragments
-(contradicts its MANIFEST brief) — may need a regen before integration.
-
-**Dependabot cleared: 5 merges, zero open PRs.** @types/node 26 (#398), coverage-v8 4
-(#400), vitest 4 (#397 — needed a real compat fix: vitest 4 no longer resolves `@aop/*`
-from out-of-root files like `supabase/functions/_shared`; fixed with `resolve.alias`
-entries in `apps/web/vite.config.ts`), typescript 7 (#399), minor-and-patch group
-(#449; #396 was its superseded predecessor, closed). Main CI green after all merges.
+**Today's totals**: 16 issues closed, 10 feature/docs PRs + 5 dependabot PRs merged,
+main CI green throughout. Save/load is player-reachable (main-menu Continue/Load,
+#454), resign bug fixed (#450), city UI rebuilt graphical (#452), balance
+sim-validated (#455).
 
 ## In flight
 
-None. No open PRs. All sweep worktrees cleaned.
+None. No open PRs, no worktrees, no background art processes (SD server down,
+torch pin intact; rembg lives in the separate `~/aop-ai-tools/venv`).
 
 ## Next step
 
-- **Operator review gate**: cutout sign-off + backdrop pick (sheets delivered) → then
-  #447 (integration PR, closes #436). Decide on the wallseg-citadel master regen.
-- **#453** — AI conquest structural finding: needs an operator design decision
-  (garrison cap? landing-force scaling? siege mechanic?).
-- **#429 layout**: operator wanted a layout checkpoint — review the "layout" section in
-  merged PR #452 and file polish issues as needed.
-- Carried over: **#422** (live two-client lockstep, supervised/parked), **#444** (ComfyUI
-  migration, before the next big art effort).
+- **#462** — needs an operator DESIGN decision before any code: make conquest common,
+  not just reachable. Options analyzed in the issue: garrison cap or upkeep vs
+  multi-captain/escorted assaults. The 5-turn/×5 levers are already in; sims show
+  pushing them further doesn't help.
+- **#444** — ComfyUI migration, before the next large art effort.
+- **#422** — live-defender lockstep: needs a dedicated session with two live clients
+  (engine collect-pass + supervised edge functions).
+- Operator to eyeball the new city scene + conquest pacing in a real playthrough —
+  tavern-less cities having no captain UI (PR #452 note) is intended friction unless
+  play says otherwise.
 
 ## Blocked on user
 
-- Art sign-off/pick (above).
-- `VERCEL_TOKEN` repo secret (deploy.yml Vercel steps + smoke tests).
-- ~28 stale local `feature/sweep-*` branch refs from prior sessions (needs per-branch
-  merged-PR check before deleting).
-- `needs-human-fix` backlog unchanged: #362, #98/#100/#156/#159/#160/#161, #4, #425.
+- `VERCEL_TOKEN` repo secret (last piece of #425; deploy.yml Vercel steps + smoke
+  tests).
+- #462 design direction (above).
+- ~28 stale local `feature/sweep-*` branch refs from PRIOR sessions (today's were
+  cleaned as merged); deleting needs a per-branch merged-PR check.
+- `needs-human-fix` backlog: #98/#100/#156/#159/#160/#161 (Capacitor/native), #4
+  (Phase 3 epic), #425 (secret only).
 
 ## Open questions
 
-- #453 design direction (see Next step).
-- Whether tavern-less cities need a minimal captain-management affordance (flagged in
-  PR #452's body) or whether "build a tavern first" is intended friction.
-- #422 UX presentation questions (grace countdown, defender notification cadence) still
-  pending two-live-client work; D-029 bounds the mechanics.
+- #462: how aggressive should AI conquest be? (3/96 today; what rate feels right?)
+- Whether battle-board turrets should get the shipped-but-unwired `turret.png` art
+  (extends #441's name/icon fix).
+- #422 UX presentation questions (grace countdown, notification cadence) — D-029
+  bounds the mechanics.
