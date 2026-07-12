@@ -1,20 +1,26 @@
 import {
+  findLandPath,
   mapDistance,
   pathCost,
+  tileAt,
   type Action,
   type BoardOrder,
   type Captain,
   type CityState,
   type EncounterChoice,
   type GameMap,
+  type LandingParty,
   type PlayerView,
   type SailTargetKind,
   type StandingOrder,
+  type TroopStack,
   type ViewCaptain,
   type ViewCity,
+  type ViewParty,
 } from '@aop/engine'
 import type { Coord } from '@aop/shared'
 import { findApproachPath } from '../approach'
+import { partyBlockedSet } from '../partyMarch'
 
 /**
  * Can `captainId` engage `targetPos` *this turn*, from any distance (#376,
@@ -89,6 +95,31 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
   }
 }
 
+/** The viewer's own landing-party detail rows (the only parties with manifests in a view). */
+export function ownParties(view: PlayerView): ViewParty[] {
+  return view.parties.filter((p) => p.ownerId === view.viewerId)
+}
+
+/**
+ * Widen an own-seat `ViewParty` to the engine `LandingParty` shape UI
+ * components expect, mirroring {@link captainFromView}. Returns null for an
+ * enemy sighting (no own-detail fields) — those must never be dressed up as a
+ * full party.
+ */
+export function partyFromView(party: ViewParty): LandingParty | null {
+  if (party.troops === undefined || party.movementPoints === undefined) return null
+  return {
+    id: party.id,
+    ownerId: party.ownerId,
+    name: party.name,
+    position: party.position,
+    movementPoints: party.movementPoints,
+    maxMovementPoints: party.maxMovementPoints ?? party.movementPoints,
+    troops: party.troops,
+    ...(party.marchOrder ? { marchOrder: party.marchOrder } : {}),
+  }
+}
+
 /** Widen an own-seat `ViewCity` (interior disclosed) to `CityState`; null for an enemy shell. */
 export function cityFromView(city: ViewCity): CityState | null {
   if (!city.buildings || !city.garrison || !city.unitAvailability) return null
@@ -114,10 +145,18 @@ export function cityFromView(city: ViewCity): CityState | null {
  */
 export type TileIntent =
   | { kind: 'selectCaptain'; captainId: string }
+  /** An own landing party tapped (#482): select it — party verbs then flow through {@link interpretPartyTileClick}. */
+  | { kind: 'selectParty'; partyId: string }
   | { kind: 'openCity'; cityId: string }
   | { kind: 'move'; to: { x: number; y: number } }
   | { kind: 'attack'; targetCaptainId: string }
   | { kind: 'encounter'; encounterId: string }
+  /**
+   * An adjacent empty land tile tapped with a troop-carrying selected captain
+   * (#482): open the disembark sheet. The engine re-validates tile type,
+   * adjacency, and the troop manifest server-side.
+   */
+  | { kind: 'disembark'; to: Coord }
   /**
    * A non-adjacent enemy that's still reachable-and-attackable this turn
    * (#414, finishing #376's multiplayer parity): sail the approach leg, then
@@ -148,6 +187,14 @@ export function interpretTileClick(
     (c) => c.ownerId === view.viewerId && c.position.x === x && c.position.y === y,
   )
   if (ownHere) return { kind: 'selectCaptain', captainId: ownHere.id }
+
+  // An own landing party (#482) is selectable wherever it is tapped, exactly
+  // like an own captain. (Taps WHILE a party is selected go through
+  // interpretPartyTileClick instead — the screen dispatches on selection kind.)
+  const ownPartyHere = view.parties.find(
+    (p) => p.ownerId === view.viewerId && p.position.x === x && p.position.y === y,
+  )
+  if (ownPartyHere) return { kind: 'selectParty', partyId: ownPartyHere.id }
 
   const selected = selectedCaptainId
     ? (view.captains.find((c) => c.id === selectedCaptainId && c.ownerId === view.viewerId) ?? null)
@@ -215,6 +262,17 @@ export function interpretTileClick(
     return null
   }
 
+  // Adjacent empty land with troops aboard (#482): put a landing party ashore.
+  if (
+    tileAt(map, { x, y })?.type === 'land' &&
+    mapDistance(map, selected.position, { x, y }) === 1 &&
+    movement >= 1 &&
+    (selected.troops ?? []).some((t) => t.count > 0) &&
+    !view.parties.some((p) => p.position.x === x && p.position.y === y)
+  ) {
+    return { kind: 'disembark', to: { x, y } }
+  }
+
   // Empty tile: move if reachable within remaining movement. Unexplored cells
   // in the reconstructed map are 'deep' fillers, so a path may optimistically
   // cross fog — the server is the authority and bounces a truly illegal move.
@@ -223,6 +281,100 @@ export function interpretTileClick(
   if (cost <= movement) return { kind: 'move', to: { x, y } }
   // Reachable by sea but beyond this turn: a multi-turn sail order (#372).
   return { kind: 'setSailOrder', destination: { x, y } }
+}
+
+/**
+ * What a tap on tile (x, y) means while one of the viewer's OWN parties is
+ * selected (#482) — the PlayerView analog of GameScreen's
+ * `handlePartyTileClick` + own-tile tap classification, pure and testable
+ * apart from dispatch. Fog is inherent to the view: enemy parties and land
+ * encounters only exist in it while visible, so no extra visibility filtering
+ * is needed here. Everything is a proposal the server re-validates.
+ */
+export type PartyTileIntent =
+  | { kind: 'selectCaptain'; captainId: string }
+  | { kind: 'selectParty'; partyId: string }
+  /** An adjacent own ship tapped: re-board the party (partial if the hold is short). */
+  | { kind: 'embark'; captainId: string }
+  /** The party's own tile tapped while it stands on a capturable land site. */
+  | { kind: 'captureSite'; siteId: string }
+  /** An active land encounter underfoot or adjacent: open its choice sheet. */
+  | { kind: 'partyEncounter'; encounterId: string }
+  | { kind: 'attackParty'; targetPartyId: string }
+  | { kind: 'assaultCity'; targetCityId: string }
+  | { kind: 'moveParty'; to: Coord }
+  /** Reachable overland but beyond this turn: a standing march order (#482). */
+  | { kind: 'setMarchOrder'; destination: Coord }
+  | null
+
+export function interpretPartyTileClick(
+  view: PlayerView,
+  /** The board map reconstructed by `boardFromPlayerView`. */
+  map: GameMap,
+  /** The selected party — must be the viewer's own (movement disclosed). */
+  party: ViewParty,
+  x: number,
+  y: number,
+): PartyTileIntent {
+  const movement = party.movementPoints ?? 0
+  const here = (pos: Coord) => pos.x === x && pos.y === y
+  const adjacent = (pos: Coord) => mapDistance(map, party.position, pos) <= 1
+
+  // An own ship: adjacent re-boards the party; anywhere else selects it.
+  const ownCaptainHere = view.captains.find((c) => c.ownerId === view.viewerId && here(c.position))
+  if (ownCaptainHere) {
+    return adjacent(ownCaptainHere.position)
+      ? { kind: 'embark', captainId: ownCaptainHere.id }
+      : { kind: 'selectCaptain', captainId: ownCaptainHere.id }
+  }
+
+  const partyHere = view.parties.find((p) => here(p.position))
+  if (partyHere) {
+    if (partyHere.ownerId !== view.viewerId) {
+      return adjacent(partyHere.position) && movement >= 1
+        ? { kind: 'attackParty', targetPartyId: partyHere.id }
+        : null
+    }
+    if (partyHere.id === party.id && movement >= 1) {
+      // The selected party's own tile: capture the site it stands on, or open
+      // the land encounter sharing its tile (site wins — the #476 precedence).
+      const site = view.landSites.find(
+        (s) => s.active && here(s.position) && s.claimedBy !== view.viewerId,
+      )
+      if (site) return { kind: 'captureSite', siteId: site.id }
+      const enc = view.landEncounters.find((e) => e.active && here(e.position))
+      if (enc) return { kind: 'partyEncounter', encounterId: enc.id }
+    }
+    return { kind: 'selectParty', partyId: partyHere.id }
+  }
+
+  const cityHere = view.cities.find((c) => here(c.position))
+  if (cityHere && cityHere.ownerId !== view.viewerId) {
+    return adjacent(cityHere.position) && movement >= 1
+      ? { kind: 'assaultCity', targetCityId: cityHere.id }
+      : null
+  }
+
+  const encounterHere = view.landEncounters.find((e) => e.active && here(e.position))
+  if (encounterHere) {
+    return adjacent(encounterHere.position) && movement >= 1
+      ? { kind: 'partyEncounter', encounterId: encounterHere.id }
+      : null
+  }
+
+  // Land tile: march there this turn, or queue a standing march order (#482)
+  // for a route beyond this turn's movement — the party twin of the ship's
+  // move/setSailOrder split above.
+  const path = findLandPath(
+    map,
+    party.position,
+    { x, y },
+    partyBlockedSet(map, view.parties, party.id),
+  )
+  if (!path || path.length < 2) return null
+  const cost = path.length - 1
+  if (cost <= movement) return { kind: 'moveParty', to: { x, y } }
+  return { kind: 'setMarchOrder', destination: { x, y } }
 }
 
 /**
@@ -374,6 +526,38 @@ export const matchAction = {
   },
   ransomCaptain(view: PlayerView, captainId: string): Action {
     return { type: 'ransomCaptain', playerId: view.viewerId, captainId }
+  },
+  disembark(view: PlayerView, captainId: string, to: Coord, troops: TroopStack[]): Action {
+    return { type: 'disembark', playerId: view.viewerId, captainId, to, troops }
+  },
+  moveParty(view: PlayerView, partyId: string, to: Coord): Action {
+    return { type: 'moveParty', playerId: view.viewerId, partyId, to }
+  },
+  embark(view: PlayerView, partyId: string, captainId: string): Action {
+    return { type: 'embark', playerId: view.viewerId, partyId, captainId }
+  },
+  attackParty(view: PlayerView, partyId: string, targetPartyId: string): Action {
+    return { type: 'attackParty', playerId: view.viewerId, partyId, targetPartyId }
+  },
+  partyAssaultCity(view: PlayerView, partyId: string, targetCityId: string): Action {
+    return { type: 'partyAssaultCity', playerId: view.viewerId, partyId, targetCityId }
+  },
+  captureSite(view: PlayerView, partyId: string, siteId: string): Action {
+    return { type: 'captureSite', playerId: view.viewerId, partyId, siteId }
+  },
+  resolvePartyEncounter(
+    view: PlayerView,
+    partyId: string,
+    encounterId: string,
+    choice: EncounterChoice,
+  ): Action {
+    return { type: 'resolvePartyEncounter', playerId: view.viewerId, partyId, encounterId, choice }
+  },
+  setMarchOrder(view: PlayerView, partyId: string, destination: Coord): Action {
+    return { type: 'setMarchOrder', playerId: view.viewerId, partyId, destination }
+  },
+  clearMarchOrder(view: PlayerView, partyId: string): Action {
+    return { type: 'clearMarchOrder', playerId: view.viewerId, partyId }
   },
   setSailOrder(
     view: PlayerView,

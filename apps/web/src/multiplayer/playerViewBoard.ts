@@ -112,6 +112,9 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     movementPoints: p.movementPoints ?? 0,
     maxMovementPoints: p.maxMovementPoints ?? 0,
     troops: p.troops ?? [],
+    // Own parties carry their march order (#482) so the map can fly the
+    // destination pennant and draw the queued route, like a ship's sailOrder.
+    ...(p.marchOrder ? { marchOrder: p.marchOrder } : {}),
   }))
 
   const encounters: EncounterState[] = view.encounters.map((e) => ({

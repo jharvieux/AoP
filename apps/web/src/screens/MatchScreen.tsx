@@ -4,6 +4,7 @@ import type {
   BoardCommand,
   EncounterChoice,
   EncounterKind,
+  LandEncounterKind,
   PlayerView,
   TacticId,
 } from '@aop/engine'
@@ -28,10 +29,14 @@ import {
   canAttackAfterApproach,
   captainFromView,
   cityFromView,
+  interpretPartyTileClick,
   interpretTileClick,
   matchAction,
   ownCaptains,
+  ownParties,
+  partyFromView,
 } from '../multiplayer/matchActions'
+import { classifyPartyRangeOverlay } from '../partyRange'
 import { MatchActionClient, MatchActionError } from '../multiplayer/matchActionClient'
 import { BattleSessionClient, type BattleSessionOutcome } from '../multiplayer/battleSessionClient'
 import { BattleSessionFlow } from '../multiplayer/battleSessionFlow'
@@ -105,6 +110,16 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [actionError, setActionError] = useState<string | null>(null)
   const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null)
   const [attackTargetId, setAttackTargetId] = useState<string | null>(null)
+  // Landing-party controls (#482): the selected party, the disembark sheet
+  // (target tile + per-unit counts), the party-attack / land-assault confirm
+  // sheets, and the land encounter being resolved — the GameScreen party
+  // surface, re-derived from the fog-locked view.
+  const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null)
+  const [disembarkTile, setDisembarkTile] = useState<Coord | null>(null)
+  const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
+  const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
+  const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
+  const [landEncounterId, setLandEncounterId] = useState<string | null>(null)
   // The approach leg (#414) recorded when `attackTargetId` was set for a
   // non-adjacent-but-reachable-this-turn target; `null` for an already
   // adjacent attack, which needs no approach move first.
@@ -449,6 +464,23 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const attackTarget = attackTargetId
     ? (view.captains.find((c) => c.id === attackTargetId) ?? null)
     : null
+  const selectedParty =
+    view.parties.find((p) => p.id === selectedPartyId && p.ownerId === view.viewerId) ?? null
+  const partyAttackTarget = partyAttackTargetId
+    ? (view.parties.find((p) => p.id === partyAttackTargetId) ?? null)
+    : null
+  const partyAssaultCity = partyAssaultCityId
+    ? (view.cities.find((c) => c.id === partyAssaultCityId) ?? null)
+    : null
+  const landEncounter = landEncounterId
+    ? (view.landEncounters.find((e) => e.id === landEncounterId && e.active) ?? null)
+    : null
+  const landEncounterChoices = landEncounter
+    ? Object.keys(
+        view.rules.content?.landEncounters?.[landEncounter.kind as LandEncounterKind]?.choices ??
+          {},
+      )
+    : []
   const encounter = encounterId
     ? (view.encounters.find((e) => e.id === encounterId && e.active) ?? null)
     : null
@@ -470,6 +502,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const myCaptains = ownCaptains(view)
     .map(captainFromView)
     .filter((c): c is NonNullable<typeof c> => c !== null)
+  const myParties = ownParties(view)
+    .map(partyFromView)
+    .filter((p): p is NonNullable<typeof p> => p !== null)
   const captainAtOpenCity = openCity
     ? myCaptains.find(
         (c) =>
@@ -483,14 +518,37 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
 
   function handleTileClick(x: number, y: number) {
     if (!live || !board || !myTurn || view.status !== 'active' || submitting) return
+    // Party verbs (#482): taps while an own party is selected flow through
+    // their own pure classifier, mirroring GameScreen's handlePartyTileClick.
+    if (selectedParty && !selectedCaptain) {
+      handlePartyIntent(interpretPartyTileClick(view, board.map, selectedParty, x, y))
+      return
+    }
     const intent = interpretTileClick(view, board.map, selectedCaptainId, x, y)
     if (!intent) return
     switch (intent.kind) {
       case 'selectCaptain':
         setSelectedCaptainId(intent.captainId)
+        setSelectedPartyId(null)
         setAttackTargetId(null)
         setPendingApproach(null)
         break
+      case 'selectParty':
+        tapFeedback()
+        setSelectedPartyId(intent.partyId)
+        setSelectedCaptainId(null)
+        setAttackTargetId(null)
+        setPendingApproach(null)
+        break
+      case 'disembark': {
+        // Open the landing sheet defaulting to everything aboard (#482).
+        tapFeedback()
+        setDisembarkTile(intent.to)
+        setDisembarkCounts(
+          Object.fromEntries((selectedCaptain?.troops ?? []).map((t) => [t.unitId, t.count])),
+        )
+        break
+      }
       case 'openCity':
         tapFeedback()
         setOpenCityId(intent.cityId)
@@ -535,6 +593,104 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         )
         break
     }
+  }
+
+  /** Dispatch one party tile intent (#482) — the party analog of the switch above. */
+  function handlePartyIntent(intent: ReturnType<typeof interpretPartyTileClick>) {
+    if (!selectedParty || !intent) return
+    switch (intent.kind) {
+      case 'selectCaptain':
+        setSelectedCaptainId(intent.captainId)
+        setSelectedPartyId(null)
+        break
+      case 'selectParty':
+        tapFeedback()
+        setSelectedPartyId(intent.partyId)
+        break
+      case 'embark':
+        tapFeedback()
+        void submit(matchAction.embark(view, selectedParty.id, intent.captainId))
+        setSelectedPartyId(null)
+        break
+      case 'captureSite':
+        tapFeedback()
+        void submit(matchAction.captureSite(view, selectedParty.id, intent.siteId))
+        break
+      case 'partyEncounter':
+        setLandEncounterId(intent.encounterId)
+        break
+      case 'attackParty':
+        setPartyAttackTargetId(intent.targetPartyId)
+        break
+      case 'assaultCity':
+        setPartyAssaultCityId(intent.targetCityId)
+        break
+      case 'moveParty':
+        shipMoveFeedback()
+        void submit(matchAction.moveParty(view, selectedParty.id, intent.to))
+        break
+      case 'setMarchOrder':
+        shipMoveFeedback()
+        void submit(matchAction.setMarchOrder(view, selectedParty.id, intent.destination))
+        break
+    }
+  }
+
+  function confirmDisembark() {
+    if (!selectedCaptain || !disembarkTile) return
+    const troops = (selectedCaptain.troops ?? [])
+      .map((t) => ({ unitId: t.unitId, count: Math.min(disembarkCounts[t.unitId] ?? 0, t.count) }))
+      .filter((t) => t.count > 0)
+    if (troops.length === 0) return
+    impactFeedback()
+    void submit(matchAction.disembark(view, selectedCaptain.id, disembarkTile, troops))
+    setDisembarkTile(null)
+    setSelectedCaptainId(null)
+  }
+
+  // Multiplayer land battles stay on the async auto-resolve path (#482): an
+  // interactive land board would need a battle session (#422 territory), so
+  // both fights submit without boardCommands and the board AI plays the melee.
+  function confirmPartyAttack() {
+    if (!selectedParty || !partyAttackTarget) return
+    impactFeedback()
+    void submit(matchAction.attackParty(view, selectedParty.id, partyAttackTarget.id))
+    setPartyAttackTargetId(null)
+    setSelectedPartyId(null)
+  }
+
+  function confirmPartyAssault() {
+    if (!selectedParty || !partyAssaultCity) return
+    impactFeedback()
+    void submit(matchAction.partyAssaultCity(view, selectedParty.id, partyAssaultCity.id))
+    setPartyAssaultCityId(null)
+    setSelectedPartyId(null)
+  }
+
+  function resolveLandEncounter(choice: string) {
+    if (!selectedParty || !landEncounter) return
+    impactFeedback()
+    void submit(
+      matchAction.resolvePartyEncounter(
+        view,
+        selectedParty.id,
+        landEncounter.id,
+        choice as EncounterChoice,
+      ),
+    )
+    setLandEncounterId(null)
+  }
+
+  function resumeMarchOrder(partyId: string) {
+    const order = myParties.find((p) => p.id === partyId)?.marchOrder
+    if (!order) return
+    tapFeedback()
+    void submit(matchAction.setMarchOrder(view, partyId, order.destination))
+  }
+
+  function cancelMarchOrder(partyId: string) {
+    tapFeedback()
+    void submit(matchAction.clearMarchOrder(view, partyId))
   }
 
   function resumeSailOrder(captainId: string) {
@@ -586,8 +742,27 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       })
     : undefined
 
+  // Movement-range shading for a selected party (#482), from the view's own
+  // fog: every party/land entity in a PlayerView is visible by construction.
+  const partyRangeOverlay = selectedParty
+    ? classifyPartyRangeOverlay({
+        map: board.map,
+        from: selectedParty.position,
+        movementPoints: selectedParty.movementPoints ?? 0,
+        otherParties: view.parties.filter((p) => p.id !== selectedParty.id).map((p) => p.position),
+        enemies: view.parties.filter((p) => p.ownerId !== view.viewerId).map((p) => p.position),
+        enemyCities: view.cities.filter((c) => c.ownerId !== view.viewerId).map((c) => c.position),
+        encounters: view.landEncounters.filter((e) => e.active).map((e) => e.position),
+        capturableSites: view.landSites
+          .filter((s) => s.active && s.claimedBy !== view.viewerId)
+          .map((s) => s.position),
+      })
+    : undefined
+
   // Paused sail orders (#372): own ships halted on a new contact.
   const interruptedCaptains = myCaptains.filter((c) => c.sailOrder?.interrupted)
+  // Paused march orders (#482): own parties halted on a sighting or blocked route.
+  const interruptedParties = myParties.filter((p) => p.marchOrder?.interrupted)
 
   function confirmAttack() {
     if (!selectedCaptain || !attackTarget) return
@@ -757,12 +932,18 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           visibleKeys={board.visibleKeys}
           exploredKeys={board.exploredKeys}
           selectedCaptainId={selectedCaptainId}
+          selectedPartyId={selectedPartyId}
           onTileClick={handleTileClick}
-          rangeOverlay={rangeOverlay}
+          rangeOverlay={rangeOverlay ?? partyRangeOverlay}
           onSetCourse={(cell) => {
-            if (!selectedCaptain) return
-            shipMoveFeedback()
-            void submit(matchAction.setSailOrder(view, selectedCaptain.id, cell))
+            if (selectedCaptain) {
+              shipMoveFeedback()
+              void submit(matchAction.setSailOrder(view, selectedCaptain.id, cell))
+            } else if (selectedParty) {
+              // Touch's two-tap confirm on an out-of-range land tile (#482).
+              shipMoveFeedback()
+              void submit(matchAction.setMarchOrder(view, selectedParty.id, cell))
+            }
           }}
           factionOf={board.factionOf}
         />
@@ -780,9 +961,39 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
               </div>
             </div>
           ))}
+        {myTurn &&
+          interruptedParties.map((p) => (
+            <div key={p.id} className="sail-interrupt-banner" role="status">
+              <span>{p.name} halted: new contact or blocked route</span>
+              <div className="button-group">
+                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
+                  Resume
+                </button>
+                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ))}
       </div>
 
       <div className="bottom-action-bar">
+        {/* Selected-party readout + queued-march cancel (#482), mirroring GameScreen. */}
+        {selectedParty && (
+          <div className="selection-info" role="status">
+            {`${selectedParty.name} — Movement ${selectedParty.movementPoints ?? 0}/${selectedParty.maxMovementPoints ?? 0}`}
+            {selectedParty.marchOrder && myTurn && (
+              <button
+                type="button"
+                className="secondary"
+                disabled={submitting}
+                onClick={() => cancelMarchOrder(selectedParty.id)}
+              >
+                Cancel march
+              </button>
+            )}
+          </div>
+        )}
         <div className="button-group">
           <button
             className="secondary"
@@ -818,6 +1029,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             onClick={() => {
               tapFeedback()
               setSelectedCaptainId(null)
+              setSelectedPartyId(null)
               void submit(matchAction.endTurn(view))
             }}
             disabled={!myTurn || submitting || view.status !== 'active'}
@@ -865,6 +1077,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         !openCity &&
         !diplomacyOpen &&
         !chatOpen &&
+        !disembarkTile &&
+        !partyAttackTarget &&
+        !partyAssaultCity &&
+        !landEncounter &&
         !battleReport && <AdSlot placement="between-turns" />}
 
       {battleReport && (
@@ -946,6 +1162,135 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
               )}
               Attack
             </button>
+          </section>
+        </BottomSheet>
+      )}
+
+      {disembarkTile && selectedCaptain && (
+        <BottomSheet title="Put a landing party ashore?" onClose={() => setDisembarkTile(null)}>
+          <section>
+            <p className="building-option__hint">
+              Choose the troops to land. The party steps ashore now (one movement point) and can
+              march overland from your next turn; a friendly ship alongside can take it back aboard
+              later.
+            </p>
+            {(selectedCaptain.troops ?? []).map((stack) => {
+              const landing = Math.min(disembarkCounts[stack.unitId] ?? 0, stack.count)
+              return (
+                <div key={stack.unitId} className="garrison-row">
+                  <span>
+                    {stack.unitId}: landing {landing} of {stack.count}
+                  </span>
+                  <div className="button-group">
+                    <button
+                      className="secondary"
+                      disabled={landing <= 0}
+                      aria-label={`Land one fewer ${stack.unitId}`}
+                      onClick={() =>
+                        setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing - 1 }))
+                      }
+                    >
+                      −
+                    </button>
+                    <button
+                      className="secondary"
+                      disabled={landing >= stack.count}
+                      aria-label={`Land one more ${stack.unitId}`}
+                      onClick={() =>
+                        setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing + 1 }))
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="button-group">
+              <button
+                className="primary"
+                disabled={
+                  submitting ||
+                  (selectedCaptain.troops ?? []).every(
+                    (t) => Math.min(disembarkCounts[t.unitId] ?? 0, t.count) <= 0,
+                  )
+                }
+                onClick={confirmDisembark}
+              >
+                Land party
+              </button>
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {partyAttackTarget && selectedParty && (
+        <BottomSheet
+          title={`Attack ${partyAttackTarget.name}?`}
+          onClose={() => setPartyAttackTargetId(null)}
+        >
+          <section>
+            <p className="building-option__hint">
+              A land battle to the finish — the beaten party is destroyed outright, and the victor
+              keeps its survivors. No odds preview in multiplayer: their manifest is exactly what
+              the fog hides.
+            </p>
+            <div className="button-group">
+              <button className="primary" onClick={confirmPartyAttack} disabled={submitting}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                Attack
+              </button>
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {partyAssaultCity && selectedParty && (
+        <BottomSheet
+          title={`Storm ${partyAssaultCity.name} by land?`}
+          onClose={() => setPartyAssaultCityId(null)}
+        >
+          <section>
+            <p className="building-option__hint">
+              The city defends at full strength from the land side too — militia and turrets
+              included. Win and it is yours; lose and the party is destroyed.
+            </p>
+            <div className="button-group">
+              <button className="primary" onClick={confirmPartyAssault} disabled={submitting}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                Assault
+              </button>
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {landEncounter && (
+        <BottomSheet
+          title={
+            landEncounter.kind === 'nativeVillage'
+              ? 'A native village inland'
+              : landEncounter.kind === 'hermit'
+                ? 'A hermit in the hills'
+                : 'A bandit camp astride the trail'
+          }
+          onClose={() => setLandEncounterId(null)}
+        >
+          <section className="button-group">
+            {landEncounterChoices.map((choice) => (
+              <button
+                key={choice}
+                className="secondary"
+                disabled={submitting}
+                onClick={() => resolveLandEncounter(choice)}
+              >
+                {choice[0]!.toUpperCase() + choice.slice(1)}
+              </button>
+            ))}
           </section>
         </BottomSheet>
       )}
