@@ -2,26 +2,26 @@ import { useEffect, useState } from 'react'
 import { listSaves, type SaveRecord } from './storage'
 import { BottomSheet } from './components/BottomSheet'
 import { tapFeedback } from './audio/feedback'
+import { describeError } from './errors'
 
 const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
 
 interface SaveScreenProps {
   onClose: () => void
-  onSave: (slotId: string) => Promise<void>
   /** Throws on failure (#237) — caught here so the sheet stays open with a message. */
   onLoad: (slotId: string) => Promise<void>
+  /** Omitted when opened as the main-menu Load Game screen (#451) — there's
+   * no in-progress game to save, so the Save button is hidden entirely. */
+  onSave?: (slotId: string) => Promise<void>
   /** Opens the #146 replay viewer over a saved slot's action log, without
-   * disturbing the game currently in progress. */
-  onWatch: (slotId: string) => void
+   * disturbing the game currently in progress. Omitted from the main-menu
+   * load flow the same way as `onSave`. */
+  onWatch?: (slotId: string) => void
 }
 
 function formatSlot(record: SaveRecord | undefined): string {
   if (!record) return 'Empty'
   return `Round ${record.round} — ${new Date(record.savedAt).toLocaleString()}`
-}
-
-function describeError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
 }
 
 /** Bottom-sheet save/load menu: one autosave slot plus three manual slots. */
@@ -42,6 +42,7 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
   useEffect(refresh, [])
 
   async function handleSave(slotId: string) {
+    if (!onSave) return
     tapFeedback()
     setStatus(null)
     try {
@@ -65,6 +66,7 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
   }
 
   function handleWatch(slotId: string) {
+    if (!onWatch) return
     tapFeedback()
     onWatch(slotId)
   }
@@ -76,13 +78,15 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
         <span className="garrison-row__name">{title}</span>
         <span className="garrison-row__counts">{formatSlot(record)}</span>
         <div className="garrison-row__actions">
-          {saveable && <button onClick={() => handleSave(slotId)}>Save</button>}
+          {saveable && onSave && <button onClick={() => handleSave(slotId)}>Save</button>}
           <button disabled={!record} onClick={() => handleLoad(slotId)}>
             Load
           </button>
-          <button disabled={!record} onClick={() => handleWatch(slotId)}>
-            Watch
-          </button>
+          {onWatch && (
+            <button disabled={!record} onClick={() => handleWatch(slotId)}>
+              Watch
+            </button>
+          )}
         </div>
       </li>
     )

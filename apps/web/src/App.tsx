@@ -24,6 +24,7 @@ import { MatchBrowserScreen } from './screens/MatchBrowserScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
+import { SaveScreen } from './SaveScreen'
 import { loadGame, saveGame } from './storage'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
@@ -45,6 +46,7 @@ const ReplayScreen = lazy(() =>
 type Screen =
   | 'title'
   | 'menu'
+  | 'load-game'
   | 'setup'
   | 'game'
   | 'game-over'
@@ -289,7 +291,12 @@ export function App() {
             onMatchBrowser={() => setScreen('match-browser')}
             onQuickMatch={() => setScreen('quick-match')}
             onLeaderboard={() => setScreen('leaderboard')}
+            onLoadGame={() => setScreen('load-game')}
+            onContinue={handleLoadSlot}
           />
+        )}
+        {screen === 'load-game' && (
+          <SaveScreen onClose={() => setScreen('menu')} onLoad={handleLoadSlot} />
         )}
         {screen === 'watch-replay' && (
           <WatchReplayScreen
