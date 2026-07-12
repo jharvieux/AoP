@@ -4,13 +4,20 @@ import {
   captainsOf,
   createGame,
   probeBoardingBattle,
+  probePartyAssault,
+  probePartyBattle,
   probeTacticalBattle,
+  RULES_VERSION,
+  seedRng,
   type BoardActivationView,
   type BoardCommand,
   type CombatStatsData,
   type GameConfig,
   type GameState,
+  type LandingParty,
   type TacticId,
+  type Tile,
+  type TileType,
   type TroopStack,
 } from '../src'
 import { BATTLE_TUNING, COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
@@ -175,5 +182,186 @@ describe('probe determinism: interleaved growing prefixes replay bit-exact', () 
     })
     const resolved = canonical[n] as { report: unknown }
     expect(JSON.stringify(battleReport)).toBe(JSON.stringify(resolved.report))
+  })
+})
+
+/**
+ * Interactive tactical land battles (#482): the party-vs-party and
+ * party-vs-city probes obey the same monotone-determinism contract as the
+ * naval ones above, and their resolved reports match the reducer's own
+ * `attackParty` / `partyAssaultCity` resolution of the identical recorded
+ * plan bit for bit — the probe is a preview of the applied action, never a
+ * second simulation that could drift.
+ */
+describe('party land-battle probes (#482)', () => {
+  function landState(): GameState {
+    const width = 16
+    const height = 12
+    const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+      type: 'deep' as TileType,
+      island: -1,
+    }))
+    for (let y = 4; y <= 7; y++) {
+      for (let x = 4; x <= 11; x++) tiles[y * width + x] = { type: 'land', island: 0 }
+    }
+    tiles[5 * width + 11] = { type: 'port', island: 0 }
+
+    const makeParty = (
+      id: string,
+      ownerId: string,
+      position: { x: number; y: number },
+      troops: TroopStack[],
+    ): LandingParty => ({
+      id,
+      ownerId,
+      name: id,
+      position,
+      movementPoints: GAME_SETUP.partyMovementPoints,
+      maxMovementPoints: GAME_SETUP.partyMovementPoints,
+      troops,
+    })
+
+    const seats = [
+      { id: 'p1', name: 'One', faction: 'pirates' as const, isAI: false },
+      { id: 'p2', name: 'Two', faction: 'british' as const, isAI: false },
+    ]
+    return {
+      config: {
+        seed: 5,
+        mapSize: 'small',
+        setup: GAME_SETUP,
+        combatStats: statsData(BATTLE_TUNING),
+        players: seats,
+        rulesVersion: RULES_VERSION,
+      },
+      map: { width, height, tiles, startPositions: [] },
+      round: 1,
+      currentPlayerIndex: 0,
+      players: seats.map((s) => ({
+        id: s.id,
+        name: s.name,
+        faction: s.faction,
+        isAI: s.isAI,
+        resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
+        eliminated: false,
+        reputation: 100,
+      })),
+      alliances: { pairs: [], proposals: [] },
+      cities: [
+        {
+          id: 'p2-city',
+          ownerId: 'p2',
+          name: 'Port Royal',
+          position: { x: 11, y: 5 },
+          buildings: ['townhall'],
+          builtThisRound: false,
+          garrison: { grunt: 6 },
+          unitAvailability: {},
+        },
+      ],
+      captains: [],
+      parties: [
+        makeParty('lp1', 'p1', { x: 5, y: 4 }, [
+          { unitId: 'grunt', count: 8 },
+          { unitId: 'archer', count: 4 },
+        ]),
+        makeParty('lp2', 'p2', { x: 6, y: 4 }, [{ unitId: 'grunt', count: 7 }]),
+      ],
+      encounters: [],
+      landSites: [],
+      landEncounters: [],
+      resourceNodes: [],
+      exploredTiles: {},
+      rngState: seedRng(5),
+      actionCount: 0,
+      status: 'active',
+      winnerId: null,
+    }
+  }
+
+  it('party-vs-party: prefixes replay bit-exact and the plan resolves through the reducer identically', () => {
+    const state = landState()
+    const action = { partyId: 'lp1', targetPartyId: 'lp2' }
+    const commands: BoardCommand[] = []
+    const canonical = [probePartyBattle(state, action, [])]
+    let guard = 0
+    while (canonical[canonical.length - 1]!.kind === 'awaitingCommand') {
+      if (++guard > 500) throw new Error('party battle did not resolve')
+      const view = (canonical[canonical.length - 1] as { view: BoardActivationView }).view
+      commands.push(scriptedCommand(view))
+      canonical.push(probePartyBattle(state, action, commands))
+    }
+    const n = commands.length
+    expect(n).toBeGreaterThan(1)
+    expect(canonical[n]!.kind).toBe('resolved')
+
+    assertInterleavedPrefixes(n, canonical, (k) =>
+      probePartyBattle(state, action, commands.slice(0, k)),
+    )
+
+    const apply = () =>
+      applyActionWithOutcome(state, {
+        type: 'attackParty',
+        playerId: 'p1',
+        ...action,
+        boardCommands: commands,
+      })
+    const first = apply()
+    const resolved = canonical[n] as { report: unknown }
+    expect(JSON.stringify(first.battleReport)).toBe(JSON.stringify(resolved.report))
+    // The recorded plan replays deterministically through the reducer.
+    expect(JSON.stringify(apply().state)).toBe(JSON.stringify(first.state))
+  })
+
+  it('party city-assault: prefixes replay bit-exact and the plan resolves through the reducer identically', () => {
+    const base = landState()
+    // Stand the attacker beside the port and clear the defending party out of the fight.
+    const state: GameState = {
+      ...base,
+      parties: [{ ...base.parties[0]!, position: { x: 10, y: 5 } }],
+    }
+    const action = { partyId: 'lp1', targetCityId: 'p2-city' }
+    const commands: BoardCommand[] = []
+    const canonical = [probePartyAssault(state, action, [])]
+    let guard = 0
+    while (canonical[canonical.length - 1]!.kind === 'awaitingCommand') {
+      if (++guard > 500) throw new Error('party assault did not resolve')
+      const view = (canonical[canonical.length - 1] as { view: BoardActivationView }).view
+      commands.push(scriptedCommand(view))
+      canonical.push(probePartyAssault(state, action, commands))
+    }
+    const n = commands.length
+    expect(n).toBeGreaterThan(1)
+    expect(canonical[n]!.kind).toBe('resolved')
+
+    assertInterleavedPrefixes(n, canonical, (k) =>
+      probePartyAssault(state, action, commands.slice(0, k)),
+    )
+
+    const apply = () =>
+      applyActionWithOutcome(state, {
+        type: 'partyAssaultCity',
+        playerId: 'p1',
+        ...action,
+        boardCommands: commands,
+      })
+    const first = apply()
+    const resolved = canonical[n] as { report: unknown }
+    expect(JSON.stringify(first.battleReport)).toBe(JSON.stringify(resolved.report))
+    expect(JSON.stringify(apply().state)).toBe(JSON.stringify(first.state))
+  })
+
+  it('fails loud without board tuning', () => {
+    const base = landState()
+    const state: GameState = {
+      ...base,
+      config: { ...base.config, combatStats: statsData(null) },
+    }
+    expect(() => probePartyBattle(state, { partyId: 'lp1', targetPartyId: 'lp2' }, [])).toThrow(
+      /board tuning/,
+    )
+    expect(() => probePartyAssault(state, { partyId: 'lp1', targetCityId: 'p2-city' }, [])).toThrow(
+      /board tuning/,
+    )
   })
 })

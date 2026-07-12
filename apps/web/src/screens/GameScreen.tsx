@@ -38,6 +38,8 @@ import { BoardingCommandSheet } from '../BoardingCommandSheet'
 import {
   probeBoardingBattle,
   probeCityAssault,
+  probePartyAssault,
+  probePartyBattle,
   probeTacticalBattle,
   stackLosses,
   type BoardingProbeOutcome,
@@ -98,6 +100,33 @@ interface BoardingState {
  */
 interface AssaultBoardingState {
   captainId: string
+  targetCityId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
+ * A party-vs-party land battle (#482) being fought on the tactical board,
+ * mid-command. Like {@link AssaultBoardingState} but both sides are landing
+ * parties; dispatched as an `attackParty` action with the recorded
+ * `boardCommands` once the probe resolves.
+ */
+interface PartyBattleBoardingState {
+  partyId: string
+  targetPartyId: string
+  commands: BoardCommand[]
+  view: BoardActivationView
+  losses: StackLoss[]
+}
+
+/**
+ * A land-side city assault (#482) being fought on the tactical board,
+ * mid-command — the party twin of {@link AssaultBoardingState}. Dispatched as
+ * a `partyAssaultCity` action with the recorded `boardCommands`.
+ */
+interface PartyAssaultBoardingState {
+  partyId: string
   targetCityId: string
   commands: BoardCommand[]
   view: BoardActivationView
@@ -233,6 +262,13 @@ export function GameScreen({
   const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
   const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
   const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
+  // Interactive land battles (#482): the in-progress party-vs-party melee and
+  // party city-assault, mirrors of `boarding`/`assaultBoarding` above.
+  const [partyBattleBoarding, setPartyBattleBoarding] = useState<PartyBattleBoardingState | null>(
+    null,
+  )
+  const [partyAssaultBoarding, setPartyAssaultBoarding] =
+    useState<PartyAssaultBoardingState | null>(null)
   // Land encounter (#466) a selected party is about to resolve.
   const [landEncounterId, setLandEncounterId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
@@ -248,7 +284,12 @@ export function GameScreen({
   useBackgroundMusic(
     selectGameplayMusicContext({
       battleReportOpen: !!battleReport,
-      boardingOpen: !!boarding || !!tacticalRound || !!assaultBoarding,
+      boardingOpen:
+        !!boarding ||
+        !!tacticalRound ||
+        !!assaultBoarding ||
+        !!partyBattleBoarding ||
+        !!partyAssaultBoarding,
     }),
   )
 
@@ -860,7 +901,18 @@ export function GameScreen({
     setSelectedCaptainId(null)
   }
 
+  /**
+   * Engage the enemy party (#465, interactive #482). Auto mode dispatches to
+   * the reducer, where the board AI fights the melee; Tactical mode routes it
+   * through the same interactive land-board planner as a city assault.
+   */
   function confirmPartyAttack() {
+    if (game.config.setup.battleResolution === 'tactical') startTacticalPartyAttack()
+    else autoResolvePartyAttack()
+  }
+
+  /** Auto-resolve the party battle, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolvePartyAttack() {
     if (!selectedParty || !partyAttackTarget) return
     impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
@@ -872,9 +924,86 @@ export function GameScreen({
     })
     setPartyAttackTargetId(null)
     setSelectedPartyId(null)
+    setPartyBattleBoarding(null)
   }
 
+  /** Tactical mode (#482): probe the land board instead of resolving outright. */
+  function startTacticalPartyAttack() {
+    if (!selectedParty || !partyAttackTarget) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const partyId = selectedParty.id
+    const targetPartyId = partyAttackTarget.id
+    setPartyAttackTargetId(null)
+    setSelectedPartyId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyBattle(game, { partyId, targetPartyId }, [])
+    } catch (err) {
+      // Fail-safe: a broken local simulation must never block the attack —
+      // dispatch without a plan and let the board AI fight the melee.
+      console.error('Party-battle simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyBattleBoarding({ partyId, targetPartyId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'attackParty', playerId: viewer.id, partyId, targetPartyId })
+  }
+
+  /** Dispatch the party battle with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchPartyBattle(current: PartyBattleBoardingState, commands: BoardCommand[]) {
+    setPartyBattleBoarding(null)
+    onAction({
+      type: 'attackParty',
+      playerId: viewer.id,
+      partyId: current.partyId,
+      targetPartyId: current.targetPartyId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+  }
+
+  /** One confirmed land-melee order: extend the plan and re-probe for the next activation. */
+  function orderPartyBattleCommand(command: BoardCommand) {
+    if (!partyBattleBoarding) return
+    const commands = [...partyBattleBoarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyBattle(
+        game,
+        {
+          partyId: partyBattleBoarding.partyId,
+          targetPartyId: partyBattleBoarding.targetPartyId,
+        },
+        commands,
+      )
+    } catch (err) {
+      console.error('Party-battle simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyBattleBoarding({
+        ...partyBattleBoarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(partyBattleBoarding.view, probe.view),
+      })
+      return
+    }
+    dispatchPartyBattle(partyBattleBoarding, commands)
+  }
+
+  /**
+   * Storm the city from the land side (#465, interactive #482): the same
+   * Tactical/Auto split as a sea assault, against the identical full defense.
+   */
   function confirmPartyAssault() {
+    if (game.config.setup.battleResolution === 'tactical') startTacticalPartyAssault()
+    else autoResolvePartyAssault()
+  }
+
+  /** Auto-resolve the land assault, and Tactical mode's own "skip this battle" escape hatch. */
+  function autoResolvePartyAssault() {
     if (!selectedParty || !partyAssaultCity) return
     impactFeedback()
     audioManager.play(DIALOGUE.battleCharge)
@@ -886,6 +1015,68 @@ export function GameScreen({
     })
     setPartyAssaultCityId(null)
     setSelectedPartyId(null)
+    setPartyAssaultBoarding(null)
+  }
+
+  /** Tactical mode (#482): probe the land board instead of resolving outright. */
+  function startTacticalPartyAssault() {
+    if (!selectedParty || !partyAssaultCity) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    const partyId = selectedParty.id
+    const targetCityId = partyAssaultCity.id
+    setPartyAssaultCityId(null)
+    setSelectedPartyId(null)
+
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyAssault(game, { partyId, targetCityId }, [])
+    } catch (err) {
+      console.error('Party-assault simulation failed; falling back to auto-resolve', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyAssaultBoarding({ partyId, targetCityId, commands: [], view: probe.view, losses: [] })
+      return
+    }
+    onAction({ type: 'partyAssaultCity', playerId: viewer.id, partyId, targetCityId })
+  }
+
+  /** Dispatch the land assault with every command recorded so far; the board AI finishes any remainder. */
+  function dispatchPartyAssault(current: PartyAssaultBoardingState, commands: BoardCommand[]) {
+    setPartyAssaultBoarding(null)
+    onAction({
+      type: 'partyAssaultCity',
+      playerId: viewer.id,
+      partyId: current.partyId,
+      targetCityId: current.targetCityId,
+      ...(commands.length > 0 ? { boardCommands: commands } : {}),
+    })
+  }
+
+  /** One confirmed land-melee order: extend the plan and re-probe for the next activation. */
+  function orderPartyAssaultCommand(command: BoardCommand) {
+    if (!partyAssaultBoarding) return
+    const commands = [...partyAssaultBoarding.commands, command]
+    let probe: BoardingProbeOutcome | null = null
+    try {
+      probe = probePartyAssault(
+        game,
+        { partyId: partyAssaultBoarding.partyId, targetCityId: partyAssaultBoarding.targetCityId },
+        commands,
+      )
+    } catch (err) {
+      console.error('Party-assault simulation failed mid-melee; auto-resolving the rest', err)
+    }
+    if (probe?.kind === 'awaitingCommand') {
+      setPartyAssaultBoarding({
+        ...partyAssaultBoarding,
+        commands,
+        view: probe.view,
+        losses: stackLosses(partyAssaultBoarding.view, probe.view),
+      })
+      return
+    }
+    dispatchPartyAssault(partyAssaultBoarding, commands)
   }
 
   /**
@@ -1603,6 +1794,30 @@ export function GameScreen({
         />
       )}
 
+      {partyBattleBoarding && (
+        <BoardingCommandSheet
+          key={partyBattleBoarding.commands.length}
+          view={partyBattleBoarding.view}
+          losses={partyBattleBoarding.losses}
+          onCommand={orderPartyBattleCommand}
+          onAutoResolve={() =>
+            dispatchPartyBattle(partyBattleBoarding, partyBattleBoarding.commands)
+          }
+        />
+      )}
+
+      {partyAssaultBoarding && (
+        <BoardingCommandSheet
+          key={partyAssaultBoarding.commands.length}
+          view={partyAssaultBoarding.view}
+          losses={partyAssaultBoarding.losses}
+          onCommand={orderPartyAssaultCommand}
+          onAutoResolve={() =>
+            dispatchPartyAssault(partyAssaultBoarding, partyAssaultBoarding.commands)
+          }
+        />
+      )}
+
       {battleReport && (
         <BattleBoardSheet
           report={battleReport}
@@ -1791,8 +2006,13 @@ export function GameScreen({
                 {UI_ICON.attack && (
                   <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
                 )}
-                Attack
+                {game.config.setup.battleResolution === 'tactical' ? 'Fight tactically' : 'Attack'}
               </button>
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolvePartyAttack}>
+                  Auto-resolve
+                </button>
+              )}
             </div>
           </section>
         </BottomSheet>
@@ -1823,8 +2043,15 @@ export function GameScreen({
                 {UI_ICON.attack && (
                   <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
                 )}
-                Assault
+                {game.config.setup.battleResolution === 'tactical'
+                  ? 'Assault tactically'
+                  : 'Assault'}
               </button>
+              {game.config.setup.battleResolution === 'tactical' && (
+                <button className="secondary" onClick={autoResolvePartyAssault}>
+                  Auto-resolve
+                </button>
+              )}
             </div>
           </section>
         </BottomSheet>
