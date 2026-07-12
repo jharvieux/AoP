@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f5f0e6"/>
+  <g fill="#AD1519">
+    <g id="branch" transform="rotate(45 256 256)">
+      <rect x="-30" y="234" width="572" height="44"/>
+      <!-- attached pruned-branch stubs, alternating along both edges -->
+      <path d="M60 234 l20 -26 l20 26 z"/>
+      <path d="M150 278 l20 26 l20 -26 z"/>
+      <path d="M240 234 l20 -26 l20 26 z"/>
+      <path d="M330 278 l20 26 l20 -26 z"/>
+      <path d="M420 234 l20 -26 l20 26 z"/>
+      <path d="M110 278 l18 24 l18 -24 z"/>
+      <path d="M200 234 l18 -24 l18 24 z"/>
+      <path d="M290 278 l18 24 l18 -24 z"/>
+      <path d="M380 234 l18 -24 l18 24 z"/>
+    </g>
+    <use href="#branch" transform="rotate(90 256 256)"/>
+  </g>
+</svg>
