@@ -50,7 +50,7 @@ dial down toward 20 for a gentler lift if playtests find the map too swingy.
 
 **Artifacts.** `packages/engine/src/ai.ts` (conquest scoring), `packages/content/src/tuning.ts`
 (`siegeStickinessBonus`), `apps/web/src/conquestReachable.test.ts` (multi-wave assertion +
-before/after table), `packages/engine/test/fixtures.ts`, ENGINE_VERSION regen. PR #<TBD>.
+before/after table), `packages/engine/test/fixtures.ts`, ENGINE_VERSION regen. PR #474.
 
 ---
 

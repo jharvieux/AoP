@@ -69,6 +69,7 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
+  homeIslandRadiusOverrides: { xlarge: 4 },
   homeIslandRingRadiusFactor: 0.4,
   startingBuildings: ['townhall', 'barracks'],
   cityVisionRadius: 3,

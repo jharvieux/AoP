@@ -25,7 +25,10 @@ interface NewGameSetupProps {
   onBack: () => void
 }
 
-const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
+const MAP_SIZES: MapSize[] = ['small', 'medium', 'large', 'xlarge']
+// #468: 'xlarge' doesn't title-case cleanly from the raw string (would read
+// "Xlarge"); every other size falls through to the default title-case below.
+const MAP_SIZE_LABELS: Partial<Record<MapSize, string>> = { xlarge: 'Extra Large' }
 const PERSONALITIES: AiPersonality[] = ['aggressive', 'economic', 'opportunist']
 const DIFFICULTIES: AiDifficulty[] = ['easy', 'normal', 'hard']
 
@@ -138,7 +141,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
                 className={`size-button ${mapSize === size ? 'active' : ''}`}
                 onClick={() => setMapSize(size)}
               >
-                {size.charAt(0).toUpperCase() + size.slice(1)}
+                {MAP_SIZE_LABELS[size] ?? size.charAt(0).toUpperCase() + size.slice(1)}
               </button>
             ))}
           </div>
