@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth'
 import { useAudioSettings } from '../audio/useAudioSettings'
 import { useBackgroundMusic } from '../audio/useBackgroundMusic'
 import { tapFeedback } from '../audio/feedback'
+import { mostRecentSave } from '../continueSave'
+import { describeError } from '../errors'
+import { listSaves, type SaveRecord } from '../storage'
 
 interface MainMenuProps {
   onStart: () => void
@@ -21,6 +24,15 @@ interface MainMenuProps {
   onQuickMatch: () => void
   /** #154/#155: view the ranked player leaderboard. */
   onLeaderboard: () => void
+  /** #451: opens the main-menu Load Game screen (SaveScreen in load-only mode). */
+  onLoadGame: () => void
+  /** #451: resumes a save by slot id. Throws on failure (#237's pattern) — caught
+   * here so the menu stays up with a visible error instead of navigating away. */
+  onContinue: (slotId: string) => Promise<void>
+}
+
+function describeSave(record: SaveRecord): string {
+  return `Round ${record.round} — ${new Date(record.savedAt).toLocaleString()}`
 }
 
 /**
@@ -40,6 +52,8 @@ export function MainMenu({
   onMatchBrowser,
   onQuickMatch,
   onLeaderboard,
+  onLoadGame,
+  onContinue,
 }: MainMenuProps) {
   const auth = useAuth()
   const {
@@ -53,8 +67,32 @@ export function MainMenu({
     setSfxVolume,
   } = useAudioSettings()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [saves, setSaves] = useState<SaveRecord[]>([])
+  const [continueError, setContinueError] = useState<string | null>(null)
 
   useBackgroundMusic('menu')
+
+  // #451: refetch every mount — App remounts the menu (key={screen}) whenever
+  // navigation returns to it, so this always reflects the latest autosave.
+  useEffect(() => {
+    listSaves()
+      .then(setSaves)
+      .catch((err: unknown) => console.error('Failed to list saves for Continue', err))
+  }, [])
+
+  const latestSave = mostRecentSave(saves)
+
+  async function handleContinue() {
+    if (!latestSave) return
+    tapFeedback()
+    setContinueError(null)
+    try {
+      await onContinue(latestSave.slotId)
+    } catch (err) {
+      console.error(`Continue from "${latestSave.slotId}" failed`, err)
+      setContinueError(`Couldn't resume your save: ${describeError(err)}`)
+    }
+  }
 
   function withTap(handler: () => void): () => void {
     return () => {
@@ -70,6 +108,7 @@ export function MainMenu({
       : 'Sign In / Account'
 
   const secondaryActions: Array<{ label: string; onClick: () => void; wide?: boolean }> = [
+    { label: 'Load Game', onClick: onLoadGame },
     { label: 'Theme Packs', onClick: onThemePacks },
     { label: accountLabel, onClick: onAccount },
     { label: 'Watch Replay', onClick: onWatchReplay },
@@ -84,7 +123,19 @@ export function MainMenu({
       <div className="main-menu__panel">
         <h1 className="main-menu__header">Age of Plunder</h1>
 
+        {continueError && (
+          <p className="main-menu__continue-error" role="status">
+            {continueError}
+          </p>
+        )}
+
         <div className="main-menu__primary">
+          {latestSave && (
+            <button className="main-menu__continue" onClick={handleContinue}>
+              <span className="main-menu__continue-title">Continue</span>
+              <span className="main-menu__continue-subtitle">{describeSave(latestSave)}</span>
+            </button>
+          )}
           <button className="main-menu__new-game" onClick={withTap(onStart)}>
             New Game
           </button>
