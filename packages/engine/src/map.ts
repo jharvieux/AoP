@@ -56,9 +56,14 @@ export const MAP_DIMENSIONS: Record<MapSize, number> = {
   small: 24,
   medium: 32,
   large: 40,
+  // #468: continues the +8 step of small→medium→large. Neutral-city count
+  // already scales off this via the size/6..size/4 formula below, and the
+  // per-size home-island radius override (see GameSetup) is what actually
+  // grows island interiors rather than just adding more empty sea.
+  xlarge: 48,
 }
 
-const SIZE_CODE: Record<MapSize, number> = { small: 1, medium: 2, large: 3 }
+const SIZE_CODE: Record<MapSize, number> = { small: 1, medium: 2, large: 3, xlarge: 4 }
 
 export function tileIndex(map: GameMap, x: number, y: number): number {
   return y * map.width + x

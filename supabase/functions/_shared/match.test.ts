@@ -66,6 +66,23 @@ Deno.test('parseSettings: rejects unknown topology values (#389)', () => {
   }
 })
 
+Deno.test('parseSettings: accepts every MapSize including xlarge (#468)', () => {
+  for (const mapSize of ['small', 'medium', 'large', 'xlarge']) {
+    assertEquals(parseSettings({ ...base, mapSize }).mapSize, mapSize)
+  }
+})
+
+Deno.test('parseSettings: rejects an unknown mapSize', () => {
+  for (const mapSize of ['huge', 42, null, undefined]) {
+    assertThrows(
+      () => parseSettings({ ...base, mapSize }),
+      AppError,
+      undefined,
+      `expected mapSize ${JSON.stringify(mapSize)} to be rejected`,
+    )
+  }
+})
+
 Deno.test('buildMatchConfig: passes topology into the config, omits it when absent (#389)', () => {
   const hex = buildMatchConfig(7, 'small', HEX_SEATS, {}, 'hex')
   assertEquals(hex.topology, 'hex')

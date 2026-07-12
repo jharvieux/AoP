@@ -43,13 +43,19 @@ export function createGame(config: GameConfig): GameState {
   // An authored map (#62) stands in for generation; `seed` still drives every
   // other RNG draw, so replays stay deterministic either way. Clone
   // defensively so mutating the caller's object can't leak into GameState.
+  // #468: `xlarge` (and any future size) may override the flat home-island
+  // radius so its islands have meaningfully more interior land, not just a
+  // bigger empty-sea canvas. Sizes absent from the override map fall through
+  // to the flat radius unchanged, so pre-#468 generation stays byte-identical.
+  const homeIslandRadius =
+    setup.homeIslandRadiusOverrides?.[config.mapSize] ?? setup.homeIslandRadius
   const map = config.mapDefinition
     ? mapToDefinition(config.mapDefinition)
     : generateMap(
         config.seed,
         config.mapSize,
         config.players.length,
-        setup.homeIslandRadius,
+        homeIslandRadius,
         setup.homeIslandRingRadiusFactor,
         config.topology,
       )

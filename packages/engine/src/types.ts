@@ -187,6 +187,16 @@ export interface GameSetup {
   startingShipClass: string
   homeIslandRadius: number
   /**
+   * Per-`MapSize` override of {@link homeIslandRadius} (#468). Only sizes
+   * present here deviate from the flat radius above — today just `xlarge` —
+   * so small/medium/large generation stays byte-identical to pre-#468 output.
+   * The point is bigger island *interiors* on the XL board, not merely a
+   * bigger canvas of empty sea; the neutral-island radius formula in
+   * `generateMap` derives from the same resolved radius, so neutral islands
+   * grow too.
+   */
+  homeIslandRadiusOverrides?: Partial<Record<MapSize, number>>
+  /**
    * Fraction of map size used as the ring radius for placing home island centers
    * around the map centre. Larger values push starts farther apart, delaying first
    * contact and mitigating early rush meta (#322).

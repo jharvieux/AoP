@@ -122,7 +122,15 @@ export function turretUnitId(factionId: string, tier: number): string {
  */
 export const MAX_MATCH_PLAYERS = FACTION_IDS.length
 
-export type MapSize = 'small' | 'medium' | 'large'
+/**
+ * `xlarge` (#468) is single-player-only for now: the quick-match
+ * `matchmaking_queue` table's `map_size` column has a hardcoded
+ * `check (map_size in ('small', 'medium', 'large'))` constraint (a migration,
+ * a supervised path), so quick-match deliberately never offers it. Host-created
+ * private matches (`parseSettings` in the create-match Edge Function) do
+ * accept it — that validation is in-code, not a DB constraint.
+ */
+export type MapSize = 'small' | 'medium' | 'large' | 'xlarge'
 
 /** A grid coordinate. Origin is top-left; +x is east, +y is south. */
 export interface Coord {

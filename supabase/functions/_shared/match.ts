@@ -1253,8 +1253,15 @@ export async function viewerSeat(db: Db, matchId: string, userId: string): Promi
 export function parseSettings(raw: unknown): MatchSettings {
   const s = (raw ?? {}) as Record<string, unknown>
   const mapSize = s.mapSize
-  if (mapSize !== 'small' && mapSize !== 'medium' && mapSize !== 'large') {
-    throw new AppError('BAD_REQUEST', 'settings.mapSize must be small | medium | large')
+  // 'xlarge' (#468) is accepted here — this is in-code validation on the JSONB
+  // `matches.settings` column, not a DB enum constraint. It's deliberately NOT
+  // accepted by the matchmaking_queue path (join-matchmaking-queue / drain):
+  // that table's `map_size` column has a hardcoded
+  // `check (map_size in ('small', 'medium', 'large'))` constraint (a migration,
+  // out of scope for this issue), so quick-match stays capped at the original
+  // three sizes.
+  if (mapSize !== 'small' && mapSize !== 'medium' && mapSize !== 'large' && mapSize !== 'xlarge') {
+    throw new AppError('BAD_REQUEST', 'settings.mapSize must be small | medium | large | xlarge')
   }
   // Upper bound is the faction pool (#219): factions are unique per match, so a
   // lobby bigger than FACTION_IDS.length can never fill — the 6th joiner always
