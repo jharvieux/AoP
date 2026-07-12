@@ -278,14 +278,43 @@ describe('turn loop', () => {
 
   it('finishes the game when one player remains', () => {
     let state = createGame(testConfig(3))
-    state = applyAction(state, { type: 'resign', playerId: 'p1' })
-    expect(state.status).toBe('active')
+    state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
     state = applyAction(state, { type: 'resign', playerId: 'p2' })
+    expect(state.status).toBe('active')
+    state = applyAction(state, { type: 'resign', playerId: 'p3' })
     expect(state.status).toBe('finished')
-    expect(state.winnerId).toBe('p3')
-    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p3' })).toThrow(
+    expect(state.winnerId).toBe('p1')
+    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p1' })).toThrow(
       InvalidActionError,
     )
+  })
+
+  it('resign by the last human seat finishes the match at once (#426)', () => {
+    // testConfig seats p1 as the only human; p2/p3 are AI. With the human gone
+    // there is nobody left to play for, so the match must close instead of
+    // grinding on as an AI-vs-AI loop of battles at a resigned spectator.
+    let state = createGame(testConfig(3))
+    state = applyAction(state, { type: 'resign', playerId: 'p1' })
+    expect(state.players.find((p) => p.id === 'p1')!.eliminated).toBe(true)
+    expect(state.status).toBe('finished')
+    // Two AI seats still stand, so no winner is declared.
+    expect(state.winnerId).toBeNull()
+    expect(() => applyAction(state, { type: 'endTurn', playerId: 'p2' })).toThrow(
+      InvalidActionError,
+    )
+  })
+
+  it('resign with no castle sweeps the seat and ends the match cleanly (#426)', () => {
+    const base = createGame(testConfig(3))
+    // The reported repro: the resigner lost its city earlier in the session.
+    const cityless: GameState = { ...base, cities: base.cities.filter((c) => c.ownerId !== 'p1') }
+    const log: Action[] = [{ type: 'resign', playerId: 'p1' }]
+    const state = replay(cityless, log)
+    expect(state.players.find((p) => p.id === 'p1')!.eliminated).toBe(true)
+    expect(state.captains.some((c) => c.ownerId === 'p1')).toBe(false)
+    expect(state.status).toBe('finished')
+    expect(state.winnerId).toBeNull()
+    expect(JSON.stringify(replay(cityless, log))).toBe(JSON.stringify(state))
   })
 
   it('does not mutate the input state', () => {
