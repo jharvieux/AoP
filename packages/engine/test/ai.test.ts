@@ -4,21 +4,31 @@ import {
   captainsOf,
   createGame,
   currentPlayer,
+  mapNeighbors,
   nextAiAction,
   replay,
+  RULES_VERSION,
   runAiTurn,
+  seedRng,
+  tileIndex,
   type Action,
   type AiProfile,
   type Captain,
+  type CityState,
   type CombatStatsData,
   type ContentCatalog,
   type GameConfig,
+  type GameMap,
   type GameState,
+  type LandingParty,
+  type Tile,
+  type TileType,
 } from '../src'
 import {
   AI_DIFFICULTIES,
   AI_PERSONALITIES,
   AI_TUNING,
+  BATTLE_TUNING,
   COMBAT_TUNING,
   GAME_SETUP,
   TACTICS_TUNING,
@@ -462,6 +472,34 @@ describe('economy AI', () => {
     const state = createGame(config(1, 999))
     expect(nextAiAction(state, 'p1').type).toBe('endTurn')
   })
+
+  it('never proposes a shipyard at a landlocked city, and the turn completes without throwing (#467/#475 merge regression)', () => {
+    // A city can only become landlocked via an inland neutral settlement
+    // (#467) — reachable and capturable by an AI landing party (#475) once
+    // both features are live together. The reducer's construct rule refuses
+    // unlocksShipyard at a city with no adjacent water tile; before this
+    // filter, the AI's construct planner didn't know that and would propose
+    // it anyway, crashing applyAction the moment the AI owned such a city.
+    let state = createGame(econConfig(['townhall']))
+    const city = homeCity(state, 'p1')
+    const landlockedNeighbors = new Set(
+      mapNeighbors(state.map, city.position).map((n) => tileIndex(state.map, n.x, n.y)),
+    )
+    state = {
+      ...state,
+      map: {
+        ...state.map,
+        tiles: state.map.tiles.map((tile, idx) =>
+          landlockedNeighbors.has(idx) ? { ...tile, type: 'land' as TileType } : tile,
+        ),
+      },
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).not.toEqual(
+      expect.objectContaining({ type: 'construct', buildingId: 'shipyard' }),
+    )
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
 })
 
 // --- Tavern gate on AI captain recovery (#433) ---
@@ -781,5 +819,359 @@ describe('AI alliance awareness (#25)', () => {
   it('still targets a non-allied captain', () => {
     const state = placeAdjacent(createGame(config(8, 1)))
     expect(nextAiAction(state, 'p1').type).toBe('attackCaptain')
+  })
+})
+
+/**
+ * AI landing-party operations (#475). The planner learns the five party verbs:
+ * a captain disembarks a party for the captain-preserving attrition vector; a
+ * party marches on, assaults, and intercepts; and a purposeless party re-embarks
+ * or a threatened city is reinforced. These guard the two invariants the scope
+ * calls out: every proposed party action is one the reducer accepts (so
+ * `runAiTurn` never throws, whatever the party state — the crash class the #433
+ * tavern-gate and #439 captured-captain tests guard for other verbs), and the
+ * choice is a pure, replay-stable function of state. Board tuning is present, so
+ * a land battle can resolve; the handcrafted island gives the precise placement
+ * the procedural generator can't.
+ */
+const LAND_STATS: CombatStatsData = {
+  units: [
+    { id: 'grunt', attack: 5, defense: 2, health: 12 },
+    { id: 'brute', attack: 16, defense: 8, health: 44 },
+    { id: 'b1', attack: 3, defense: 1, health: 7 },
+    { id: 'turret:british:1', attack: 3, defense: 1, health: 7, range: 4, stationary: true }, // prettier-ignore
+    { id: 'turret:pirates:1', attack: 3, defense: 0, health: 7, range: 4, stationary: true }, // prettier-ignore
+  ],
+  ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
+  battle: BATTLE_TUNING,
+}
+
+const LAND_CATALOG: ContentCatalog = {
+  buildings: { townhall: { produces: { gold: 100 }, cost: {}, unlocksTier: 1 } },
+  units: {
+    grunt: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8, attack: 5, defense: 2, health: 12 }, // prettier-ignore
+    brute: { factionId: 'pirates', tier: 3, goldCost: 150, weeklyGrowth: 2, attack: 16, defense: 8, health: 44 }, // prettier-ignore
+    b1: { factionId: 'british', tier: 1, goldCost: 25, weeklyGrowth: 8, attack: 3, defense: 1, health: 7 }, // prettier-ignore
+  },
+  ships: { sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 12, upgrades: {} } },
+  skills: {},
+  captainXpThresholds: [0, 150, 400, 800, 1400],
+  cityDefense: { militiaPerType: 3, turretCount: 2, neutralRosterFactionId: 'pirates' },
+}
+
+/** One 8x4 island (land x4..11, y4..7); p2's port city at (11,5), p1's at (4,5). */
+function landMap(): GameMap {
+  const width = 16
+  const height = 12
+  const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+    type: 'deep' as TileType,
+    island: -1,
+  }))
+  for (let y = 4; y <= 7; y++) {
+    for (let x = 4; x <= 11; x++) tiles[y * width + x] = { type: 'land', island: 0 }
+  }
+  tiles[5 * width + 11] = { type: 'port', island: 0 }
+  tiles[5 * width + 4] = { type: 'port', island: 0 }
+  return { width, height, tiles, startPositions: [] }
+}
+
+function landCaptain(
+  id: string,
+  ownerId: string,
+  position: { x: number; y: number },
+  troops: { unitId: string; count: number }[],
+): Captain {
+  return {
+    id,
+    ownerId,
+    name: id,
+    position,
+    shipClassId: 'sloop',
+    movementPoints: GAME_SETUP.startingCaptainMovement,
+    maxMovementPoints: GAME_SETUP.startingCaptainMovement,
+    troops,
+    xp: 0,
+    skills: [],
+    shipUpgrades: {},
+    captured: false,
+  }
+}
+
+function landParty(
+  id: string,
+  ownerId: string,
+  position: { x: number; y: number },
+  troops: { unitId: string; count: number }[],
+): LandingParty {
+  return {
+    id,
+    ownerId,
+    name: id,
+    position,
+    movementPoints: GAME_SETUP.partyMovementPoints,
+    maxMovementPoints: GAME_SETUP.partyMovementPoints,
+    troops,
+  }
+}
+
+function p2CityAt(pos: { x: number; y: number }, garrison: Record<string, number>): CityState {
+  return {
+    id: 'p2-city',
+    ownerId: 'p2',
+    name: 'Port Royal',
+    position: pos,
+    buildings: ['townhall'],
+    builtThisRound: false,
+    garrison,
+    unitAvailability: {},
+  }
+}
+
+function p1CityAt(pos: { x: number; y: number }, garrison: Record<string, number>): CityState {
+  return {
+    id: 'p1-city',
+    ownerId: 'p1',
+    name: 'Home',
+    position: pos,
+    buildings: ['townhall'],
+    builtThisRound: false,
+    garrison,
+    unitAvailability: {},
+  }
+}
+
+function landState(opts: {
+  captains?: Captain[]
+  parties?: LandingParty[]
+  cities?: CityState[]
+}): GameState {
+  const seats = [
+    { id: 'p1', name: 'One', faction: 'pirates' as const, isAI: true },
+    { id: 'p2', name: 'Two', faction: 'british' as const, isAI: true },
+  ]
+  return {
+    config: {
+      seed: 1,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      combatStats: LAND_STATS,
+      content: LAND_CATALOG,
+      aiTuning: AI_TUNING,
+      aiPersonalities: AI_PERSONALITIES,
+      aiDifficulties: AI_DIFFICULTIES,
+      players: seats,
+      rulesVersion: RULES_VERSION,
+    },
+    map: landMap(),
+    round: 1,
+    currentPlayerIndex: 0,
+    players: seats.map((s) => ({
+      id: s.id,
+      name: s.name,
+      faction: s.faction,
+      isAI: s.isAI,
+      resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
+      eliminated: false,
+      reputation: 100,
+      aiProfile: { personality: 'opportunist' as const, difficulty: 'normal' as const },
+    })),
+    alliances: { pairs: [], proposals: [] },
+    cities: opts.cities ?? [],
+    captains: opts.captains ?? [],
+    parties: opts.parties ?? [],
+    encounters: [],
+    landSites: [],
+    landEncounters: [],
+    resourceNodes: [],
+    exploredTiles: {},
+    rngState: seedRng(1),
+    actionCount: 0,
+    status: 'active',
+    winnerId: null,
+  }
+}
+
+describe('AI landing-party offense (#475)', () => {
+  it('assaults an adjacent enemy city with a beatable party', () => {
+    const state = landState({
+      parties: [landParty('pa', 'p1', { x: 10, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 1 })],
+    })
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'partyAssaultCity',
+      playerId: 'p1',
+      partyId: 'pa',
+      targetCityId: 'p2-city',
+    })
+  })
+
+  it('marches a distant party overland toward the enemy city (a reducer-valid step)', () => {
+    const state = landState({
+      parties: [landParty('pa', 'p1', { x: 4, y: 7 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 1 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('moveParty')
+    // The step must be one the reducer accepts — the crash guard for marching.
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('disembarks a party rather than storming by sea when the wave is attrition-only', () => {
+    // 6 grunts (strength 36) against a garrison of 10 b1 thickened to 15 by
+    // militia plus 2 turrets — defender strength (10+5)×3.5 ≈ 52.5, ratio ≈ 0.69:
+    // below the 0.9 engage gate but above the 0.40 attrition floor. The captain
+    // sits on the shore beside the city's land ring, so it lands a party (a
+    // repelled land assault costs only the party) instead of a sea assault (which
+    // would cost it the captain).
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('intercepts an adjacent enemy party it can beat (the counter, #475)', () => {
+    const state = landState({
+      parties: [
+        landParty('pa', 'p1', { x: 5, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('pe', 'p2', { x: 6, y: 4 }, [{ unitId: 'b1', count: 1 }]),
+      ],
+    })
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'attackParty',
+      playerId: 'p1',
+      partyId: 'pa',
+      targetPartyId: 'pe',
+    })
+  })
+})
+
+describe('AI landing-party logistics & counter (#475)', () => {
+  it('re-embarks a purposeless party onto an adjacent friendly ship with room', () => {
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 4 }, [])],
+      parties: [landParty('pa', 'p1', { x: 4, y: 4 }, [{ unitId: 'grunt', count: 6 }])],
+    })
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'embark',
+      playerId: 'p1',
+      partyId: 'pa',
+      captainId: 'c1',
+    })
+  })
+
+  it('reinforces a threatened city from a docked captain (transfer to garrison)', () => {
+    // The b1:5 party (strength 17.5) clears the threat floor — partyThreatMinRatio
+    // 0.4 (×1.1 opportunist) of the city's intrinsic defence (3 militia grunts +
+    // 2 turrets ≈ 24) is ≈ 10.6 — so the docked captain hands its troops to the
+    // garrison to meet it.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('transferTroops')
+    if (action.type === 'transferTroops') {
+      expect(action.direction).toBe('toGarrison')
+      expect(action.cityId).toBe('p1-city')
+    }
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('ignores a trivial nuisance party — the garrison→ship pipeline is not frozen (#475 audit)', () => {
+    // A single-troop party (strength 3.5) camps within partyThreatRadius but far
+    // below the threat floor (≈ 10.6, see above). Before the size floor, ANY
+    // party in radius froze the city's garrison→ship loading forever — a cheap
+    // exploit against the AI. The docked captain must still load the surplus.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'b1', count: 1 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 10 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('transferTroops')
+    if (action.type === 'transferTroops') {
+      expect(action.direction).toBe('toShip')
+      expect(action.cityId).toBe('p1-city')
+    }
+  })
+
+  it('a dangerous party does pause garrison→ship loading for the threatened city', () => {
+    // Identical layout, but the party towers over the threat floor. The planner
+    // refuses to strip the threatened city, and the empty-hold captain has
+    // nothing to reinforce with, so the seat holds rather than loading.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 10 })],
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+})
+
+describe('AI landing-party crash-safety & determinism (#475)', () => {
+  const scenarios: Record<string, () => GameState> = {
+    'party assaulting a city': () =>
+      landState({
+        parties: [landParty('pa', 'p1', { x: 10, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+        cities: [p2CityAt({ x: 11, y: 5 }, { b1: 1 })],
+      }),
+    'party marching to a city': () =>
+      landState({
+        parties: [landParty('pa', 'p1', { x: 4, y: 7 }, [{ unitId: 'grunt', count: 6 }])],
+        cities: [p2CityAt({ x: 11, y: 5 }, { b1: 4 })],
+      }),
+    'captain able to disembark': () =>
+      landState({
+        captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+        cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+      }),
+    'stranded party, no ship, no target': () =>
+      landState({
+        parties: [landParty('pa', 'p1', { x: 5, y: 5 }, [{ unitId: 'grunt', count: 3 }])],
+      }),
+    'party facing a stronger enemy party (no winnable strike)': () =>
+      landState({
+        parties: [
+          landParty('pa', 'p1', { x: 5, y: 4 }, [{ unitId: 'grunt', count: 1 }]),
+          landParty('pe', 'p2', { x: 6, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        ],
+      }),
+    'threatened city with a docked captain': () =>
+      landState({
+        captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+        parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+        cities: [p1CityAt({ x: 4, y: 5 }, {})],
+      }),
+    'threatened city with no docked captain': () =>
+      landState({
+        parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+        cities: [p1CityAt({ x: 4, y: 5 }, { grunt: 2 })],
+      }),
+  }
+
+  for (const [name, build] of Object.entries(scenarios)) {
+    it(`runAiTurn completes without throwing: ${name}`, () => {
+      const state = build()
+      let after: GameState | undefined
+      expect(() => {
+        after = runAiTurn(state, 'p1')
+      }).not.toThrow()
+      // The turn ended (control passed on, or the match resolved) — never a stall.
+      expect(after!.currentPlayerIndex === 1 || after!.status !== 'active').toBe(true)
+    })
+  }
+
+  it('is a pure, replay-stable function of state', () => {
+    const build = scenarios['party assaulting a city']!
+    // Same input, same action — no hidden per-turn state.
+    expect(nextAiAction(build(), 'p1')).toEqual(nextAiAction(build(), 'p1'))
+    // And a whole turn replays bit-exact.
+    expect(JSON.stringify(runAiTurn(build(), 'p1'))).toBe(JSON.stringify(runAiTurn(build(), 'p1')))
   })
 })
