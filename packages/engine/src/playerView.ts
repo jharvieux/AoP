@@ -64,6 +64,8 @@ export interface PlayerView {
   players: ViewPlayer[]
   cities: ViewCity[]
   captains: ViewCaptain[]
+  /** Landing parties (#465), filtered exactly like captains: own always, enemy only in current vision. */
+  parties: ViewParty[]
   encounters: ViewEncounter[]
   /**
    * The viewer's own alliance relationships (#136/#137). Only the viewer's
@@ -204,6 +206,22 @@ export interface ViewCaptain {
   captivityReturnRound?: number
 }
 
+/**
+ * A landing party (#465) in a player view. Follows the ship rule (§7): an
+ * enemy party in current vision is a sighting — identity and location only —
+ * while the manifest (troops, movement) is own-seat disclosure.
+ */
+export interface ViewParty {
+  id: string
+  ownerId: string
+  name: string
+  position: Coord
+  /** Own-party detail only; an enemy party in vision reveals nothing below. */
+  troops?: TroopStack[]
+  movementPoints?: number
+  maxMovementPoints?: number
+}
+
 export interface ViewEncounter {
   id: string
   kind: string
@@ -318,6 +336,30 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     }
   }
 
+  const parties: ViewParty[] = []
+  for (const party of state.parties) {
+    if (party.ownerId === viewerId) {
+      parties.push({
+        id: party.id,
+        ownerId: party.ownerId,
+        name: party.name,
+        position: party.position,
+        troops: party.troops,
+        movementPoints: party.movementPoints,
+        maxMovementPoints: party.maxMovementPoints,
+      })
+    } else if (visibleKeys.has(tileKey(party.position))) {
+      // Enemy party in current vision: a force sighted ashore at a location —
+      // nothing about its manifest or remaining movement.
+      parties.push({
+        id: party.id,
+        ownerId: party.ownerId,
+        name: party.name,
+        position: party.position,
+      })
+    }
+  }
+
   const encounters: ViewEncounter[] = state.encounters
     .filter((e) => e.active && visibleKeys.has(tileKey(e.position)))
     .map((e) => ({ id: e.id, kind: e.kind, position: e.position, active: e.active }))
@@ -358,6 +400,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     players,
     cities,
     captains,
+    parties,
     encounters,
     alliances,
     rngState: null,

@@ -47,6 +47,7 @@ function view(over: Partial<PlayerView> = {}): PlayerView {
         captured: false,
       },
     ],
+    parties: [],
     encounters: [{ id: 'enc-0', kind: 'merchant', position: { x: 1, y: 0 }, active: true }],
     alliances: { allies: [], outgoingProposals: [], incomingProposals: [] },
     rngState: null,

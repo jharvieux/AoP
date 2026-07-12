@@ -102,6 +102,7 @@ function gameConfig(p1Troops: TroopStack[], battle: BattleTuning | null): GameCo
     setup: {
       startingGold: 1000,
       startingCaptainMovement: 5,
+      partyMovementPoints: 3,
       startingShipClass: 'sloop',
       homeIslandRadius: 2,
       homeIslandRingRadiusFactor: 0.4,

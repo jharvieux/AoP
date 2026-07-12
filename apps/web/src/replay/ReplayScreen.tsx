@@ -64,6 +64,7 @@ export function ReplayScreen({ config, actions, onClose }: ReplayScreenProps) {
           map={state.map}
           captains={state.captains}
           cities={state.cities}
+          parties={state.parties}
           encounters={state.encounters}
           viewerId={viewer.id}
           visibleKeys={allKeys}

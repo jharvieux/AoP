@@ -146,6 +146,47 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
   const components = waterComponents(map)
   if (components[startIdx] !== components[goalIdx]) return null
 
+  return aStar(map, from, to, (tile) => isWaterTile(tile))
+}
+
+/**
+ * Shortest overland path for a landing party (#465), inclusive of both
+ * endpoints, or `null` if unreachable. Parties walk `land` tiles only — never
+ * water or port tiles (a port is a city's tile; cities are assaulted, not
+ * strolled through) — and never through a tile in `blocked` (tiles other
+ * parties hold), which applies to intermediate steps and the destination
+ * alike. Same deterministic A* (and tie-break) as the naval {@link findPath},
+ * so replays get byte-identical routes on every machine. Islands are small, so
+ * this skips the naval component-cache fast path.
+ */
+export function findLandPath(
+  map: GameMap,
+  from: Coord,
+  to: Coord,
+  blocked?: ReadonlySet<number>,
+): Coord[] | null {
+  const passable = (tile: ReturnType<typeof tileAt>, idx: number): boolean =>
+    tile?.type === 'land' && !blocked?.has(idx)
+  if (
+    tileAt(map, from)?.type !== 'land' ||
+    !passable(tileAt(map, to), tileIndex(map, to.x, to.y))
+  ) {
+    return null
+  }
+  if (coordsEqual(from, to)) return [from]
+  return aStar(map, from, to, passable)
+}
+
+/** The shared A* core: deterministic shortest path over `passable` tiles. */
+function aStar(
+  map: GameMap,
+  from: Coord,
+  to: Coord,
+  passable: (tile: ReturnType<typeof tileAt>, idx: number) => boolean,
+): Coord[] | null {
+  const startIdx = tileIndex(map, from.x, from.y)
+  const goalIdx = tileIndex(map, to.x, to.y)
+
   const nodes = new Map<number, Node>()
   const closed = new Set<number>()
   const heap = new MinHeap()
@@ -163,8 +204,8 @@ export function findPath(map: GameMap, from: Coord, to: Coord): Coord[] | null {
 
     const current = nodes.get(currentIdx)!
     for (const n of mapNeighbors(map, current.coord)) {
-      if (!isWaterTile(tileAt(map, n))) continue
       const nIdx = tileIndex(map, n.x, n.y)
+      if (!passable(tileAt(map, n), nIdx)) continue
       if (closed.has(nIdx)) continue
 
       const tentativeG = current.g + 1

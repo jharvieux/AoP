@@ -158,6 +158,29 @@ export interface Captain {
 }
 
 /**
+ * A landing party (#465) — a detachment of troops a captain has put ashore.
+ * Lives on `land` tiles and moves overland turn by turn; it is a land piece,
+ * not a captain (no ship, no XP/skills, no orders). A party whose ship leaves
+ * or sinks is stranded until rescued: it persists on the map indefinitely —
+ * no attrition, no auto-retreat — and any friendly ship on an adjacent water
+ * tile can re-embark it (operator decision, epic #469). Plain JSON so it
+ * serializes and replays with the rest of GameState.
+ */
+export interface LandingParty {
+  id: string
+  ownerId: string
+  name: string
+  /** The `land` tile the party stands on. Parties never occupy water/port tiles. */
+  position: Coord
+  /** Movement points remaining this turn (one point = one land step). */
+  movementPoints: number
+  /** Movement points granted at the start of each of the owner's turns. */
+  maxMovementPoints: number
+  /** Never empty: a party that loses its last troop is removed from play. */
+  troops: TroopStack[]
+}
+
+/**
  * A settlement owned by a player. Buildings are ids into @aop/content's
  * BUILDINGS table — the engine never hardcodes what a building does.
  */
@@ -184,6 +207,11 @@ export interface CityState {
 export interface GameSetup {
   startingGold: number
   startingCaptainMovement: number
+  /**
+   * Movement points a landing party (#465) regains at the start of each of its
+   * owner's turns — one point per land step.
+   */
+  partyMovementPoints: number
   startingShipClass: string
   homeIslandRadius: number
   /**
@@ -478,6 +506,8 @@ export interface GameState {
   cities: CityState[]
   /** All captains in play, across all owners. */
   captains: Captain[]
+  /** All landing parties ashore (#465), across all owners. */
+  parties: LandingParty[]
   /** Random encounters placed by mapgen (#23). Empty when the match has no encounter content. */
   encounters: EncounterState[]
   /** Author-placed resource nodes (#101). Empty for generated maps and authored maps with none. */

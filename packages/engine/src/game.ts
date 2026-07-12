@@ -156,6 +156,7 @@ export function createGame(config: GameConfig): GameState {
     alliances: seedAlliances(config.players),
     cities,
     captains,
+    parties: [],
     encounters,
     resourceNodes,
     exploredTiles: {},

@@ -67,6 +67,7 @@ export const BATTLE_TUNING: BattleTuning = {
 export const GAME_SETUP: GameSetup = {
   startingGold: 1000,
   startingCaptainMovement: 5,
+  partyMovementPoints: 3,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
   homeIslandRadiusOverrides: { xlarge: 4 },

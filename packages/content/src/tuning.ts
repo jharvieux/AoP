@@ -198,6 +198,8 @@ export interface GameSetup {
   startingGold: number
   /** Movement points a starting captain regains each turn. */
   startingCaptainMovement: number
+  /** Movement points a landing party (#465) regains each turn — one per land step. */
+  partyMovementPoints: number
   /** Flagship class every player starts with until shipyards are built. */
   startingShipClass: string
   /** Radius (in tiles) of each identical home-island disc. */
@@ -401,6 +403,10 @@ export const BATTLE_TUNING: BattleTuning = {
 export const GAME_SETUP: GameSetup = {
   startingGold: 1000,
   startingCaptainMovement: 5,
+  // Marching is slower than sailing (5): 3 crosses a home island (radius 2) in
+  // a turn but makes a trek along a large island a real multi-turn commitment,
+  // and it keeps a landed force catchable by ships pacing the coast (#465).
+  partyMovementPoints: 3,
   startingShipClass: 'sloop',
   homeIslandRadius: 2,
   // #468: doubling xlarge's home-island radius roughly quadruples its usable

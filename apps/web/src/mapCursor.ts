@@ -75,6 +75,8 @@ export interface DescribeTileParams {
   captains: readonly PositionedOwned[]
   cities: readonly PositionedOwned[]
   encounters: readonly ActiveEncounterLike[]
+  /** Landing parties ashore (#465). Optional so pre-party callers/tests stand unchanged. */
+  parties?: readonly PositionedOwned[]
   viewerId: string
   /** Display name for whichever faction owns a captain found on the tile, if any. */
   factionNameOf: (ownerId: string) => string
@@ -91,7 +93,16 @@ const TERRAIN_LABEL: Record<TileType, string> = {
  * (or selects) a tile — 1-based coordinates since that's what a screen-reader user expects
  * ("row 1, column 1", not "row 0"). */
 export function describeMapTile(params: DescribeTileParams): string {
-  const { tile, terrain, captains, cities, encounters, viewerId, factionNameOf } = params
+  const {
+    tile,
+    terrain,
+    captains,
+    cities,
+    encounters,
+    parties = [],
+    viewerId,
+    factionNameOf,
+  } = params
   const at = (p: Coord) => p.x === tile.x && p.y === tile.y
   const parts = [`Tile column ${tile.x + 1}, row ${tile.y + 1}`]
 
@@ -102,9 +113,11 @@ export function describeMapTile(params: DescribeTileParams): string {
   }
   const city = cities.find((c) => at(c.position))
   if (city) parts.push(city.ownerId === viewerId ? 'your city' : 'enemy city')
+  const party = parties.find((p) => at(p.position))
+  if (party) parts.push(party.ownerId === viewerId ? 'your landing party' : 'enemy landing party')
   const encounter = encounters.find((e) => e.active && at(e.position))
   if (encounter) parts.push(`${encounter.kind} encounter`)
-  if (!captain && !city && !encounter) parts.push(TERRAIN_LABEL[terrain])
+  if (!captain && !city && !party && !encounter) parts.push(TERRAIN_LABEL[terrain])
 
   return parts.join(', ')
 }

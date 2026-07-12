@@ -19,6 +19,7 @@ import {
   type GameState,
   type GridTopology,
   type StandingOrder,
+  type TroopStack,
 } from '@aop/engine'
 import {
   computeMatchRatingUpdates,
@@ -237,6 +238,14 @@ function reqBoardOrder(value: unknown, field: string): BoardOrder {
   }
 }
 
+function reqTroopStack(value: unknown, field: string): TroopStack {
+  const v = reqObject(value, field)
+  return {
+    unitId: reqString(v.unitId, `${field}.unitId`),
+    count: reqInt(v.count, `${field}.count`),
+  }
+}
+
 export function reqBoardCommand(value: unknown, field: string): BoardCommand {
   const v = reqObject(value, field)
   const out: BoardCommand = { stackId: reqInt(v.stackId, `${field}.stackId`) }
@@ -442,6 +451,48 @@ export function sanitizeAction(action: Action): Action {
         type: action.type,
         playerId,
         captainId: reqString(action.captainId, 'captainId'),
+      }
+    case 'disembark':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        to: reqCoord(action.to, 'to'),
+        troops: reqArray(action.troops, 'troops', reqTroopStack),
+      }
+    case 'moveParty':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        to: reqCoord(action.to, 'to'),
+      }
+    case 'embark':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        captainId: reqString(action.captainId, 'captainId'),
+      }
+    case 'attackParty':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        targetPartyId: reqString(action.targetPartyId, 'targetPartyId'),
+        ...(action.boardCommands !== undefined
+          ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
+          : {}),
+      }
+    case 'partyAssaultCity':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        targetCityId: reqString(action.targetCityId, 'targetCityId'),
+        ...(action.boardCommands !== undefined
+          ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
+          : {}),
       }
     default: {
       // Compile-time exhaustiveness guard; at runtime this is a hostile

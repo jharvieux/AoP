@@ -5,9 +5,13 @@ import {
   createCombatStats,
   currentPlayer,
   estimateOdds,
+  findLandPath,
   mapDistance,
   nextAiAction,
+  partyToCombatant,
   pathCost,
+  tileAt,
+  tileIndex,
   visibleState,
   type Action,
   type BattleReport,
@@ -17,6 +21,7 @@ import {
   type EncounterChoice,
   type EncounterKind,
   type GameState,
+  type LandingParty,
   type StandingOrder,
   type TacticContext,
   type TacticId,
@@ -178,6 +183,14 @@ export function GameScreen({
   const [assaultCityId, setAssaultCityId] = useState<string | null>(null)
   const [assaultBoarding, setAssaultBoarding] = useState<AssaultBoardingState | null>(null)
   const [enemyCityInfoId, setEnemyCityInfoId] = useState<string | null>(null)
+  // Landing parties (#465): the selected party, the disembark sheet (target
+  // tile + per-unit counts, defaulting to everything aboard), and the pending
+  // party-attack / land-assault confirm sheets.
+  const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null)
+  const [disembarkTile, setDisembarkTile] = useState<Coord | null>(null)
+  const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
+  const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
+  const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
   const [cityOpen, setCityOpen] = useState(false)
   const [savesOpen, setSavesOpen] = useState(false)
   // The city the roster/City button currently targets (#373). Null falls back to
@@ -278,6 +291,15 @@ export function GameScreen({
 
   const selectedCaptain = selectedCaptainId
     ? (game.captains.find((c) => c.id === selectedCaptainId) ?? null)
+    : null
+  const selectedParty = selectedPartyId
+    ? (game.parties.find((p) => p.id === selectedPartyId) ?? null)
+    : null
+  const partyAttackTarget = partyAttackTargetId
+    ? (game.parties.find((p) => p.id === partyAttackTargetId) ?? null)
+    : null
+  const partyAssaultCity = partyAssaultCityId
+    ? (game.cities.find((c) => c.id === partyAssaultCityId) ?? null)
     : null
   const attackTarget = attackTargetId
     ? (game.captains.find((c) => c.id === attackTargetId) ?? null)
@@ -470,9 +492,41 @@ export function GameScreen({
       (c) => c.ownerId === viewer.id && c.position.x === x && c.position.y === y,
     )
     if (ownHere) {
+      // Embark (#465): with a party selected, tapping an adjacent own ship
+      // re-boards it (partial if the hold can't take everyone).
+      if (
+        selectedParty &&
+        mapDistance(game.map, selectedParty.position, ownHere.position) === 1 &&
+        !ownHere.captured
+      ) {
+        tapFeedback()
+        onAction({
+          type: 'embark',
+          playerId: viewer.id,
+          partyId: selectedParty.id,
+          captainId: ownHere.id,
+        })
+        setSelectedPartyId(null)
+        return
+      }
       setSelectedCaptainId(ownHere.id)
+      setSelectedPartyId(null)
       setAttackTargetId(null)
       setPendingApproach(null)
+      return
+    }
+    const ownPartyHere = game.parties.find(
+      (p) => p.ownerId === viewer.id && p.position.x === x && p.position.y === y,
+    )
+    if (ownPartyHere) {
+      setSelectedPartyId(ownPartyHere.id)
+      setSelectedCaptainId(null)
+      setAttackTargetId(null)
+      setPendingApproach(null)
+      return
+    }
+    if (selectedParty) {
+      handlePartyTileClick(x, y, selectedParty)
       return
     }
     if (!selectedCaptain) return
@@ -539,6 +593,21 @@ export function GameScreen({
       return
     }
 
+    // Put a landing party ashore (#465): an adjacent empty land tile, with
+    // troops aboard and a movement point to spend, opens the disembark sheet.
+    if (
+      tileAt(game.map, { x, y })?.type === 'land' &&
+      mapDistance(game.map, selectedCaptain.position, { x, y }) === 1 &&
+      selectedCaptain.movementPoints >= 1 &&
+      selectedCaptain.troops.some((t) => t.count > 0) &&
+      !game.parties.some((p) => p.position.x === x && p.position.y === y)
+    ) {
+      tapFeedback()
+      setDisembarkTile({ x, y })
+      setDisembarkCounts(Object.fromEntries(selectedCaptain.troops.map((t) => [t.unitId, t.count])))
+      return
+    }
+
     // Empty tile: move there if reachable this turn; if it's reachable by sea
     // but beyond this turn's movement, set a multi-turn sail order instead (#372)
     // so one click sends the ship on the whole voyage.
@@ -561,6 +630,99 @@ export function GameScreen({
         destination: { x, y },
       })
     }
+  }
+
+  /**
+   * A tap while a landing party is selected (#465): attack an adjacent enemy
+   * party, open the land-assault confirm on an adjacent enemy city, or march
+   * to a reachable land tile. No multi-turn march orders yet — a destination
+   * beyond this turn's movement simply doesn't move (follow-up UX work).
+   */
+  function handlePartyTileClick(x: number, y: number, party: LandingParty) {
+    const key = `${x},${y}`
+    const enemyPartyHere = visibleKeys.has(key)
+      ? game.parties.find(
+          (p) => p.ownerId !== viewer.id && p.position.x === x && p.position.y === y,
+        )
+      : undefined
+    if (enemyPartyHere) {
+      if (
+        mapDistance(game.map, party.position, enemyPartyHere.position) <= 1 &&
+        party.movementPoints >= 1
+      ) {
+        setPartyAttackTargetId(enemyPartyHere.id)
+      }
+      return
+    }
+    const cityHere = game.cities.find((c) => c.position.x === x && c.position.y === y)
+    if (cityHere && cityHere.ownerId !== viewer.id) {
+      if (
+        mapDistance(game.map, party.position, cityHere.position) <= 1 &&
+        party.movementPoints >= 1
+      ) {
+        setPartyAssaultCityId(cityHere.id)
+      } else {
+        setEnemyCityInfoId(cityHere.id)
+      }
+      return
+    }
+    // March: the engine's own land route (around every other party), only if it
+    // fits this turn's remaining movement.
+    const blocked = new Set(
+      game.parties
+        .filter((p) => p.id !== party.id)
+        .map((p) => tileIndex(game.map, p.position.x, p.position.y)),
+    )
+    const path = findLandPath(game.map, party.position, { x, y }, blocked)
+    if (!path || path.length - 1 > party.movementPoints || path.length < 2) return
+    shipMoveFeedback()
+    onAction({ type: 'moveParty', playerId: viewer.id, partyId: party.id, to: { x, y } })
+  }
+
+  function confirmDisembark() {
+    if (!selectedCaptain || !disembarkTile) return
+    const troops = selectedCaptain.troops
+      .map((t) => ({ unitId: t.unitId, count: Math.min(disembarkCounts[t.unitId] ?? 0, t.count) }))
+      .filter((t) => t.count > 0)
+    if (troops.length === 0) return
+    impactFeedback()
+    onAction({
+      type: 'disembark',
+      playerId: viewer.id,
+      captainId: selectedCaptain.id,
+      to: disembarkTile,
+      troops,
+    })
+    setDisembarkTile(null)
+    setSelectedCaptainId(null)
+  }
+
+  function confirmPartyAttack() {
+    if (!selectedParty || !partyAttackTarget) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    onAction({
+      type: 'attackParty',
+      playerId: viewer.id,
+      partyId: selectedParty.id,
+      targetPartyId: partyAttackTarget.id,
+    })
+    setPartyAttackTargetId(null)
+    setSelectedPartyId(null)
+  }
+
+  function confirmPartyAssault() {
+    if (!selectedParty || !partyAssaultCity) return
+    impactFeedback()
+    audioManager.play(DIALOGUE.battleCharge)
+    onAction({
+      type: 'partyAssaultCity',
+      playerId: viewer.id,
+      partyId: selectedParty.id,
+      targetCityId: partyAssaultCity.id,
+    })
+    setPartyAssaultCityId(null)
+    setSelectedPartyId(null)
   }
 
   /**
@@ -612,6 +774,25 @@ export function GameScreen({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCaptain, assaultCity, game])
+
+  // Land-assault strength preview (#465): the party vs the full city defense —
+  // same combatants the reducer resolves, so the preview never lies.
+  const partyAssaultStrength = useMemo(() => {
+    if (!selectedParty || !partyAssaultCity || !game.config.combatStats) return null
+    const stats = createCombatStats(game.config.combatStats)
+    return {
+      attacker: combatantStrength(partyToCombatant(selectedParty), stats),
+      garrison: combatantStrength(
+        cityToCombatant(
+          partyAssaultCity,
+          game.config.content,
+          game.players.find((p) => p.id === partyAssaultCity.ownerId)?.faction,
+        ),
+        stats,
+      ),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedParty, partyAssaultCity, game])
 
   /**
    * Engage the target (#93, #305). Auto mode (the default) is unchanged:
@@ -919,6 +1100,7 @@ export function GameScreen({
   function endTurn() {
     tapFeedback()
     setSelectedCaptainId(null)
+    setSelectedPartyId(null)
     onAction({ type: 'endTurn', playerId: player.id })
   }
 
@@ -1021,11 +1203,13 @@ export function GameScreen({
           map={game.map}
           captains={game.captains}
           cities={game.cities}
+          parties={game.parties}
           encounters={game.encounters}
           viewerId={viewer.id}
           visibleKeys={visibleKeys}
           exploredKeys={exploredKeys}
           selectedCaptainId={selectedCaptainId}
+          selectedPartyId={selectedPartyId}
           onTileClick={handleTileClick}
           rangeOverlay={rangeOverlay}
           onSetCourse={(cell) => {
@@ -1295,6 +1479,120 @@ export function GameScreen({
                   Auto-resolve
                 </button>
               )}
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {disembarkTile && selectedCaptain && (
+        <BottomSheet
+          title="Put a landing party ashore?"
+          onClose={() => {
+            setDisembarkTile(null)
+          }}
+        >
+          <section>
+            <p className="building-option__hint">
+              Choose the troops to land. The party steps ashore now (one movement point) and can
+              march overland from your next turn; a friendly ship alongside can take it back aboard
+              later.
+            </p>
+            {selectedCaptain.troops.map((stack) => {
+              const landing = Math.min(disembarkCounts[stack.unitId] ?? 0, stack.count)
+              return (
+                <div key={stack.unitId} className="garrison-row">
+                  <span>
+                    {unitName(stack.unitId, stack.unitId)}: landing {landing} of {stack.count}
+                  </span>
+                  <div className="button-group">
+                    <button
+                      className="secondary"
+                      disabled={landing <= 0}
+                      aria-label={`Land one fewer ${unitName(stack.unitId, stack.unitId)}`}
+                      onClick={() =>
+                        setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing - 1 }))
+                      }
+                    >
+                      −
+                    </button>
+                    <button
+                      className="secondary"
+                      disabled={landing >= stack.count}
+                      aria-label={`Land one more ${unitName(stack.unitId, stack.unitId)}`}
+                      onClick={() =>
+                        setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing + 1 }))
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="button-group">
+              <button
+                className="primary"
+                disabled={selectedCaptain.troops.every(
+                  (t) => Math.min(disembarkCounts[t.unitId] ?? 0, t.count) <= 0,
+                )}
+                onClick={confirmDisembark}
+              >
+                Land party
+              </button>
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {partyAttackTarget && selectedParty && (
+        <BottomSheet
+          title={`Attack ${partyAttackTarget.name}?`}
+          onClose={() => setPartyAttackTargetId(null)}
+        >
+          <section>
+            <p className="building-option__hint">
+              A land battle to the finish — the beaten party is destroyed outright, and the victor
+              keeps its survivors.
+            </p>
+            <div className="button-group">
+              <button className="primary" onClick={confirmPartyAttack}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                Attack
+              </button>
+            </div>
+          </section>
+        </BottomSheet>
+      )}
+
+      {partyAssaultCity && selectedParty && (
+        <BottomSheet
+          title={`Storm ${partyAssaultCity.name} by land?`}
+          onClose={() => setPartyAssaultCityId(null)}
+        >
+          <section>
+            <p className="building-option__hint">
+              {factionName(
+                factionOf(partyAssaultCity.ownerId),
+                FACTIONS[factionOf(partyAssaultCity.ownerId)].name,
+              )}{' '}
+              stronghold. The city defends at full strength from the land side too — militia and
+              turrets included. Win and it is yours; lose and the party is destroyed.
+            </p>
+            {partyAssaultStrength && (
+              <p className="building-option__hint">
+                Your party {Math.round(partyAssaultStrength.attacker)} vs garrison{' '}
+                {Math.round(partyAssaultStrength.garrison)}
+              </p>
+            )}
+            <div className="button-group">
+              <button className="primary" onClick={confirmPartyAssault}>
+                {UI_ICON.attack && (
+                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
+                )}
+                Assault
+              </button>
             </div>
           </section>
         </BottomSheet>
