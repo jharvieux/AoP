@@ -1,9 +1,19 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-12 night (land-expansion epic #469 shipped end-to-end; 24 issues closed today)._
+_Last updated: 2026-07-12 late (party UX round 2 + party art shipped; 26 issues closed today)._
 
 ## Just completed
+
+**#482 (party UX round 2) shipped in full, closing the party arc**: standing march orders
+(engine, RULES_VERSION 6→7, auto-march with loud interruption), dotted route previews from
+engine pathfinding, BOTH land battle kinds playable on the tactical board (zero reducer
+changes — probes + existing boardCommands), full multiplayer party controls (PR #484,
+audit spotless); and operator-approved party sprites for all five factions integrated with
+theme-override support and color-banner fallback (PR #485 — Spanish flag corrected to
+Cross of Burgundy, Dutch banner rebuilt to canonical tricolor after one rejection). Art
+WIP branch deleted post-merge; provenance MANIFEST in-repo. Follow-up filed: #486
+(ThemePackEditor lacks an upload slot for the new party override). MEMORY through D-040.
 
 **The land-expansion epic (#469) went from operator vision to fully shipped in one
 evening**, on top of the earlier waves (sweep + city rework completion + conquest levers —
