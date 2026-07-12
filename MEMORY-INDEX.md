@@ -10,7 +10,8 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
-- D-036 — 2026-07-12 — #465 landing parties shipped: GameState.parties + 5 actions (disembark/moveParty/embark/attackParty/partyAssaultCity), RULES_VERSION→5, full-defense land assaults, stranded-until-rescued keeps seats alive; AI ignorant (#475), UX polish (#476)
+- D-037 — 2026-07-12 — #465 landing parties shipped: GameState.parties + 5 actions (disembark/moveParty/embark/attackParty/partyAssaultCity), RULES_VERSION→5, full-defense land assaults, stranded-until-rescued keeps seats alive; AI ignorant (#475), UX polish (#476)
+- D-036 — 2026-07-12 — #471 multi-wave sieges: AI_TUNING.siegeStickinessBonus makes loaded captains press attrition sieges (was scored below economy → dithered); sim 13→77 captures/96, max same-city assaults 1→2, 27/96 multi-wave, repelled/capture 1.23→0.68; planner+content only, RULES_VERSION stays 4
 - D-035 — 2026-07-12 — #462 attrition warfare: AI attritionMinRatio floor + %-of-base ship refits (all 4 tracks); sim 3→13 captures/96 (4.3×), planner+content only, no RULES_VERSION bump
 - D-034 — 2026-07-12 — #453 conquest levers implemented (RULES_VERSION→4); sim result: reachable but rare (3/96), follow-up #462 (PR #461)
 - D-033 — 2026-07-12 — Conquest rework (#453): troop availability populates every 5 turns; ship troop capacity ×5

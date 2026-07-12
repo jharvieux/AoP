@@ -42,6 +42,12 @@ const FALLBACK_ENGAGE_MIN_RATIO = 0.9
  */
 const FALLBACK_ATTRITION_MIN_RATIO = FALLBACK_ENGAGE_MIN_RATIO
 const FALLBACK_ATTRITION_SCORE_MULT = 0.5
+/**
+ * With no tuning configured the siege-commitment bonus is 0, so conquest scores
+ * exactly as it did pre-#471 (#462 attrition, no stickiness). Real matches inject
+ * a positive bonus so a loaded captain presses a reachable siege to the wall.
+ */
+const FALLBACK_SIEGE_STICKINESS_BONUS = 0
 const FALLBACK_ATTACK_SCORE_BASE = 100
 const FALLBACK_ADVANCE_SCORE_BASE = 10
 const FALLBACK_ADVANCE_DISTANCE_BONUS = 10
@@ -75,6 +81,18 @@ export interface AiTuning {
   attritionMinRatio: number
   /** Score multiplier (<1) on an attrition assault relative to a winning one (#462). */
   attritionScoreMult: number
+  /**
+   * Siege-commitment bonus (#471): a score bonus added to a conquest
+   * approach/assault candidate, scaled by the assault ratio (mine ÷ defenders).
+   * Without it a loaded captain's attrition approach scores below the economy
+   * verbs, so it dithers at sea instead of pressing a reachable siege — the
+   * observed cap of one assault per (attacker, city). Scaling by ratio makes the
+   * captain converge on the *softest* reachable target (a garrison already ground
+   * down by an earlier wave has the highest ratio) and the pull decays for free as
+   * that garrison rebuilds, so the AI sustains successive waves on one city without
+   * any cross-turn planner memory. Personality-scaled by `combatScoreMult`.
+   */
+  siegeStickinessBonus: number
   attackScoreBase: number
   advanceScoreBase: number
   advanceDistanceBonus: number
@@ -246,6 +264,10 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   const attritionMinRatio =
     (baseTuning?.attritionMinRatio ?? FALLBACK_ATTRITION_MIN_RATIO) * weights.engageMinRatioMult
   const attritionScoreMult = baseTuning?.attritionScoreMult ?? FALLBACK_ATTRITION_SCORE_MULT
+  // Siege commitment scales with the same combat appetite as the attack score: an
+  // aggressive seat presses a siege harder, an economic one less so.
+  const siegeStickinessBonus =
+    (baseTuning?.siegeStickinessBonus ?? FALLBACK_SIEGE_STICKINESS_BONUS) * weights.combatScoreMult
   const attackScoreBase =
     (baseTuning?.attackScoreBase ?? FALLBACK_ATTACK_SCORE_BASE) * weights.combatScoreMult
   const advanceScoreBase =
@@ -334,6 +356,17 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         const attrition = !winning && ratio >= attritionMinRatio
         if (!winning && !attrition) continue
         const combatMult = winning ? 1 : attritionScoreMult
+        // Siege commitment (#471): a ratio-scaled bonus that lifts an *attrition*
+        // wave (a city the captain can't yet win, combatMult < 1) above the economy
+        // verbs, so a loaded captain presses the grind-down instead of dithering at
+        // sea — the observed cap of one assault per (attacker, city). Scoped to the
+        // attrition case on purpose: a winnable city already scores highly, and
+        // adding the bonus there just makes the AI beeline and trade cities in a
+        // runaway churn (measured). Ratio scaling biases the captain toward the
+        // softest (most ground-down) reachable city and decays the pull as that
+        // garrison rebuilds, so successive waves converge on one target with no
+        // cross-turn planner memory.
+        const siegeBonus = winning ? 0 : siegeStickinessBonus * ratio
         if (mapDistance(state.map, cap.position, city.position) <= 1) {
           consider({
             action: {
@@ -342,7 +375,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
               captainId: cap.id,
               targetCityId: city.id,
             },
-            score: attackScoreBase * ratio * combatMult,
+            score: attackScoreBase * ratio * combatMult + siegeBonus,
           })
           continue
         }
@@ -352,7 +385,8 @@ export function nextAiAction(state: GameState, playerId: string): Action {
             (advanceScoreBase +
               (1 / (1 + mapDistance(state.map, cap.position, city.position))) *
                 advanceDistanceBonus) *
-            combatMult
+              combatMult +
+            siegeBonus
           consider({
             action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
             score,

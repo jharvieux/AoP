@@ -92,6 +92,7 @@ export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
   attritionMinRatio: 0.4,
   attritionScoreMult: 0.5,
+  siegeStickinessBonus: 40,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,

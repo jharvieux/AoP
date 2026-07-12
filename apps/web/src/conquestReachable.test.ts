@@ -42,14 +42,26 @@ import { buildCatalog } from './catalog'
  * (baseline: 0 repelled assaults). Because the engine is deterministic, the counts
  * are exact and reproducible, not flaky statistics.
  *
- * Measured on this battery (`main` @ #461 vs this branch, 25-round cap):
- *   baseline           captures  3 / 96, assaults  3, repelled  0
- *   +capacity only     captures  4 / 96, assaults  4, repelled  0
- *   +attrition (#462)  captures 13 / 96, assaults 29, repelled 16
- * i.e. the capacity bump alone barely moved the needle; teaching the AI to fight a
- * war of attrition is what lifted conquest (4.3× over baseline). Same-city multi-wave
- * sieges remain rare (the AI seldom sails a second loaded captain back to one
- * target — an offensive-logistics limit tracked separately, not a scoring bug).
+ * #471 is the next follow-up. #462 lifted conquest but left a residual limit: no
+ * attacker ever assaulted the same city twice (`bestSameCityAssaults == 1` across all
+ * 96 matches, even at a 40-round cap), so the "war of attrition" — grind one garrison
+ * down over several waves until it falls — never actually happened. The root cause was
+ * a scoring gap, not offensive logistics: a loaded captain's attrition approach
+ * (`combatMult` 0.5) scored below the economy verbs, so it lingered at sea instead of
+ * pressing a reachable siege. `AI_TUNING.siegeStickinessBonus` adds a ratio-scaled
+ * bonus that makes a loaded captain commit to the softest reachable enemy city (and
+ * decays for free as that garrison rebuilds), so successive waves converge on one
+ * target with no cross-turn planner memory.
+ *
+ * Measured on this battery (25-round cap; CAP=40 is identical — conquest saturates
+ * by round 25):
+ *   baseline            captures  3 / 96, repelled  0, maxSameCityAssaults 1
+ *   +capacity only      captures  4 / 96, repelled  0, maxSameCityAssaults 1
+ *   +attrition (#462)   captures 13 / 96, repelled 16, maxSameCityAssaults 1
+ *   +siege bonus (#471) captures 77 / 96, repelled 52, maxSameCityAssaults 2, 27 matches multi-wave
+ * i.e. sustaining the siege is what finally makes ground-down cities fall — and it is
+ * *more* cost-effective, not less: repelled-per-capture drops from 1.23 to 0.68, so the
+ * extra captains spent convert into conquest rather than feeding the turrets.
  */
 
 function starterTroops(faction: FactionId) {
@@ -93,6 +105,14 @@ interface MatchOutcome {
   captures: number
   /** Assaults the attacker lost — its captain was captured (the attrition-wave signal). */
   repelledAssaults: number
+  /**
+   * The most times any single (attacker, city) pair was assaulted in the match —
+   * the multi-wave-siege signal (#471). Every `attackCity` is a real board battle
+   * (the reducer rejects an invalid one), so `>= 2` means the AI sailed a second
+   * loaded captain back to a city it had already assaulted, sustaining the siege
+   * rather than taking a one-off shot.
+   */
+  bestSameCityAssaults: number
 }
 
 /** Drive a full AI-vs-AI match to the round cap. */
@@ -100,6 +120,7 @@ function runMatch(config: GameConfig, maxRounds: number): MatchOutcome {
   let state = createGame(config)
   let captures = 0
   let repelledAssaults = 0
+  const assaultsPerTarget = new Map<string, number>()
   let safety = 0
   const safetyCap = maxRounds * state.players.length + 10
   while (state.status === 'active' && state.round <= maxRounds && safety++ < safetyCap) {
@@ -111,6 +132,8 @@ function runMatch(config: GameConfig, maxRounds: number): MatchOutcome {
       const capturedBefore = state.captains.filter((c) => c.captured).length
       state = applyAction(state, action)
       if (action.type === 'attackCity') {
+        const key = `${action.playerId}:${action.targetCityId}`
+        assaultsPerTarget.set(key, (assaultsPerTarget.get(key) ?? 0) + 1)
         // A repelled assault captures the attacking captain (the cost of an
         // attrition wave); a won assault does not.
         if (state.captains.filter((c) => c.captured).length > capturedBefore) repelledAssaults++
@@ -120,7 +143,11 @@ function runMatch(config: GameConfig, maxRounds: number): MatchOutcome {
       if (action.type === 'endTurn') break
     }
   }
-  return { captures, repelledAssaults }
+  return {
+    captures,
+    repelledAssaults,
+    bestSameCityAssaults: Math.max(0, ...assaultsPerTarget.values()),
+  }
 }
 
 // A deterministic battery: 48 seeds, each pairing two adjacent factions, played in
@@ -138,16 +165,20 @@ function battery(): GameConfig[] {
   return configs
 }
 
-describe('conquest reachability in full-content AI-vs-AI matches (#453/#462)', () => {
+describe('conquest reachability in full-content AI-vs-AI matches (#453/#462/#471)', () => {
   const outcomes = battery().map((config) => runMatch(config, 25))
   const totalCaptures = outcomes.reduce((sum, o) => sum + o.captures, 0)
   const totalRepelled = outcomes.reduce((sum, o) => sum + o.repelledAssaults, 0)
+  const maxSameCityAssaults = Math.max(...outcomes.map((o) => o.bestSameCityAssaults))
+  const matchesWithMultiWave = outcomes.filter((o) => o.bestSameCityAssaults >= 2).length
 
   it('conquest is materially more common than #461’s 3/96 baseline', () => {
-    // Observed 13/96 on this branch; assert a floor comfortably above the 3/96
-    // baseline with headroom for future balance nudges, so a regression back
-    // toward "conquest barely happens" fails here.
-    expect(totalCaptures).toBeGreaterThanOrEqual(8)
+    // #462 landed 13/96. #471's siege-commitment bonus lets loaded captains press
+    // reachable attrition sieges instead of dithering, so ground-down cities now
+    // actually fall: observed 77/96 on this branch. Assert a floor well above 13
+    // with headroom for future balance nudges, so a regression back toward
+    // "conquest barely happens" fails here.
+    expect(totalCaptures).toBeGreaterThanOrEqual(40)
   })
 
   it('the AI launches attrition assaults it does not win (#462)', () => {
@@ -156,6 +187,17 @@ describe('conquest reachability in full-content AI-vs-AI matches (#453/#462)', (
     // the fingerprint of the attrition floor: the AI now spends captains to thin
     // garrisons it cannot yet beat outright.
     expect(totalRepelled).toBeGreaterThanOrEqual(1)
+  })
+
+  it('sustains multi-wave sieges on a single city (#471)', () => {
+    // #462's residual limit: no attacker ever assaulted the same city twice
+    // (bestSameCityAssaults == 1 across all 96 matches, even at a 40-round cap) —
+    // a loaded captain's attrition approach scored below the economy verbs, so it
+    // never delivered a follow-up wave. The siege-commitment bonus fixes that:
+    // observed 27/96 matches now sustain a second wave on one target. Assert the
+    // war-of-attrition arc the design envisioned actually occurs.
+    expect(maxSameCityAssaults).toBeGreaterThanOrEqual(2)
+    expect(matchesWithMultiWave).toBeGreaterThanOrEqual(5)
   })
 
   it('is deterministic — a match yields the identical outcome on every run', () => {
