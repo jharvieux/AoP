@@ -16,6 +16,29 @@ interface GameOverScreenProps {
   onWatchReplay: () => void
 }
 
+/**
+ * The four ways a match reaches this screen (#426 added `defeat-abandoned`):
+ * - `victory` — the human seat won.
+ * - `defeat` — a rival seat won outright.
+ * - `draw` — no winner because every crew went down together.
+ * - `defeat-abandoned` — no winner because the human resigned or was
+ *   eliminated while rival AI crews sailed on. Reads as a defeat, but is
+ *   distinct from a mutual-destruction draw and needs its own copy.
+ *
+ * Extracted as a pure predicate so the branching is unit-testable without
+ * rendering the screen (matching the #385 `findViewerCaptainAtCity` pattern).
+ */
+export type GameOverKind = 'victory' | 'defeat' | 'draw' | 'defeat-abandoned'
+
+export function classifyGameOver(
+  winnerId: string | null,
+  players: readonly { eliminated: boolean }[],
+): GameOverKind {
+  if (winnerId === 'player-0') return 'victory'
+  if (winnerId !== null) return 'defeat'
+  return players.every((p) => p.eliminated) ? 'draw' : 'defeat-abandoned'
+}
+
 export function GameOverScreen({
   game,
   onRematch,
@@ -24,8 +47,11 @@ export function GameOverScreen({
 }: GameOverScreenProps) {
   const { factionName } = useTheme()
   const winner = game.players.find((p) => p.id === game.winnerId)
-  const isPlayerWinner = game.winnerId === 'player-0'
-  const isDraw = game.winnerId === null
+  const kind = classifyGameOver(game.winnerId, game.players)
+  const isPlayerWinner = kind === 'victory'
+  const isDraw = kind === 'draw'
+  // header/icon key collapses the two defeat kinds — the distinct copy is in
+  // the info blocks below.
   const outcome = isDraw ? 'draw' : isPlayerWinner ? 'victory' : 'defeat'
   const outcomeText = isDraw ? 'Draw' : isPlayerWinner ? 'Victory!' : 'Defeat'
   const outcomeEmoji = isDraw ? '⚔️' : isPlayerWinner ? '🏆' : '💀'
@@ -63,6 +89,12 @@ export function GameOverScreen({
         {isDraw && (
           <div className="winner-info">
             <p className="winner-faction">No victor — all crews lost</p>
+          </div>
+        )}
+
+        {kind === 'defeat-abandoned' && (
+          <div className="winner-info">
+            <p className="winner-faction">Your campaign ends — rival crews sail on without you</p>
           </div>
         )}
 

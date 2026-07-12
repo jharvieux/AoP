@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyActionWithOutcome,
   captainsOf,
+  InvalidActionError,
   combatantStrength,
   createCombatStats,
   createGame,
@@ -248,6 +249,29 @@ describe('attackCaptain action', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
     expect(a.actionCount).toBe(log.length)
     expect(a.captains.find((c) => c.id === p2cap.id)!.captured).toBe(false)
+  })
+
+  it('resigning next to a boarding-ready enemy ends the match instead of looping (#426)', () => {
+    // p2's ship sits one tile away — a boarding melee is a single action away —
+    // when p1 (the only human) resigns instead. The match must finish on the
+    // spot, with the resigned seat swept and no further boarding possible.
+    const base = adjacentBattleState()
+    const p2cap = captainsOf(base, 'p2')[0]!
+    const log: Action[] = [{ type: 'resign', playerId: 'p1' }]
+    const state = replay(base, log)
+    expect(state.captains.some((c) => c.ownerId === 'p1')).toBe(false)
+    expect(state.status).toBe('finished')
+    // p2 is the sole living seat, so the last-one-standing rule names it winner.
+    expect(state.winnerId).toBe('p2')
+    expect(() =>
+      applyActionWithOutcome(state, {
+        type: 'attackCaptain',
+        playerId: 'p2',
+        captainId: p2cap.id,
+        targetCaptainId: captainsOf(base, 'p1')[0]!.id,
+      }),
+    ).toThrow(InvalidActionError)
+    expect(JSON.stringify(replay(base, log))).toBe(JSON.stringify(state))
   })
 
   it('rejects attacking out of range', () => {

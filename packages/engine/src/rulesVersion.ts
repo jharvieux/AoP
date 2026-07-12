@@ -24,8 +24,10 @@
  *
  * History: v2 — elimination sweeps the dead seat's captains and cities (#208),
  * no combat XP on an escape (#209), pool-based crew casualties (#210).
+ * v3 — a match whose living seats are all AI (in a match that had a human
+ * seat) finishes at once, with no winner declared (#426).
  */
-export const RULES_VERSION = 2
+export const RULES_VERSION = 3
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`
