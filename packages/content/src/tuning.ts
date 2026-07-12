@@ -131,7 +131,12 @@ export interface AiTuning {
   buildDefenseBonusWeight: number
   /** Flat utility bonus for the building that unlocks ship upgrades. */
   buildShipyardBonus: number
-  /** Flat utility bonus for the building that unlocks captain recruitment (tavern, #433). */
+  /**
+   * Utility bonus for the building that unlocks captain recruitment (tavern,
+   * #433). Applied only while the seat is captain-less with no tavern anywhere
+   * (#439) — recovery is existential then, so this must outrank every ordinary
+   * building's utility (the full tree tops out at grandArsenal's 4×20=80).
+   */
   buildTavernBonus: number
   /** Scales a building's raw utility score into the shared action-score space. */
   buildScoreScale: number
@@ -402,7 +407,7 @@ export const AI_TUNING: AiTuning = {
   buildRecruitTierWeight: 20,
   buildDefenseBonusWeight: 1,
   buildShipyardBonus: 25,
-  buildTavernBonus: 30,
+  buildTavernBonus: 100,
   buildScoreScale: 0.5,
   recruitScoreBase: 25,
   recruitSpendFraction: 0.5,
