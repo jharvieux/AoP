@@ -17,7 +17,13 @@ interface QuickMatchScreenProps {
   onSignIn?: () => void
 }
 
-const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
+// 'xlarge' (#473) is offered here now that the matchmaking_queue.map_size CHECK
+// constraint accepts it (20260712000000_matchmaking_queue_xlarge_map_size.sql) — mirrors
+// NewGameSetup.tsx's single-player list, added by #468.
+const MAP_SIZES: MapSize[] = ['small', 'medium', 'large', 'xlarge']
+// #468: 'xlarge' doesn't title-case cleanly from the raw string (would read
+// "Xlarge"); every other size falls through to the default title-case below.
+const MAP_SIZE_LABELS: Partial<Record<MapSize, string>> = { xlarge: 'Extra Large' }
 // 2..MAX_MATCH_PLAYERS (#219): factions are unique per match, so a bigger group
 // could never be seated — the DB constraint rejects such queue rows outright.
 const MATCH_SIZES = Array.from({ length: MAX_MATCH_PLAYERS - 1 }, (_, i) => i + 2)
@@ -250,7 +256,7 @@ export function QuickMatchScreen({ onBack, onPlayMatch, onSignIn }: QuickMatchSc
                     className={`size-button ${mapSize === size ? 'active' : ''}`}
                     onClick={() => setMapSize(size)}
                   >
-                    {size}
+                    {MAP_SIZE_LABELS[size] ?? size.charAt(0).toUpperCase() + size.slice(1)}
                   </button>
                 ))}
               </div>

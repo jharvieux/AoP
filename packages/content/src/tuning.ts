@@ -598,12 +598,12 @@ export interface MapValidationLimits {
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   // The authored/community-map size range. minSize matches the smallest
-  // MAP_DIMENSIONS entry (map.ts); maxSize is deliberately BELOW the largest
-  // procedural size since #468 added xlarge (48) — raising the authored-map
-  // ceiling implicates the community-map wire format's size budget and is
-  // tracked separately in #473.
+  // MAP_DIMENSIONS entry (map.ts); maxSize now matches the largest (xlarge,
+  // 48) too — #473 raised it from 40 after confirming the community-map
+  // wire format's RLE size budget (MAP_CODE_MAX_BYTES in
+  // @aop/shared/communityMaps.ts) tolerates a 48x48 map with room to spare.
   minSize: 24,
-  maxSize: 40,
+  maxSize: 48,
   minPlayers: 2,
   maxPlayers: 8,
   // Same crowding floor the generated-map fairness tests enforce (map.test.ts).

@@ -145,7 +145,7 @@ export const AI_DIFFICULTIES: Record<AiDifficulty, AiDifficultyModifier> = {
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   minSize: 24,
-  maxSize: 40,
+  maxSize: 48, // #473: mirrors @aop/content's real value (was 40 pre-#473)
   minPlayers: 2,
   maxPlayers: 8,
   minStartDistance: 5,
