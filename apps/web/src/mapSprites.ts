@@ -64,6 +64,16 @@ export function factionFlagContentId(factionId: FactionId): string {
 }
 
 /**
+ * Theme-pack content id for a landing party's map-token sprite override (#482).
+ * Namespaced (unlike `factionFlagContentId`) because a faction's flag and its party
+ * token are two different pieces of art that both key off the same faction id — an
+ * unnamespaced id would collide the two override slots.
+ */
+export function partyContentId(factionId: FactionId): string {
+  return `party:${factionId}`
+}
+
+/**
  * Resolve the sprite URL to actually render for one content id: the theme
  * pack's override (via `spriteUrl`, i.e. `useTheme().spriteUrl`) wins when
  * set, otherwise `defaultUrl`. Both an override and a default may be absent,

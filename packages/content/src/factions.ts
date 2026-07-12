@@ -44,6 +44,13 @@ export interface FactionDef {
    * `resolveSpriteUrl` theme-pack override chain as other faction art (mapSprites.ts).
    */
   flagSpriteUrl: string
+  /**
+   * Landing-party map-token art (#482): a small group-of-crew emblem rendered on
+   * `MapCanvas.tsx`'s party token in place of the flat faction-color triangular banner.
+   * Follows the same `resolveSpriteUrl` theme-pack override chain as `flagSpriteUrl`
+   * (`mapSprites.ts`'s `partyContentId`); the banner remains the 404/absence fallback.
+   */
+  partySpriteUrl: string
   /** Generated art (#26/#109), served from apps/web/public. Doubles as the "sloop" (smallest
    * ship class) look and the fallback for any ship class missing a size-specific sprite below.
    * MapCanvas.tsx falls back to a flat-color shape when no sprite at all is available (#115). */
@@ -73,6 +80,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Outlaws of every flag. Cheap, fast, and vicious — weak in a long fight.',
     primaryColor: '#1a1a1a',
     flagSpriteUrl: '/art/factions/pirates/flag.png',
+    partySpriteUrl: '/art/parties/pirates.png',
     shipSpriteUrl: '/art/factions/pirates/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/pirates/ship_brigantine.png',
@@ -151,6 +159,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'The Royal Navy: disciplined line infantry and superior gunnery.',
     primaryColor: '#a6192e',
     flagSpriteUrl: '/art/factions/british/flag.png',
+    partySpriteUrl: '/art/parties/british.png',
     shipSpriteUrl: '/art/factions/british/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/british/ship_brigantine.png',
@@ -229,6 +238,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Treasure-fleet escorts and conquistadors: heavy armor, heavy gold.',
     primaryColor: '#c9a227',
     flagSpriteUrl: '/art/factions/spanish/flag.png',
+    partySpriteUrl: '/art/parties/spanish.png',
     shipSpriteUrl: '/art/factions/spanish/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/spanish/ship_brigantine.png',
@@ -307,6 +317,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Merchant-company men of the VOC: economy-focused, strong defensively.',
     primaryColor: '#e07b1a',
     flagSpriteUrl: '/art/factions/dutch/flag.png',
+    partySpriteUrl: '/art/parties/dutch.png',
     shipSpriteUrl: '/art/factions/dutch/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/dutch/ship_brigantine.png',
@@ -386,6 +397,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
       'Corsairs and crown regiments alike: aggressive gunnery and rapid rearmament, at the cost of a thinner hull.',
     primaryColor: '#2255a4',
     flagSpriteUrl: '/art/factions/french/flag.png',
+    partySpriteUrl: '/art/parties/french.png',
     shipSpriteUrl: '/art/factions/french/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/french/ship_brigantine.png',

@@ -32,7 +32,13 @@ import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
-import { cityContentId, encounterContentId, resolveSpriteUrl, tileContentId } from './mapSprites'
+import {
+  cityContentId,
+  encounterContentId,
+  partyContentId,
+  resolveSpriteUrl,
+  tileContentId,
+} from './mapSprites'
 import { partyBlockedSet } from './partyMarch'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
 import type { RangeOverlay } from './shipRange'
@@ -149,6 +155,12 @@ const SHIP_CLASS_SCALE: Partial<Record<string, number>> = {
   galleon: 0.95,
 }
 
+// Landing-party sprite footprint (#482): a fixed fraction of the tile, no per-class
+// variation (parties have no size classes the way ships do) — sized to roughly match the
+// old flat triangular banner's footprint (2 * TILE*0.3 radius) so the token doesn't jump in
+// visual weight when art loads in.
+const PARTY_SPRITE_SCALE = 0.6
+
 // A single move spends at most `captain.movementPoints` (default 5 — see
 // startingCaptainMovement in @aop/content's tuning) tiles of path, so any detected jump
 // longer than this is a fogged-reappearance or a state snapshot, not a move to animate
@@ -172,6 +184,7 @@ function defaultArtUrls(): string[] {
     for (const url of Object.values(faction.shipSpriteUrlsByClass ?? {})) {
       if (url) urls.add(url)
     }
+    if (faction.partySpriteUrl) urls.add(faction.partySpriteUrl)
   }
   return [...urls]
 }
@@ -551,6 +564,7 @@ export function MapCanvas(props: MapCanvasProps) {
     const landSiteSprites = new Container()
     const landEncounterSprites = new Container()
     const shipSprites = new Container()
+    const partySprites = new Container()
     const fog = new Graphics() // Feathered fog overlay (#299/#394)
     // Dotted course preview (#375), above fog so it reads clearly over dimmed
     // explored-but-not-visible water — the preview is a planning aid, not
@@ -577,6 +591,7 @@ export function MapCanvas(props: MapCanvasProps) {
       landSiteSprites,
       landEncounterSprites,
       shipSprites,
+      partySprites,
       fog,
       pathPreview,
       highlight,
@@ -668,6 +683,7 @@ export function MapCanvas(props: MapCanvasProps) {
     const landSitePool = new SpritePool(landSiteSprites)
     const landEncounterPool = new SpritePool(landEncounterSprites)
     const shipPool = new SpritePool(shipSprites)
+    const partyPool = new SpritePool(partySprites)
 
     const view = viewRef.current
     const pointers = new Map<number, Point>()
@@ -1219,10 +1235,12 @@ export function MapCanvas(props: MapCanvasProps) {
       }
       shipPool.end()
 
-      // Landing parties (#465): a flat triangular banner token — the same
-      // faction-color fallback vocabulary ships (circle) and cities (square)
-      // use, no art needed. Own parties always; enemy only in current vision,
-      // exactly like ships.
+      // Landing parties (#465, sprite art #482): the operator-approved group-emblem
+      // sprite through the same theme-pack override chain ship art uses; the old flat
+      // triangular banner (the fallback vocabulary ships/circle and cities/square share)
+      // remains the fallback when no sprite resolves — absent content or a 404. Own
+      // parties always; enemy only in current vision, exactly like ships.
+      partyPool.begin()
       for (const party of parties) {
         const key = `${party.position.x},${party.position.y}`
         const own = party.ownerId === viewerId
@@ -1232,9 +1250,25 @@ export function MapCanvas(props: MapCanvasProps) {
           color: 0x000000,
           alpha: 0.25,
         })
+        const partyFactionId = factionOf(party.ownerId)
+        const partyFaction = FACTIONS[partyFactionId]
+        const partySpriteUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          partyContentId(partyFactionId),
+          partyFaction?.partySpriteUrl,
+        )
+        const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
+        if (texture) {
+          const sprite = partyPool.get(party.id)
+          const size = TILE * PARTY_SPRITE_SCALE
+          sprite.texture = texture
+          sprite.width = size
+          sprite.height = size
+          sprite.position.set(pc.x, pc.y)
+          continue
+        }
         const r = TILE * 0.3
         const points = [pc.x, pc.y - r, pc.x + r, pc.y + r * 0.8, pc.x - r, pc.y + r * 0.8]
-        const partyFaction = FACTIONS[factionOf(party.ownerId)]
         entities.poly(points)
         entities.fill(partyFaction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP))
         if (own) {
@@ -1242,6 +1276,7 @@ export function MapCanvas(props: MapCanvasProps) {
           entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
         }
       }
+      partyPool.end()
 
       pathPreview.clear()
       highlight.clear()
