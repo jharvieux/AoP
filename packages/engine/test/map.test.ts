@@ -271,16 +271,12 @@ describe('extra-large size (#468)', () => {
     }
   })
 
-  it('validates as an authored map definition, aside from the deliberately-untouched size ceiling', () => {
+  it('validates as an authored map definition, now that the size ceiling matches xlarge (#473)', () => {
     const map = generateMap(11, 'xlarge', 4)
     const result = validateMapDefinition(mapToDefinition(map), MAP_VALIDATION_LIMITS)
-    // xlarge (48) exceeds MAP_VALIDATION_LIMITS.maxSize (40, the authored/community-map
-    // ceiling — deliberately untouched by #468, see #473), so exactly the two
-    // dimension-ceiling errors are expected; anything else would mean the generated map
-    // itself is malformed.
-    expect(result.errors.map((e) => e.code).sort()).toEqual([
-      'height-out-of-bounds',
-      'width-out-of-bounds',
-    ])
+    // xlarge (48) used to exceed MAP_VALIDATION_LIMITS.maxSize (40, deliberately
+    // untouched by #468 pending the RLE size-budget check #473 did) — the ceiling now
+    // matches xlarge exactly, so a generated xlarge map round-trips clean.
+    expect(result).toEqual({ valid: true, errors: [] })
   })
 })
