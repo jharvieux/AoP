@@ -632,7 +632,10 @@ function TavernModal({
                   <div className="garrison-row__actions">
                     <button
                       disabled={ordersMatch(captain.boardOrders, plan.orders)}
-                      onClick={() => onSetBoardOrders(plan.orders)}
+                      onClick={() => {
+                        tapFeedback()
+                        onSetBoardOrders(plan.orders)
+                      }}
                     >
                       {ordersMatch(captain.boardOrders, plan.orders) ? 'Active' : 'Set'}
                     </button>
