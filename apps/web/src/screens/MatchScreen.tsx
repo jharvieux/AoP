@@ -462,6 +462,11 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     ? (view.cities.find((c) => c.id === openCityId && c.ownerId === view.viewerId) ?? null)
     : null
   const openCityState = openCity ? cityFromView(openCity) : null
+  // Own cities widened to CityState, for the city screen's cycling arrows (#429).
+  const myCities = view.cities
+    .filter((c) => c.ownerId === view.viewerId)
+    .map(cityFromView)
+    .filter((c): c is NonNullable<ReturnType<typeof cityFromView>> => c !== null)
   const myCaptains = ownCaptains(view)
     .map(captainFromView)
     .filter((c): c is NonNullable<typeof c> => c !== null)
@@ -978,6 +983,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           setup={view.rules.setup}
           round={view.round}
           playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
+          cities={myCities}
+          onSelectCity={setOpenCityId}
           onClose={() => setOpenCityId(null)}
           onBuild={(buildingId) =>
             void submit(matchAction.construct(view, openCity.id, buildingId))

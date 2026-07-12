@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   BoardDefs,
   boardSvgSize,
+  boardUnitFallbackName,
   HEX_SIZE,
   hexCenter,
   StackToken,
   TerrainHex,
-  unitDefinition,
 } from './battleBoardSvg'
 import { useTheme } from './theme/ThemeContext'
 
@@ -137,8 +137,7 @@ export function BattleBoardSheet({ report, playerName, onClose }: BattleBoardShe
     ? stacksAtStep(board!, step - 1).find((s) => s.id === hit.targetId)
     : undefined
 
-  const displayUnitName = (unitId: string) =>
-    unitName(unitId, unitDefinition(unitId)?.name ?? unitId)
+  const displayUnitName = (unitId: string) => unitName(unitId, boardUnitFallbackName(unitId))
 
   const eventCaption = (e: BoardEvent | undefined): string => {
     if (!board || !e) return 'Deployment'

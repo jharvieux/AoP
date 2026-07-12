@@ -96,6 +96,18 @@
   --color-target-ring: #e8a33c;
   --color-merchant: #e0b64f;
 
+  /* Graphical city scene (#429): backdrop bands and the per-category
+     placeholder building colors, pending real building art. */
+  --city-sky: #7fa8c9;
+  --city-sky-low: #b5cbdd;
+  --city-ground: #6b7a3f;
+  --city-ground-low: #55632f;
+  --city-water: #2a6a8f;
+  --city-building-economy: #8a6d3b;
+  --city-building-recruitment: #a33c2e;
+  --city-building-fortification: #6e7681;
+  --city-building-shipyard: #2e5da3;
+
   /* Battle board (hex grid) */
   --color-battle-ink: #f3e9d2;
   --color-battle-ink-a16: rgb(243 233 210 / 16%);
@@ -1116,6 +1128,274 @@ button.primary.secondary {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+/* Graphical city scene (#429). Placeholder blocks stand in for building art;
+   the layout, category coloring, and tap targets are the real design. */
+.city-scene-section {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.city-scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(
+    var(--city-sky) 0%,
+    var(--city-sky-low) 34%,
+    var(--city-ground) 34%,
+    var(--city-ground-low) 86%,
+    var(--city-water) 86%,
+    var(--city-water) 100%
+  );
+}
+
+.city-scene__building {
+  position: absolute;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid rgb(0 0 0 / 45%);
+  border-radius: 4px 4px 2px 2px;
+  box-shadow: inset 0 6px 0 rgb(0 0 0 / 25%);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+.city-scene__building:active {
+  filter: brightness(1.2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .city-scene__building:hover {
+    filter: brightness(1.15);
+  }
+}
+
+.city-scene__building--economy {
+  background: var(--city-building-economy);
+}
+
+.city-scene__building--recruitment {
+  background: var(--city-building-recruitment);
+}
+
+.city-scene__building--fortification {
+  background: var(--city-building-fortification);
+}
+
+.city-scene__building--shipyard {
+  background: var(--city-building-shipyard);
+}
+
+.city-scene__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 70%);
+  overflow-wrap: anywhere;
+}
+
+.city-scene__flagpole {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  width: 2px;
+  height: 26px;
+  background: var(--color-border);
+}
+
+.city-scene__flag {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 22px;
+  height: 14px;
+  border: 1px solid rgb(0 0 0 / 45%);
+  overflow: hidden;
+}
+
+.city-scene__flag img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.city-scene__overflow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.city-scene-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 45%);
+  color: var(--color-text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.city-scene-nav--left {
+  left: 6px;
+}
+
+.city-scene-nav--right {
+  right: 6px;
+}
+
+/* Placeholder building graphic inside management modals (#431). */
+.building-modal__intro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.building-graphic {
+  display: inline-block;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border: 1px solid rgb(0 0 0 / 45%);
+  border-radius: 6px;
+  box-shadow: inset 0 8px 0 rgb(0 0 0 / 25%);
+}
+
+.building-graphic--economy {
+  background: var(--city-building-economy);
+}
+
+.building-graphic--recruitment {
+  background: var(--city-building-recruitment);
+}
+
+.building-graphic--fortification {
+  background: var(--city-building-fortification);
+}
+
+.building-graphic--shipyard {
+  background: var(--city-building-shipyard);
+}
+
+/* Town-hall build modal rows (#430): full tree with greyed-out unmet
+   requirements and tap-to-reveal info tooltips. */
+.build-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-panel-alt);
+}
+
+.build-row--unavailable .build-row__text,
+.build-row--unavailable .building-graphic {
+  opacity: 0.45;
+}
+
+.build-row__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.build-row .building-graphic {
+  width: 40px;
+  height: 40px;
+}
+
+.build-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.build-row__build {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-raised);
+  color: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.build-row__build:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .build-row__build:not(:disabled):hover {
+    border-color: var(--color-gold);
+  }
+}
+
+.info-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.info-toggle[aria-expanded='true'] {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.building-info {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
+}
+
+.building-info ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.building-modal__intro .building-info {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Recruit-modal rows (#431): unit name plus its info toggle on one line. */
+.garrison-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .battle-intro {

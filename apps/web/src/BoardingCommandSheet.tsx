@@ -9,12 +9,12 @@ import { useState } from 'react'
 import {
   BoardDefs,
   boardSvgSize,
+  boardUnitFallbackName,
   hexCenter,
   hexPoints,
   HEX_SIZE,
   StackToken,
   TerrainHex,
-  unitDefinition,
 } from './battleBoardSvg'
 import {
   planAttack,
@@ -67,8 +67,7 @@ export function BoardingCommandSheet({
   const [preview, setPreview] = useState<Preview | null>(null)
 
   const acting = view.stack
-  const displayUnitName = (unitId: string) =>
-    unitName(unitId, unitDefinition(unitId)?.name ?? unitId)
+  const displayUnitName = (unitId: string) => unitName(unitId, boardUnitFallbackName(unitId))
 
   const engageable = new Set(
     view.targets.filter((t) => planAttack(view, t.targetId) !== null).map((t) => t.targetId),
