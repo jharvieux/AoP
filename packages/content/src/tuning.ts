@@ -441,13 +441,13 @@ export const RECRUIT_REPLENISH_INTERVAL = 5
 export const AI_TUNING: AiTuning = {
   engageMinRatio: 0.9,
   // 0.40: a landing party at ≥40% of the defenders' troops-only strength kills a
-  // meaningful chunk before falling, so successive waves (or fresh captains) grind
-  // a city the AI can't yet beat outright down to beatable — the #462 attrition
-  // arc. Sim-tuned: on the 96-match battery this lifts conquest from 3 → 13 with
-  // visible multi-wave arcs; below ~0.38 conquest roughly doubles again but the AI
-  // sheds noticeably more captains (less cost-effective), so 0.40 is the bounded
-  // choice. A party weaker than this floor is too slight to dent the garrison and
-  // just feeds its captain to the turrets. (Scaled by personality engageMinRatioMult.)
+  // meaningful chunk before falling, so the AI is willing to spend a captain on a
+  // city it can't yet beat outright — the #462 attrition change. Sim-tuned on the
+  // 96-match battery: lifts conquest 3 → 13 (the AI takes far more shots, ~half of
+  // which it loses, thinning garrisons). Below ~0.38 conquest roughly doubles again
+  // but the AI sheds noticeably more captains (less cost-effective), so 0.40 is the
+  // bounded choice. A party weaker than this floor is too slight to dent the
+  // garrison and just feeds its captain to the turrets. (Scaled by engageMinRatioMult.)
   attritionMinRatio: 0.4,
   attritionScoreMult: 0.5,
   attackScoreBase: 100,
