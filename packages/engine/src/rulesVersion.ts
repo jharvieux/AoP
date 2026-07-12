@@ -41,8 +41,14 @@
  * coastline. Land placement draws from a separate RNG stream, so the live
  * combat/encounter roll order is unchanged — but the new required fields and
  * reducer semantics make a pre-#466 snapshot replay differently, so it bumps.
+ * v7 — standing march orders for landing parties (#482): new
+ * `LandingParty.marchOrder` state with two actions (`setMarchOrder`,
+ * `clearMarchOrder`), and turn advancement gains an auto-march phase (after
+ * sail-order continuation) that moves ordered parties and accumulates their
+ * explored tiles. A v7 log's `endTurn` therefore does more than a v6 build
+ * would replay it as doing, so replaying across the boundary is refused.
  */
-export const RULES_VERSION = 6
+export const RULES_VERSION = 7
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

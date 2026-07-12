@@ -452,6 +452,19 @@ export function sanitizeAction(action: Action): Action {
         playerId,
         captainId: reqString(action.captainId, 'captainId'),
       }
+    case 'setMarchOrder':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        destination: reqCoord(action.destination, 'destination'),
+      }
+    case 'clearMarchOrder':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+      }
     case 'disembark':
       return {
         type: action.type,

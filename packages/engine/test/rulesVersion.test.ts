@@ -79,14 +79,14 @@ describe('rulesVersion (#213)', () => {
 
   it('the mismatch error carries both versions for a plain-English message', () => {
     const state = createGame(testConfig())
-    const stale = { ...state, config: { ...state.config, rulesVersion: 7 } }
+    const stale = { ...state, config: { ...state.config, rulesVersion: RULES_VERSION + 1 } }
     try {
       applyAction(stale, endTurn(currentPlayer(stale).id))
       expect.unreachable('expected RulesVersionMismatchError')
     } catch (err) {
       expect(err).toBeInstanceOf(RulesVersionMismatchError)
       const e = err as RulesVersionMismatchError
-      expect(e.stateVersion).toBe(7)
+      expect(e.stateVersion).toBe(RULES_VERSION + 1)
       expect(e.currentVersion).toBe(RULES_VERSION)
     }
   })

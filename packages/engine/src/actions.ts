@@ -198,6 +198,29 @@ export interface PartyAssaultCityAction {
 }
 
 /**
+ * Give a landing party a standing multi-turn march order (#482): march toward
+ * `destination` (a fixed `land` tile — parties have no intercept orders),
+ * auto-continuing at the start of each of the owner's turns until it arrives,
+ * the route becomes impassable, or a new contact comes into view. Spends this
+ * turn's movement immediately (the first leg), exactly as if the party had
+ * been marched as far along the route as its points allow. Replaces any
+ * existing order on the party, clearing a prior interrupt.
+ */
+export interface SetMarchOrderAction {
+  type: 'setMarchOrder'
+  playerId: string
+  partyId: string
+  destination: Coord
+}
+
+/** Cancel a party's standing march order (#482). No-op-safe: valid even if none is set. */
+export interface ClearMarchOrderAction {
+  type: 'clearMarchOrder'
+  playerId: string
+  partyId: string
+}
+
+/**
  * Give a captain a standing multi-turn sail order (#372): sail toward
  * `destination` (or intercept the entity named by `targetId`/`targetKind`),
  * auto-continuing at the start of each of the owner's turns until it arrives,
@@ -411,6 +434,8 @@ export type Action =
   | EmbarkAction
   | AttackPartyAction
   | PartyAssaultCityAction
+  | SetMarchOrderAction
+  | ClearMarchOrderAction
   | SetSailOrderAction
   | ClearSailOrderAction
   | SetStandingOrdersAction

@@ -164,6 +164,40 @@ export interface Captain {
 }
 
 /**
+ * A standing multi-turn march order for a landing party (#482) — the overland
+ * twin of a captain's {@link SailOrder}. A party given a destination beyond
+ * its remaining movement keeps marching toward it at the start of each of its
+ * owner's turns until it arrives, the route becomes impassable (another party
+ * blocks every path, or the destination tile itself is taken), or a *new*
+ * contact comes into view — in the latter two cases it pauses (`interrupted`)
+ * and waits for the player instead of marching blind into a fresh enemy.
+ *
+ * Plain JSON so it serializes and replays with the rest of GameState. Absent
+ * on a party with no standing order (never `undefined`-valued), so pre-#482
+ * saves and every idle party are byte-identical. Fixed-tile destinations only:
+ * parties have no intercept orders (a marching column doesn't chase; the AI
+ * re-plans each turn instead).
+ */
+export interface MarchOrder {
+  /** The `land` tile being marched to. */
+  destination: Coord
+  /**
+   * Contacts the owner had already sighted when the leg began — the baseline
+   * against which a *new* sighting is detected, exactly as in
+   * {@link SailOrder.knownContactIds}. Refreshed each turn the order advances
+   * without interruption. Sorted, from {@link currentContacts}.
+   */
+  knownContactIds: string[]
+  /**
+   * True once the order paused — a new contact appeared, or no land route to
+   * the destination currently exists (blocked by another party, or the
+   * destination tile is occupied). A paused order stays put until the player
+   * re-issues or clears it. Omitted while the order is still actively marching.
+   */
+  interrupted?: boolean
+}
+
+/**
  * A landing party (#465) — a detachment of troops a captain has put ashore.
  * Lives on `land` tiles and moves overland turn by turn; it is a land piece,
  * not a captain (no ship, no XP/skills, no orders). A party whose ship leaves
@@ -184,6 +218,12 @@ export interface LandingParty {
   maxMovementPoints: number
   /** Never empty: a party that loses its last troop is removed from play. */
   troops: TroopStack[]
+  /**
+   * Standing multi-turn march order (#482): the party auto-continues toward it
+   * at the start of each of its owner's turns. Absent when the party has no
+   * standing order. Cleared on manual march. See {@link MarchOrder}.
+   */
+  marchOrder?: MarchOrder
 }
 
 /**
