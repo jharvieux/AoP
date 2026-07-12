@@ -751,6 +751,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           cities={board.cities}
           parties={board.parties}
           encounters={board.encounters}
+          landSites={board.landSites}
+          landEncounters={board.landEncounters}
           viewerId={view.viewerId}
           visibleKeys={board.visibleKeys}
           exploredKeys={board.exploredKeys}

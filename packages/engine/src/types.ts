@@ -1,7 +1,13 @@
 import type { Coord, FactionId, MapSize, ResourcePool } from '@aop/shared'
 import type { AiDifficultyModifier, AiPersonalityWeights, AiTuning } from './ai'
 import type { CombatStatsData } from './combat'
-import type { ContentCatalog, EncounterKind, ResourceNodeKind } from './content'
+import type {
+  ContentCatalog,
+  EncounterKind,
+  LandEncounterKind,
+  LandSiteKind,
+  ResourceNodeKind,
+} from './content'
 import type { GameMap, GridTopology } from './map'
 import type { MapDefinition } from './mapDefinition'
 import type { BoardOrder } from './battleBoard'
@@ -482,6 +488,50 @@ export interface ResourceNodeState {
   ownerSeat?: number
 }
 
+/**
+ * A land resource site (#466) — a mine, sawmill, lumber camp, or ruin the map
+ * generator scattered on a `land` tile, captured by a landing party that
+ * reaches it. Placed deterministically at mapgen; plain data so it serializes
+ * and replays like everything else. See economy.ts's `landSiteIncome` for the
+ * per-round grant to a hold site's claimant.
+ */
+export interface LandSiteState {
+  id: string
+  kind: LandSiteKind
+  position: Coord
+  /**
+   * For a **hold** site (mine/sawmill): the seat that currently claims it —
+   * the persistent claim marker. It keeps paying this seat after the claiming
+   * party marches away, and only changes when an enemy party captures the site
+   * in turn. Absent while unclaimed. Never set on a **haul** site (which pays
+   * once on capture and is then spent — see {@link active}).
+   */
+  claimedBy?: string
+  /**
+   * True while the site can still be captured. A hold site stays `true` for the
+   * life of the match (its claim just changes hands). A haul site flips to
+   * `false` the moment it is captured — spent, it never yields again.
+   */
+  active: boolean
+}
+
+/**
+ * A land random encounter (#466) — the overland counterpart to a sea
+ * {@link EncounterState}, resolved by a landing party rather than a captain.
+ * Same lifecycle (`active`/`respawnRound`) and placement determinism; kept in a
+ * separate {@link GameState.landEncounters} array so the land side never
+ * touches the sea encounter stream.
+ */
+export interface LandEncounterState {
+  id: string
+  kind: LandEncounterKind
+  position: Coord
+  /** False once resolved; flips back to true when {@link respawnRound} is reached. */
+  active: boolean
+  /** Round at which a consumed land encounter reactivates; null = active, or gone for good. */
+  respawnRound: number | null
+}
+
 export type GameStatus = 'active' | 'finished'
 
 /**
@@ -510,6 +560,10 @@ export interface GameState {
   parties: LandingParty[]
   /** Random encounters placed by mapgen (#23). Empty when the match has no encounter content. */
   encounters: EncounterState[]
+  /** Land resource sites placed by mapgen (#466). Empty when the match has no land-site content. */
+  landSites: LandSiteState[]
+  /** Land random encounters placed by mapgen (#466). Empty when the match has no land-encounter content. */
+  landEncounters: LandEncounterState[]
   /** Author-placed resource nodes (#101). Empty for generated maps and authored maps with none. */
   resourceNodes: ResourceNodeState[]
   /**

@@ -871,6 +871,8 @@ function sailState(
     captains,
     parties: [],
     encounters: [],
+    landSites: [],
+    landEncounters: [],
     resourceNodes: [],
     exploredTiles: {},
     rngState: seedRng(1),

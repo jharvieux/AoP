@@ -335,6 +335,35 @@ export interface ResolveEncounterAction {
 }
 
 /**
+ * Capture a land resource site (#466) the party stands on. A **hold** site
+ * (mine/sawmill) sets its persistent claim to this seat — it keeps paying each
+ * round after the party marches off, and only changes hands when a rival party
+ * captures it in turn. A **haul** site (lumber camp/ruin) pays its one-time
+ * reward into the treasury and is then spent. Either way it costs the party its
+ * remaining movement this turn, so a party can take at most one site per turn.
+ */
+export interface CaptureSiteAction {
+  type: 'captureSite'
+  playerId: string
+  partyId: string
+  siteId: string
+}
+
+/**
+ * Resolve a land random encounter (#466) with an adjacent landing party — the
+ * overland twin of {@link ResolveEncounterAction}, routed through the same
+ * seeded choice/outcome roll but crediting the party (troops, not a ship's
+ * crew, and no captain XP). Spends the party's movement for the turn.
+ */
+export interface ResolvePartyEncounterAction {
+  type: 'resolvePartyEncounter'
+  playerId: string
+  partyId: string
+  encounterId: string
+  choice: EncounterChoice
+}
+
+/**
  * Offer an alliance to another seat (#136). Step one of the turn-ordered
  * two-step consent: `playerId` proposes on their own turn; the offer stands as a
  * pending {@link AllianceProposal} until `targetId` accepts (on their turn) via
@@ -394,6 +423,8 @@ export type Action =
   | ChooseCaptainSkillAction
   | UpgradeShipAction
   | ResolveEncounterAction
+  | CaptureSiteAction
+  | ResolvePartyEncounterAction
   | ProposeAllianceAction
   | AcceptAllianceAction
   | LeaveAllianceAction

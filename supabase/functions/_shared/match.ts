@@ -494,6 +494,21 @@ export function sanitizeAction(action: Action): Action {
           ? { boardCommands: reqArray(action.boardCommands, 'boardCommands', reqBoardCommand) }
           : {}),
       }
+    case 'captureSite':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        siteId: reqString(action.siteId, 'siteId'),
+      }
+    case 'resolvePartyEncounter':
+      return {
+        type: action.type,
+        playerId,
+        partyId: reqString(action.partyId, 'partyId'),
+        encounterId: reqString(action.encounterId, 'encounterId'),
+        choice: reqEnum(action.choice, ENCOUNTER_CHOICES, 'choice'),
+      }
     default: {
       // Compile-time exhaustiveness guard; at runtime this is a hostile
       // client's unknown type string, so reject the request, not the server.

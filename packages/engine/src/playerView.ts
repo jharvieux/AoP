@@ -67,6 +67,10 @@ export interface PlayerView {
   /** Landing parties (#465), filtered exactly like captains: own always, enemy only in current vision. */
   parties: ViewParty[]
   encounters: ViewEncounter[]
+  /** Land resource sites (#466) in current vision, with their claim marker. */
+  landSites: ViewLandSite[]
+  /** Land random encounters (#466) in current vision, filtered like sea encounters. */
+  landEncounters: ViewEncounter[]
   /**
    * The viewer's own alliance relationships (#136/#137). Only the viewer's
    * pairs and proposals are disclosed — a third-party alliance between two other
@@ -229,6 +233,16 @@ export interface ViewEncounter {
   active: boolean
 }
 
+/** A land resource site (#466) in a player view — public terrain plus its current claim. */
+export interface ViewLandSite {
+  id: string
+  kind: string
+  position: Coord
+  active: boolean
+  /** The seat currently holding a hold site; absent when unclaimed or a spent haul site. */
+  claimedBy?: string
+}
+
 /**
  * Project `state` down to what the seat `viewerId` is permitted to see. Pure
  * function of `GameState` — the single filter used by `get-player-view` and, by
@@ -364,6 +378,21 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     .filter((e) => e.active && visibleKeys.has(tileKey(e.position)))
     .map((e) => ({ id: e.id, kind: e.kind, position: e.position, active: e.active }))
 
+  // Land content (#466): sites (active, in vision) carry their claim marker;
+  // land encounters filter exactly like sea encounters.
+  const landSites: ViewLandSite[] = state.landSites
+    .filter((s) => s.active && visibleKeys.has(tileKey(s.position)))
+    .map((s) => ({
+      id: s.id,
+      kind: s.kind,
+      position: s.position,
+      active: s.active,
+      ...(s.claimedBy !== undefined ? { claimedBy: s.claimedBy } : {}),
+    }))
+  const landEncounters: ViewEncounter[] = state.landEncounters
+    .filter((e) => e.active && visibleKeys.has(tileKey(e.position)))
+    .map((e) => ({ id: e.id, kind: e.kind, position: e.position, active: e.active }))
+
   // Viewer-scoped alliance state: only pairs and proposals that touch the viewer
   // (never a third-party alliance between two other seats).
   const alliances: ViewAlliances = {
@@ -402,6 +431,8 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     captains,
     parties,
     encounters,
+    landSites,
+    landEncounters,
     alliances,
     rngState: null,
   }
