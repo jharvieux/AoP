@@ -149,6 +149,47 @@ export function findViewerCaptainAtCity(
   )
 }
 
+/** The decision {@link classifySelectedPartyTileTap} returns for GameScreen to dispatch. */
+export type SelectedPartyTileTap =
+  | { action: 'captureSite'; siteId: string }
+  | { action: 'resolveEncounter'; encounterId: string }
+  | { action: 'reselect' }
+
+/**
+ * What a tap on the already-selected party's own tile should do (#476):
+ * capture the land site the party stands on, open the choice sheet of a land
+ * encounter sharing its tile (site wins when both are present, preserving the
+ * tap handler's long-standing site-before-encounter order), or fall back to
+ * the pre-existing re-select. Extracted as a pure function (the
+ * {@link findViewerCaptainAtCity} pattern from #385) because this precedence
+ * is exactly where the bug lived — the own-party match used to win every tap
+ * on this tile unconditionally, so `captureSite` was unreachable by tapping —
+ * and a pure predicate keeps that regression unit-testable without rendering
+ * the screen. Both acts cost a movement point engine-side, so a spent party
+ * always re-selects.
+ */
+export function classifySelectedPartyTileTap(
+  party: Pick<LandingParty, 'position' | 'movementPoints'>,
+  viewerId: string,
+  landSites: readonly Pick<
+    GameState['landSites'][number],
+    'id' | 'position' | 'active' | 'claimedBy'
+  >[],
+  landEncounters: readonly Pick<
+    GameState['landEncounters'][number],
+    'id' | 'position' | 'active'
+  >[],
+): SelectedPartyTileTap {
+  if (party.movementPoints >= 1) {
+    const here = (pos: Coord) => pos.x === party.position.x && pos.y === party.position.y
+    const site = landSites.find((s) => s.active && here(s.position) && s.claimedBy !== viewerId)
+    if (site) return { action: 'captureSite', siteId: site.id }
+    const encounter = landEncounters.find((e) => e.active && here(e.position))
+    if (encounter) return { action: 'resolveEncounter', encounterId: encounter.id }
+  }
+  return { action: 'reselect' }
+}
+
 export function GameScreen({
   game,
   battleReport,
@@ -565,14 +606,34 @@ export function GameScreen({
       (p) => p.ownerId === viewer.id && p.position.x === x && p.position.y === y,
     )
     if (ownPartyHere) {
-      // Re-tapping the already-selected party's own tile (#476) is an action
-      // tap (capture the site it's standing on, resolve an encounter it's
-      // sharing a tile with, …), not a re-select — this tile always matches
-      // `ownPartyHere` first, so without this branch those actions could never
-      // fire from a tap at all.
+      // Re-tapping the already-selected party's own tile (#476) can be an
+      // action tap (capture the site it's standing on, resolve an encounter
+      // it's sharing a tile with), not a re-select — this tile always matches
+      // `ownPartyHere` first, so before this branch those actions could never
+      // fire from a tap at all. The act-vs-reselect decision is the pure
+      // classifySelectedPartyTileTap above.
       if (selectedParty && selectedParty.id === ownPartyHere.id) {
-        handlePartyTileClick(x, y, selectedParty)
-        return
+        const tap = classifySelectedPartyTileTap(
+          selectedParty,
+          viewer.id,
+          game.landSites,
+          game.landEncounters,
+        )
+        if (tap.action === 'captureSite') {
+          tapFeedback()
+          onAction({
+            type: 'captureSite',
+            playerId: viewer.id,
+            partyId: selectedParty.id,
+            siteId: tap.siteId,
+          })
+          return
+        }
+        if (tap.action === 'resolveEncounter') {
+          setLandEncounterId(tap.encounterId)
+          return
+        }
+        // 'reselect' falls through to the pre-existing selection below.
       }
       setSelectedPartyId(ownPartyHere.id)
       setSelectedCaptainId(null)
@@ -724,21 +785,9 @@ export function GameScreen({
       }
       return
     }
-    // Capture a land resource site (#466) the party is standing on.
-    const siteHere = game.landSites.find(
-      (s) => s.active && s.position.x === x && s.position.y === y,
-    )
-    if (
-      siteHere &&
-      party.position.x === x &&
-      party.position.y === y &&
-      party.movementPoints >= 1 &&
-      siteHere.claimedBy !== viewer.id
-    ) {
-      tapFeedback()
-      onAction({ type: 'captureSite', playerId: viewer.id, partyId: party.id, siteId: siteHere.id })
-      return
-    }
+    // Capturing a site (#466) means tapping the tile the party stands on,
+    // which never reaches here — handleTileClick routes that tap through
+    // classifySelectedPartyTileTap instead.
     // Resolve an adjacent land encounter (#466): open its choice sheet.
     const landEncHere = visibleKeys.has(key)
       ? game.landEncounters.find((e) => e.active && e.position.x === x && e.position.y === y)
