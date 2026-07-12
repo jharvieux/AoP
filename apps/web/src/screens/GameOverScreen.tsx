@@ -25,7 +25,10 @@ export function GameOverScreen({
   const { factionName } = useTheme()
   const winner = game.players.find((p) => p.id === game.winnerId)
   const isPlayerWinner = game.winnerId === 'player-0'
-  const isDraw = game.winnerId === null
+  // No winner is only a draw when every crew went down together. A no-winner
+  // finish with seats still alive is the #426 case — the human resigned (or was
+  // eliminated) out of a still-contested match — and that reads as defeat.
+  const isDraw = game.winnerId === null && game.players.every((p) => p.eliminated)
   const outcome = isDraw ? 'draw' : isPlayerWinner ? 'victory' : 'defeat'
   const outcomeText = isDraw ? 'Draw' : isPlayerWinner ? 'Victory!' : 'Defeat'
   const outcomeEmoji = isDraw ? '⚔️' : isPlayerWinner ? '🏆' : '💀'

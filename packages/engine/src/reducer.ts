@@ -1815,13 +1815,35 @@ function leaveAlliance(state: GameState, action: LeaveAllianceAction): GameState
 }
 
 /**
+ * The finished status for a match that is over, or `null` while play continues.
+ * A match ends two ways (#426 added the second):
+ *
+ * - one seat (or none) left alive — last one standing wins;
+ * - every living seat is AI in a match that ever had a human seat: with the
+ *   last human resigned or eliminated there is nobody left to play for, so the
+ *   match closes (no winner declared among the surviving AIs) instead of
+ *   grinding on as an unwatched AI-vs-AI loop of battles. All-AI simulations
+ *   (sim.ts) never had a human seat, so this clause never touches them.
+ */
+function matchResult(
+  players: readonly PlayerState[],
+): { status: 'finished'; winnerId: string | null } | null {
+  const alive = players.filter((p) => !p.eliminated)
+  if (alive.length <= 1) return { status: 'finished', winnerId: alive[0]?.id ?? null }
+  if (alive.every((p) => p.isAI) && players.some((p) => !p.isAI)) {
+    return { status: 'finished', winnerId: null }
+  }
+  return null
+}
+
+/**
  * After a battle: a player is eliminated only once they hold no live captain
  * AND no city (#308) — a captured captain doesn't count as "having a
  * captain" (it can't act), but a city alone keeps a seat alive even at zero
  * live captains, exactly the "rehire at the tavern while you hold a town"
- * recovery #308 was written to enable. The game ends if one (or none)
- * remains, and if the acting player was just eliminated the turn advances so
- * play can continue.
+ * recovery #308 was written to enable. The game ends per {@link matchResult},
+ * and if the acting player was just eliminated the turn advances so play can
+ * continue.
  */
 function settleEliminations(state: GameState): GameState {
   const players = state.players.map((p) =>
@@ -1853,9 +1875,9 @@ function settleEliminations(state: GameState): GameState {
     alliances: pruneAlliancesForSeats(state.alliances, eliminatedIds),
   }
 
-  const alive = withElims.players.filter((p) => !p.eliminated)
-  if (alive.length <= 1) {
-    return { ...withElims, status: 'finished', winnerId: alive[0]?.id ?? null }
+  const result = matchResult(withElims.players)
+  if (result) {
+    return { ...withElims, ...result }
   }
   if (withElims.players[withElims.currentPlayerIndex]!.eliminated) {
     return advanceTurn(withElims)
@@ -1864,9 +1886,9 @@ function settleEliminations(state: GameState): GameState {
 }
 
 function advanceTurn(state: GameState): GameState {
-  const alive = state.players.filter((p) => !p.eliminated)
-  if (alive.length <= 1) {
-    return { ...state, status: 'finished', winnerId: alive[0]?.id ?? null }
+  const result = matchResult(state.players)
+  if (result) {
+    return { ...state, ...result }
   }
 
   let index = state.currentPlayerIndex
