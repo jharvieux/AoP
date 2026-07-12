@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-038 — 2026-07-12 — #475 AI land player: planner disembarks/marches/assaults with parties (captain-preserving attrition vector), intercepts + reinforces vs enemy parties, re-embarks stranded ones; planner+content only, RULES_VERSION stays 5; conquestReachable inert (authored map has no land), new generated-map battery: 89→75 captures but captains-captured 67→44 (−34%), 25 captures by party, 56/96 disembark
 - D-037 — 2026-07-12 — #465 landing parties shipped: GameState.parties + 5 actions (disembark/moveParty/embark/attackParty/partyAssaultCity), RULES_VERSION→5, full-defense land assaults, stranded-until-rescued keeps seats alive; AI ignorant (#475), UX polish (#476)
 - D-036 — 2026-07-12 — #471 multi-wave sieges: AI_TUNING.siegeStickinessBonus makes loaded captains press attrition sieges (was scored below economy → dithered); sim 13→77 captures/96, max same-city assaults 1→2, 27/96 multi-wave, repelled/capture 1.23→0.68; planner+content only, RULES_VERSION stays 4
 - D-035 — 2026-07-12 — #462 attrition warfare: AI attritionMinRatio floor + %-of-base ship refits (all 4 tracks); sim 3→13 captures/96 (4.3×), planner+content only, no RULES_VERSION bump

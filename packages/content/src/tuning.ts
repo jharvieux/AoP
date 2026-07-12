@@ -139,6 +139,40 @@ export interface AiTuning {
    * `attritionMinRatio`, so it never lowers the cost floor into suicide runs.
    */
   siegeStickinessBonus: number
+  /**
+   * Land-assault premium (#475): a ratio-scaled score bonus on the landing-party
+   * attrition vector — a captain disembarking a party to grind a city, and a
+   * party pressing an assault it does not expect to win. Its purpose is captain
+   * preservation: a *sea* attrition assault that fails captures the attacking
+   * captain (the whole ship lost), whereas a failed *land* assault only destroys
+   * the party (troops), leaving the captain free to reload and ferry another
+   * wave. This bonus is what tips a loaded captain toward the cheaper land vector
+   * instead of feeding itself to the turrets, and toward a multi-turn disembark
+   * whose payoff is delayed a turn. Scoped to the attrition band only (a winnable
+   * assault is immediate and low-risk by sea, so land staging just delays the
+   * capture). Personality-scaled by `combatScoreMult`, like `attackScoreBase`.
+   */
+  landAssaultBonus: number
+  /**
+   * Score for re-embarking a landing party that has no reachable enemy purpose
+   * (#475): no enemy city reachable overland and no adjacent enemy party to
+   * fight, but a friendly ship with room sits on an adjacent water tile. Keeps
+   * the AI from stranding troops pointlessly. Low — above idling, below any real
+   * offensive move; unscaled (pure logistics, like the recovery verbs).
+   */
+  partyRescueScoreBase: number
+  /**
+   * Score for reinforcing a threatened owned city (#475): transferring troops
+   * from a captain docked at it into its garrison when a hostile party is
+   * marching within `partyThreatRadius`. The simple, bounded counter to a land
+   * approach (garrison + militia + turrets already auto-defend). Unscaled.
+   */
+  reinforceCityScoreBase: number
+  /**
+   * Map-distance within which a hostile landing party counts as "marching on"
+   * an owned city, triggering the reinforce response above (#475).
+   */
+  partyThreatRadius: number
   /** Score for a legal attack, scaled by strength ratio. */
   attackScoreBase: number
   /** Base score for advancing toward a beatable but distant enemy. */
@@ -495,6 +529,23 @@ export const AI_TUNING: AiTuning = {
   // attritionMinRatio, so it never lowers the cost floor into suicide runs.
   // (Scaled by combatScoreMult.)
   siegeStickinessBonus: 40,
+  // Land-assault premium (#475). Positive so a captain in the attrition band on an
+  // enemy shore scores the disembark (attrition assault score + 30×ratio) strictly
+  // above the sea attrition assault (same base + siegeBonus) — steering it to the
+  // captain-preserving vector without relying on candidate order. Measured on a
+  // generated-map 96-match battery (30-round cap): vs the sea-only attrition
+  // baseline (89 captures, 67 captains captured on failed waves), the land vector
+  // gives 75 captures — 25 of them by a landing party — while captains captured
+  // drops to 44 and the ~62 failed waves cost only troops, not captains. So the AI
+  // spends cheap parties instead of captains to grind cities: fewer raw captures,
+  // markedly better captain economy. Its magnitude is not outcome-sensitive on this
+  // battery (radius-2 islands let a party land adjacent and assault immediately, so
+  // there is no march to out-rank); it matters more on larger islands, where the
+  // party must march several turns, and against the economy verbs. (combatScoreMult.)
+  landAssaultBonus: 30,
+  partyRescueScoreBase: 15,
+  reinforceCityScoreBase: 60,
+  partyThreatRadius: 3,
   attackScoreBase: 100,
   advanceScoreBase: 10,
   advanceDistanceBonus: 10,
