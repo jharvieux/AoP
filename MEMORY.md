@@ -1,3 +1,38 @@
+## D-041 — 2026-07-13 — #444 art pipeline migrated A1111 → ComfyUI; checkpoint successor evaluated, adoption deferred
+
+**Decision.** Local art generation moves from AUTOMATIC1111 webui (v1.10.1, final/unmaintained
+release, required torch pinned to 2.3.1 for working MPS) to ComfyUI (v0.27.0,
+`~/aop-ai-tools/ComfyUI`, own venv, current torch 2.13). MPS output verified clean on
+current torch — the corruption class that forced the A1111 pin does not reproduce. The
+"upgrade" is by isolation: fresh venv per tool, never in-place torch upgrades (the July 11
+failure mode). A1111 install is retained untouched as legacy; its venv keeps the 2.3.1 pin.
+
+**Durable tooling (new, in-repo).** `scripts/art/comfyui_client.py` (stdlib-only txt2img
+client for ComfyUI's workflow-graph API; A1111-style sampler names accepted),
+`scripts/art/aop_styles.py` (the previously session-scratch prompt families: building
+sprites, unit/party style, faction flavors — including the recovered gen_city_art.py
+prompts), `scripts/art/gen_building_art.py` (candidate generator + contact sheet).
+Gotcha encoded in the client: ComfyUI's execution cache returns NO images for a
+byte-identical graph resubmission — vary `filename_prefix`.
+
+**Checkpoint evaluation (same-seed contact sheet, 4 buildings x 2 seeds).**
+DreamShaperXL Turbo V2 (SDXL, same author) vs DreamShaper 8: XL produced 8/8 coherent
+buildings (DS8: 6/8, with its known badge-frame/logo failures firing twice) and no ring
+framing, but reads more "3D render" than the shipped flat-cel style, ignores
+plain-background instructions more (harder cutouts), and costs ~116s vs ~31s per image
+(XL figure inflated by 6.5GB model swaps on 16GB RAM; batched same-model runs faster).
+**Adoption is the operator's style call, per-batch — not decided here.** Both checkpoints
+stay available; new art batches should contact-sheet both until a winner is declared.
+
+**Rejected.** Upgrading torch inside the A1111 venv (breaks MPS, root-caused 2026-07-11);
+Flux-class models (12GB+ weights exceed 16GB RAM headroom); SDPA attention flag
+(`--use-pytorch-cross-attention` measured 41s vs 34s default).
+
+**Artifacts.** PR for #444 (docs/AI-TOOLS-GUIDE.md rewrite + scripts/art/), comparison
+sheet delivered to operator, private tooling memory note updated.
+
+---
+
 ## D-040 — 2026-07-12 — #482 party UX round 2: standing march orders (RULES_VERSION→7), interactive land battles, multiplayer party controls
 
 **What shipped** (PR for #482, code items; party art is separate work). Four pieces:

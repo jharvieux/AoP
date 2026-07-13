@@ -1,217 +1,148 @@
 # AI Tools Guide — Age of Plunder
 
-This guide covers setting up and using AI tools for generating game assets, including concept art, textures, NPC artwork, and UI backgrounds.
+This guide covers setting up and using AI tools for generating game assets, including
+building sprites, unit/party art, faction emblems, and UI backgrounds.
 
-## Stable Diffusion WebUI
+## Local image generation: ComfyUI
 
-Stable Diffusion WebUI is a local, web-based interface for generating high-quality images using Stable Diffusion models. It provides fine-grained control over prompts, sampling methods, and model weights.
+The art pipeline runs [ComfyUI](https://github.com/comfyanonymous/ComfyUI) locally on
+Apple Silicon (MPS/Metal acceleration). ComfyUI replaced AUTOMATIC1111 WebUI in July 2026
+(issue #444): A1111's final release (v1.10.1) is unmaintained and its inference code
+required pinning a 2-year-old torch to keep MPS from producing corrupted output. ComfyUI
+is actively maintained and runs correctly on current torch — verified 2026-07-13 on
+torch 2.13 / MPS.
 
-### System Requirements
+### Layout
 
-- **GPU**: NVIDIA GPU with CUDA support (8GB+ VRAM recommended for quality output)
-  - RTX 3060 or better for practical generation times
-  - RTX 4070 / 4080+ for batch operations
-- **CPU fallback**: Possible but very slow (hours per image); GPU strongly recommended
-- **Storage**: ~20GB free space (models + WebUI)
-- **RAM**: 16GB+ system RAM
+- **Install**: `~/aop-ai-tools/ComfyUI` (own venv, python 3.13, current torch)
+- **Models**: `~/aop-ai-tools/ComfyUI/models/checkpoints/`; the legacy A1111 model
+  directory is also mapped in via `extra_model_paths.yaml`, so
+  `DreamShaper_8_pruned.safetensors` (the checkpoint behind the shipped art) resolves
+  without duplication.
+- **Repo tooling**: `scripts/art/`
+  - `comfyui_client.py` — stdlib-only txt2img client for the workflow-graph API
+    (library + CLI)
+  - `aop_styles.py` — the established prompt families (building sprites, unit/party
+    style, faction flavors) behind the shipped art
+  - `gen_building_art.py` — building-sprite candidate generator + contact sheet
 
-### Installation
-
-1. **Clone the repository**:
-
-   ```bash
-   mkdir -p ~/aop-ai-tools
-   cd ~/aop-ai-tools
-   git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
-   cd stable-diffusion-webui
-   ```
-
-2. **Install Python dependencies**:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   On macOS with ARM (Apple Silicon), use `requirements-apple.txt` instead.
-
-3. **Download models**:
-   The first run will download ~4GB of model data. Common model choices:
-
-   - **Stable Diffusion v1.5** (default): Good baseline, balanced quality/speed
-   - **DreamShaper**: Better for fantasy art and character design (recommended)
-   - **Realistic Vision**: Best for photorealistic textures
-
-   Place custom models in `models/Stable-diffusion/` directory.
-
-### Running the WebUI
+### Launch
 
 ```bash
-cd ~/aop-ai-tools/stable-diffusion-webui
-python launch.py
+cd ~/aop-ai-tools/ComfyUI && ./venv/bin/python main.py --listen 127.0.0.1 --port 8188
 ```
 
-The UI will start at `http://localhost:7860` and open in your default browser.
+Background it for API use; browser UI at `http://127.0.0.1:8188` if you want the node
+graph. Default attention is fastest on this machine — `--use-pytorch-cross-attention`
+measured slower (41s vs 34s per 512² image, 2026-07-13).
 
-### Configuration
-
-Create a `.env` or `config.txt` file to persist launch options:
+### Generating
 
 ```bash
-# For NVIDIA CUDA:
-python launch.py --xformers --lowram  # if <10GB VRAM
+# One-off:
+python3 scripts/art/comfyui_client.py "stylized isometric game asset of ..." \
+  --negative "photo, realistic, ..." --seed 1001 --steps 32 --cfg 7.5 \
+  --sampler "DPM++ 2M Karras" --batch 4 --out ~/aop-ai-tools/sd-game-art/foo
 
-# For Apple Silicon (macOS) — MPS/Metal acceleration (~12s per 512² image).
-# WORKS ONLY with the torch build this webui pins (torch 2.3.1 + torchvision 0.18.1,
-# per webui-macos-env.sh). Newer torch (e.g. 2.12) makes MPS emit corrupted output
-# (smeared blobs to pure noise) while CPU stays correct — verified 2026-07-11 by
-# same-seed comparison. NEVER `pip install --upgrade torch` in this venv.
-python launch.py --api --skip-torch-cuda-test --upcast-sampling --no-half-vae --use-cpu interrogate
-
-# For faster startup and inference:
-python launch.py --listen 127.0.0.1 --port 7860
+# Building-sprite candidates (all buildings, or a subset), with contact sheet:
+python3 scripts/art/gen_building_art.py tavern shipyard --seeds 4
 ```
 
-### Usage for Game Asset Generation
+The client accepts A1111-style sampler names (`"Euler a"`, `"DPM++ 2M Karras"`) and maps
+them to ComfyUI's split sampler/scheduler fields. As a library:
 
-#### Prompting Strategy
-
-Good prompts are **specific**, **descriptive**, and **reference-aligned**:
-
-```
-"pirate faction emblem, fantasy flag design, oil painting style,
- intricate details, warm color palette, artstation, hd, 8k"
-```
-
-Common quality modifiers:
-
-- `artstation` / `ArtStation HQ` — improves quality and detail
-- `concept art`, `game art` — game-appropriate styles
-- `octane render`, `unreal engine` — technical polish
-- Negative prompt: `ugly, blurry, low quality, distorted`
-
-#### Workflow: Batch Generation and Curation
-
-1. **Prompt engineering** (iterative):
-   - Start with 4–8 variants of a concept
-   - Set `Steps: 25–50` (higher = more detail, slower)
-   - `Guidance Scale: 7–12` (higher = stronger adherence to prompt)
-   - Use seed `Randomize` for exploration, or fix seed for refinement
-
-2. **Batch generation**:
-   - In the WebUI, set `Batch count: 4–8` to generate multiple images per prompt
-   - Select `DreamShaper` or appropriate model
-   - Click `Generate`
-
-3. **Manual curation**:
-   - Review outputs in the `outputs/` directory
-   - Keep 1–2 best variations per concept
-   - Discard obviously flawed or off-brand imagery
-   - Export to `assets/generated/` with descriptive names
-
-4. **Post-processing** (optional):
-   - Use WebUI's built-in upscaler (`RealESRGAN 4x`) for texture detail
-   - Crop or reframe in GIMP/Photoshop if needed
-   - Adjust color grading to match game palette
-
-### Use Cases
-
-#### Faction Emblems
-
-```
-"pirate skull emblem, red and gold, ornate border,
- fantasy heraldry, symmetrical, detailed, high resolution"
+```python
+from comfyui_client import txt2img
+from aop_styles import BUILDING_STYLE, BUILDING_NEGATIVE, BUILDINGS
+pngs = txt2img(BUILDING_STYLE.format(subject=BUILDINGS["tavern"]),
+               negative=BUILDING_NEGATIVE, seed=1001,
+               steps=32, cfg=7.5, sampler="dpmpp_2m", scheduler="karras")
 ```
 
-Output: 512×512, used as faction banners in UI and world.
+### API shape (what changed from A1111)
 
-#### NPC Portraits
+ComfyUI has no flat `txt2img` endpoint. You `POST /prompt` with a JSON **graph**
+(checkpoint loader → CLIP text encodes → KSampler → VAE decode → SaveImage), poll
+`GET /history/<prompt_id>`, and download results via `GET /view`. `comfyui_client.py`
+wraps all of this; don't hand-roll new REST calls.
 
-```
-"character portrait of a grizzled pirate captain,
- oil painting, fantasy character design, trending on artstation,
- detailed face, golden hour lighting"
-```
+Two behaviors worth knowing:
 
-Output: 768×768, used for unit cards and character screens.
+- **Execution cache**: resubmitting a byte-identical graph (same seed, prompts, and
+  `filename_prefix`) is served from cache and produces **no** output images. The client
+  raises a clear error; vary `filename_prefix` (the CLI bakes the seed into it) to force
+  a re-save.
+- **Checkpoint switching** is just a field in the graph — no separate `/options` call.
+  The first generation after a switch pays the model-load cost.
 
-#### Map Tiles and Terrain
+### Checkpoints
 
-```
-"isometric fantasy dungeon floor tile, stone texture,
- game asset, seamless pattern, intricate carvings,
- D&D style, high quality"
-```
+- **`DreamShaper_8_pruned.safetensors`** (SD1.5, 2023) — the checkpoint behind all
+  shipped AoP art. Established params: 512², steps 28–32, cfg 7–7.5, Euler a or
+  DPM++ 2M Karras. Known failure modes and prompt counters live in
+  `scripts/art/aop_styles.py` (circular badge framing, baked-in scenery, garbled text).
+- **`DreamShaperXL_Turbo_V2-SFW.safetensors`** (SDXL Turbo, same author) — evaluated
+  2026-07-13 for #444 as the candidate successor. Params: 1024² native, steps 8,
+  cfg 2.0, DPM++ SDE Karras. Adoption is per-art-batch, operator's call — new art
+  batches should contact-sheet both until a style winner is declared.
 
-Output: 256×256 for tile-based maps.
+### Performance (M5, 16 GB, 2026-07-13)
 
-#### UI Backgrounds
-
-```
-"ornate pirate tavern interior, fantasy art style,
- warm candlelight, game ui background, ornate borders,
- hd, artstation"
-```
-
-Output: 1920×1080 for menu/HUD backgrounds.
-
-### Performance Tips
-
-- **Reduce memory usage**: `--lowram` flag or `--precision auto`
-- **Faster inference**: Use `--xformers` (requires `pip install xformers`)
-- **Batch processing**: Generate 4–8 images at once rather than 1
-- **Model optimization**: Switch to `sd-v1.5` (smaller) if DreamShaper is too slow
+- DreamShaper 8, 512², 32 steps: ~34s/image on MPS (measured under normal desktop
+  load; treat as an upper bound).
+- Timings scale roughly with steps; 20-step drafts land near 20s.
+- 16 GB RAM fits SD1.5 and SDXL-class checkpoints. Flux-class models (12 GB+ weights)
+  are out of reach here.
 
 ### Troubleshooting
 
-**CUDA out of memory**:
+- **Corrupted/noise output on MPS**: on the old A1111 stack this meant a torch/webui
+  version mismatch. ComfyUI tracks current torch, so first try updating BOTH ComfyUI
+  (`git pull` in `~/aop-ai-tools/ComfyUI`) and its venv requirements; a fresh known-good
+  pairing beats pinning. CPU fallback for diagnosis: relaunch with `--cpu` (slow, always
+  correct) and compare same-seed output.
+- **"prompt completed with no images"**: you hit the execution cache (see above).
+- **Checkpoint missing from the list**: `GET /object_info/CheckpointLoaderSimple` shows
+  what the server sees; new files under `models/checkpoints/` need a server restart or
+  a "Refresh" from the UI.
+- **Out of memory / swapping**: close heavyweight apps; SDXL at 1024² is the practical
+  ceiling on 16 GB.
 
-```bash
-python launch.py --lowram --autolaunch
-```
+## Legacy: AUTOMATIC1111 WebUI (deprecated)
 
-**Model not loading**:
+`~/aop-ai-tools/stable-diffusion-webui` still exists but is unmaintained upstream and no
+longer used. If it must be run: it works on MPS **only** with the torch build it pins
+(torch 2.3.1 + torchvision 0.18.1, per `webui-macos-env.sh`) — never
+`pip install --upgrade torch` in that venv; newer torch corrupts MPS output there
+(root-caused 2026-07-11). Launch flags and history: see git history of this file.
 
-- Verify model file exists in `models/Stable-diffusion/`
-- Check file integrity: `ls -lh models/Stable-diffusion/`
+## Other local tools
 
-**Slow generation**:
+- **rembg** (background removal): installed in the separate `~/aop-ai-tools/venv`
+  (NOT the A1111 venv). Its saliency model ghosts on low-contrast scenic backgrounds;
+  chroma-key flood-fill / alpha-hardening fallbacks worked for wall segments.
+- **Audio**: MusicGen for music, procedural SFX — see `generate_game_music.py` /
+  `generate_game_sfx.py` in `~/aop-ai-tools`.
+- No vector tools installed (no inkscape/imagemagick); macOS `qlmanage` covers SVG→PNG,
+  PIL lives in the ComfyUI venv.
 
-- Confirm GPU is being used (check WebUI logs)
-- Reduce `Steps` to 25–30
-- Lower resolution to 512×512 instead of 768×768
+## Prompting the AoP house styles
 
-**Black/corrupted images**:
+Use the constants in `scripts/art/aop_styles.py` — don't re-derive prompts from screen
+captures. The two families:
 
-- On Apple Silicon, corrupted/noise output almost always means the venv's torch no longer
-  matches the version `webui-macos-env.sh` pins. Fix by DOWNGRADING to the pinned build
-  (`pip install torch==2.3.1 torchvision==0.18.1`), or fall back to CPU
-  (`--use-cpu all --no-half`, ~50s per 512² image — slow but always correct).
-  Do NOT `pip install --upgrade torch` — a newer torch is what breaks MPS here, and this
-  guide previously recommending the upgrade is how the install got broken (2026-07-11).
-- Try a different sampler (e.g., DPM++ 2M Karras)
+- **Building sprites** (`BUILDING_STYLE` / `BUILDING_NEGATIVE` / `BUILDINGS`): stylized
+  isometric, flat cel shading, charcoal roof, cream stone, round grass island base.
+- **Unit/captain/party sprites** (`UNIT_STYLE_SUFFIX` / `UNIT_NEGATIVE` /
+  `FACTION_FLAVOR`): flat cartoon, thick black outlines, plain white background.
 
-### Workflow Integration
+Curation workflow: generate 4+ seeds per subject → contact sheet → operator picks →
+rembg cutout pass (for sprites) → `apps/web/public/art/...` with provenance in the art
+MANIFEST.
 
-1. **Design iteration**: Create 10–20 concept variations
-2. **Selection**: Team votes on top 5 per asset type
-3. **Refinement**: Re-generate winners with fine-tuned prompts
-4. **Final export**: Upscale, crop, and save to `assets/generated/`
-5. **Version control**: Commit best outputs + prompt history to reference doc
+## Future expansion
 
-### Resources
-
-- **Official repo**: https://github.com/AUTOMATIC1111/stable-diffusion-webui
-- **Model hub**: https://huggingface.co/models (search "stable-diffusion")
-- **Prompt inspiration**: https://arthub.ai (community gallery with prompts)
-- **Prompt guide**: https://promptomania.com/ (interactive prompt builder)
-
----
-
-## Future Expansion
-
-Additional AI tools to consider as the project scales:
-
-- **ComfyUI**: Node-based interface for more advanced workflows (upscaling, inpainting)
-- **ControlNet**: Precise image control via edge maps and pose estimation
-- **Text-to-3D**: TBD (Shap-E, DreamFusion) for 3D model generation
-- **Voice generation**: TBD (TTS for NPC dialogue and announcements)
+- **ControlNet** (ComfyUI supports it natively): pose/edge-guided consistency across a
+  faction's unit line.
+- **Upscaling / inpainting** workflows: built into ComfyUI, unlocked by #444.
+- **Text-to-3D / voice**: still TBD.
