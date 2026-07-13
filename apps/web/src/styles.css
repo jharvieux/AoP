@@ -1207,9 +1207,18 @@ button.primary.secondary {
   background: var(--city-building-shipyard);
 }
 
+/* Once the sprite has loaded (operator playthrough feedback), the block chrome
+   disappears entirely — the cutout art blends straight into the backdrop. The
+   category-colored block above remains the no-art/404 fallback. */
+.city-scene__building--art {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 /* Building art (#447): layered over the category-colored block set above, which
-   stays visible around/behind the art (transparent cutout) and as the fallback if
-   the sprite 404s (removed from the DOM by CityScene's onError handler). */
+   shows through only until the sprite loads (or again if it 404s — CityScene
+   tracks load state and drops the `--art` modifier). */
 .city-scene__sprite {
   position: absolute;
   inset: 0;
@@ -1249,21 +1258,33 @@ button.primary.secondary {
   overflow-wrap: anywhere;
 }
 
+/* Town-hall faction flag (operator feedback: attached to the building and
+   prominent). Sized relative to the slot so it scales with the scene; the
+   mast plants into the roofline and the flag flies well above it. */
 .city-scene__flagpole {
   position: absolute;
-  top: -26px;
-  left: 50%;
-  width: 2px;
-  height: 26px;
+  top: -24%;
+  left: 46%;
+  width: 55%;
+  height: 60%;
+  pointer-events: none;
+}
+
+.city-scene__flagpole-mast {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
   background: var(--color-border);
 }
 
 .city-scene__flag {
   position: absolute;
   top: 0;
-  left: 2px;
-  width: 22px;
-  height: 14px;
+  left: 3px;
+  width: 85%;
+  height: 42%;
   border: 1px solid rgb(0 0 0 / 45%);
   overflow: hidden;
 }
