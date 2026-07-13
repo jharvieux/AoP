@@ -1148,10 +1148,24 @@ button.primary.secondary {
   margin-bottom: 8px;
 }
 
+/* Scrollable viewport around the scene: at zoom 1 the scene is sized to fit
+   entirely (no scrolling, even on desktop — operator feedback); zoomed in,
+   panning is plain scroll. */
+.city-scene-viewport {
+  overflow: auto;
+  border-radius: 10px;
+}
+
 .city-scene {
+  --city-zoom: 1;
+
   position: relative;
-  width: 100%;
+  /* Fit the whole 16:11 scene: full sheet width on narrow screens, capped by
+     viewport height on desktop so opening the city never starts scrolled. */
+  width: calc(var(--city-zoom) * min(100%, 62vh * 16 / 11));
+  margin-inline: auto;
   aspect-ratio: 16 / 11;
+  container-type: inline-size;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
@@ -1249,24 +1263,36 @@ button.primary.secondary {
   pointer-events: none;
 }
 
+/* Name chip pinned to the slot base (operator feedback: labels floated below
+   / vanished into / hid under the art). The dark pill keeps it readable over
+   any sprite or backdrop. */
 .city-scene__label {
-  font-size: 0.62rem;
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  /* Scales with the scene (cqw = % of scene width) so chips stay in
+     proportion from phone width up to a zoomed-in desktop scene. */
+  font-size: clamp(0.42rem, 1.5cqw, 0.68rem);
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 70%);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
-/* Town-hall faction flag (operator feedback: attached to the building and
-   prominent). Sized relative to the slot so it scales with the scene; the
-   mast plants into the roofline and the flag flies well above it. */
+/* Town-hall faction flag: flies from the RIGHT turret (replacing its baked-in
+   pennant), square like the 512² flag art so the emblem is never cropped.
+   Positions are % of the town-hall slot, tuned to the trimmed townhall.png. */
 .city-scene__flagpole {
   position: absolute;
-  top: -24%;
-  left: 46%;
-  width: 55%;
-  height: 60%;
+  top: -20%;
+  left: 68%;
+  width: 38%;
+  height: 34%;
   pointer-events: none;
 }
 
@@ -1283,8 +1309,8 @@ button.primary.secondary {
   position: absolute;
   top: 0;
   left: 3px;
-  width: 85%;
-  height: 42%;
+  width: 78%;
+  aspect-ratio: 1 / 1;
   border: 1px solid rgb(0 0 0 / 45%);
   overflow: hidden;
 }
@@ -1294,6 +1320,30 @@ button.primary.secondary {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.city-scene-zoom {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.city-scene-zoom button {
+  min-width: 44px;
+  min-height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 30%);
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.city-scene-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .city-scene__overflow {
