@@ -1,5 +1,6 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
+import { useState } from 'react'
 import {
   buildingContentId,
   cityBackdropContentId,
@@ -12,9 +13,9 @@ import { useTheme } from './theme/ThemeContext'
  * Graphical city scene (#429, art wired in #447): every constructed building
  * drawn in a fixed scene layout, data-driven from `city.buildings`. Each slot
  * renders its `BUILDINGS[id].spriteUrl` art (theme-pack override via
- * `resolveSpriteUrl` wins when set) over the category-colored placeholder
- * block, which stays visible as the fallback if the art 404s or a building
- * has no art yet (e.g. any future building added without a sprite).
+ * `resolveSpriteUrl` wins when set); the category-colored placeholder block
+ * shows only until the art loads, and returns as the fallback if the art
+ * 404s or a building has no sprite yet.
  */
 
 /** The backdrop image behind the whole scene (#447). Falls back to the
@@ -31,26 +32,30 @@ interface SceneSlot {
 }
 
 /**
- * Fixed scene layout: town hall centered on the rise, economy to the left,
- * the recruitment chain to the right, walls across the front, shipyard on
- * the waterline. A building with no slot (future content) falls back to the
- * overflow strip below the scene so it never loses its tap target.
+ * Fixed scene layout: town hall centered at the top, economy to the left,
+ * the recruitment chain to the right, walls across the front. Tuned against
+ * art/city/backdrop.png (operator-approved 2026-07-13): land buildings stay
+ * on the meadow, walls sit above the shoreline, and the shipyard — whose
+ * sprite carries its own water — sits in the sea corner at the bottom-right;
+ * re-tune together with any backdrop change. A building with no slot (future
+ * content) falls back to the overflow strip below the scene so it never
+ * loses its tap target.
  */
 const SCENE_SLOTS: Record<string, SceneSlot> = {
-  townhall: { left: 36, top: 12, width: 26, height: 30 },
-  tavern: { left: 4, top: 26, width: 14, height: 20 },
-  tradehouse: { left: 19, top: 30, width: 14, height: 18 },
-  sawmill: { left: 2, top: 52, width: 13, height: 16 },
-  ironmine: { left: 16, top: 54, width: 13, height: 16 },
-  distillery: { left: 30, top: 54, width: 13, height: 16 },
-  barracks: { left: 47, top: 50, width: 13, height: 17 },
-  garrisonHall: { left: 62, top: 50, width: 13, height: 18 },
-  fortressArmory: { left: 64, top: 26, width: 13, height: 19 },
-  grandArsenal: { left: 80, top: 22, width: 15, height: 22 },
-  palisade: { left: 4, top: 76, width: 17, height: 12 },
-  stoneWall: { left: 24, top: 76, width: 17, height: 12 },
-  citadel: { left: 44, top: 72, width: 16, height: 16 },
-  shipyard: { left: 76, top: 70, width: 18, height: 18 },
+  townhall: { left: 36, top: 10, width: 26, height: 30 },
+  tavern: { left: 4, top: 24, width: 14, height: 20 },
+  tradehouse: { left: 19, top: 28, width: 14, height: 18 },
+  sawmill: { left: 2, top: 48, width: 13, height: 16 },
+  ironmine: { left: 16, top: 50, width: 13, height: 16 },
+  distillery: { left: 30, top: 50, width: 13, height: 16 },
+  barracks: { left: 47, top: 46, width: 13, height: 17 },
+  garrisonHall: { left: 62, top: 46, width: 13, height: 18 },
+  fortressArmory: { left: 64, top: 24, width: 13, height: 19 },
+  grandArsenal: { left: 80, top: 20, width: 15, height: 22 },
+  palisade: { left: 4, top: 66, width: 17, height: 12 },
+  stoneWall: { left: 24, top: 66, width: 17, height: 12 },
+  citadel: { left: 44, top: 62, width: 16, height: 16 },
+  shipyard: { left: 80, top: 75, width: 19, height: 24 },
 }
 
 /** The faction flag flown on the town hall (#428/#429). Routes through the
@@ -64,6 +69,7 @@ function FactionFlag({ faction }: { faction: FactionId }) {
   const flagUrl = resolveSpriteUrl(themeSpriteUrl, factionFlagContentId(faction), def.flagSpriteUrl)
   return (
     <span className="city-scene__flagpole" aria-hidden>
+      <span className="city-scene__flagpole-mast" />
       <span className="city-scene__flag" style={{ backgroundColor: def.primaryColor }}>
         {flagUrl && (
           <img
@@ -76,6 +82,74 @@ function FactionFlag({ faction }: { faction: FactionId }) {
         )}
       </span>
     </span>
+  )
+}
+
+interface SceneBuildingProps {
+  id: string
+  slot: SceneSlot
+  faction: FactionId
+  onOpenBuilding: (buildingId: string) => void
+}
+
+/** One placed building. The category-colored placeholder block renders only
+ * until the sprite has actually loaded (operator feedback: the colored
+ * squares must not frame the transparent cutout art) — and comes back if the
+ * art 404s, so every building always has a visible tap target. */
+function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps) {
+  const { spriteUrl: themeSpriteUrl } = useTheme()
+  const [artLoaded, setArtLoaded] = useState(false)
+  const def = BUILDINGS[id]!
+  const spriteUrl = resolveSpriteUrl(themeSpriteUrl, buildingContentId(id), def.spriteUrl)
+  const towerUrl =
+    id === 'citadel'
+      ? resolveSpriteUrl(
+          themeSpriteUrl,
+          buildingContentId('citadel:tower'),
+          def.cornerTowerSpriteUrl,
+        )
+      : undefined
+  return (
+    <button
+      type="button"
+      className={`city-scene__building city-scene__building--${def.category}${
+        artLoaded ? ' city-scene__building--art' : ''
+      }`}
+      style={{
+        left: `${slot.left}%`,
+        top: `${slot.top}%`,
+        width: `${slot.width}%`,
+        height: `${slot.height}%`,
+      }}
+      onClick={() => onOpenBuilding(id)}
+    >
+      {spriteUrl && (
+        <img
+          className="city-scene__sprite"
+          src={spriteUrl}
+          alt=""
+          aria-hidden
+          onLoad={() => setArtLoaded(true)}
+          onError={(e) => {
+            setArtLoaded(false)
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+      )}
+      {towerUrl && (
+        <img
+          className="city-scene__sprite city-scene__sprite--tower"
+          src={towerUrl}
+          alt=""
+          aria-hidden
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+      )}
+      {id === 'townhall' && <FactionFlag faction={faction} />}
+      <span className="city-scene__label">{buildingDisplayName(id, faction)}</span>
+    </button>
   )
 }
 
@@ -105,58 +179,15 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
             }}
           />
         )}
-        {placed.map((id) => {
-          const slot = SCENE_SLOTS[id]!
-          const def = BUILDINGS[id]!
-          const spriteUrl = resolveSpriteUrl(themeSpriteUrl, buildingContentId(id), def.spriteUrl)
-          const towerUrl =
-            id === 'citadel'
-              ? resolveSpriteUrl(
-                  themeSpriteUrl,
-                  buildingContentId('citadel:tower'),
-                  def.cornerTowerSpriteUrl,
-                )
-              : undefined
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`city-scene__building city-scene__building--${def.category}`}
-              style={{
-                left: `${slot.left}%`,
-                top: `${slot.top}%`,
-                width: `${slot.width}%`,
-                height: `${slot.height}%`,
-              }}
-              onClick={() => onOpenBuilding(id)}
-            >
-              {spriteUrl && (
-                <img
-                  className="city-scene__sprite"
-                  src={spriteUrl}
-                  alt=""
-                  aria-hidden
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              )}
-              {towerUrl && (
-                <img
-                  className="city-scene__sprite city-scene__sprite--tower"
-                  src={towerUrl}
-                  alt=""
-                  aria-hidden
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              )}
-              {id === 'townhall' && <FactionFlag faction={faction} />}
-              <span className="city-scene__label">{buildingDisplayName(id, faction)}</span>
-            </button>
-          )
-        })}
+        {placed.map((id) => (
+          <SceneBuilding
+            key={id}
+            id={id}
+            slot={SCENE_SLOTS[id]!}
+            faction={faction}
+            onOpenBuilding={onOpenBuilding}
+          />
+        ))}
       </div>
       {overflow.length > 0 && (
         <div className="city-scene__overflow">

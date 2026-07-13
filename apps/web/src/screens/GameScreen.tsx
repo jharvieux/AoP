@@ -686,7 +686,15 @@ export function GameScreen({
       handlePartyTileClick(x, y, selectedParty)
       return
     }
-    if (!selectedCaptain) return
+    if (!selectedCaptain) {
+      // Own city tapped with nothing selected: enter city management —
+      // matching multiplayer's interpretTileClick (matchActions.ts) semantics.
+      const ownCityHere = game.cities.find(
+        (c) => c.ownerId === viewer.id && c.position.x === x && c.position.y === y,
+      )
+      if (ownCityHere) openCity(ownCityHere.id)
+      return
+    }
     const key = `${x},${y}`
 
     // Fog rules unchanged (#376): a target is only tappable while currently
