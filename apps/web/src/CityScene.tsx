@@ -1,6 +1,6 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   buildingContentId,
   cityBackdropContentId,
@@ -101,6 +101,12 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
   const [artLoaded, setArtLoaded] = useState(false)
   const def = BUILDINGS[id]!
   const spriteUrl = resolveSpriteUrl(themeSpriteUrl, buildingContentId(id), def.spriteUrl)
+  // Theme-pack swaps can resolve a different sprite for the same building; without this
+  // the stale `artLoaded` from the previous URL would keep showing new art before it has
+  // actually loaded (or hide the placeholder for art that 404s).
+  useEffect(() => {
+    setArtLoaded(false)
+  }, [spriteUrl])
   const towerUrl =
     id === 'citadel'
       ? resolveSpriteUrl(
