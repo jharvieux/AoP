@@ -438,7 +438,7 @@ export function GameScreen({
   )
 
   function factionOf(ownerId: string) {
-    return game.players.find((p) => p.id === ownerId)!.faction
+    return game.players.find((p) => p.id === ownerId)?.faction
   }
 
   /**
@@ -1844,10 +1844,10 @@ export function GameScreen({
         >
           <section className="battle-intro">
             <div className="battle-intro__side">
-              {FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl && (
+              {FACTIONS[factionOf(selectedCaptain.ownerId)]?.captainPortraitUrl && (
                 <img
                   className="battle-intro__portrait"
-                  src={FACTIONS[factionOf(selectedCaptain.ownerId)].captainPortraitUrl}
+                  src={FACTIONS[factionOf(selectedCaptain.ownerId)]?.captainPortraitUrl}
                   alt=""
                   aria-hidden
                 />
@@ -1856,10 +1856,10 @@ export function GameScreen({
             </div>
             <span className="battle-intro__vs">VS</span>
             <div className="battle-intro__side">
-              {FACTIONS[factionOf(attackTarget.ownerId)].captainPortraitUrl && (
+              {FACTIONS[factionOf(attackTarget.ownerId)]?.captainPortraitUrl && (
                 <img
                   className="battle-intro__portrait"
-                  src={FACTIONS[factionOf(attackTarget.ownerId)].captainPortraitUrl}
+                  src={FACTIONS[factionOf(attackTarget.ownerId)]?.captainPortraitUrl}
                   alt=""
                   aria-hidden
                 />
@@ -1904,7 +1904,7 @@ export function GameScreen({
             <p className="building-option__hint">
               {factionName(
                 factionOf(assaultCity.ownerId),
-                FACTIONS[factionOf(assaultCity.ownerId)].name,
+                FACTIONS[factionOf(assaultCity.ownerId)]?.name ?? 'Neutral',
               )}{' '}
               stronghold. Your landing force storms the garrison — win it and the city is yours;
               lose and your captain is taken captive.
@@ -2035,7 +2035,7 @@ export function GameScreen({
             <p className="building-option__hint">
               {factionName(
                 factionOf(partyAssaultCity.ownerId),
-                FACTIONS[factionOf(partyAssaultCity.ownerId)].name,
+                FACTIONS[factionOf(partyAssaultCity.ownerId)]?.name ?? 'Neutral',
               )}{' '}
               stronghold. The city defends at full strength from the land side too — militia and
               turrets included. Win and it is yours; lose and the party is destroyed.
@@ -2072,7 +2072,7 @@ export function GameScreen({
               Held by{' '}
               {factionName(
                 factionOf(enemyCityInfo.ownerId),
-                FACTIONS[factionOf(enemyCityInfo.ownerId)].name,
+                FACTIONS[factionOf(enemyCityInfo.ownerId)]?.name ?? 'Neutral',
               )}
               .
             </p>

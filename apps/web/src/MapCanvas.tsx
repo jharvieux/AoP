@@ -397,7 +397,7 @@ export interface MapCanvasProps {
    */
   onSetCourse?: (cell: Coord) => void
   /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
-  factionOf: (ownerId: string) => FactionId
+  factionOf: (ownerId: string) => FactionId | undefined
   /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
   controlsRef?: MutableRefObject<MapControls | null>
 }
@@ -484,7 +484,7 @@ export function MapCanvas(props: MapCanvasProps) {
         viewerId,
         factionNameOf: (ownerId) => {
           const id = props.factionOf(ownerId)
-          return factionName(id, FACTIONS[id].name)
+          return factionName(id, FACTIONS[id]?.name ?? 'Neutral')
         },
       }),
     )
@@ -1251,10 +1251,10 @@ export function MapCanvas(props: MapCanvasProps) {
           alpha: 0.25,
         })
         const partyFactionId = factionOf(party.ownerId)
-        const partyFaction = FACTIONS[partyFactionId]
+        const partyFaction = partyFactionId ? FACTIONS[partyFactionId] : undefined
         const partySpriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
-          partyContentId(partyFactionId),
+          partyFactionId ? partyContentId(partyFactionId) : '',
           partyFaction?.partySpriteUrl,
         )
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
