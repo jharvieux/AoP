@@ -42,7 +42,7 @@ interface SceneSlot {
  * loses its tap target.
  */
 const SCENE_SLOTS: Record<string, SceneSlot> = {
-  townhall: { left: 36, top: 10, width: 26, height: 30 },
+  townhall: { left: 37, top: 6, width: 26, height: 36 },
   tavern: { left: 4, top: 24, width: 14, height: 20 },
   tradehouse: { left: 19, top: 28, width: 14, height: 18 },
   sawmill: { left: 2, top: 48, width: 13, height: 16 },
@@ -160,35 +160,68 @@ interface CitySceneProps {
   onOpenBuilding: (buildingId: string) => void
 }
 
+/** Zoom stops for the scene (operator: "standard ways to zoom in/out").
+ * 1 = the whole city fits the sheet without scrolling (see `.city-scene`
+ * sizing in styles.css); higher stops enlarge the scene inside the
+ * scrollable viewport, so panning is ordinary scroll/drag. */
+const ZOOM_STOPS = [1, 1.5, 2, 3]
+
 export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps) {
   const { spriteUrl: themeSpriteUrl } = useTheme()
+  const [zoomIndex, setZoomIndex] = useState(0)
   const known = buildings.filter((id) => BUILDINGS[id])
   const placed = known.filter((id) => SCENE_SLOTS[id])
   const overflow = known.filter((id) => !SCENE_SLOTS[id])
   const backdropUrl = resolveSpriteUrl(themeSpriteUrl, cityBackdropContentId(), BACKDROP_URL)
+  const zoom = ZOOM_STOPS[zoomIndex]!
   return (
     <>
-      <div className="city-scene" role="group" aria-label="City buildings">
-        {backdropUrl && (
-          <img
-            className="city-scene__backdrop"
-            src={backdropUrl}
-            alt=""
-            aria-hidden
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        )}
-        {placed.map((id) => (
-          <SceneBuilding
-            key={id}
-            id={id}
-            slot={SCENE_SLOTS[id]!}
-            faction={faction}
-            onOpenBuilding={onOpenBuilding}
-          />
-        ))}
+      <div className="city-scene-viewport">
+        <div
+          className="city-scene"
+          role="group"
+          aria-label="City buildings"
+          style={{ '--city-zoom': zoom } as React.CSSProperties}
+        >
+          {backdropUrl && (
+            <img
+              className="city-scene__backdrop"
+              src={backdropUrl}
+              alt=""
+              aria-hidden
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          )}
+          {placed.map((id) => (
+            <SceneBuilding
+              key={id}
+              id={id}
+              slot={SCENE_SLOTS[id]!}
+              faction={faction}
+              onOpenBuilding={onOpenBuilding}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="city-scene-zoom" role="group" aria-label="City zoom">
+        <button
+          type="button"
+          aria-label="Zoom out"
+          disabled={zoomIndex === 0}
+          onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          disabled={zoomIndex === ZOOM_STOPS.length - 1}
+          onClick={() => setZoomIndex((i) => Math.min(ZOOM_STOPS.length - 1, i + 1))}
+        >
+          +
+        </button>
       </div>
       {overflow.length > 0 && (
         <div className="city-scene__overflow">
