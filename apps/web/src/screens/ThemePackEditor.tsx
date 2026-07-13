@@ -1,6 +1,7 @@
 import { FACTIONS, SHIP_CLASSES, THEME_AUDIO_SLOTS } from '@aop/content'
 import { FACTION_IDS, type FactionId } from '@aop/shared'
 import { useRef } from 'react'
+import { partyContentId } from '../mapSprites'
 import { assetKey, type ThemeAsset, type ThemeAssetKind, type ThemePack } from '../theme/types'
 
 interface AssetUploadControlProps {
@@ -85,11 +86,19 @@ export function ThemePackEditor({
               value={pack.factionNames[id] ?? ''}
               onChange={(e) => onFactionName(id, e.target.value)}
             />
+            <span className="garrison-row__counts">Flag</span>
             <AssetUploadControl
               kind="sprite"
               asset={pack.assets[assetKey('sprite', id)]}
               onUpload={(file) => onAssetUpload('sprite', id, file)}
               onClear={() => onAssetClear('sprite', id)}
+            />
+            <span className="garrison-row__counts">Landing Party</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', partyContentId(id))]}
+              onUpload={(file) => onAssetUpload('sprite', partyContentId(id), file)}
+              onClear={() => onAssetClear('sprite', partyContentId(id))}
             />
           </li>
         ))}
