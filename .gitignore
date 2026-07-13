@@ -24,3 +24,4 @@ deno.lock
 # supabase/functions/deno.json's import map points at, since Supabase's function bundler
 # (local or deployed) can't see files outside supabase/functions/.
 supabase/functions/_vendor/
+__pycache__/
