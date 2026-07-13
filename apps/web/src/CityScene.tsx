@@ -125,6 +125,7 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
     >
       {spriteUrl && (
         <img
+          key={spriteUrl}
           className="city-scene__sprite"
           src={spriteUrl}
           alt=""
