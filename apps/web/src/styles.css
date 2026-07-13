@@ -1153,6 +1153,10 @@ button.primary.secondary {
    panning is plain scroll. */
 .city-scene-viewport {
   overflow: auto;
+  /* Slightly above the scene's own 62vh cap so the zoomed scene scrolls
+     INSIDE this box and the zoom buttons below stay reachable, instead of
+     the whole sheet scrolling them away. */
+  max-height: 64vh;
   border-radius: 10px;
 }
 
