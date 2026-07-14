@@ -134,8 +134,11 @@ export function currentContacts(state: GameState, playerId: string): string[] {
   const ids: string[] = []
 
   for (const captain of state.captains) {
+    // A shipless captain (#498) is not a board piece of its own — its party,
+    // one loop down, is the contact standing on that tile.
     if (
       !captain.captured &&
+      !captain.shipLost &&
       isEnemy(captain.ownerId) &&
       visibleKeys.has(tileKey(captain.position))
     ) {

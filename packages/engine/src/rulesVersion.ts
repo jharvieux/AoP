@@ -47,8 +47,16 @@
  * sail-order continuation) that moves ordered parties and accumulates their
  * explored tiles. A v7 log's `endTurn` therefore does more than a v6 build
  * would replay it as doing, so replaying across the boundary is refused.
+ * v8 — captain expansion (#498): required `Captain.stats`/`Captain.items` and
+ * `PlayerState.itemStash` fields with five new actions (`chooseCaptainStat`,
+ * `garrisonCaptain`, `ungarrisonCaptain`, `takeItem`, `depositItem`) plus
+ * `disembark.withCaptain`; item drops add RNG draws to `resolveEncounter`,
+ * `captureSite` (haul), and `resolvePartyEncounter`, shifting every subsequent
+ * roll; city assaults now fold port defenders into the defence and capture
+ * them on a fall. A v7 snapshot lacks the required fields and replays its
+ * encounter log to different rolls, so replaying across the boundary is refused.
  */
-export const RULES_VERSION = 7
+export const RULES_VERSION = 8
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

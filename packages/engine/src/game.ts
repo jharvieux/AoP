@@ -97,6 +97,8 @@ export function createGame(config: GameConfig): GameState {
     troops: (p.startingTroops ?? []).map((t) => ({ ...t })),
     xp: 0,
     skills: [],
+    stats: { attack: 0, defense: 0, speed: 0 },
+    items: [],
     shipUpgrades: {},
     captured: false,
   }))
@@ -222,6 +224,7 @@ export function createGame(config: GameConfig): GameState {
       resources: { ...EMPTY_RESOURCES, gold: setup.startingGold },
       eliminated: false,
       reputation: setup.startingReputation,
+      itemStash: [],
       // AI behavior (#25) carries into runtime state; omit when unset so
       // GameState holds no stray optional keys.
       ...(p.aiProfile ? { aiProfile: p.aiProfile } : {}),

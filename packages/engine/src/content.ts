@@ -53,6 +53,40 @@ export interface SkillLike {
   defenseBonusPct: number
 }
 
+/**
+ * Per-point effect of the three captain stats (#498), injected from
+ * @aop/content like every other balance number. Attack/defense rates feed the
+ * same percentage combat-bonus channel as skills; speed feeds movement refresh.
+ */
+export interface CaptainStatTuningLike {
+  attackPctPerPoint: number
+  defensePctPerPoint: number
+  speedMovementPerPoint: number
+}
+
+/** One collectible item's passive effect (#498). Names/descriptions stay in @aop/content — the engine needs only numbers. */
+export interface ItemLike {
+  attackBonusPct: number
+  defenseBonusPct: number
+  /** Extra movement points at refresh for the carrying captain. */
+  speedBonus: number
+  /** Relative weight for the seeded drop roll — higher is more common. */
+  weight: number
+}
+
+/** Item drop tables and carry rules (#498), injected from @aop/content. */
+export interface ItemCatalogLike {
+  defs: Record<string, ItemLike>
+  /** Items a captain can carry; finds beyond this overflow to the owner's stash. */
+  captainItemCap: number
+  /** Drop probability in [0,1] on a successful sea encounter. */
+  seaEncounterDropChance: number
+  /** Drop probability in [0,1] on capturing a haul land site. */
+  landHaulDropChance: number
+  /** Drop probability in [0,1] on a successful land encounter. */
+  landEncounterDropChance: number
+}
+
 /** The three random-encounter entity kinds spawned by mapgen (#23). */
 export type EncounterKind = 'merchant' | 'natives' | 'settlers'
 
@@ -190,6 +224,17 @@ export interface ContentCatalog {
   skills: Record<string, SkillLike>
   /** Cumulative XP required to *be* at level N (1-based; captains start at level 1). */
   captainXpThresholds: number[]
+  /**
+   * Captain stat-point effects (#498). Optional: without it, spent stat points
+   * confer no combat/speed effect and `chooseCaptainStat` is rejected — a
+   * catalog that omits the tuning has no stat system to spend into.
+   */
+  captainStats?: CaptainStatTuningLike
+  /**
+   * Item defs and drop tables (#498). Optional: matches without it drop no
+   * items (and draw no item RNG), and the item-transfer actions are rejected.
+   */
+  items?: ItemCatalogLike
   /** Random-encounter tables (#23). Optional: matches without it spawn no encounters. */
   encounters?: EncounterCatalogLike
   /**

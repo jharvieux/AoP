@@ -95,6 +95,21 @@ export interface SailOrder {
   interrupted?: boolean
 }
 
+/** The three trainable captain attributes (#498), one point earned per level above 1. */
+export type CaptainStat = 'attack' | 'defense' | 'speed'
+
+/**
+ * Points spent per captain attribute (#498). Pending points are derived —
+ * `level − 1 − (attack + defense + speed)` — so no pending-choice state exists.
+ * Attack/defense fold into the same percentage combat-bonus channel as skills
+ * (rates in `ContentCatalog.captainStats`); speed adds movement at refresh.
+ */
+export interface CaptainStats {
+  attack: number
+  defense: number
+  speed: number
+}
+
 /**
  * A captain — the hero analog. Sails a flagship over water, carries troops, and
  * fights ship-to-ship. Lives in GameState as plain data.
@@ -127,6 +142,14 @@ export interface Captain {
   xp: number
   /** Skill ids chosen at level-up, in pick order. At most one per level above 1. */
   skills: string[]
+  /** Stat points spent at level-up (#498), one earned per level above 1 in addition to the skill pick. */
+  stats: CaptainStats
+  /**
+   * Item ids held (#498), in acquisition order; duplicates allowed. Every held
+   * item is passively active. Capped by the catalog's `captainItemCap` — finds
+   * beyond the cap overflow to the owner's {@link PlayerState.itemStash}.
+   */
+  items: string[]
   /** Purchased level (0 = stock) per upgrade track at a city shipyard (#22). Missing key = 0. */
   shipUpgrades: Record<string, number>
   /**
@@ -161,6 +184,15 @@ export interface Captain {
    * standing order. Cleared on manual move/capture. See {@link SailOrder}.
    */
   sailOrder?: SailOrder
+  /**
+   * True once this captain's anchored flagship was defeated while the captain
+   * was ashore leading a landing party (#498): the ship went to the victor
+   * (prize flow), but the captain — being ashore — was NOT captured. A
+   * ship-lost captain stands with its party (position tracks the party), can
+   * take no ship action, and is not a naval target; it is captured only when
+   * its party is destroyed. Absent for every captain that still has a hull.
+   */
+  shipLost?: true
 }
 
 /**
@@ -224,6 +256,16 @@ export interface LandingParty {
    * standing order. Cleared on manual march. See {@link MarchOrder}.
    */
   marchOrder?: MarchOrder
+  /**
+   * The captain leading this party ashore (#498), set by a
+   * `disembark { withCaptain: true }`. While set, the captain's combat bonuses
+   * (skills + stats + items) apply to the party's battles, the captain earns
+   * XP from its wins and receives its land finds, and the captain's own ship
+   * sits anchored and orderless where it was left. Cleared when the party
+   * re-boards that ship (`embark`). Absent on an unled party — byte-identical
+   * to a pre-#498 party.
+   */
+  captainId?: string
 }
 
 /**
@@ -243,6 +285,14 @@ export interface CityState {
   garrison: Record<string, number>
   /** Recruits currently available to buy, keyed by unit id (weekly-growth style). */
   unitAvailability: Record<string, number>
+  /**
+   * The captain stationed in this city (#498, `garrisonCaptain` action).
+   * While garrisoned the captain is immobile and its ship + combat bonuses
+   * join the city's defence; if the city falls, the garrisoned captain is
+   * captured with it. Hidden from enemy views like the rest of the interior.
+   * Absent when no captain is stationed.
+   */
+  garrisonCaptainId?: string
 }
 
 /**
@@ -427,6 +477,12 @@ export interface PlayerState {
    * so a known oathbreaker carries the mark openly.
    */
   reputation: number
+  /**
+   * The faction item stash (#498): item ids a captain deposited at a city, or
+   * finds that overflowed a captain's carry cap. Stashed items are inert until
+   * a docked captain takes them (`takeItem`/`depositItem`).
+   */
+  itemStash: string[]
   /** AI behavior selection (#25), mirrored from {@link PlayerConfig.aiProfile}. Absent for humans. */
   aiProfile?: AiProfile
 }

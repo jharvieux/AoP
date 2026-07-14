@@ -16,12 +16,15 @@ import {
   type AttackPartyAction,
   type CaptureSiteAction,
   type ChooseCaptainSkillAction,
+  type ChooseCaptainStatAction,
   type ClearMarchOrderAction,
   type ClearSailOrderAction,
   type ConstructBuildingAction,
+  type DepositItemAction,
   type DisembarkAction,
   type EmbarkAction,
   type GainCaptainXpAction,
+  type GarrisonCaptainAction,
   type LeaveAllianceAction,
   type MoveCaptainAction,
   type MovePartyAction,
@@ -35,7 +38,9 @@ import {
   type SetMarchOrderAction,
   type SetSailOrderAction,
   type SetStandingOrdersAction,
+  type TakeItemAction,
   type TransferTroopsAction,
+  type UngarrisonCaptainAction,
   type UpgradeShipAction,
 } from './actions'
 import {
@@ -73,11 +78,18 @@ import {
 } from './economy'
 import { reactivateEncounters, resolveEncounterChoice } from './encounters'
 import { areAllied, currentPlayer } from './game'
+import { rollItemDrop } from './items'
 import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex, type GameMap } from './map'
 import { findLandPath, findPath, pathCost } from './pathfinding'
 import { RULES_VERSION, RulesVersionMismatchError } from './rulesVersion'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
-import { availableSkillPicks, captainCombatBonus, levelForXp } from './skills'
+import {
+  availableSkillPicks,
+  availableStatPoints,
+  captainCombatBonus,
+  captainSpeedBonus,
+  levelForXp,
+} from './skills'
 import {
   aggressiveTacticDriver,
   aiTacticDriver,
@@ -119,6 +131,8 @@ export interface EncounterOutcome {
   xpGained: number
   troopsGained?: TroopStack
   troopsLost: TroopStack[]
+  /** Item dropped by a successful encounter (#498), granted to the captain (or the stash). */
+  itemGained?: string
 }
 
 /**
@@ -238,6 +252,21 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
     case 'chooseCaptainSkill':
       next = chooseCaptainSkill(state, action)
       break
+    case 'chooseCaptainStat':
+      next = chooseCaptainStat(state, action)
+      break
+    case 'garrisonCaptain':
+      next = garrisonCaptain(state, action)
+      break
+    case 'ungarrisonCaptain':
+      next = ungarrisonCaptain(state, action)
+      break
+    case 'takeItem':
+      next = takeItem(state, action)
+      break
+    case 'depositItem':
+      next = depositItem(state, action)
+      break
     case 'upgradeShip':
       next = upgradeShip(state, action)
       break
@@ -314,6 +343,7 @@ function moveCaptain(state: GameState, action: MoveCaptainAction): GameState {
   if (captain.captured) {
     throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
   }
+  requireShipControl(state, captain, action)
   if (!tileAt(state.map, action.to)) {
     throw new InvalidActionError(`Destination ${action.to.x},${action.to.y} is off-map`, action)
   }
@@ -536,6 +566,7 @@ function setSailOrder(state: GameState, action: SetSailOrderAction): GameState {
   if (captain.captured) {
     throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
   }
+  requireShipControl(state, captain, action)
   if (!tileAt(state.map, action.destination)) {
     throw new InvalidActionError(
       `Destination ${action.destination.x},${action.destination.y} is off-map`,
@@ -699,6 +730,8 @@ export function prizeSpawnFor(
     troops: [],
     xp: 0,
     skills: [],
+    stats: { attack: 0, defense: 0, speed: 0 },
+    items: [],
     shipUpgrades: { ...loser.shipUpgrades },
     captured: false,
   }
@@ -732,7 +765,28 @@ function captureCaptain(
     maxMovementPoints: 0,
   }
   delete captured.sailOrder
+  // A ship-lost captain captured ashore (#498) is a plain captive from here on;
+  // a later rehire must not resurrect the flag.
+  delete captured.shipLost
   return captured
+}
+
+/**
+ * A captain whose anchored flagship was defeated while the captain was ashore
+ * leading `party` (#498): the hull is gone (prize flow), the captain is not —
+ * it stands with its party, shipless; if the party is destroyed the captain is
+ * captured. Any crew still aboard went down with the ship.
+ */
+function shipLostCaptain(captain: Captain, party: LandingParty): Captain {
+  const stranded: Captain = {
+    ...captain,
+    shipLost: true,
+    position: { ...party.position },
+    troops: [],
+    movementPoints: 0,
+  }
+  delete stranded.sailOrder
+  return stranded
 }
 
 /**
@@ -759,6 +813,27 @@ export function captainToCombatant(
   const bonus = captainCombatBonus(captain, content)
   combatant.attackBonusPct = bonus.attackBonusPct
   combatant.defenseBonusPct = bonus.defenseBonusPct
+  return combatant
+}
+
+/**
+ * A captain's ship as a naval combatant, aware of the captain's whereabouts
+ * (#498): identical to {@link captainToCombatant}, except an anchored ship
+ * whose captain is ashore leading a party fights with its remaining crew
+ * alone — the absent captain's skill/stat/item bonuses are ashore with the
+ * party. Shared by the reducer and the client battle probes so previews and
+ * authoritative resolution stay byte-identical.
+ */
+export function navalCombatant(
+  state: GameState,
+  captain: Captain,
+  content: ContentCatalog | undefined,
+): Combatant {
+  const combatant = captainToCombatant(captain, content)
+  if (partyLedBy(state, captain.id)) {
+    delete combatant.attackBonusPct
+    delete combatant.defenseBonusPct
+  }
   return combatant
 }
 
@@ -840,11 +915,20 @@ export function cityDefenderTroops(
  * defs (`defenseBonus`), never hardcoded here. Exported so the AI can score an
  * assault against the same defender the reducer resolves. `factionId` is the
  * city owner's faction (`undefined` for a neutral city → tuning's neutral roster).
+ *
+ * `portDefenders` (#498) are the owner's ships defending the harbor — the
+ * garrisoned captain plus every own captain in port (see
+ * {@link cityPortDefenders}). Each contributes its effective hull and cannons
+ * to the combatant's ship strength and its captain's combat bonuses
+ * (skills + stats + items) to the shared bonus channel, so both the reducer's
+ * resolution and the AI's `combatantStrength` scoring see a defended port as
+ * materially harder to crack.
  */
 export function cityToCombatant(
   city: CityState,
   content: ContentCatalog | undefined,
   factionId?: string,
+  portDefenders?: readonly Captain[],
 ): Combatant {
   const combatant: Combatant = {
     captainId: city.id,
@@ -854,13 +938,45 @@ export function cityToCombatant(
     shipStats: { hull: 0, cannons: 0, speed: 0 },
   }
   if (content) {
-    const bonus = city.buildings.reduce(
+    let attackBonusPct = 0
+    let defenseBonusPct = city.buildings.reduce(
       (sum, b) => sum + (content.buildings[b]?.defenseBonus ?? 0),
       0,
     )
-    if (bonus > 0) combatant.defenseBonusPct = bonus
+    for (const cap of portDefenders ?? []) {
+      const shipDef = content.ships[cap.shipClassId]
+      if (shipDef) {
+        const eff = effectiveShipStats(shipDef, cap.shipUpgrades)
+        combatant.shipStats!.hull += eff.hull
+        combatant.shipStats!.cannons += eff.cannons
+      }
+      const bonus = captainCombatBonus(cap, content)
+      attackBonusPct += bonus.attackBonusPct
+      defenseBonusPct += bonus.defenseBonusPct
+    }
+    if (attackBonusPct > 0) combatant.attackBonusPct = attackBonusPct
+    if (defenseBonusPct > 0) combatant.defenseBonusPct = defenseBonusPct
   }
   return combatant
+}
+
+/**
+ * The owner's ships defending a city's harbor (#498): the garrisoned captain
+ * and every other own captain in port — within one tile of the city — that is
+ * not captured, not ashore leading a party, and not shipless. They join the
+ * city's defence automatically when an assault resolves (sea or land), and are
+ * ALL captured if the city falls. Exported so the reducer, the AI's assault
+ * scoring, and the client probes all see the identical defender set.
+ */
+export function cityPortDefenders(state: GameState, city: CityState): Captain[] {
+  return state.captains.filter(
+    (c) =>
+      c.ownerId === city.ownerId &&
+      !c.captured &&
+      !c.shipLost &&
+      !state.parties.some((p) => p.captainId === c.id) &&
+      mapDistance(state.map, c.position, city.position) <= 1,
+  )
 }
 
 /**
@@ -897,6 +1013,7 @@ function attackCaptain(
   if (attacker.captured) {
     throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
   }
+  requireShipControl(state, attacker, action)
   const target = state.captains.find((c) => c.id === action.targetCaptainId)
   if (!target) throw new InvalidActionError(`No captain ${action.targetCaptainId}`, action)
   if (target.ownerId === action.playerId) {
@@ -904,6 +1021,12 @@ function attackCaptain(
   }
   if (target.captured) {
     throw new InvalidActionError(`Captain ${action.targetCaptainId} is already captured`, action)
+  }
+  if (target.shipLost) {
+    throw new InvalidActionError(`${target.id} has no ship to attack — engage its party ashore`, action) // prettier-ignore
+  }
+  if (garrisonCityOf(state, target.id)) {
+    throw new InvalidActionError(`${target.id} is garrisoned — assault the city instead`, action)
   }
   if (mapDistance(state.map, attacker.position, target.position) > 1) {
     throw new InvalidActionError('Target is not within attack range', action)
@@ -950,8 +1073,8 @@ function attackCaptain(
     : aiTacticDriverForOwner(state, target.ownerId, stats.tactics)
   const result: CombatResult = resolveTacticalCombat(
     {
-      attacker: captainToCombatant(attacker, content),
-      defender: captainToCombatant(target, content),
+      attacker: navalCombatant(state, attacker, content),
+      defender: navalCombatant(state, target, content),
     },
     stats,
     state.rngState,
@@ -1017,6 +1140,11 @@ function attackCaptain(
     }
     if (c.id === target.id) {
       if (!report.defenderSurvived) {
+        // A defeated anchored ship whose captain is ashore (#498): the hull is
+        // lost (the prize below still mints), but the captain is NOT captured —
+        // it stands with its party, which is now stranded.
+        const ledParty = partyLedBy(state, c.id)
+        if (ledParty) return shipLostCaptain(c, ledParty)
         return captureCaptain(c, attacker.ownerId, captivityReturnRound)
       }
       return { ...c, troops: result.defenderTroops, xp: c.xp + wonXp }
@@ -1063,6 +1191,7 @@ function attackCity(
   if (attacker.captured) {
     throw new InvalidActionError(`Captain ${action.captainId} is captured and cannot act`, action)
   }
+  requireShipControl(state, attacker, action)
   const target = state.cities.find((c) => c.id === action.targetCityId)
   if (!target) throw new InvalidActionError(`No city ${action.targetCityId}`, action)
   if (target.ownerId === action.playerId) {
@@ -1098,10 +1227,14 @@ function attackCity(
   // or the board AI — the same fallback chain as a boarding melee (#39/#93). The
   // garrison has no owner-supplied board orders, so it is always the board AI.
   const defenderFaction = state.players.find((p) => p.id === target.ownerId)?.faction
+  // Port defense (#498): the garrisoned captain and every own ship in the
+  // harbor join the city's defence — and are all captured if the city falls.
+  const portDefenders = cityPortDefenders(state, target)
+  const portDefenderIds = new Set(portDefenders.map((c) => c.id))
   const result = resolveBoardCombat(
     {
       attacker: captainToCombatant(attacker, content),
-      defender: cityToCombatant(target, content, defenderFaction),
+      defender: cityToCombatant(target, content, defenderFaction, portDefenders),
     },
     stats,
     state.rngState,
@@ -1118,11 +1251,18 @@ function attackCity(
   const captivityReturnRound = state.round + state.config.setup.captainCaptivityRounds
 
   const captains = state.captains.map((c) => {
-    if (c.id !== attacker.id) return c
-    if (attackerWon) {
-      return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + combatWinXp }
+    if (c.id === attacker.id) {
+      if (attackerWon) {
+        return { ...c, troops: result.attackerTroops, movementPoints: 0, xp: c.xp + combatWinXp }
+      }
+      return captureCaptain(c, target.ownerId, captivityReturnRound)
     }
-    return captureCaptain(c, target.ownerId, captivityReturnRound)
+    // A fallen city takes its harbor down with it (#498): the garrisoned
+    // captain and every in-port captain are captured by the conqueror.
+    if (attackerWon && portDefenderIds.has(c.id)) {
+      return captureCaptain(c, attacker.ownerId, captivityReturnRound)
+    }
+    return c
   })
 
   const cities = state.cities.map((c) => {
@@ -1192,7 +1332,16 @@ function betrayalAdjusted(
  * Shared by sea (#344) and land (#465) assaults so both capture identically.
  */
 function cityCaptured(city: CityState, newOwnerId: string): CityState {
-  return { ...city, ownerId: newOwnerId, garrison: {}, builtThisRound: true, unitAvailability: {} }
+  const captured: CityState = {
+    ...city,
+    ownerId: newOwnerId,
+    garrison: {},
+    builtThisRound: true,
+    unitAvailability: {},
+  }
+  // The old owner's garrisoned captain was captured with the city (#498).
+  delete captured.garrisonCaptainId
+  return captured
 }
 
 /**
@@ -1224,19 +1373,30 @@ function ownedParty(state: GameState, partyId: string, action: Action): LandingP
 
 /**
  * A landing party as a board combatant (#465): troops only — no ship (zeroed
- * ship stats keep it out of the strength math, exactly like a city defender)
- * and no captain skill/upgrade bonuses, because there is no captain ashore.
- * Exported so the client can preview a land battle against the same combatant
- * the reducer resolves.
+ * ship stats keep it out of the strength math, exactly like a city defender).
+ * A captain-led party (#498) fights with its leader's combat bonuses
+ * (skills + stats + items); pass the leader (see {@link partyLeader}) and the
+ * catalog to apply them. Exported so the client can preview a land battle
+ * against the same combatant the reducer resolves.
  */
-export function partyToCombatant(party: LandingParty): Combatant {
-  return {
+export function partyToCombatant(
+  party: LandingParty,
+  leader?: Captain,
+  content?: ContentCatalog,
+): Combatant {
+  const combatant: Combatant = {
     captainId: party.id,
     ownerId: party.ownerId,
     shipClassId: '',
     troops: party.troops,
     shipStats: { hull: 0, cannons: 0, speed: 0 },
   }
+  if (leader && content) {
+    const bonus = captainCombatBonus(leader, content)
+    combatant.attackBonusPct = bonus.attackBonusPct
+    combatant.defenseBonusPct = bonus.defenseBonusPct
+  }
+  return combatant
 }
 
 /**
@@ -1247,6 +1407,7 @@ export function partyToCombatant(party: LandingParty): Combatant {
  */
 function disembark(state: GameState, action: DisembarkAction): GameState {
   const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action)
   if (captain.movementPoints < 1) {
     throw new InvalidActionError('Captain has no movement left to land a party', action)
   }
@@ -1293,12 +1454,23 @@ function disembark(state: GameState, action: DisembarkAction): GameState {
     movementPoints: 0,
     maxMovementPoints: state.config.setup.partyMovementPoints,
     troops: landed,
+    // The captain goes ashore with the party (#498): it leads the column, and
+    // its ship sits anchored — orderless and immobile — until reunited.
+    ...(action.withCaptain ? { captainId: captain.id } : {}),
   }
   return {
     ...state,
-    captains: state.captains.map((c) =>
-      c.id === captain.id ? { ...c, troops: aboard, movementPoints: c.movementPoints - 1 } : c,
-    ),
+    captains: state.captains.map((c) => {
+      if (c.id !== captain.id) return c
+      const next: Captain = { ...c, troops: aboard, movementPoints: c.movementPoints - 1 }
+      if (action.withCaptain) {
+        // An anchored ship holds no course and its captain marches with the
+        // party, so the ship's remaining movement is spent (#498).
+        next.movementPoints = 0
+        delete next.sailOrder
+      }
+      return next
+    }),
     parties: [...state.parties, party],
   }
 }
@@ -1345,8 +1517,25 @@ function moveParty(state: GameState, action: MovePartyAction): GameState {
           )
         : p,
     ),
+    captains: captainsFollowingParty(state.captains, party, action.to),
     exploredTiles: { ...state.exploredTiles, [action.playerId]: Array.from(explored) },
   }
+}
+
+/**
+ * A shipless leading captain (#498) stands with its party, so its position
+ * tracks the party's marches. A leader whose ship is still anchored stays at
+ * the ship — that position IS the ship.
+ */
+function captainsFollowingParty(
+  captains: Captain[],
+  party: LandingParty,
+  position: Coord,
+): Captain[] {
+  if (!party.captainId) return captains
+  return captains.map((c) =>
+    c.id === party.captainId && c.shipLost ? { ...c, position: { ...position } } : c,
+  )
 }
 
 // --- Multi-turn march orders (#482) -------------------------------------------
@@ -1453,6 +1642,7 @@ function advanceMarchOrder(state: GameState, partyId: string, playerId: string):
     parties: state.parties.map((p) =>
       p.id === partyId ? withMarchOrder({ ...p, position, movementPoints }, nextOrder) : p,
     ),
+    captains: captainsFollowingParty(state.captains, party, position),
     exploredTiles: { ...state.exploredTiles, [playerId]: Array.from(explored) },
   }
 }
@@ -1540,6 +1730,19 @@ function autoContinueMarchOrders(state: GameState, playerId: string): GameState 
 function embark(state: GameState, action: EmbarkAction): GameState {
   const party = ownedParty(state, action.partyId, action)
   const captain = ownedCaptain(state, action.captainId, action)
+  // A captain-led party (#498) re-boards only its own captain's anchored ship —
+  // the reunite that restores ship control. A leader does not abandon its
+  // flagship for a berth on another hull, and a shipless leader has nothing to
+  // re-board (see the deferral issue for stranded-captain rescue).
+  if (party.captainId !== undefined && party.captainId !== captain.id) {
+    throw new InvalidActionError(
+      `${party.id} is led by ${party.captainId} and can only re-board that captain's ship`,
+      action,
+    )
+  }
+  if (party.captainId !== undefined && captain.shipLost) {
+    throw new InvalidActionError(`${captain.id}'s ship was lost; there is nothing to re-board`, action) // prettier-ignore
+  }
   if (mapDistance(state.map, party.position, captain.position) !== 1) {
     throw new InvalidActionError(`${captain.id} is not adjacent to the party`, action)
   }
@@ -1569,7 +1772,14 @@ function embark(state: GameState, action: EmbarkAction): GameState {
     captains: state.captains.map((c) => (c.id === captain.id ? { ...c, troops: aboard } : c)),
     parties:
       ashore.length > 0
-        ? state.parties.map((p) => (p.id === party.id ? { ...p, troops: ashore } : p))
+        ? state.parties.map((p) => {
+            if (p.id !== party.id) return p
+            const remainder: LandingParty = { ...p, troops: ashore }
+            // The captain boards with whoever fits (#498): a partial reunite
+            // leaves the remainder ashore as an ordinary, unled party.
+            delete remainder.captainId
+            return remainder
+          })
         : state.parties.filter((p) => p.id !== party.id),
   }
 }
@@ -1578,8 +1788,10 @@ function embark(state: GameState, action: EmbarkAction): GameState {
  * Attack an adjacent enemy landing party (#465): a land battle on the tactical
  * board, same combat math as a city assault's melee. Decisive by construction
  * (the board resolver always names a winner): the loser's party is destroyed
- * outright — there is no captain ashore to capture — and the winner keeps its
- * survivors. The attacker's movement is spent whatever the outcome.
+ * outright and the winner keeps its survivors. The attacker's movement is
+ * spent whatever the outcome. Captain-led parties (#498) fight with their
+ * leader's bonuses; a winning leader banks combat XP, and a destroyed party's
+ * leader is captured by the winning seat.
  */
 function attackParty(
   state: GameState,
@@ -1605,8 +1817,12 @@ function attackParty(
   }
 
   const stats = createCombatStats(state.config.combatStats!)
+  const content = state.config.content
   const result = resolveBoardCombat(
-    { attacker: partyToCombatant(attacker), defender: partyToCombatant(target) },
+    {
+      attacker: partyToCombatant(attacker, partyLeader(state, attacker), content),
+      defender: partyToCombatant(target, partyLeader(state, target), content),
+    },
     stats,
     state.rngState,
     action.boardCommands?.length ? { attacker: boardPlanDriver(action.boardCommands) } : {},
@@ -1627,11 +1843,27 @@ function attackParty(
       return p
     })
 
+  // Captain-led parties (#498): the winning side's leader banks combat XP
+  // (mirroring a decisive naval win); the destroyed side's leader is captured
+  // by the winning seat, exactly like a lost ship duel.
+  const winner = attackerWon ? attacker : target
+  const loser = attackerWon ? target : attacker
+  const combatWinXp = state.config.setup.combatWinXp
+  const captivityReturnRound = state.round + state.config.setup.captainCaptivityRounds
+  const captains = state.captains.map((c) => {
+    if (winner.captainId === c.id) return { ...c, xp: c.xp + combatWinXp }
+    if (loser.captainId === c.id) {
+      return captureCaptain(c, winner.ownerId, captivityReturnRound)
+    }
+    return c
+  })
+
   const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
   const settled = settleEliminations({
     ...state,
     players,
     alliances,
+    captains,
     parties,
     rngState: result.rng,
   })
@@ -1643,7 +1875,8 @@ function attackParty(
  * the FULL city defense — recruited garrison plus automatic militia and
  * turrets, the same {@link cityToCombatant} defender a sea assault meets
  * (operator decision, epic #469). A win flips the city exactly like a sea
- * assault; a loss destroys the party (no captain ashore to capture).
+ * assault; a loss destroys the party — and captures its leading captain, if
+ * one marched with it (#498).
  */
 function partyAssaultCity(
   state: GameState,
@@ -1671,10 +1904,14 @@ function partyAssaultCity(
   const stats = createCombatStats(state.config.combatStats!)
   const content = state.config.content
   const defenderFaction = state.players.find((p) => p.id === target.ownerId)?.faction
+  // Port defense (#498) applies to a land assault exactly as to a sea one:
+  // the harbor's ships join the defence, and all are captured if the city falls.
+  const portDefenders = cityPortDefenders(state, target)
+  const portDefenderIds = new Set(portDefenders.map((c) => c.id))
   const result = resolveBoardCombat(
     {
-      attacker: partyToCombatant(attacker),
-      defender: cityToCombatant(target, content, defenderFaction),
+      attacker: partyToCombatant(attacker, partyLeader(state, attacker), content),
+      defender: cityToCombatant(target, content, defenderFaction, portDefenders),
     },
     stats,
     state.rngState,
@@ -1696,11 +1933,28 @@ function partyAssaultCity(
       : cityAfterDefense(c, result.defenderTroops)
   })
 
+  // Captain-led attacker (#498): a winning leader banks combat XP like a sea
+  // assault's attacker; a destroyed party's leader is captured by the city's
+  // owner. A fallen city's port defenders are all captured by the attacker.
+  const combatWinXp = state.config.setup.combatWinXp
+  const captivityReturnRound = state.round + state.config.setup.captainCaptivityRounds
+  const captains = state.captains.map((c) => {
+    if (attacker.captainId === c.id) {
+      if (attackerWon) return { ...c, xp: c.xp + combatWinXp }
+      return captureCaptain(c, target.ownerId, captivityReturnRound)
+    }
+    if (attackerWon && portDefenderIds.has(c.id)) {
+      return captureCaptain(c, attacker.ownerId, captivityReturnRound)
+    }
+    return c
+  })
+
   const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
   const settled = settleEliminations({
     ...state,
     players,
     alliances,
+    captains,
     parties,
     cities,
     rngState: result.rng,
@@ -1802,6 +2056,44 @@ function ownedCaptain(state: GameState, captainId: string, action: Action): Capt
   return captain
 }
 
+/** The landing party this captain currently leads ashore (#498), if any. */
+export function partyLedBy(state: GameState, captainId: string): LandingParty | undefined {
+  return state.parties.find((p) => p.captainId === captainId)
+}
+
+/** The city this captain is garrisoning (#498), if any. */
+export function garrisonCityOf(state: GameState, captainId: string): CityState | undefined {
+  return state.cities.find((c) => c.garrisonCaptainId === captainId)
+}
+
+/** The captain leading a party ashore (#498), or undefined for an unled party. */
+export function partyLeader(state: GameState, party: LandingParty): Captain | undefined {
+  return party.captainId ? state.captains.find((c) => c.id === party.captainId) : undefined
+}
+
+/**
+ * A ship-acting action needs a captain actually in command of a hull (#498):
+ * not ashore leading a party (the ship sits anchored and orderless), not
+ * shipless (the anchored hull was lost), and — unless the action makes sense
+ * from a berth, like troop transfers and refits — not garrisoned in a city.
+ */
+function requireShipControl(
+  state: GameState,
+  captain: Captain,
+  action: Action,
+  opts: { allowGarrisoned?: boolean } = {},
+): void {
+  if (captain.shipLost) {
+    throw new InvalidActionError(`${captain.id}'s ship was lost; the captain is ashore`, action)
+  }
+  if (partyLedBy(state, captain.id)) {
+    throw new InvalidActionError(`${captain.id} is ashore leading a landing party`, action)
+  }
+  if (!opts.allowGarrisoned && garrisonCityOf(state, captain.id)) {
+    throw new InvalidActionError(`${captain.id} is garrisoned and cannot act at sea`, action)
+  }
+}
+
 /**
  * First water tile adjacent to `coord`, in the map's fixed neighbour order
  * (#308/#309) — used to place a freshly (re)recruited captain next to the
@@ -1901,6 +2193,8 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
       troops: crew,
       xp: 0,
       skills: [],
+      stats: { attack: 0, defense: 0, speed: 0 },
+      items: [],
       shipUpgrades: {},
       captured: false,
     }
@@ -2055,6 +2349,7 @@ function transferTroops(state: GameState, action: TransferTroopsAction): GameSta
   if (action.count <= 0) throw new InvalidActionError('Transfer count must be positive', action)
   const city = ownedCity(state, action.cityId, action)
   const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action, { allowGarrisoned: true })
   if (mapDistance(state.map, captain.position, city.position) > 1) {
     throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
   }
@@ -2144,6 +2439,174 @@ function chooseCaptainSkill(state: GameState, action: ChooseCaptainSkillAction):
   }
 }
 
+/** The three spendable captain stats (#498) — runtime validation for log data. */
+const CAPTAIN_STATS: readonly string[] = ['attack', 'defense', 'speed']
+
+/**
+ * Spends one of a captain's earned level-up stat points (#498): one per level
+ * above 1, in addition to the skill pick, with the pending count derived
+ * (`level − 1 − pointsSpent`) rather than stored. Per-point effects are
+ * content data (`ContentCatalog.captainStats`) — without that tuning there is
+ * no stat system to spend into, so the action is rejected.
+ */
+function chooseCaptainStat(state: GameState, action: ChooseCaptainStatAction): GameState {
+  const content = requireContent(state, action)
+  if (!content.captainStats) {
+    throw new InvalidActionError('No captain-stat tuning configured for this match', action)
+  }
+  if (!CAPTAIN_STATS.includes(action.stat)) {
+    throw new InvalidActionError(`Unknown captain stat '${action.stat}'`, action)
+  }
+  const captain = ownedCaptain(state, action.captainId, action)
+  if (availableStatPoints(captain, content.captainXpThresholds) < 1) {
+    throw new InvalidActionError(`${captain.id} has no stat points available`, action)
+  }
+  return {
+    ...state,
+    captains: state.captains.map((c) =>
+      c.id === captain.id
+        ? { ...c, stats: { ...c.stats, [action.stat]: c.stats[action.stat] + 1 } }
+        : c,
+    ),
+  }
+}
+
+/**
+ * Station a docked captain in an owned city (#498). Garrisoning berths the
+ * ship — remaining movement and any sail order are spent — and the captain is
+ * immobile until released (`ungarrisonCaptain`); in exchange its ship and
+ * combat bonuses join the city's defence, at the price of being captured with
+ * the city if it falls.
+ */
+function garrisonCaptain(state: GameState, action: GarrisonCaptainAction): GameState {
+  const city = ownedCity(state, action.cityId, action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action)
+  if (mapDistance(state.map, captain.position, city.position) > 1) {
+    throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
+  }
+  if (city.garrisonCaptainId !== undefined) {
+    throw new InvalidActionError(`${city.id} already has a garrisoned captain`, action)
+  }
+  return {
+    ...state,
+    cities: state.cities.map((c) =>
+      c.id === city.id ? { ...c, garrisonCaptainId: captain.id } : c,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? withSailOrder({ ...c, movementPoints: 0 }, undefined) : c,
+    ),
+  }
+}
+
+/**
+ * Release a city's garrisoned captain back to sea duty (#498). The ship stays
+ * berthed for the rest of this turn (movement was spent standing down); it
+ * refreshes normally from the owner's next turn.
+ */
+function ungarrisonCaptain(state: GameState, action: UngarrisonCaptainAction): GameState {
+  const city = ownedCity(state, action.cityId, action)
+  if (city.garrisonCaptainId === undefined) {
+    throw new InvalidActionError(`${city.id} has no garrisoned captain`, action)
+  }
+  return {
+    ...state,
+    cities: state.cities.map((c) => {
+      if (c.id !== city.id) return c
+      const next = { ...c }
+      delete next.garrisonCaptainId
+      return next
+    }),
+  }
+}
+
+/** Shared validation for the stash-transfer actions (#498): item content, docked-at-own-city. */
+function itemTransferContext(
+  state: GameState,
+  action: TakeItemAction | DepositItemAction,
+): { captain: Captain; cap: number } {
+  const content = requireContent(state, action)
+  if (!content.items) {
+    throw new InvalidActionError('No item content configured for this match', action)
+  }
+  const city = ownedCity(state, action.cityId, action)
+  const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action, { allowGarrisoned: true })
+  if (mapDistance(state.map, captain.position, city.position) > 1) {
+    throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
+  }
+  return { captain, cap: content.items.captainItemCap }
+}
+
+/** Move an item from the faction stash onto a docked captain (#498). */
+function takeItem(state: GameState, action: TakeItemAction): GameState {
+  const { captain, cap } = itemTransferContext(state, action)
+  const player = state.players.find((p) => p.id === action.playerId)!
+  const idx = player.itemStash.indexOf(action.itemId)
+  if (idx === -1) {
+    throw new InvalidActionError(`No ${action.itemId} in ${action.playerId}'s stash`, action)
+  }
+  if (captain.items.length >= cap) {
+    throw new InvalidActionError(`${captain.id} already carries ${cap} items`, action)
+  }
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === player.id ? { ...p, itemStash: p.itemStash.filter((_, i) => i !== idx) } : p,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, items: [...c.items, action.itemId] } : c,
+    ),
+  }
+}
+
+/** Move an item from a docked captain into the faction stash (#498). */
+function depositItem(state: GameState, action: DepositItemAction): GameState {
+  const { captain } = itemTransferContext(state, action)
+  const idx = captain.items.indexOf(action.itemId)
+  if (idx === -1) {
+    throw new InvalidActionError(`${captain.id} does not carry ${action.itemId}`, action)
+  }
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === action.playerId ? { ...p, itemStash: [...p.itemStash, action.itemId] } : p,
+    ),
+    captains: state.captains.map((c) =>
+      c.id === captain.id ? { ...c, items: c.items.filter((_, i) => i !== idx) } : c,
+    ),
+  }
+}
+
+/**
+ * Bank a dropped item (#498): into the named captain's hold if it is under the
+ * catalog's cap, else into the owning player's stash — the overflow rule. Pure
+ * post-processing on an already-settled state.
+ */
+function applyItemGrant(
+  state: GameState,
+  playerId: string,
+  captainId: string | undefined,
+  itemId: string,
+): GameState {
+  const cap = state.config.content?.items?.captainItemCap ?? 0
+  const captain = captainId ? state.captains.find((c) => c.id === captainId) : undefined
+  if (captain && captain.items.length < cap) {
+    return {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === captain.id ? { ...c, items: [...c.items, itemId] } : c,
+      ),
+    }
+  }
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, itemStash: [...p.itemStash, itemId] } : p,
+    ),
+  }
+}
+
 /** Buys the next level on one of a captain's ship's upgrade tracks (#22) at a city shipyard. */
 function upgradeShip(state: GameState, action: UpgradeShipAction): GameState {
   const content = requireContent(state, action)
@@ -2152,6 +2615,7 @@ function upgradeShip(state: GameState, action: UpgradeShipAction): GameState {
     throw new InvalidActionError(`${city.id} has no shipyard`, action)
   }
   const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action, { allowGarrisoned: true })
   if (mapDistance(state.map, captain.position, city.position) > 1) {
     throw new InvalidActionError(`${captain.id} is not docked at ${city.id}`, action)
   }
@@ -2192,6 +2656,7 @@ function resolveEncounter(
     throw new InvalidActionError('No encounter content configured for this match', action)
   }
   const captain = ownedCaptain(state, action.captainId, action)
+  requireShipControl(state, captain, action)
   if (captain.movementPoints < 1) {
     throw new InvalidActionError('Captain has no movement left to engage', action)
   }
@@ -2225,10 +2690,20 @@ function resolveEncounter(
     state.rngState,
   )
 
+  // Item drop (#498): a successful sea encounter may also yield an item,
+  // rolled from the same RNG stream immediately after the outcome roll.
+  let rng = result.rng
+  let itemGained: string | undefined
+  if (result.success && content.items) {
+    const drop = rollItemDrop(content.items, content.items.seaEncounterDropChance, rng)
+    rng = drop.rng
+    if (drop.itemId) itemGained = drop.itemId
+  }
+
   const respawnRound = kindDef.respawnDelay > 0 ? state.round + kindDef.respawnDelay : null
   const settled: GameState = {
     ...state,
-    rngState: result.rng,
+    rngState: rng,
     players: state.players.map((p) =>
       p.id === player.id
         ? { ...p, resources: addResources(subtractResources(p.resources, cost), result.reward) }
@@ -2254,7 +2729,9 @@ function resolveEncounter(
     troopsLost: result.troopsLost,
   }
   if (result.troopsGained) outcome.troopsGained = result.troopsGained
-  return { state: settled, outcome }
+  if (itemGained === undefined) return { state: settled, outcome }
+  outcome.itemGained = itemGained
+  return { state: applyItemGrant(settled, player.id, captain.id, itemGained), outcome }
 }
 
 /**
@@ -2263,7 +2740,8 @@ function resolveEncounter(
  * round after the party marches off, and only flips when a rival party captures
  * it in turn. A **haul** site (lumber camp/ruin) pays its one-time reward and is
  * then spent. Either way it costs the party its remaining movement, so a party
- * takes at most one site per turn. No RNG — a site capture is deterministic.
+ * takes at most one site per turn. A hold capture is deterministic; a haul
+ * capture rolls the seeded item drop (#498) when the match carries item content.
  */
 function captureSite(state: GameState, action: CaptureSiteAction): GameState {
   const content = requireContent(state, action)
@@ -2302,22 +2780,36 @@ function captureSite(state: GameState, action: CaptureSiteAction): GameState {
   }
 
   // Haul: one-time payout into the treasury, then the site is spent for good.
-  return {
+  // A haul may also turn up an item (#498) — the find goes to the party's
+  // leading captain if one marched with it, else to the faction stash.
+  let rng = state.rngState
+  let itemGained: string | undefined
+  if (content.items) {
+    const drop = rollItemDrop(content.items, content.items.landHaulDropChance, rng)
+    rng = drop.rng
+    if (drop.itemId) itemGained = drop.itemId
+  }
+  const settled: GameState = {
     ...state,
+    rngState: rng,
     players: state.players.map((p) =>
       p.id === action.playerId ? { ...p, resources: addResources(p.resources, def.yield) } : p,
     ),
     landSites: state.landSites.map((s) => (s.id === site.id ? { ...s, active: false } : s)),
     parties: spentParties,
   }
+  if (itemGained === undefined) return settled
+  return applyItemGrant(settled, action.playerId, party.captainId, itemGained)
 }
 
 /**
  * Resolve a land random encounter (#466) with an adjacent landing party — the
  * overland twin of {@link resolveEncounter}, routed through the same seeded
  * {@link resolveEncounterChoice} roll but crediting the party's troops (there is
- * no ship crew-capacity cap ashore, so `grantCount` alone bounds a recruit) and
- * no captain XP. Spends the party's movement for the turn.
+ * no ship crew-capacity cap ashore, so `grantCount` alone bounds a recruit).
+ * A captain leading the party (#498) banks the encounter's XP and receives any
+ * item find; an unled party earns no XP and finds go to the faction stash.
+ * Spends the party's movement for the turn.
  */
 function resolvePartyEncounter(
   state: GameState,
@@ -2357,15 +2849,32 @@ function resolvePartyEncounter(
     state.rngState,
   )
 
+  // Item drop (#498): a successful land encounter may also yield an item,
+  // rolled from the same RNG stream immediately after the outcome roll.
+  let rng = result.rng
+  let itemGained: string | undefined
+  if (result.success && content.items) {
+    const drop = rollItemDrop(content.items, content.items.landEncounterDropChance, rng)
+    rng = drop.rng
+    if (drop.itemId) itemGained = drop.itemId
+  }
+
   const respawnRound = kindDef.respawnDelay > 0 ? state.round + kindDef.respawnDelay : null
   const settled: GameState = {
     ...state,
-    rngState: result.rng,
+    rngState: rng,
     players: state.players.map((p) =>
       p.id === player.id
         ? { ...p, resources: addResources(subtractResources(p.resources, cost), result.reward) }
         : p,
     ),
+    // A leading captain (#498) banks the encounter XP, like a captain at sea.
+    captains:
+      party.captainId !== undefined && result.xpGained > 0
+        ? state.captains.map((c) =>
+            c.id === party.captainId ? { ...c, xp: c.xp + result.xpGained } : c,
+          )
+        : state.captains,
     parties: state.parties.map((p) =>
       p.id === party.id ? { ...p, troops: result.troops, movementPoints: 0 } : p,
     ),
@@ -2380,11 +2889,13 @@ function resolvePartyEncounter(
     choice: action.choice,
     success: result.success,
     reward: result.reward,
-    xpGained: result.xpGained,
+    xpGained: party.captainId !== undefined ? result.xpGained : 0,
     troopsLost: result.troopsLost,
   }
   if (result.troopsGained) outcome.troopsGained = result.troopsGained
-  return { state: settled, outcome }
+  if (itemGained === undefined) return { state: settled, outcome }
+  outcome.itemGained = itemGained
+  return { state: applyItemGrant(settled, player.id, party.captainId, itemGained), outcome }
 }
 
 /**
@@ -2657,13 +3168,24 @@ function difficultyIncome(state: GameState, player: PlayerState, content: Conten
   }
 }
 
-/** Restore a player's captains and landing parties to full movement at the start of their turn. */
+/**
+ * Restore a player's captains and landing parties to full movement at the
+ * start of their turn. A captain's allowance adds its speed bonus (#498: speed
+ * stat points and item speed, rates from content). Captains with no ship to
+ * sail — captured, garrisoned, ashore leading a party, or shipless — stay at
+ * zero.
+ */
 function refreshMovement(state: GameState, playerId: string): GameState {
+  const content = state.config.content
+  const immobile = new Set<string>()
+  for (const p of state.parties) if (p.captainId !== undefined) immobile.add(p.captainId)
+  for (const c of state.cities) if (c.garrisonCaptainId !== undefined) immobile.add(c.garrisonCaptainId) // prettier-ignore
   return {
     ...state,
-    captains: state.captains.map((c) =>
-      c.ownerId === playerId ? { ...c, movementPoints: c.maxMovementPoints } : c,
-    ),
+    captains: state.captains.map((c) => {
+      if (c.ownerId !== playerId || c.captured || c.shipLost || immobile.has(c.id)) return c
+      return { ...c, movementPoints: c.maxMovementPoints + captainSpeedBonus(c, content) }
+    }),
     parties: state.parties.map((p) =>
       p.ownerId === playerId ? { ...p, movementPoints: p.maxMovementPoints } : p,
     ),
