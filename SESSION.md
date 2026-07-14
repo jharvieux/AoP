@@ -21,7 +21,7 @@ _Last updated: 2026-07-14 (captain-expansion epic #498 shipped; monitor green; c
   operator-approved backdrop + slot layout, fit-to-viewport + zoom controls, 2× town
   hall via alpha-trimmed sprites, turret flag, label chips.
 - **Issue sweep**: #486 (ThemePackEditor party slot, PR #492) and #490 (shipyard feather
-  + artLoaded fix, PR #491) merged; follow-ups #493, #494 filed.
+  - artLoaded fix, PR #491) merged; follow-ups #493, #494 filed.
 - **#444 ComfyUI migration** (D-041, PR #488): pipeline on current torch/MPS, tooling in
   scripts/art/, DreamShaperXL Turbo evaluated (adoption = operator per-batch call).
 
