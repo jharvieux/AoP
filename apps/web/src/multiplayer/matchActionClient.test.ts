@@ -64,6 +64,38 @@ describe('MatchActionClient.submitAction (#261: the single multiplayer write pat
     expect(result.battleReport).toBeUndefined()
   })
 
+  it('carries an encounterOutcome through when the action resolved an encounter (#502)', async () => {
+    const outcome = {
+      encounterId: 'enc-1',
+      kind: 'merchant',
+      choice: 'trade',
+      success: true,
+      reward: { gold: 10 },
+      xpGained: 5,
+      troopsLost: [],
+      itemGained: 'cutlass',
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { seq: 9, view: { viewerId: 'seat-0' }, encounterOutcome: outcome }),
+      )
+    const client = new MatchActionClient(CONFIG, fetchMock)
+
+    const result = await client.submitAction(SESSION, PARAMS)
+    expect(result.encounterOutcome).toEqual(outcome)
+  })
+
+  it('omits encounterOutcome for a non-encounter action', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(200, { seq: 8, view: { viewerId: 'seat-0' } }))
+    const client = new MatchActionClient(CONFIG, fetchMock)
+
+    const result = await client.submitAction(SESSION, PARAMS)
+    expect(result.encounterOutcome).toBeUndefined()
+  })
+
   it('marks SEQ_CONFLICT as stale (§9 step 3: refetch, never patch)', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
       jsonResponse(409, {

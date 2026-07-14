@@ -8,7 +8,7 @@ import type {
   PlayerView,
   TacticId,
 } from '@aop/engine'
-import { FACTIONS } from '@aop/content'
+import { FACTIONS, ITEMS } from '@aop/content'
 import type { Coord } from '@aop/shared'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
@@ -138,6 +138,11 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Structured result of the viewer's own last attack (#285), for the battle
   // report sheet — derived output, never part of the polled view.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
+  // The item the viewer's own last encounter dropped (#502) — the multiplayer
+  // surface for the same `encounterOutcome.itemGained` single-player feeds
+  // GameScreen's event feed (#498). A fresh object per find so an identical
+  // back-to-back drop still restarts the dismiss timer (mirrors App.tsx).
+  const [itemFound, setItemFound] = useState<{ itemId: string } | null>(null)
   // Interactive-combat session (#408/#409, docs/design/multiplayer-tactical-probe.md): the
   // driver holds the running per-side CAS counters; `battleOutcome` is the engine context to
   // render (a naval round or a melee activation), null when no battle is being played out.
@@ -246,6 +251,15 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     return () => clearInterval(id)
   }, [])
 
+  // Self-dismissing "Found: <item>" line (#502). Single-player's feed keeps a
+  // scrollback; here one transient entry is enough — the item itself is
+  // inspectable in the captain sheet afterwards.
+  useEffect(() => {
+    if (!itemFound) return
+    const id = setTimeout(() => setItemFound(null), 5000)
+    return () => clearTimeout(id)
+  }, [itemFound])
+
   // Resume-on-reconnect (#409): once, after the first view loads in a tactical match, ask
   // battle-context whether this seat has a battle in progress (a reload mid-fight, or a
   // pending session the BATTLE_PENDING guard would otherwise wedge behind). Only tactical
@@ -320,6 +334,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     if (outcome.kind === 'ok') {
       setLive({ ...live, seq: outcome.result.seq, view: outcome.result.view })
       if (outcome.result.battleReport) setBattleReport(outcome.result.battleReport)
+      if (outcome.result.encounterOutcome?.itemGained) {
+        setItemFound({ itemId: outcome.result.encounterOutcome.itemGained })
+      }
       // The response carries no turn_deadline; pick the fresh one up now
       // rather than waiting out the poll interval.
       void refetch()
@@ -970,6 +987,13 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           }}
           factionOf={board.factionOf}
         />
+        {/* Item find (#502) — the multiplayer twin of GameScreen's turn-event
+            feed entry, reusing its styling for one transient line. */}
+        {itemFound && (
+          <ul className="turn-event-feed" aria-label="Recent events">
+            <li>Found: {ITEMS[itemFound.itemId]?.name ?? itemFound.itemId}</li>
+          </ul>
+        )}
         {myTurn &&
           interruptedCaptains.map((cap) => (
             <div key={cap.id} className="sail-interrupt-banner" role="status">
