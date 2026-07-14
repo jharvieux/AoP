@@ -205,6 +205,8 @@ interface LandOutcome {
   capturesByParty: number
   partyLosses: number
   seaRepelled: number
+  /** Total captain-capture events, any cause — the captain-economy signal (#475/#510). */
+  captainsCaptured: number
   disembarks: number
   /** City flips of player capitals (vs neutral inland settlements). */
   capitalCaptures: number
@@ -221,6 +223,7 @@ function runMatch(config: GameConfig, maxRounds: number): LandOutcome {
     capturesByParty: 0,
     partyLosses: 0,
     seaRepelled: 0,
+    captainsCaptured: 0,
     disembarks: 0,
     capitalCaptures: 0,
     firstCaptureRound: null,
@@ -245,8 +248,10 @@ function runMatch(config: GameConfig, maxRounds: number): LandOutcome {
         assaultsPerTarget.set(key, waves)
         if (waves > outcome.bestSameCityAssaults) outcome.bestSameCityAssaults = waves
       }
-      if (action.type === 'attackCity') {
-        if (state.captains.filter((c) => c.captured).length > capturedBefore) outcome.seaRepelled++
+      const capturedNow = state.captains.filter((c) => c.captured).length
+      if (capturedNow > capturedBefore) {
+        outcome.captainsCaptured += capturedNow - capturedBefore
+        if (action.type === 'attackCity') outcome.seaRepelled++
       }
       if (action.type === 'partyAssaultCity' && state.parties.length < partiesBefore) {
         outcome.partyLosses++
@@ -298,6 +303,7 @@ for (const size of sizes) {
     `${size.padEnd(8)} matches=${outcomes.length} rounds<=${maxRounds}${roundLimit !== undefined ? ` roundLimit=${roundLimit}` : ''} ` +
       `captures=${sum((o) => o.captures)} byParty=${sum((o) => o.capturesByParty)} ` +
       `capitals=${sum((o) => o.capitalCaptures)} partyLosses=${sum((o) => o.partyLosses)} seaRepelled=${sum((o) => o.seaRepelled)} ` +
+      `captainsCaptured=${sum((o) => o.captainsCaptured)} ` +
       `disembarkMatches=${outcomes.filter((o) => o.disembarks > 0).length} ` +
       `multiWaveMatches=${outcomes.filter((o) => o.bestSameCityAssaults >= 2).length} ` +
       `avgFirstCaptureRound=${avgFirst} wallClock=${(ms / 1000).toFixed(1)}s`,

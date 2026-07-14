@@ -240,6 +240,17 @@ export interface AiTuning {
   /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
   ransomScoreBase: number
   /**
+   * Land-attrition floor (#510): the minimum assault ratio at which the AI
+   * still presses the *land* vector — landing and marching parties — against a
+   * city it may not assault by sea. Strictly below `attritionMinRatio` (the sea
+   * floor, which protects captains: a repelled sea assault captures one; a
+   * repelled land wave costs only troops). This is what keeps conquest pressure
+   * alive on large maps: with travel time, a distant capital's garrison
+   * outgrows the sea floor and the old single-floor gate froze approach/assault
+   * scoring permanently. Scaled by the personality `engageMinRatioMult`.
+   */
+  landAttritionMinRatio: number
+  /**
    * Score for garrisoning a docked captain into a threatened owned city (#500).
    * Between `garrisonToShipScoreBase` and `reinforceCityScoreBase`: a threatened
    * city first absorbs a docked captain's troops (reinforce), then commits the
@@ -698,6 +709,13 @@ export const AI_TUNING: AiTuning = {
   statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
+  // 0.20 (#510): half the sea floor. Sim-tuned on the 96-match generated-map
+  // batteries: restores capital conquest on large boards (large 1 -> double
+  // digits of capital captures) by letting cheap party waves keep grinding a
+  // garrison that snowballed past the 0.40 sea floor during the long crossing,
+  // while small/medium totals and captain economy hold steady. Below ~0.15 the
+  // waves are pure troop waste (they barely dent militia before folding).
+  landAttritionMinRatio: 0.2,
   // Between garrisonToShip (30) and reinforce (60) by design: a threatened city
   // first absorbs the docked hull's troops, then commits the emptied hull.
   garrisonCaptainScoreBase: 55,

@@ -120,6 +120,7 @@ export const AI_TUNING: AiTuning = {
   statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
+  landAttritionMinRatio: 0.2,
   garrisonCaptainScoreBase: 55,
   ungarrisonCaptainScoreBase: 15,
   takeItemScoreBase: 45,

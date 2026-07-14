@@ -59,6 +59,12 @@ const FALLBACK_ENGAGE_MIN_RATIO = 0.9
 const FALLBACK_ATTRITION_MIN_RATIO = FALLBACK_ENGAGE_MIN_RATIO
 const FALLBACK_ATTRITION_SCORE_MULT = 0.5
 /**
+ * With no tuning configured the land-attrition floor equals the sea attrition
+ * floor, so the sub-floor land band (#510) is empty and the AI gates land
+ * pressure exactly as it did pre-#510. Real matches inject a lower floor.
+ */
+const FALLBACK_LAND_ATTRITION_MIN_RATIO = FALLBACK_ATTRITION_MIN_RATIO
+/**
  * With no tuning configured the endgame horizon is 0 rounds, so round-limit
  * scoring (#509) never engages and a capped, tuning-less match plays exactly
  * as before. Real matches inject a positive horizon.
@@ -189,6 +195,18 @@ export interface AiTuning {
   recruitCaptainScoreBase: number
   /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
   ransomScoreBase: number
+  /**
+   * Land-attrition floor (#510): the minimum assault ratio at which the AI
+   * still presses the *land* vector — landing and marching parties — against a
+   * city it cannot dent by the sea rules. Strictly below {@link attritionMinRatio}
+   * (the sea floor, which protects captains: a failed sea assault captures one).
+   * A failed land wave costs only troops, so pressure can continue against a
+   * garrison that has snowballed past the sea floor — without this band, a
+   * distant capital's garrison outgrowing `attritionMinRatio` froze conquest
+   * scoring permanently (the #510 structural cutoff). Scaled by the same
+   * personality `engageMinRatioMult` as the other ratio floors.
+   */
+  landAttritionMinRatio: number
   /** Score for garrisoning a docked captain into a threatened owned city (#500). */
   garrisonCaptainScoreBase: number
   /** Score for releasing a garrisoned captain once its city is no longer threatened (#500). */
@@ -352,6 +370,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   // (an aggressive seat both fights and attrits at worse odds).
   const attritionMinRatio =
     (baseTuning?.attritionMinRatio ?? FALLBACK_ATTRITION_MIN_RATIO) * weights.engageMinRatioMult
+  // The land floor (#510) shares the sea floor's personality appetite; with no
+  // tuning it equals the sea floor, leaving the sub-floor band empty.
+  const landAttritionMinRatio =
+    (baseTuning?.landAttritionMinRatio ?? FALLBACK_LAND_ATTRITION_MIN_RATIO) *
+    weights.engageMinRatioMult
   const attritionScoreMult = baseTuning?.attritionScoreMult ?? FALLBACK_ATTRITION_SCORE_MULT
   // Siege commitment scales with the same combat appetite as the attack score: an
   // aggressive seat presses a siege harder, an economic one less so.
@@ -459,9 +482,27 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     // assault is a land board battle, so it only applies when the match has
     // board tuning (matches without it resolve combat naval-only).
     if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
-      for (const city of enemyCities) {
+      const cityRatios = enemyCities.map((city) =>
+        cityAssaultRatio(
+          state,
+          cap,
+          city,
+          stats,
+          catalog,
+          state.players.find((p) => p.id === city.ownerId)?.faction,
+        ),
+      )
+      // Stall detector (#510): the sub-floor land band opens ONLY when no enemy
+      // city anywhere is within this captain's ordinary bands — the structural
+      // cutoff where garrison snowball outpaced travel time and the planner
+      // froze. While any in-band target exists, troops are worth more massed
+      // into real waves than spent on sub-floor grinds (measured: an unscoped
+      // band drained the attrition pipeline and capital captures fell on every
+      // map size).
+      const stalled = cityRatios.every((r) => r < attritionMinRatio)
+      for (const [cityIndex, city] of enemyCities.entries()) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = cityAssaultRatio(state, cap, city, stats, catalog, cityFaction)
+        const ratio = cityRatios[cityIndex]!
         // Attrition warfare (#462): a landing party that can't win outright is
         // still worth landing when it will meaningfully thin a garrison that
         // persists between assaults (recruited-troop casualties stick, and pools
@@ -472,7 +513,13 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         // the ratio, so each successful thinning makes the next wave score higher.
         const winning = ratio >= engageMinRatio
         const attrition = !winning && ratio >= attritionMinRatio
-        if (!winning && !attrition) continue
+        // Sub-floor land band (#510), stall-gated: below the sea floor but above
+        // the land floor, only the party vector presses on — a repelled land
+        // wave costs troops, never a captain, so a stalled AI keeps grinding a
+        // garrison that snowballed past `attritionMinRatio` instead of freezing
+        // conquest scoring permanently.
+        const landOnly = stalled && !winning && !attrition && ratio >= landAttritionMinRatio
+        if (!winning && !attrition && !landOnly) continue
         const combatMult = winning ? 1 : attritionScoreMult
         // Siege commitment (#471): a ratio-scaled bonus that lifts an *attrition*
         // wave (a city the captain can't yet win, combatMult < 1) above the economy
@@ -485,17 +532,17 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         // garrison rebuilds, so successive waves converge on one target with no
         // cross-turn planner memory.
         const siegeBonus = winning ? 0 : siegeStickinessBonus * ratio
-        // Land vector (#475): on an attrition wave, if this captain can put a
-        // party ashore within overland reach of the city, prefer to — a
-        // repelled land assault costs only the party, a repelled sea assault
-        // costs the captain. The party then marches and assaults over the next
-        // turns (scored in the landing-party loop below). Scoped to below the
-        // engage gate on purpose: a winnable coastal city is taken immediately
-        // and safely by sea, and scoring winnable-city landings was measured
-        // (like #471's winnable siege bonus) to send every strong captain
-        // beelining after soft settlements — capital sieges starved and
+        // Land vector (#475): on an attrition (or sub-floor, #510) wave, if this
+        // captain can put a party ashore within overland reach of the city,
+        // prefer to — a repelled land assault costs only the party, a repelled
+        // sea assault costs the captain. The party then marches and assaults
+        // over the next turns (scored in the landing-party loop below). Scoped
+        // to below the engage gate on purpose: a winnable coastal city is taken
+        // immediately and safely by sea, and scoring winnable-city landings was
+        // measured (like #471's winnable siege bonus) to send every strong
+        // captain beelining after soft settlements — capital sieges starved and
         // captured cities churned in trade loops.
-        if (attrition) {
+        if (attrition || landOnly) {
           const landing = disembarkTileToward(state, cap, city)
           if (landing) {
             // Captain-led party (#500): lead the column ashore when the leader's
@@ -523,7 +570,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
             })
           }
         }
-        if (mapDistance(state.map, cap.position, city.position) <= 1) {
+        if ((winning || attrition) && mapDistance(state.map, cap.position, city.position) <= 1) {
           consider({
             action: {
               type: 'attackCity',
@@ -580,13 +627,28 @@ export function nextAiAction(state: GameState, playerId: string): Action {
 
       // Assault / march on enemy cities — the same attrition/siege machinery the
       // captain uses. The land-assault premium always applies here: a party has
-      // no safer sea alternative, so it should press rather than idle.
-      for (const city of enemyCities) {
-        const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = partyCityAssaultRatio(state, party, city, stats, catalog, cityFaction)
+      // no safer sea alternative, so it should press rather than idle. Like the
+      // captain loop, the sub-floor band (#510) opens only when the party is
+      // stalled — no city within its ordinary bands — so a repelled-but-cheap
+      // grind continues where the old single floor froze, without diverting
+      // parties that still have real targets.
+      const cityRatios = enemyCities.map((city) =>
+        partyCityAssaultRatio(
+          state,
+          party,
+          city,
+          stats,
+          catalog,
+          state.players.find((p) => p.id === city.ownerId)?.faction,
+        ),
+      )
+      const floor = cityRatios.every((r) => r < attritionMinRatio)
+        ? landAttritionMinRatio
+        : attritionMinRatio
+      for (const [cityIndex, city] of enemyCities.entries()) {
+        const ratio = cityRatios[cityIndex]!
         const winning = ratio >= engageMinRatio
-        const attrition = !winning && ratio >= attritionMinRatio
-        if (!winning && !attrition) continue
+        if (!winning && ratio < floor) continue
         const combatMult = winning ? 1 : attritionScoreMult
         const siegeBonus = winning ? 0 : siegeStickinessBonus * ratio
         const landBonus = landAssaultBonus * ratio

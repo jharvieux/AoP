@@ -1387,6 +1387,51 @@ describe('AI captain-expansion verbs (#500)', () => {
   })
 })
 
+describe('AI sub-floor land pressure (#510)', () => {
+  it('still lands a party on a garrison that snowballed past the sea attrition floor', () => {
+    // 6 grunts (36) vs a 33-strong b1 garrison + turrets (≈ 122.5): ratio ≈ 0.29
+    // — under the 0.44 sea floor (the pre-#510 planner froze here, forever) but
+    // over the 0.22 land floor, so the cheap party wave keeps the grind alive.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBeUndefined()
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never assaults such a city by sea — that band risks the captain', () => {
+    // Same ratio band, but the captain is parked beside the port with no landing
+    // tile in overland reach of the city (every island tile bordering it is
+    // held). The sea assault must NOT fire below the sea floor.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      parties: [
+        landParty('block1', 'p2', { x: 11, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block2', 'p2', { x: 11, y: 6 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block3', 'p2', { x: 10, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block4', 'p2', { x: 10, y: 5 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block5', 'p2', { x: 10, y: 6 }, [{ unitId: 'brute', count: 40 }]),
+      ],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).not.toBe('attackCity')
+  })
+
+  it('a party below the sea floor still marches on the snowballed city', () => {
+    const state = landState({
+      parties: [landParty('pa', 'p1', { x: 4, y: 7 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('moveParty')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+})
+
 describe('AI round-limit endgame (#509)', () => {
   // A market whose 100 gold/round is the clear peacetime pick — construct
   // (score ≈ 55) beats a distant approach (≈ 13) until the horizon flips the
