@@ -80,8 +80,17 @@
  * rehire candidate. A v11 log can contain actions a v10 build rejects, and a
  * v10 state with a stranded column beside an owned city replays to different
  * party leadership here, so replaying across the boundary is refused.
+ * v12 — captured captains grant no vision (#522): `currentlyVisibleTiles`
+ * excludes captives, so a seat loses live sight around the capture site for
+ * the whole captivity. No new fields or actions, but visibility feeds
+ * `currentContacts`, which standing sail orders persist (`knownContactIds`)
+ * and interrupt on during turn advancement — a v11 log whose sail orders
+ * sighted an enemy only through a captive's disc replays here to different
+ * pauses and contact baselines (and the per-action `exploredTiles` fold no
+ * longer accumulates the captive's disc), so replaying across the boundary
+ * is refused.
  */
-export const RULES_VERSION = 11
+export const RULES_VERSION = 12
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

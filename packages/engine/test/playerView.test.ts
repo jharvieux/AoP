@@ -187,9 +187,10 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
 
   it('reveals a winner’s prize ship to the loser as a bare hull, not a manifest (#374)', () => {
     // A decisive battle seat-0 wins: seat-1 is captured and its hull becomes
-    // seat-0's prize, spawned on the captured captain's tile — which stays in
-    // seat-1's vision (a captive still lights its tile for its owner). The prize
-    // must read as a plain enemy hull from seat-1's seat, never its own manifest.
+    // seat-0's prize, spawned on the captured captain's tile. A captive lights
+    // nothing for its owner (#522), so the duel is staged on seat-1's doorstep,
+    // where its capital's vision covers the prize tile. The prize must read as
+    // a plain enemy hull from seat-1's seat, never its own manifest.
     const config: GameConfig = {
       ...matchConfig(),
       players: matchConfig().players.map((p) => ({
@@ -203,10 +204,13 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     const base = createGame(config)
     const attacker = ownCaptain(base)
     const defender = enemyCaptain(base)
-    const target = { x: attacker.position.x + 1, y: attacker.position.y }
+    const dx = defender.position.x > 0 ? -1 : 1
+    const stageTile = { x: defender.position.x + dx, y: defender.position.y }
     const adjacent: GameState = {
       ...base,
-      captains: base.captains.map((c) => (c.id === defender.id ? { ...c, position: target } : c)),
+      captains: base.captains.map((c) =>
+        c.id === attacker.id ? { ...c, position: stageTile } : c,
+      ),
     }
     const next = applyAction(adjacent, {
       type: 'attackCaptain',
@@ -289,6 +293,41 @@ describe('playerView — anti-cheat boundary (MULTIPLAYER.md §7)', () => {
     // Every visible tile the selector reports must actually be explored (superset invariant).
     const exploredKeys = new Set(view.tiles.map((t) => tileKey(t.coord)))
     for (const t of view.tiles) if (t.visible) expect(exploredKeys.has(tileKey(t.coord))).toBe(true)
+  })
+
+  it('a captured own captain lights no tiles in the fog view (#522)', () => {
+    const state = createGame(matchConfig())
+    const mine = ownCaptain(state)
+    // The enemy spawn is reliably outside seat-0's vision and exploration
+    // (the encounter test below leans on the same fact).
+    const farSpot = { ...enemyCaptain(state).position }
+    const relocate = (captured: boolean): GameState => ({
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === mine.id
+          ? {
+              ...c,
+              position: farSpot,
+              captured,
+              ...(captured
+                ? {
+                    capturedBy: 'seat-1',
+                    troops: [],
+                    movementPoints: 0,
+                    captivityReturnRound: state.round + 3,
+                  }
+                : undefined),
+            }
+          : c,
+      ),
+    })
+    // Guard: a free captain standing there DOES light the tile into the view.
+    const litView = playerView(relocate(false), 'seat-0')
+    expect(litView.tiles.some((t) => t.visible && tileKey(t.coord) === tileKey(farSpot))).toBe(true)
+    // Captured on the same spot: no live vision, and the never-explored site
+    // stays fully fogged — absent from the emitted tiles entirely.
+    const foggedView = playerView(relocate(true), 'seat-0')
+    expect(foggedView.tiles.some((t) => tileKey(t.coord) === tileKey(farSpot))).toBe(false)
   })
 
   it('shows an encounter only while it sits in current vision', () => {
