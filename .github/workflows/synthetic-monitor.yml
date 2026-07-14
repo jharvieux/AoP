@@ -6,11 +6,16 @@ name: Synthetic Monitor
 # watchers (GitHub's default for scheduled-workflow failures on the default branch) —
 # that email IS the alert channel; no external pager is wired up.
 #
-# What it checks, mirroring deploy.yml's smoke-test reasoning:
-#  - get-leaderboard / list-open-matches respond with a structured 403 FORBIDDEN to an
-#    unauthenticated POST. A literal 200 needs a provisioned smoke-test account (an
-#    operator decision, docs/runbooks/deploy.md); a 403 envelope still proves the
-#    function is deployed, reachable, and executing its auth boundary. Anything else —
+# What it checks (deeper than deploy.yml's smoke test, which stops at the gateway 401):
+#  - get-leaderboard / list-open-matches respond with the functions' OWN structured 403
+#    FORBIDDEN envelope to a POST carrying the anon key as bearer. The anon key is a
+#    valid JWT, so the platform gateway (which rejects bearer-less requests with 401
+#    UNAUTHORIZED_NO_AUTH_HEADER before our code runs — the bug that kept this monitor
+#    red for its first 8 days, #425) passes the request through; `requireUserId` in
+#    supabase/functions/_shared/client.ts then rejects the userless token with 403.
+#    That envelope proves the function is deployed, reachable, and EXECUTING. A literal
+#    200 would need a provisioned smoke-test account (operator decision,
+#    docs/runbooks/deploy.md). Anything else — 401 (regression to gateway rejection),
 #    5xx, timeout, non-envelope body — fails the run.
 #  - extensions.maintenance_heartbeats (#224) has no 'error'/'timed_out' rows in the
 #    last hour, i.e. the sweep-turns / drain-matchmaking / compact-snapshots crons are
@@ -56,6 +61,7 @@ jobs:
             status=$(curl -sS --max-time 20 -o /tmp/probe.json -w '%{http_code}' \
               -X POST "$SUPABASE_URL/functions/v1/$fn" \
               -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
               -H "Content-Type: application/json" \
               -d '{}') || {
               echo "::error::$fn: request failed outright (DNS/TLS/timeout)"
@@ -65,7 +71,7 @@ jobs:
             cat /tmp/probe.json
             echo
             if [ "$status" != "403" ]; then
-              echo "::error::$fn: expected 403 FORBIDDEN (unauthenticated probe), got $status"
+              echo "::error::$fn: expected the function's own 403 FORBIDDEN (userless anon-key probe), got $status"
               return 1
             fi
             if ! grep -q '"code"' /tmp/probe.json; then
