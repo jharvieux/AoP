@@ -34,7 +34,8 @@ PRs #501+#504).
 
 ## In flight
 
-None. No open PRs, no active worktrees, no background processes.
+- **PR #524** (shipyard cutout, #493) — audit-clean, LEFT OPEN for operator style
+  approval (contact sheet + in-scene shot delivered). Merge on approval; regen on veto.
 
 ## Next step
 
@@ -43,10 +44,10 @@ None. No open PRs, no active worktrees, no background processes.
 - **DEPLOY DISPATCH OVERDUE**: ENGINE_VERSION moved many times today (RULES_VERSION
   7→10); edge functions must be redeployed via deploy.yml before production multiplayer
   works. Blocked only on operator convenience (and VERCEL_TOKEN for the web tier).
-- **#500 AI v2** (garrisoning, led parties, items, port-defense threat calc) + adjuncts
-  #509 (round-limit awareness), #510 (capital conquest thins with distance on 4× maps).
-- **#499** stranded shipless-captain rescue; **#502/#503** item toasts (MP / land hauls).
-- **#512** size-aware minimum zoom / fit-to-map button (96² maps).
+- Evening sweep DONE (D-046): AI v2 shipped (#500/#509/#510), rescue (#499,
+  RULES_VERSION→11), toasts (#502/#503), UI (#494/#512). New follow-ups: #519 #522
+  #523 #526 #527 (see D-046). Deploy dispatch needed again post-sweep (ENGINE_VERSION
+  - RULES_VERSION 11 moved).
 
 ## Blocked on user
 
