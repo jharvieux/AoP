@@ -622,8 +622,10 @@ function strike(
   let roll: number
   ;[state, roll] = nextFloat(state)
 
-  // Flat captain-stat adds (#498) land on the per-unit scores before anything
-  // else — the same "(score + flat) then percent" order as combatantStrength.
+  // Flat captain-stat adds (#498) land on the per-unit scores first, before
+  // this path's percent channel (the (100+atk)/(100+def) ratio below) — the
+  // same flat-before-percent ORDER as combatantStrength, though the two paths
+  // combine their percentages differently by design.
   const attackScore = a.attack + battle.attackFlat[attacker.side]
   const defenseScore = d.defense + battle.defenseFlat[target.side]
   const diff = Math.min(

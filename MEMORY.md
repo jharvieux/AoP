@@ -1,3 +1,36 @@
+## D-043 — 2026-07-14 — #498 rebalance: flat captain stats (+N per unit, not %), items boost stats (RULES_VERSION→9)
+
+**Decision.** Operator (2026-07-14, amending D-042's rates): captain attack/defense stat
+points are whole-number FLAT adds to EVERY commanded unit's attack/defense score, applied
+BEFORE percentage scaling — `(unit.score + flat) × (1 + pct/100)` — so a point matters most
+to low-tier units (3 points take a tier-1's attack 1–3 to 4–6, up to 4×; a tier-4 gains
+~25%). Default 1 per point, content-tunable (`CAPTAIN_STAT_TUNING.attackPerPoint`/
+`defensePerPoint`). Skills keep their percentages; speed stays +1 MP/pt. Mid-flight
+amendment: items no longer carry their own percentages — each item grants stat points
+(`ItemDef.statBonuses`; commons +1 to one stat, rares +2 or +2/+1), live while CARRIED
+(carried = equipped, all 8 slots; stash inert), speed items flow through the same refresh
+path (effective from the NEXT refresh — no mid-turn take/deposit movement exploit).
+
+**How.** New `Combatant.attackFlatBonus`/`defenseFlatBonus` channel parallel to the pct
+fields, threaded through naval auto-resolve, the tactical board (flat lands on per-strike
+attack/defense scores before that path's percent ratio), port defense (flats sum across
+defenders like the percentages), and led parties. `effectiveCaptainStats` (skills.ts) is
+the single stats+items aggregation point for reducer/AI/board/UI. RULES_VERSION 8→9 (field
+meaning changed). PR #506.
+
+**Sim battery (same 96-match harness).** Combined delta on every counted metric: ZERO —
+verified per-match, all 96 outcome vectors identical. Gameplay states DO diverge in every
+match where the AI spends stat points (~0–6 late picks/match) and are byte-identical where
+it doesn't; no discrete battle outcome flipped because v1 AI stat usage is thin and AI
+matches have no item source (planner never resolves encounters — #500). Real impact lands
+with #500 and human play; no counterweights added per instruction.
+
+**Rejected.** Overloading the pct fields with flat semantics (parallel channel instead); an
+equip-slot mechanic (carried = equipped); balance counterweights (nothing measurable to
+counter yet).
+
+---
+
 ## D-042 — 2026-07-14 — #498 captain expansion shipped: stats, garrison & port defense, items, captain-led parties (RULES_VERSION→8)
 
 **Decision.** Operator-commissioned epic, four product calls locked in session: (1) level-up
