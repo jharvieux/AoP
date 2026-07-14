@@ -82,6 +82,7 @@ async function createQuickMatch(
   // Quick matches aren't host-configured, so the diplomacy/captivity knobs
   // (#177, #309) take the content defaults — persisted explicitly so a
   // client-side replay rebuilds the same setup it would for any other match.
+  // The round cap (#508) is deliberately not set: quick matches stay unlimited.
   const settings: MatchSettings = {
     mapSize: bucket.mapSize,
     maxPlayers: bucket.matchSize,

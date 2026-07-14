@@ -912,11 +912,14 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       <header className="hud">
         <h1>Age of Plunder</h1>
         <span className="turn-info">
-          Round {view.round} —{' '}
+          Round {view.round}
+          {view.rules.setup.roundLimit !== undefined && ` / ${view.rules.setup.roundLimit}`} —{' '}
           {view.status === 'finished'
             ? view.winnerId
               ? `${view.players.find((p) => p.id === view.winnerId)?.name ?? view.winnerId} wins!`
-              : 'Match finished'
+              : view.endedByRoundLimit
+                ? 'Draw — round limit reached'
+                : 'Match finished'
             : myTurn
               ? 'Your move'
               : `${currentPlayer?.name ?? '…'} is playing`}

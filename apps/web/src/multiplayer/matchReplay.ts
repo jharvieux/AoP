@@ -53,6 +53,8 @@ interface MatchRow {
     captainCaptivityRounds?: number
     /** Absent on matches created before #389; those generated square maps. */
     topology?: 'square' | 'hex'
+    /** Round cap (#508); absent — including on pre-#508 matches — means unlimited. */
+    roundLimit?: number
   }
   engine_version: string
 }
@@ -154,6 +156,7 @@ export class MatchReplayClient {
         betrayalReputationPenalty: match.settings.betrayalReputationPenalty,
         betrayalTruceRounds: match.settings.betrayalTruceRounds,
         captainCaptivityRounds: match.settings.captainCaptivityRounds,
+        roundLimit: match.settings.roundLimit,
       },
       match.settings.topology,
     )

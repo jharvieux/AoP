@@ -161,6 +161,40 @@ Deno.test('parseSettings: rejects out-of-range or non-integer betrayal knobs', (
   }
 })
 
+Deno.test(
+  'parseSettings: carries a valid round limit through, omits the key when unset (#508)',
+  () => {
+    assertEquals(parseSettings({ ...base, roundLimit: 60 }).roundLimit, 60)
+    assertEquals(parseSettings({ ...base, roundLimit: 1 }).roundLimit, 1)
+    assertEquals(parseSettings({ ...base, roundLimit: 500 }).roundLimit, 500)
+    // Unset (or null) must leave the key out of the persisted settings entirely,
+    // matching every pre-#508 match — absent means unlimited.
+    assertEquals('roundLimit' in parseSettings(base), false)
+    assertEquals('roundLimit' in parseSettings({ ...base, roundLimit: null }), false)
+  },
+)
+
+Deno.test('parseSettings: rejects out-of-range or non-integer round limits (#508)', () => {
+  for (const roundLimit of [0, -1, 501, 30.5, 'sixty']) {
+    assertThrows(
+      () => parseSettings({ ...base, roundLimit }),
+      AppError,
+      undefined,
+      `expected roundLimit ${JSON.stringify(roundLimit)} to be rejected`,
+    )
+  }
+})
+
+Deno.test(
+  'buildMatchConfig: threads the round limit into setup, omits it when absent (#508)',
+  () => {
+    const capped = buildMatchConfig(7, 'small', HEX_SEATS, { roundLimit: 60 })
+    assertEquals(capped.setup.roundLimit, 60)
+    const unlimited = buildMatchConfig(7, 'small', HEX_SEATS)
+    assertEquals('roundLimit' in unlimited.setup, false)
+  },
+)
+
 // buildStartMatchConfig (#231): the pure half of the shared start-match sequence.
 // start-match and the quick-match drain each read seats from a different DB row
 // shape, then normalize to `StartMatchSeat` before calling this — these tests
