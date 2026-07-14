@@ -35,11 +35,15 @@ interface SceneSlot {
  * Fixed scene layout: town hall centered at the top, economy to the left,
  * the recruitment chain to the right, walls across the front. Tuned against
  * art/city/backdrop.png (operator-approved 2026-07-13): land buildings stay
- * on the meadow, walls sit above the shoreline, and the shipyard — whose
- * sprite carries its own water — sits in the sea corner at the bottom-right;
- * re-tune together with any backdrop change. A building with no slot (future
- * content) falls back to the overflow strip below the scene so it never
- * loses its tap target.
+ * on the meadow, walls sit above the shoreline. The shipyard sits at the
+ * bottom-right where the backdrop's own shoreline runs closest to that
+ * corner (#493/#524: shipyard.png is a real transparent cutout, no baked-in
+ * water — a pier-on-stilts composition (operator-picked seed 8101) kept at
+ * this slot after a scene-composite check showed its near pilings land
+ * right on the sand/water transition while the far side extends over open
+ * water, reading as a pier built out from the shore); re-tune together with
+ * any backdrop change. A building with no slot (future content) falls back
+ * to the overflow strip below the scene so it never loses its tap target.
  */
 const SCENE_SLOTS: Record<string, SceneSlot> = {
   townhall: { left: 37, top: 6, width: 26, height: 36 },
