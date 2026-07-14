@@ -8,6 +8,7 @@ import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex } from './map
 import { findLandPath, findPath } from './pathfinding'
 import {
   applyAction,
+  captainAwaitingCommand,
   cityPortDefenders,
   cityToCombatant,
   garrisonCityOf,
@@ -1410,9 +1411,15 @@ function bestRecruitCity(
   )
   if (eligible.length === 0) return null
 
+  // A pooled enemy rescue (#499) is off the board — its stale position is
+  // no front to launch toward.
   const frontPoints = [
     ...state.cities.filter((c) => c.ownerId !== playerId).map((c) => c.position),
-    ...state.captains.filter((c) => c.ownerId !== playerId && !c.captured).map((c) => c.position),
+    ...state.captains
+      .filter(
+        (c) => c.ownerId !== playerId && !c.captured && !captainAwaitingCommand(c, state.parties),
+      )
+      .map((c) => c.position),
   ]
   const distToFront = (city: CityState): number =>
     frontPoints.length === 0
@@ -1432,14 +1439,19 @@ function bestRecruitCity(
  * (or, if one is eligible, rehire) one from an owned port — the AI's own
  * escape from the coin-flip loss #308 fixed. Only fires while captain-less;
  * a seat with a live captain builds its fleet through combat/advance scoring
- * instead of proactively stacking captains.
+ * instead of proactively stacking captains. A pooled rescue (#499,
+ * `captainAwaitingCommand`) is inert, not fielded — it must not count as
+ * live here, or a seat whose only captain gets rescued into the pool never
+ * recruits again and goes permanently passive at sea.
  */
 function planRecruitCaptain(
   state: GameState,
   playerId: string,
   scoreBase: number,
 ): ScoredAction | null {
-  const liveCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
+  const liveCaptains = captainsOf(state, playerId).filter(
+    (c) => !c.captured && !captainAwaitingCommand(c, state.parties),
+  )
   if (liveCaptains.length > 0) return null
   const city = bestRecruitCity(state, playerId, state.config.content)
   if (!city) return null
@@ -1451,6 +1463,12 @@ function planRecruitCaptain(
   )
   if (!canAfford(player.resources, { gold: cost })) return null
 
+  // Rehire before minting: a pooled rescue (eligible at once) or a captive
+  // past its captivity round keeps its XP/skills/stats at the same price a
+  // fresh nobody would cost.
+  const pooledRescue = state.captains.find(
+    (c) => c.ownerId === playerId && captainAwaitingCommand(c, state.parties),
+  )
   const eligibleCaptive = state.captains.find(
     (c) =>
       c.ownerId === playerId &&
@@ -1458,9 +1476,10 @@ function planRecruitCaptain(
       c.captivityReturnRound !== undefined &&
       state.round >= c.captivityReturnRound,
   )
+  const rehire = pooledRescue ?? eligibleCaptive
   return {
-    action: eligibleCaptive
-      ? { type: 'recruitCaptain', playerId, cityId: city.id, captainId: eligibleCaptive.id }
+    action: rehire
+      ? { type: 'recruitCaptain', playerId, cityId: city.id, captainId: rehire.id }
       : { type: 'recruitCaptain', playerId, cityId: city.id },
     score: scoreBase,
   }
@@ -1488,12 +1507,16 @@ function planRansomCaptain(
   )
   if (myCaptives.length === 0) return null
 
-  const myLive = captainsOf(state, playerId).filter((c) => !c.captured).length
+  // Pooled rescues (#499) are inert until re-commissioned — count only
+  // fielded captains on both sides of the outnumbered check.
+  const fielded = (ownerId: string): number =>
+    state.captains.filter(
+      (c) => c.ownerId === ownerId && !c.captured && !captainAwaitingCommand(c, state.parties),
+    ).length
+  const myLive = fielded(playerId)
   const enemyMaxLive = Math.max(
     0,
-    ...state.players
-      .filter((p) => p.id !== playerId && !p.eliminated)
-      .map((p) => state.captains.filter((c) => c.ownerId === p.id && !c.captured).length),
+    ...state.players.filter((p) => p.id !== playerId && !p.eliminated).map((p) => fielded(p.id)),
   )
   if (myLive >= enemyMaxLive) return null
 
@@ -1600,9 +1623,11 @@ function planConstruct(
   }
 }
 
-/** No live captain left — the recovery states of #308/#439. */
+/** No live captain left — the recovery states of #308/#439; a pooled rescue (#499) is not fielded. */
 function isCaptainless(state: GameState, playerId: string): boolean {
-  return captainsOf(state, playerId).every((c) => c.captured)
+  return captainsOf(state, playerId).every(
+    (c) => c.captured || captainAwaitingCommand(c, state.parties),
+  )
 }
 
 /**
@@ -1775,7 +1800,8 @@ function planSkillPick(
   const player = requirePlayer(state, playerId)
 
   for (const captain of captainsOf(state, playerId)) {
-    if (captain.captured) continue
+    // Captured and pooled (#499) captains are inert — no picks until back in play.
+    if (captain.captured || captainAwaitingCommand(captain, state.parties)) continue
     if (availableSkillPicks(captain, catalog.captainXpThresholds) < 1) continue
     const level = levelForXp(captain.xp, catalog.captainXpThresholds)
 
@@ -1822,7 +1848,8 @@ function planStatPick(
 ): ScoredAction | null {
   if (!catalog.captainStats) return null
   for (const captain of captainsOf(state, playerId)) {
-    if (captain.captured) continue
+    // Captured and pooled (#499) captains are inert — no picks until back in play.
+    if (captain.captured || captainAwaitingCommand(captain, state.parties)) continue
     if (availableStatPoints(captain, catalog.captainXpThresholds) < 1) continue
     const assault = partyLedBy(state, captain.id) || captain.troops.some((t) => t.count > 0)
     const stat: CaptainStat = !garrisonCityOf(state, captain.id) && assault ? 'attack' : 'defense'

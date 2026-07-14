@@ -159,6 +159,29 @@ describe('captain recovery (#308/#309)', () => {
     expect(action).toEqual({ type: 'recruitCaptain', playerId: 'p1', cityId: 'p2-capital' })
   })
 
+  it('rehires its pooled ship-lost captain rather than counting it as live (#499 interplay)', () => {
+    // p1's only captain sits in the recruitment pool (`captainAwaitingCommand`:
+    // ship lost, leading no party) — inert, not fielded. Before the fix the
+    // desperate-recruit gate counted it as live, so the seat never recruited
+    // again and went permanently passive at sea.
+    const base = createGame(config(5, 5))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === p1cap.id ? { ...c, shipLost: true, troops: [], movementPoints: 0 } : c,
+      ),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      captainId: p1cap.id,
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
   it('ransoms an eligible captive when outnumbered and affordable', () => {
     // p1 keeps one live captain (so the higher-scoring planRecruitCaptain
     // stays out of the running — it only fires when captain-less) plus one
@@ -449,6 +472,21 @@ describe('economy AI', () => {
       captainId: captain.id,
       skillId: 'pirates-t2',
     })
+  })
+
+  it('spends no skill pick on a pooled captain (#499: pooled is inert)', () => {
+    // Same level-up as above, but the captain has been rescued into the
+    // recruitment pool (ship lost, leading no party) — the pick waits until
+    // it is re-commissioned.
+    let state = createGame(econConfig())
+    const captain = captainsOf(state, 'p1')[0]!
+    state = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === captain.id ? { ...c, xp: 200, shipLost: true, troops: [] } : c,
+      ),
+    }
+    expect(nextAiAction(state, 'p1').type).not.toBe('chooseCaptainSkill')
   })
 
   it('buys the cheapest ship upgrade at a docked shipyard', () => {
@@ -1356,6 +1394,19 @@ describe('AI captain-expansion verbs (#500)', () => {
       captainId: 'c1',
       stat: 'attack',
     })
+  })
+
+  it('spends no stat point on a pooled captain (#499: pooled is inert)', () => {
+    // The captain has a point available but sits in the recruitment pool
+    // (ship lost, leading no party) — it gets no picks until re-commissioned.
+    const base = landState({
+      captains: [
+        { ...landCaptain('c1', 'p1', { x: 3, y: 5 }, []), shipLost: true, movementPoints: 0, xp: 200 }, // prettier-ignore
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = { ...base, config: { ...base.config, content: STAT_CATALOG } }
+    expect(nextAiAction(state, 'p1').type).not.toBe('chooseCaptainStat')
   })
 
   it('marches a purposeless led party home to its anchored ship and re-boards it', () => {
