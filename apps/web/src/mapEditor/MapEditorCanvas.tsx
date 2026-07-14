@@ -7,7 +7,7 @@ import type { EditorDraft } from './types'
 /**
  * The map editor's paint surface (#41). Deliberately a plain 2D `<canvas>`,
  * not the Pixi-based `MapCanvas` gameplay uses: there's no fog of war, no
- * captains/cities, and authored maps top out at 40x40 tiles, so a full
+ * captains/cities, and authored maps top out at 96x96 tiles, so a full
  * redraw per edit is cheap and the WebGL/ticker machinery `MapCanvas` needs
  * for live matches would be pure overhead here. Shares `MapCanvas`'s tile
  * and encounter color palette so the same colors mean the same thing in
