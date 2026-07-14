@@ -1386,3 +1386,50 @@ describe('AI captain-expansion verbs (#500)', () => {
     })
   })
 })
+
+describe('AI round-limit endgame (#509)', () => {
+  // A market whose 100 gold/round is the clear peacetime pick — construct
+  // (score ≈ 55) beats a distant approach (≈ 13) until the horizon flips the
+  // weights: economy damps to ≈ 14 and the city verb boosts to ≈ 19.
+  const CATALOG_WITH_MARKET: ContentCatalog = {
+    ...LAND_CATALOG,
+    buildings: {
+      ...LAND_CATALOG.buildings,
+      market: { produces: { gold: 100 }, cost: {} },
+    },
+  }
+
+  function cappedState(roundLimit?: number): GameState {
+    const base = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {}), p2CityAt({ x: 11, y: 5 }, {})],
+    })
+    return {
+      ...base,
+      config: {
+        ...base.config,
+        content: CATALOG_WITH_MARKET,
+        setup: roundLimit === undefined ? GAME_SETUP : { ...GAME_SETUP, roundLimit },
+      },
+    }
+  }
+
+  it('an uncapped match keeps building; inside the horizon it sails for the scoreboard', () => {
+    // No round limit: the market is the best action, exactly as before #509.
+    const uncapped = nextAiAction(cappedState(), 'p1')
+    expect(uncapped.type).toBe('construct')
+
+    // Round 1 of a roundLimit-8 match is already inside the 8-round horizon:
+    // long-payback construction damps, city capture boosts, and the loaded
+    // captain sails for the enemy city instead.
+    const capped = cappedState(8)
+    const action = nextAiAction(capped, 'p1')
+    expect(action.type).toBe('moveCaptain')
+    expect(() => applyAction(capped, action)).not.toThrow()
+  })
+
+  it('a capped match far from its limit plays the standard line', () => {
+    // Round 1 with a 30-round cap: 30 rounds remain, horizon is 8 — no shift.
+    expect(nextAiAction(cappedState(30), 'p1').type).toBe('construct')
+  })
+})

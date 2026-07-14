@@ -123,6 +123,9 @@ export const AI_TUNING: AiTuning = {
   garrisonCaptainScoreBase: 55,
   ungarrisonCaptainScoreBase: 15,
   takeItemScoreBase: 45,
+  endgameHorizonRounds: 8,
+  endgameCityScoreMult: 1.5,
+  endgameEconomyScoreMult: 0.25,
 }
 
 export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {

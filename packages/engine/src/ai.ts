@@ -59,6 +59,12 @@ const FALLBACK_ENGAGE_MIN_RATIO = 0.9
 const FALLBACK_ATTRITION_MIN_RATIO = FALLBACK_ENGAGE_MIN_RATIO
 const FALLBACK_ATTRITION_SCORE_MULT = 0.5
 /**
+ * With no tuning configured the endgame horizon is 0 rounds, so round-limit
+ * scoring (#509) never engages and a capped, tuning-less match plays exactly
+ * as before. Real matches inject a positive horizon.
+ */
+const FALLBACK_ENDGAME_HORIZON_ROUNDS = 0
+/**
  * With no tuning configured the siege-commitment bonus is 0, so conquest scores
  * exactly as it did pre-#471 (#462 attrition, no stickiness). Real matches inject
  * a positive bonus so a loaded captain presses a reachable siege to the wall.
@@ -189,6 +195,17 @@ export interface AiTuning {
   ungarrisonCaptainScoreBase: number
   /** Score for picking the best stash item up onto a captain docked at an owned city (#500). */
   takeItemScoreBase: number
+  /**
+   * Rounds remaining (including the current one) at or under which a match
+   * with a configured {@link GameSetup.roundLimit} switches to endgame scoring
+   * (#509): city capture/hold verbs scale by {@link endgameCityScoreMult} and
+   * long-payback economy verbs by {@link endgameEconomyScoreMult}. 0 disables.
+   */
+  endgameHorizonRounds: number
+  /** Endgame multiplier (>1) on city capture and hold scores (#509). */
+  endgameCityScoreMult: number
+  /** Endgame multiplier (<1) on long-payback economy scores — construct, ship upgrades (#509). */
+  endgameEconomyScoreMult: number
 }
 
 /**
@@ -363,6 +380,18 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     baseTuning?.recruitCaptainScoreBase ?? FALLBACK_RECRUIT_CAPTAIN_SCORE_BASE
   const ransomScoreBase = baseTuning?.ransomScoreBase ?? FALLBACK_RANSOM_SCORE_BASE
 
+  // Round-limit awareness (#509): inside the endgame horizon of a capped match
+  // the winner is most cities → gold, so city capture/hold verbs scale up and
+  // long-payback economy verbs (construct, refits) scale down. A pure scoring
+  // adjustment — no new subsystem, and uncapped matches are untouched.
+  const roundLimit = state.config.setup.roundLimit
+  const endgame =
+    roundLimit !== undefined &&
+    roundLimit - state.round + 1 <=
+      (baseTuning?.endgameHorizonRounds ?? FALLBACK_ENDGAME_HORIZON_ROUNDS)
+  const cityMult = endgame ? (baseTuning?.endgameCityScoreMult ?? 1) : 1
+  const econMult = endgame ? (baseTuning?.endgameEconomyScoreMult ?? 1) : 1
+
   const candidates: ScoredAction[] = [{ action: { type: 'endTurn', playerId }, score: 0 }]
   const consider = (candidate: ScoredAction | null): void => {
     if (candidate) candidates.push(candidate)
@@ -487,9 +516,10 @@ export function nextAiAction(state: GameState, playerId: string): Action {
                 ...(lead ? { withCaptain: true } : {}),
               },
               score:
-                attackScoreBase * landRatio * (landWinning ? 1 : attritionScoreMult) +
-                (landWinning ? 0 : siegeBonus) +
-                landAssaultBonus * landRatio,
+                (attackScoreBase * landRatio * (landWinning ? 1 : attritionScoreMult) +
+                  (landWinning ? 0 : siegeBonus) +
+                  landAssaultBonus * landRatio) *
+                cityMult,
             })
           }
         }
@@ -501,18 +531,19 @@ export function nextAiAction(state: GameState, playerId: string): Action {
               captainId: cap.id,
               targetCityId: city.id,
             },
-            score: attackScoreBase * ratio * combatMult + siegeBonus,
+            score: (attackScoreBase * ratio * combatMult + siegeBonus) * cityMult,
           })
           continue
         }
         const step = approachCity(state, cap, city, pathCache)
         if (step) {
           const score =
-            (advanceScoreBase +
+            ((advanceScoreBase +
               (1 / (1 + mapDistance(state.map, cap.position, city.position))) *
                 advanceDistanceBonus) *
               combatMult +
-            siegeBonus
+              siegeBonus) *
+            cityMult
           consider({
             action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
             score,
@@ -568,7 +599,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
               partyId: party.id,
               targetCityId: city.id,
             },
-            score: attackScoreBase * ratio * combatMult + siegeBonus + landBonus,
+            score: (attackScoreBase * ratio * combatMult + siegeBonus + landBonus) * cityMult,
           })
           continue
         }
@@ -578,12 +609,13 @@ export function nextAiAction(state: GameState, playerId: string): Action {
           consider({
             action: { type: 'moveParty', playerId, partyId: party.id, to: step },
             score:
-              (advanceScoreBase +
+              ((advanceScoreBase +
                 (1 / (1 + mapDistance(state.map, party.position, city.position))) *
                   advanceDistanceBonus) *
                 combatMult +
-              siegeBonus +
-              landBonus,
+                siegeBonus +
+                landBonus) *
+              cityMult,
           })
         }
       }
@@ -611,22 +643,49 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   // Economy verbs (#67) all need the content catalog and its tuning; without
   // both, the AI plays combat-only, exactly as it did before this feature.
   if (catalog && tuning) {
+    // Endgame (#509): construct and refits are long-payback spends — a building
+    // finished with three rounds left never repays — so their scores damp while
+    // recruit (instant garrison strength, i.e. city-holding) stays untouched.
+    const econTuning = endgame
+      ? {
+          ...tuning,
+          buildScoreScale: tuning.buildScoreScale * econMult,
+          upgradeScoreBase: tuning.upgradeScoreBase * econMult,
+        }
+      : tuning
     consider(planSkillPick(state, playerId, catalog, tuning))
     consider(planStatPick(state, playerId, catalog, tuning))
-    consider(planConstruct(state, playerId, catalog, tuning))
+    consider(planConstruct(state, playerId, catalog, econTuning))
     consider(planRecruit(state, playerId, catalog, tuning))
     consider(planGarrisonToShip(state, playerId, catalog, tuning, threatenedCityIds))
-    consider(planUpgrade(state, playerId, catalog, tuning))
+    consider(planUpgrade(state, playerId, catalog, econTuning))
     // Reinforce a threatened city from a captain docked at it (counter, #475).
-    consider(planReinforceCity(state, playerId, threatenedCityIds, reinforceCityScoreBase))
+    // Holding cities IS the round-limit scoreboard, so it scales with cityMult.
+    consider(
+      planReinforceCity(state, playerId, threatenedCityIds, reinforceCityScoreBase * cityMult),
+    )
     // Garrison verbs (#500): commit a docked captain to a threatened city's
-    // defence, and stand it down again once the threat has passed.
+    // defence, and stand it down again once the threat has passed. Standing
+    // down is skipped inside the endgame horizon — held cities are the
+    // scoreboard, and a released captain cannot re-berth until next turn.
     consider(
-      planGarrisonCaptain(state, playerId, threatenedCityIds, tuning.garrisonCaptainScoreBase),
+      planGarrisonCaptain(
+        state,
+        playerId,
+        threatenedCityIds,
+        tuning.garrisonCaptainScoreBase * cityMult,
+      ),
     )
-    consider(
-      planUngarrisonCaptain(state, playerId, threatenedCityIds, tuning.ungarrisonCaptainScoreBase),
-    )
+    if (!endgame) {
+      consider(
+        planUngarrisonCaptain(
+          state,
+          playerId,
+          threatenedCityIds,
+          tuning.ungarrisonCaptainScoreBase,
+        ),
+      )
+    }
     // Stash pickup (#500): carried items boost a captain's combat bonuses, so
     // an idle stash at an owned port is free strength left on the table.
     consider(planTakeItem(state, playerId, catalog, tuning))

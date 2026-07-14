@@ -259,6 +259,24 @@ export interface AiTuning {
    * fight or a threatened city's defence.
    */
   takeItemScoreBase: number
+  /**
+   * Rounds remaining (including the current) at or under which a match with a
+   * configured `GameSetup.roundLimit` (#508) switches to endgame scoring
+   * (#509). 0 disables endgame awareness entirely.
+   */
+  endgameHorizonRounds: number
+  /**
+   * Endgame multiplier (#509) on city capture and hold scores — assaults,
+   * approaches, disembarks, reinforcement, captain garrisoning. At the cap the
+   * winner is most cities (gold tiebreak), so cities are the scoreboard.
+   */
+  endgameCityScoreMult: number
+  /**
+   * Endgame multiplier (#509) on long-payback economy scores — construct and
+   * ship upgrades — which cannot repay inside the horizon. Recruiting stays
+   * undamped: fresh garrison troops hold cities, which IS the scoreboard.
+   */
+  endgameEconomyScoreMult: number
 }
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
@@ -688,6 +706,15 @@ export const AI_TUNING: AiTuning = {
   // Above garrisonToShip/recruit (30/25) — equipping a captain is instant,
   // permanent strength — below reinforce (60) and every combat verb.
   takeItemScoreBase: 45,
+  // 8 rounds (#509): roughly the time to finish one last siege or sail home a
+  // defender — long enough to redirect the fleet, short enough that most of a
+  // capped match still plays the standard line.
+  endgameHorizonRounds: 8,
+  endgameCityScoreMult: 1.5,
+  // 0.25 damps construct/refits without zeroing them: a building started at the
+  // horizon's edge may still repay, and a zero would make the damped verbs
+  // invisible to blunder-tier runner-up selection.
+  endgameEconomyScoreMult: 0.25,
 }
 
 /**
