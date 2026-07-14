@@ -96,6 +96,28 @@ describe('MatchActionClient.submitAction (#261: the single multiplayer write pat
     expect(result.encounterOutcome).toBeUndefined()
   })
 
+  it('carries siteItemGained through when the action was a captureSite land haul (#527)', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { seq: 9, view: { viewerId: 'seat-0' }, siteItemGained: 'cutlass' }),
+      )
+    const client = new MatchActionClient(CONFIG, fetchMock)
+
+    const result = await client.submitAction(SESSION, PARAMS)
+    expect(result.siteItemGained).toBe('cutlass')
+  })
+
+  it('omits siteItemGained for a non-captureSite action', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(200, { seq: 8, view: { viewerId: 'seat-0' } }))
+    const client = new MatchActionClient(CONFIG, fetchMock)
+
+    const result = await client.submitAction(SESSION, PARAMS)
+    expect(result.siteItemGained).toBeUndefined()
+  })
+
   it('marks SEQ_CONFLICT as stale (§9 step 3: refetch, never patch)', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
       jsonResponse(409, {

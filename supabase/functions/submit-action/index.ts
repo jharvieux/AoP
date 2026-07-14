@@ -1,13 +1,14 @@
 // submit-action (docs/MULTIPLAYER.md §5.4): POST { matchId, expectedSeq, action } ->
-// { seq, view, battleReport?, encounterOutcome? }. The single choke point where a
-// proposed Action is validated through the engine and appended to the log. The caller's
-// seat comes from their JWT; the action's playerId is overwritten from it (§11
-// forged-action mitigation). `battleReport` rides along only when the action was an
-// attack (#285) — the caller's own combat outcome, never fog-filtered further since
-// fighting an enemy already reveals exactly what was fought. `encounterOutcome` rides
-// along only when the action resolved an encounter (#502) — likewise the caller's own
-// result and only ever in the caller's own response; every other seat learns nothing
-// beyond what its own fog-locked PlayerView already exposes.
+// { seq, view, battleReport?, encounterOutcome?, siteItemGained? }. The single choke
+// point where a proposed Action is validated through the engine and appended to the
+// log. The caller's seat comes from their JWT; the action's playerId is overwritten
+// from it (§11 forged-action mitigation). `battleReport` rides along only when the
+// action was an attack (#285) — the caller's own combat outcome, never fog-filtered
+// further since fighting an enemy already reveals exactly what was fought.
+// `encounterOutcome` rides along only when the action resolved an encounter (#502),
+// and `siteItemGained` only when it was a `captureSite` land haul (#527) — likewise
+// the caller's own result and only ever in the caller's own response; every other
+// seat learns nothing beyond what its own fog-locked PlayerView already exposes.
 
 import { playerView, type Action } from '@aop/engine'
 import { serviceClient, requireUserId } from '../_shared/client.ts'
@@ -54,7 +55,7 @@ Deno.serve(async (req) => {
     // so a missing or forged playerId never reaches validation or the log.
     const action = sanitizeAction({ ...body.action, playerId: seatPlayerId(seat) })
 
-    const { seq, state, battleReport, encounterOutcome } = await submitAction(
+    const { seq, state, battleReport, encounterOutcome, siteItemGained } = await submitAction(
       db,
       body.matchId,
       seat,
@@ -65,6 +66,7 @@ Deno.serve(async (req) => {
       view: playerView(state, seatPlayerId(seat)),
       ...(battleReport ? { battleReport } : {}),
       ...(encounterOutcome ? { encounterOutcome } : {}),
+      ...(siteItemGained ? { siteItemGained } : {}),
     })
   } catch (err) {
     return errorResponse(err)

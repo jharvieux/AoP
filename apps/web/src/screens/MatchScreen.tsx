@@ -138,10 +138,12 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   // Structured result of the viewer's own last attack (#285), for the battle
   // report sheet — derived output, never part of the polled view.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
-  // The item the viewer's own last encounter dropped (#502) — the multiplayer
-  // surface for the same `encounterOutcome.itemGained` single-player feeds
-  // GameScreen's event feed (#498). A fresh object per find so an identical
-  // back-to-back drop still restarts the dismiss timer (mirrors App.tsx).
+  // The item the viewer's own last encounter (#502) or land-haul capture
+  // (#527) turned up — the multiplayer surface for the same
+  // `encounterOutcome.itemGained` / `siteItemGained` single-player feeds
+  // GameScreen's event feed (#498/#503). A fresh object per find so an
+  // identical back-to-back drop still restarts the dismiss timer (mirrors
+  // App.tsx).
   const [itemFound, setItemFound] = useState<{ itemId: string } | null>(null)
   // Interactive-combat session (#408/#409, docs/design/multiplayer-tactical-probe.md): the
   // driver holds the running per-side CAS counters; `battleOutcome` is the engine context to
@@ -336,6 +338,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       if (outcome.result.battleReport) setBattleReport(outcome.result.battleReport)
       if (outcome.result.encounterOutcome?.itemGained) {
         setItemFound({ itemId: outcome.result.encounterOutcome.itemGained })
+      } else if (outcome.result.siteItemGained) {
+        setItemFound({ itemId: outcome.result.siteItemGained })
       }
       // The response carries no turn_deadline; pick the fresh one up now
       // rather than waiting out the poll interval.
