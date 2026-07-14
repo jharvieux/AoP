@@ -811,6 +811,8 @@ export interface MapValidationLimits {
   maxPlayers: number
   minStartDistance: number
   maxHomeIslandAreaRatio: number
+  maxEncounters: number
+  maxResourceNodes: number
 }
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
@@ -830,4 +832,29 @@ export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   // Generated maps are perfectly symmetric (ratio 1); authored maps get
   // slack for hand-sculpted islands that aren't pixel-identical.
   maxHomeIslandAreaRatio: 1.5,
+  // #517: the byte cap (@aop/shared's MAP_CODE_MAX_BYTES) was the only backstop
+  // against entity-spam payloads — a legal-but-abusive map could carry
+  // thousands of encounters/resource nodes (~395 KiB at 2000 each, measured in
+  // communityMaps.test.ts) before the byte gate caught it. These per-type
+  // ceilings give validation a specific, named failure instead of a generic
+  // size overflow, sized against measured density at the largest legal map
+  // (96x96, 8 players):
+  //  - encounters: the procedural water-encounter scatter (@aop/content's
+  //    ENCOUNTER_CATALOG.spawnDensity, 0.012/navigable-water-tile) places
+  //    ~80 at xlarge (measured: 6733 navigable water tiles). 200 keeps 2.5x
+  //    headroom over that natural density for a hand-authored map that wants
+  //    an unusually encounter-rich board.
+  //  - resource nodes: there is no procedural equivalent (author-placed
+  //    only) — the canonical authored STARTING_MAP (startingMap.ts) places 4
+  //    nodes for 2 players on a 48x48 board, a density of ~1 node per hundred
+  //    tiles per player; scaled to 8 players on the 96x96 ceiling that is
+  //    ~16. 200 keeps well over 10x headroom for a deliberately
+  //    resource-dense economy map.
+  // Both ceilings sit an order of magnitude below the 2000-per-type spam case
+  // the byte gate used to catch alone, so the entity-count check now rejects
+  // it first, with the byte cap remaining the final backstop for payloads
+  // that are merely huge rather than over any single type's ceiling (e.g. a
+  // long multi-byte name plus many types near their individual caps at once).
+  maxEncounters: 200,
+  maxResourceNodes: 200,
 }

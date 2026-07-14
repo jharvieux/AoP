@@ -109,6 +109,10 @@ export interface MapValidationLimits {
   minStartDistance: number
   /** Max allowed ratio between the largest and smallest home island's land area. */
   maxHomeIslandAreaRatio: number
+  /** Max author-placed encounters (#517) — see @aop/content's MAP_VALIDATION_LIMITS for sizing rationale. */
+  maxEncounters: number
+  /** Max author-placed resource nodes (#517) — see @aop/content's MAP_VALIDATION_LIMITS for sizing rationale. */
+  maxResourceNodes: number
 }
 
 export interface MapValidationError {
@@ -258,6 +262,27 @@ export function validateMapDefinition(
           message: `start position ${i} is not reachable by sea from start position 0`,
         })
       }
+    })
+  }
+
+  // Entity-count ceilings (#517): the byte cap (MAP_CODE_MAX_BYTES,
+  // @aop/shared/communityMaps.ts) was previously the only backstop against a
+  // legal-but-abusive map carrying thousands of encounters/resource nodes —
+  // and it only catches that on a poorly-compressed encoding; a real map
+  // with highly RLE-compressible tiles could spend the byte budget it saves
+  // on tiles on far more entities instead, so an explicit per-type cap here
+  // (checked independent of encoding) is the real backstop. Checked before
+  // the per-entity loops below so both errors are reported together.
+  if ((def.encounters?.length ?? 0) > limits.maxEncounters) {
+    errors.push({
+      code: 'encounter-count-exceeded',
+      message: `map has ${def.encounters!.length} encounters, exceeding the maximum of ${limits.maxEncounters}`,
+    })
+  }
+  if ((def.resourceNodes?.length ?? 0) > limits.maxResourceNodes) {
+    errors.push({
+      code: 'resource-node-count-exceeded',
+      message: `map has ${def.resourceNodes!.length} resource nodes, exceeding the maximum of ${limits.maxResourceNodes}`,
     })
   }
 
