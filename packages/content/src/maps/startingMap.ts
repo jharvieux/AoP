@@ -66,7 +66,13 @@ export interface StartingMapDefinition {
 
 export const MAP_SIZE = 48
 
-/** Radius of each home-island disc (matches the generated small/medium/large radius). */
+/**
+ * Radius of each home-island disc. Deliberately one below the generated
+ * presets' radius (GAME_SETUP.homeIslandRadius, 4): the duel map's conquest
+ * pacing was tuned via the port-spacing sweep above, and the slimmer disc
+ * keeps interiors big enough to march through while landing beaches stay a
+ * short hop from the walls.
+ */
 const HOME_ISLAND_RADIUS = 3
 
 /** Disc centres sit inland of their port, which faces the map centre. */
