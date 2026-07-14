@@ -160,6 +160,8 @@ export interface MatchSetupOverrides {
   captainCaptivityRounds?: number | undefined
   /** Host preference (#305). Multiplayer's interactive Tactical UI doesn't exist yet — see #321. */
   battleResolution?: 'tactical' | 'auto' | undefined
+  /** Host-chosen round cap (#508); absent = unlimited, the pre-#508 behavior. */
+  roundLimit?: number | undefined
 }
 
 /**
@@ -196,6 +198,9 @@ export function buildMatchConfig(
       captainCaptivityRounds:
         setupOverrides.captainCaptivityRounds ?? GAME_SETUP.captainCaptivityRounds,
       battleResolution: setupOverrides.battleResolution ?? GAME_SETUP.battleResolution ?? 'auto',
+      // Round cap (#508): the key must stay absent when unset — GAME_SETUP
+      // carries no default, and pre-#508 matches must rebuild byte-identical.
+      ...(setupOverrides.roundLimit !== undefined ? { roundLimit: setupOverrides.roundLimit } : {}),
     },
     combatStats: combatStatsData(),
     content: buildCatalog(),

@@ -51,6 +51,12 @@ export interface PlayerView {
   status: GameStatus
   winnerId: string | null
   /**
+   * Present (`true`) only when the match ended by hitting the round cap
+   * (#508). Public information, like the `roundLimit` in {@link ViewRules}'
+   * setup — every seat agreed to the cap in the lobby.
+   */
+  endedByRoundLimit?: true
+  /**
    * Balance data the client legitimately needs for local optimistic play and
    * odds previews (§9). Identical for every seat and already shipped in the
    * client bundle — but note `config.seed` and `config.mapDefinition` are
@@ -463,6 +469,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
     currentPlayerIndex: state.currentPlayerIndex,
     status: state.status,
     winnerId: state.winnerId,
+    ...(state.endedByRoundLimit ? { endedByRoundLimit: true as const } : {}),
     rules,
     mapWidth: state.map.width,
     mapHeight: state.map.height,

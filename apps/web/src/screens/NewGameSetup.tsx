@@ -51,6 +51,13 @@ const TRUCE_ROUNDS_MAX = 10
 const CAPTIVITY_ROUNDS_MIN = 0
 const CAPTIVITY_ROUNDS_MAX = 20
 
+// Round-limit presets (#508). `undefined` is Unlimited — the default, matching
+// every game before the cap existed. 30 is a brisk skirmish, 60 a standard
+// campaign, 100 a long haul; at the cap most cities wins, gold breaks ties.
+// Server-side lobby validation accepts 1..500 (supabase/functions/_shared/
+// match.ts) so these presets can be retuned without a schema change.
+const ROUND_LIMITS: (number | undefined)[] = [undefined, 30, 60, 100]
+
 export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const { factionName } = useTheme()
   const [mapSize, setMapSize] = useState<MapSize>('small')
@@ -60,6 +67,7 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
   const [betrayalPenalty, setBetrayalPenalty] = useState(GAME_SETUP.betrayalReputationPenalty)
   const [truceRounds, setTruceRounds] = useState(GAME_SETUP.betrayalTruceRounds)
   const [captivityRounds, setCaptivityRounds] = useState(GAME_SETUP.captainCaptivityRounds)
+  const [roundLimit, setRoundLimit] = useState<number | undefined>(GAME_SETUP.roundLimit)
   const [battleResolution, setBattleResolution] = useState<
     NonNullable<GameSetup['battleResolution']>
   >(GAME_SETUP.battleResolution ?? 'auto')
@@ -113,6 +121,8 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
         betrayalTruceRounds: truceRounds,
         captainCaptivityRounds: captivityRounds,
         battleResolution,
+        // Key stays absent for Unlimited (#508) — absent means uncapped.
+        ...(roundLimit !== undefined ? { roundLimit } : {}),
       },
       combatStats: combatStatsData(),
       content: buildCatalog(),
@@ -163,6 +173,26 @@ export function NewGameSetup({ onPlay, onBack }: NewGameSetupProps) {
               Square
             </button>
           </div>
+        </div>
+
+        <div className="setup-section">
+          <label className="section-label">Round Limit</label>
+          <div className="button-group">
+            {ROUND_LIMITS.map((limit) => (
+              <button
+                key={limit ?? 'unlimited'}
+                className={`size-button ${roundLimit === limit ? 'active' : ''}`}
+                onClick={() => setRoundLimit(limit)}
+              >
+                {limit ?? 'Unlimited'}
+              </button>
+            ))}
+          </div>
+          <p className="building-option__hint">
+            {roundLimit === undefined
+              ? 'Play until one crew rules the seas.'
+              : `The match ends after round ${roundLimit} — most cities wins, gold breaks ties.`}
+          </p>
         </div>
 
         <div className="setup-section">

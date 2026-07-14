@@ -1682,7 +1682,9 @@ export function GameScreen({
       <header className="hud">
         <h1>Age of Plunder</h1>
         <span className="turn-info">
-          Round {game.round} — {player.name} (
+          Round {game.round}
+          {game.config.setup.roundLimit !== undefined &&
+            ` / ${game.config.setup.roundLimit}`} — {player.name} (
           {factionName(player.faction, FACTIONS[player.faction].name)})
         </span>
         <ResourceHud resources={viewer.resources} />

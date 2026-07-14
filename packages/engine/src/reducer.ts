@@ -3058,6 +3058,29 @@ function matchResult(
 }
 
 /**
+ * Who wins a match that hits its round cap (#508): the living seat holding the
+ * most cities; ties broken by gold treasury; still tied is a draw (`null`) —
+ * never broken by seat order, so two even fleets share the result
+ * deterministically. Eliminated seats' pieces were already swept off the board,
+ * so only living seats can score.
+ */
+function roundLimitWinner(state: GameState): string | null {
+  const alive = state.players.filter((p) => !p.eliminated)
+  const scores = alive.map((p) => ({
+    id: p.id,
+    cities: state.cities.filter((c) => c.ownerId === p.id).length,
+    gold: p.resources.gold,
+  }))
+  if (scores.length === 0) return null
+  const maxCities = Math.max(...scores.map((s) => s.cities))
+  const leaders = scores.filter((s) => s.cities === maxCities)
+  if (leaders.length === 1) return leaders[0]!.id
+  const maxGold = Math.max(...leaders.map((s) => s.gold))
+  const richest = leaders.filter((s) => s.gold === maxGold)
+  return richest.length === 1 ? richest[0]!.id : null
+}
+
+/**
  * After a battle: a player is eliminated only once they hold no live captain,
  * no city (#308), AND no landing party (#465) — a captured captain doesn't
  * count as "having a captain" (it can't act), but a city alone keeps a seat
@@ -3124,6 +3147,20 @@ function advanceTurn(state: GameState): GameState {
       round += 1
     }
   } while (state.players[index]!.eliminated)
+
+  // Round cap (#508): the limit is the last round played. The check sits at
+  // the same round boundary as income/replenish so a capped log replays to the
+  // exact state it ended in live — the phantom round past the cap never starts,
+  // collects no income, and moves no seat pointer.
+  const roundLimit = state.config.setup.roundLimit
+  if (roundLimit !== undefined && round > roundLimit) {
+    return {
+      ...state,
+      status: 'finished',
+      winnerId: roundLimitWinner(state),
+      endedByRoundLimit: true,
+    }
+  }
 
   const roundAdvanced = round !== state.round
   const content = state.config.content

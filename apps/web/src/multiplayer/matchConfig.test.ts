@@ -78,6 +78,17 @@ describe('buildMatchConfig', () => {
     expect(config.setup.captainCaptivityRounds).toBe(GAME_SETUP.captainCaptivityRounds)
   })
 
+  // #508: the host's round cap must survive the config rebuild; when unset the
+  // key must stay absent (not `undefined`) so a pre-#508 match rebuilds a
+  // byte-identical setup.
+  it('threads a host-configured round limit into config.setup, omits the key when unset', () => {
+    expect(buildMatchConfig(7, 'small', SEATS, { roundLimit: 60 }).setup.roundLimit).toBe(60)
+    expect('roundLimit' in buildMatchConfig(7, 'small', SEATS).setup).toBe(false)
+    expect(
+      'roundLimit' in buildMatchConfig(7, 'small', SEATS, { roundLimit: undefined }).setup,
+    ).toBe(false)
+  })
+
   it('leaves the rest of GAME_SETUP untouched while overriding only the two knobs', () => {
     const config = buildMatchConfig(7, 'small', SEATS, { betrayalTruceRounds: 5 })
     expect(config.setup).toEqual({

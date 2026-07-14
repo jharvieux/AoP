@@ -79,6 +79,12 @@ export interface MatchSettings {
    * as pre-#389 start-match would have generated them.
    */
   topology?: GridTopology
+  /**
+   * Host-chosen round cap (#508); overrides the (absent) `GAME_SETUP.roundLimit`.
+   * Absent — including in every settings blob stored before the field existed —
+   * means unlimited, so old matches rebuild identically.
+   */
+  roundLimit?: number
 }
 
 /** A server-generated map + RNG seed (§11 chosen-seed advantage: never client-chosen).
@@ -668,6 +674,7 @@ export function buildStartMatchConfig(
       betrayalReputationPenalty: settings.betrayalReputationPenalty,
       betrayalTruceRounds: settings.betrayalTruceRounds,
       captainCaptivityRounds: settings.captainCaptivityRounds,
+      roundLimit: settings.roundLimit,
     },
     settings.topology,
   )
@@ -1445,6 +1452,18 @@ export function parseSettings(raw: unknown): MatchSettings {
   if (topology !== 'square' && topology !== 'hex') {
     throw new AppError('BAD_REQUEST', 'settings.topology must be square | hex')
   }
+  // Round cap (#508). Omitted/null means unlimited — the key is then left out of
+  // the persisted settings entirely, matching every pre-#508 match. 1..500 is a
+  // superset of the NewGameSetup presets (30/60/100) so the client can retune
+  // its presets without a server change.
+  const roundLimit =
+    s.roundLimit === undefined || s.roundLimit === null ? undefined : Number(s.roundLimit)
+  if (
+    roundLimit !== undefined &&
+    (!Number.isInteger(roundLimit) || roundLimit < 1 || roundLimit > 500)
+  ) {
+    throw new AppError('BAD_REQUEST', 'settings.roundLimit must be an integer 1..500 or omitted')
+  }
   return {
     mapSize,
     maxPlayers,
@@ -1456,6 +1475,7 @@ export function parseSettings(raw: unknown): MatchSettings {
     betrayalTruceRounds,
     captainCaptivityRounds,
     topology,
+    ...(roundLimit !== undefined ? { roundLimit } : {}),
   }
 }
 
