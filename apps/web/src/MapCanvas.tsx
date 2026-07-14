@@ -396,8 +396,25 @@ export interface MapCanvasProps {
    * (the sticky preview just clears on the second tap instead).
    */
   onSetCourse?: (cell: Coord) => void
-  /** Owning player id -> faction id, so ships can pick a faction-specific sprite (#115). */
-  factionOf: (ownerId: string) => FactionId | undefined
+  /**
+   * Owning player id -> faction id, so ships/parties/claimed sites can pick a
+   * faction-specific sprite (#115). Captain and landing-party `ownerId`s —
+   * and a land site's `claimedBy` — are always real players, never the
+   * `'neutral'` sentinel city owners can be (see {@link cityFactionOf}), so
+   * implementations may throw for an unmatched id instead of returning
+   * `undefined` (#AOP-CLIENT-1 postmortem: fail loud on a bug, don't render
+   * around it).
+   */
+  factionOf: (ownerId: string) => FactionId
+  /**
+   * City ownerId -> faction id, or `undefined` for the `'neutral'` sentinel
+   * inland settlements are seeded with (`packages/engine/src/game.ts:198`) —
+   * the one ownerId in the game that isn't a real player. Optional: falls
+   * back to {@link factionOf} when omitted, for read-only board consumers
+   * (replay, multiplayer) that predate neutral cities and don't yet
+   * special-case them.
+   */
+  cityFactionOf?: (ownerId: string) => FactionId | undefined
   /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
   controlsRef?: MutableRefObject<MapControls | null>
 }
@@ -483,8 +500,10 @@ export function MapCanvas(props: MapCanvasProps) {
         ...(parties ? { parties } : {}),
         viewerId,
         factionNameOf: (ownerId) => {
+          // Only ever called with a captain's ownerId (mapCursor.ts's
+          // describeMapTile), which is always a real player — strict lookup.
           const id = props.factionOf(ownerId)
-          return factionName(id, FACTIONS[id]?.name ?? 'Neutral')
+          return factionName(id, FACTIONS[id].name)
         },
       }),
     )
@@ -765,6 +784,7 @@ export function MapCanvas(props: MapCanvasProps) {
         selectedPartyId,
         rangeOverlay,
         factionOf,
+        cityFactionOf = factionOf,
       } = propsRef.current
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
@@ -1061,7 +1081,9 @@ export function MapCanvas(props: MapCanvasProps) {
           LAND_SITE_SPRITE_URL[s.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
-        const ring = s.claimedBy ? FACTIONS[factionOf(s.claimedBy)]?.primaryColor : undefined
+        // A site's claimant is always a real player (reducer.ts only ever sets
+        // `claimedBy: action.playerId`) — never the city-only neutral sentinel.
+        const ring = s.claimedBy ? FACTIONS[factionOf(s.claimedBy)].primaryColor : undefined
         if (texture) {
           const sprite = landSitePool.get(s.id)
           sprite.texture = texture
@@ -1138,8 +1160,11 @@ export function MapCanvas(props: MapCanvasProps) {
         }
         // Fallback flat swatch (no city art loaded yet): faction primaryColor (#428) as the
         // base, with an own-city highlight ring on top so own-vs-enemy stays legible even
-        // when two factions' colors are close.
-        const cityFaction = FACTIONS[factionOf(city.ownerId)]
+        // when two factions' colors are close. City owners may be the 'neutral' sentinel
+        // (inland settlements), which falls through to the plain own/enemy swatch below —
+        // the same muted gray a neutral city rendered as before #428 added faction colors.
+        const cityFactionId = cityFactionOf(city.ownerId)
+        const cityFaction = cityFactionId ? FACTIONS[cityFactionId] : undefined
         entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
         entities.fill(cityFaction?.primaryColor ?? (own ? OWN_CITY : ENEMY_CITY))
         if (own) {
@@ -1250,11 +1275,13 @@ export function MapCanvas(props: MapCanvasProps) {
           color: 0x000000,
           alpha: 0.25,
         })
+        // A party's owner is always a real player (reducer.ts only ever creates
+        // parties from action.playerId) — never the city-only neutral sentinel.
         const partyFactionId = factionOf(party.ownerId)
-        const partyFaction = partyFactionId ? FACTIONS[partyFactionId] : undefined
+        const partyFaction = FACTIONS[partyFactionId]
         const partySpriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
-          partyFactionId ? partyContentId(partyFactionId) : '',
+          partyContentId(partyFactionId),
           partyFaction?.partySpriteUrl,
         )
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
