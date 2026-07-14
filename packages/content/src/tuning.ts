@@ -378,23 +378,26 @@ export interface CityDefenseTuning {
 
 /**
  * Captain stat points (#498): one point per level above 1, spent via
- * `chooseCaptainStat` in addition to the skill pick. Attack/defense points fold
- * into the same percentage combat-bonus channel as skills; speed points add
- * movement at refresh. Balance data — the engine reads these from the frozen
- * catalog (`ContentCatalog.captainStats`) and hardcodes none of them.
+ * `chooseCaptainStat` in addition to the skill pick. Attack/defense points are
+ * FLAT per-unit adds (operator decision, 2026-07-14): each point adds a whole
+ * number to the attack/defense score of EVERY unit under the captain, applied
+ * before the skills' percentage scaling — so a point matters most to low-score
+ * units. Speed points add movement at refresh. Balance data — the engine reads
+ * these from the frozen catalog (`ContentCatalog.captainStats`) and hardcodes
+ * none of them.
  */
 export interface CaptainStatTuning {
-  /** Attack bonus percentage per attack stat point. */
-  attackPctPerPoint: number
-  /** Defense bonus percentage per defense stat point. */
-  defensePctPerPoint: number
+  /** Flat attack added to every commanded unit, per attack stat point. */
+  attackPerPoint: number
+  /** Flat defense added to every commanded unit, per defense stat point. */
+  defensePerPoint: number
   /** Movement points per speed stat point, granted at movement refresh. */
   speedMovementPerPoint: number
 }
 
 export const CAPTAIN_STAT_TUNING: CaptainStatTuning = {
-  attackPctPerPoint: 2,
-  defensePctPerPoint: 2,
+  attackPerPoint: 1,
+  defensePerPoint: 1,
   speedMovementPerPoint: 1,
 }
 

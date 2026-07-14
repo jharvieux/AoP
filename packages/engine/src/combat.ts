@@ -192,6 +192,13 @@ export interface Combatant {
   attackBonusPct?: number
   /** Captain skill (#21) defense bonus as a percentage, applied to this side's troop defense. */
   defenseBonusPct?: number
+  /**
+   * Captain stat (#498) flat attack, added to EVERY unit's attack score on this
+   * side before the percentage scaling: `(unit.attack + flat) * (1 + pct/100)`.
+   */
+  attackFlatBonus?: number
+  /** Captain stat (#498) flat defense, the {@link attackFlatBonus} counterpart. */
+  defenseFlatBonus?: number
 }
 
 /** Ship stats a combatant actually fights with — upgrades if present, else class stats. */
@@ -329,9 +336,11 @@ function sideHp(side: Side): number {
 }
 
 /**
- * Effective fighting strength: ship guns + crew offense. Ship stats come from the
- * combatant's purchased upgrades (#22) if present, and captain skill bonuses (#21)
- * scale the crew's attack and defense contributions.
+ * Effective fighting strength: ship guns + crew offense. Ship stats come from
+ * the combatant's purchased upgrades (#22) if present. Captain bonuses shape
+ * the crew's contribution per unit as `(unit.attack + flat) * (1 + pct/100)`
+ * (#498/#21): the flat stat add lands before the skills' percentage scaling,
+ * so it matters most to low-score units.
  */
 export function combatantStrength(combatant: Combatant, stats: CombatStats): number {
   const ship = effectiveShip(combatant, stats)
@@ -339,12 +348,15 @@ export function combatantStrength(combatant: Combatant, stats: CombatStats): num
     ship.hull * stats.combat.hullStrengthWeight + ship.cannons * stats.combat.cannonStrengthWeight
   const attackScale = 1 + (combatant.attackBonusPct ?? 0) / 100
   const defenseScale = 1 + (combatant.defenseBonusPct ?? 0) / 100
+  const attackFlat = combatant.attackFlatBonus ?? 0
+  const defenseFlat = combatant.defenseFlatBonus ?? 0
   const troopStrength = combatant.troops.reduce((sum, t) => {
     const u = stats.unit(t.unitId)
     return (
       sum +
       t.count *
-        (u.attack * attackScale + u.defense * defenseScale * stats.combat.troopDefenseWeight)
+        ((u.attack + attackFlat) * attackScale +
+          (u.defense + defenseFlat) * defenseScale * stats.combat.troopDefenseWeight)
     )
   }, 0)
   return shipStrength + troopStrength

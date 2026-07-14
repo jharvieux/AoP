@@ -205,6 +205,9 @@ interface BoardBattle {
   /** Captain skill bonuses per side, applied to every stack of that side. */
   attackBonusPct: Record<BoardSide, number>
   defenseBonusPct: Record<BoardSide, number>
+  /** Captain stat flat adds per side (#498), on every stack's per-unit attack/defense before the pct scaling. */
+  attackFlat: Record<BoardSide, number>
+  defenseFlat: Record<BoardSide, number>
 }
 
 function unitSpeed(battle: BoardBattle, unitId: string): number {
@@ -394,6 +397,14 @@ function setupBattle(
       defenseBonusPct: {
         attacker: input.attacker.defenseBonusPct ?? 0,
         defender: input.defender.defenseBonusPct ?? 0,
+      },
+      attackFlat: {
+        attacker: input.attacker.attackFlatBonus ?? 0,
+        defender: input.defender.attackFlatBonus ?? 0,
+      },
+      defenseFlat: {
+        attacker: input.attacker.defenseFlatBonus ?? 0,
+        defender: input.defender.defenseFlatBonus ?? 0,
       },
     },
   ]
@@ -611,9 +622,15 @@ function strike(
   let roll: number
   ;[state, roll] = nextFloat(state)
 
+  // Flat captain-stat adds (#498) land on the per-unit scores first, before
+  // this path's percent channel (the (100+atk)/(100+def) ratio below) — the
+  // same flat-before-percent ORDER as combatantStrength, though the two paths
+  // combine their percentages differently by design.
+  const attackScore = a.attack + battle.attackFlat[attacker.side]
+  const defenseScore = d.defense + battle.defenseFlat[target.side]
   const diff = Math.min(
     t.maxDamageModifier,
-    Math.max(t.minDamageModifier, 1 + t.attackDefenseFactor * (a.attack - d.defense)),
+    Math.max(t.minDamageModifier, 1 + t.attackDefenseFactor * (attackScore - defenseScore)),
   )
   // Flanking rewards coordination: a second friendly stack on the target's flank
   // opens its guard. Retaliations and ranged shots never flank.
@@ -626,7 +643,7 @@ function strike(
 
   let raw =
     attacker.count *
-    a.attack *
+    attackScore *
     (t.damageRollMin + roll * t.damageRollSpread) *
     diff *
     ((100 + battle.attackBonusPct[attacker.side]) / (100 + battle.defenseBonusPct[target.side]))

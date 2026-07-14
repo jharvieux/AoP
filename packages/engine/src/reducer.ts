@@ -813,6 +813,8 @@ export function captainToCombatant(
   const bonus = captainCombatBonus(captain, content)
   combatant.attackBonusPct = bonus.attackBonusPct
   combatant.defenseBonusPct = bonus.defenseBonusPct
+  combatant.attackFlatBonus = bonus.attackFlatBonus
+  combatant.defenseFlatBonus = bonus.defenseFlatBonus
   return combatant
 }
 
@@ -833,6 +835,8 @@ export function navalCombatant(
   if (partyLedBy(state, captain.id)) {
     delete combatant.attackBonusPct
     delete combatant.defenseBonusPct
+    delete combatant.attackFlatBonus
+    delete combatant.defenseFlatBonus
   }
   return combatant
 }
@@ -919,10 +923,11 @@ export function cityDefenderTroops(
  * `portDefenders` (#498) are the owner's ships defending the harbor — the
  * garrisoned captain plus every own captain in port (see
  * {@link cityPortDefenders}). Each contributes its effective hull and cannons
- * to the combatant's ship strength and its captain's combat bonuses
- * (skills + stats + items) to the shared bonus channel, so both the reducer's
- * resolution and the AI's `combatantStrength` scoring see a defended port as
- * materially harder to crack.
+ * to the combatant's ship strength and its captain's combat bonuses to the
+ * shared channels — skill percentages and stat flat adds (stats + carried
+ * items) each summed across defenders — so both the reducer's resolution and
+ * the AI's `combatantStrength` scoring see a defended port as materially
+ * harder to crack.
  */
 export function cityToCombatant(
   city: CityState,
@@ -943,6 +948,8 @@ export function cityToCombatant(
       (sum, b) => sum + (content.buildings[b]?.defenseBonus ?? 0),
       0,
     )
+    let attackFlatBonus = 0
+    let defenseFlatBonus = 0
     for (const cap of portDefenders ?? []) {
       const shipDef = content.ships[cap.shipClassId]
       if (shipDef) {
@@ -953,9 +960,13 @@ export function cityToCombatant(
       const bonus = captainCombatBonus(cap, content)
       attackBonusPct += bonus.attackBonusPct
       defenseBonusPct += bonus.defenseBonusPct
+      attackFlatBonus += bonus.attackFlatBonus
+      defenseFlatBonus += bonus.defenseFlatBonus
     }
     if (attackBonusPct > 0) combatant.attackBonusPct = attackBonusPct
     if (defenseBonusPct > 0) combatant.defenseBonusPct = defenseBonusPct
+    if (attackFlatBonus > 0) combatant.attackFlatBonus = attackFlatBonus
+    if (defenseFlatBonus > 0) combatant.defenseFlatBonus = defenseFlatBonus
   }
   return combatant
 }
@@ -1414,6 +1425,8 @@ export function partyToCombatant(
     const bonus = captainCombatBonus(leader, content)
     combatant.attackBonusPct = bonus.attackBonusPct
     combatant.defenseBonusPct = bonus.defenseBonusPct
+    combatant.attackFlatBonus = bonus.attackFlatBonus
+    combatant.defenseFlatBonus = bonus.defenseFlatBonus
   }
   return combatant
 }

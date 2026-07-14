@@ -11,10 +11,12 @@ import {
   skillsForFaction,
   type BuildingCategory,
   type BuildingDef,
+  type ItemDef,
 } from '@aop/content'
 import {
   availableSkillPicks,
   availableStatPoints,
+  effectiveCaptainStats,
   effectiveShipStats,
   levelForXp,
   type BoardOrder,
@@ -29,6 +31,7 @@ import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 import { useState } from 'react'
 import { captainAshoreState } from './captainAshore'
+import { buildCatalog } from './catalog'
 import { tapFeedback } from './audio/feedback'
 import { buildUnavailableReason, buildingFacts, unitFacts } from './cityBuildingInfo'
 import { BottomSheet } from './components/BottomSheet'
@@ -40,6 +43,17 @@ const CAPTAIN_STAT_LABELS: Record<CaptainStat, string> = {
   attack: 'Attack',
   defense: 'Defense',
   speed: 'Speed',
+}
+
+// Frozen content snapshot for display math (effective stats via the same
+// engine helper the reducer uses); parity with server catalogs is #250-tested.
+const CATALOG = buildCatalog()
+
+/** "+1 attack, +2 speed" from an item's stat boosts — data-derived, never prose. */
+function itemBoostLabel(item: ItemDef): string {
+  return CAPTAIN_STATS.filter((stat) => (item.statBonuses[stat] ?? 0) > 0)
+    .map((stat) => `+${item.statBonuses[stat]} ${CAPTAIN_STAT_LABELS[stat].toLowerCase()}`)
+    .join(', ')
 }
 
 /**
@@ -732,6 +746,7 @@ function TavernModal({
             <h3>Stat training — {captain.name}</h3>
             {(() => {
               const points = availableStatPoints(captain, CAPTAIN_XP_THRESHOLDS)
+              const effective = effectiveCaptainStats(captain, CATALOG)
               return (
                 <>
                   <p className="building-option__hint">
@@ -743,15 +758,18 @@ function TavernModal({
                     {CAPTAIN_STATS.map((stat) => {
                       const perPoint =
                         stat === 'attack'
-                          ? `+${CAPTAIN_STAT_TUNING.attackPctPerPoint}% attack`
+                          ? `+${CAPTAIN_STAT_TUNING.attackPerPoint} attack to every unit`
                           : stat === 'defense'
-                            ? `+${CAPTAIN_STAT_TUNING.defensePctPerPoint}% defense`
+                            ? `+${CAPTAIN_STAT_TUNING.defensePerPoint} defense to every unit`
                             : `+${CAPTAIN_STAT_TUNING.speedMovementPerPoint} movement`
+                      const fromItems = effective[stat] - captain.stats[stat]
                       return (
                         <li key={stat} className="garrison-row">
                           <span className="garrison-row__name">{CAPTAIN_STAT_LABELS[stat]}</span>
                           <span className="garrison-row__counts">
-                            {captain.stats[stat]} spent — {perPoint}/point
+                            {effective[stat]}
+                            {fromItems > 0 ? ` (+${fromItems} from items)` : ''} — {perPoint} per
+                            point
                           </span>
                           <div className="garrison-row__actions">
                             <button
@@ -792,7 +810,9 @@ function TavernModal({
                         const item = ITEMS[itemId]
                         return (
                           <li key={`${itemId}-${index}`} className="garrison-row">
-                            <span className="garrison-row__name">{item?.name ?? itemId}</span>
+                            <span className="garrison-row__name">
+                              {item ? `${item.name} (${itemBoostLabel(item)})` : itemId}
+                            </span>
                             <span className="garrison-row__counts">{item?.description ?? ''}</span>
                             <div className="garrison-row__actions">
                               <button
@@ -826,28 +846,35 @@ function TavernModal({
                   full.
                 </p>
               ) : (
-                <ul className="building-list">
-                  {playerItemStash.map((itemId, index) => {
-                    const item = ITEMS[itemId]
-                    return (
-                      <li key={`${itemId}-${index}`} className="garrison-row">
-                        <span className="garrison-row__name">{item?.name ?? itemId}</span>
-                        <span className="garrison-row__counts">{item?.description ?? ''}</span>
-                        <div className="garrison-row__actions">
-                          <button
-                            disabled={!!ashore || full}
-                            onClick={() => {
-                              tapFeedback()
-                              onTakeItem(itemId)
-                            }}
-                          >
-                            {full ? `${captain.name} full` : `Take for ${captain.name}`}
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+                <>
+                  <p className="building-option__hint">
+                    Stashed items are inert — their boosts apply only while a captain carries them.
+                  </p>
+                  <ul className="building-list">
+                    {playerItemStash.map((itemId, index) => {
+                      const item = ITEMS[itemId]
+                      return (
+                        <li key={`${itemId}-${index}`} className="garrison-row">
+                          <span className="garrison-row__name">
+                            {item ? `${item.name} (${itemBoostLabel(item)})` : itemId}
+                          </span>
+                          <span className="garrison-row__counts">{item?.description ?? ''}</span>
+                          <div className="garrison-row__actions">
+                            <button
+                              disabled={!!ashore || full}
+                              onClick={() => {
+                                tapFeedback()
+                                onTakeItem(itemId)
+                              }}
+                            >
+                              {full ? `${captain.name} full` : `Take for ${captain.name}`}
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
               )
             })()}
           </section>

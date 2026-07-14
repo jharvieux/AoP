@@ -59,7 +59,7 @@ const CATALOG: ContentCatalog = {
     'british-navigation-1': { factionId: 'british', tier: 1, attackBonusPct: 0, defenseBonusPct: 12 }, // prettier-ignore
   },
   captainXpThresholds: [0, 150, 400],
-  captainStats: { attackPctPerPoint: 2, defensePctPerPoint: 2, speedMovementPerPoint: 1 },
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
 }
 
 /** Same island layout as landingParties.test.ts: land x 4–11 / y 4–7, port at (11,5). */
@@ -321,12 +321,31 @@ describe('cityToCombatant with port defenders (#498)', () => {
     const defended = cityToCombatant(city, CATALOG, 'british', cityPortDefenders(state, city))
     expect(defended.shipStats!.hull).toBe(bare.shipStats!.hull + 40)
     expect(defended.shipStats!.cannons).toBe(bare.shipStats!.cannons + 6)
-    // Skill 12% def + 2 def points × 2%/pt = 16; attack 1 point × 2%/pt = 2.
-    expect(defended.defenseBonusPct).toBe((bare.defenseBonusPct ?? 0) + 16)
-    expect(defended.attackBonusPct).toBe(2)
+    // The skill keeps its percentage: 12% defense.
+    expect(defended.defenseBonusPct).toBe((bare.defenseBonusPct ?? 0) + 12)
+    // Stat points land as flat per-unit adds: 2 def pts and 1 atk pt × 1/pt.
+    expect(defended.defenseFlatBonus).toBe(2)
+    expect(defended.attackFlatBonus).toBe(1)
+    expect(defended.attackBonusPct).toBeUndefined()
 
     const stats = createCombatStats(STATS)
     expect(combatantStrength(defended, stats)).toBeGreaterThan(combatantStrength(bare, stats))
+  })
+
+  it('sums the flat stat adds across port defenders, exactly like their percentages', () => {
+    const d1: Captain = {
+      ...makeCaptain('c2', 'p2', DOCK),
+      stats: { attack: 1, defense: 2, speed: 0 },
+    }
+    const d2: Captain = {
+      ...makeCaptain('c3', 'p2', { x: 12, y: 6 }),
+      stats: { attack: 2, defense: 1, speed: 0 },
+    }
+    const state = portState({ captains: [d1, d2], garrisonCaptainId: 'c2' })
+    const city = state.cities[0]!
+    const defended = cityToCombatant(city, CATALOG, 'british', cityPortDefenders(state, city))
+    expect(defended.attackFlatBonus).toBe(3)
+    expect(defended.defenseFlatBonus).toBe(3)
   })
 
   it('counts the garrisoned captain and every own in-port ship; never the attacker’s or far ships', () => {
