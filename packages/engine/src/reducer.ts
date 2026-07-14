@@ -143,6 +143,13 @@ export interface ActionOutcome {
   state: GameState
   battleReport?: BattleReport
   encounterOutcome?: EncounterOutcome
+  /**
+   * Item a `captureSite` haul turned up (#503) — the land-haul counterpart of
+   * {@link EncounterOutcome.itemGained}, surfaced so clients can announce the
+   * find without diffing item lists. Fully derived from the pre-action RNG
+   * state, so replays reproduce it exactly.
+   */
+  siteItemGained?: string
 }
 
 /**
@@ -173,6 +180,7 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
   let next: GameState
   let battleReport: BattleReport | undefined
   let encounterOutcome: EncounterOutcome | undefined
+  let siteItemGained: string | undefined
   switch (action.type) {
     case 'endTurn':
       next = advanceTurn(state)
@@ -276,9 +284,12 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       encounterOutcome = result.outcome
       break
     }
-    case 'captureSite':
-      next = captureSite(state, action)
+    case 'captureSite': {
+      const result = captureSite(state, action)
+      next = result.state
+      siteItemGained = result.itemGained
       break
+    }
     case 'resolvePartyEncounter': {
       const result = resolvePartyEncounter(state, action)
       next = result.state
@@ -314,6 +325,7 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
   const outcome: ActionOutcome = { state: { ...next, actionCount: state.actionCount + 1 } }
   if (battleReport) outcome.battleReport = battleReport
   if (encounterOutcome) outcome.encounterOutcome = encounterOutcome
+  if (siteItemGained !== undefined) outcome.siteItemGained = siteItemGained
   return outcome
 }
 
@@ -2859,9 +2871,13 @@ function resolveEncounter(
  * it in turn. A **haul** site (lumber camp/ruin) pays its one-time reward and is
  * then spent. Either way it costs the party its remaining movement, so a party
  * takes at most one site per turn. A hold capture is deterministic; a haul
- * capture rolls the seeded item drop (#498) when the match carries item content.
+ * capture rolls the seeded item drop (#498) when the match carries item content,
+ * reporting a find as `itemGained` so it reaches the ActionOutcome (#503).
  */
-function captureSite(state: GameState, action: CaptureSiteAction): GameState {
+function captureSite(
+  state: GameState,
+  action: CaptureSiteAction,
+): { state: GameState; itemGained?: string } {
   const content = requireContent(state, action)
   if (!content.landSites) {
     throw new InvalidActionError('No land-site content configured for this match', action)
@@ -2889,11 +2905,13 @@ function captureSite(state: GameState, action: CaptureSiteAction): GameState {
       throw new InvalidActionError('This party already holds the site', action)
     }
     return {
-      ...state,
-      landSites: state.landSites.map((s) =>
-        s.id === site.id ? { ...s, claimedBy: action.playerId } : s,
-      ),
-      parties: spentParties,
+      state: {
+        ...state,
+        landSites: state.landSites.map((s) =>
+          s.id === site.id ? { ...s, claimedBy: action.playerId } : s,
+        ),
+        parties: spentParties,
+      },
     }
   }
 
@@ -2916,8 +2934,11 @@ function captureSite(state: GameState, action: CaptureSiteAction): GameState {
     landSites: state.landSites.map((s) => (s.id === site.id ? { ...s, active: false } : s)),
     parties: spentParties,
   }
-  if (itemGained === undefined) return settled
-  return applyItemGrant(settled, action.playerId, party.captainId, itemGained)
+  if (itemGained === undefined) return { state: settled }
+  return {
+    state: applyItemGrant(settled, action.playerId, party.captainId, itemGained),
+    itemGained,
+  }
 }
 
 /**
