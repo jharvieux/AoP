@@ -245,6 +245,7 @@ describe('party land-battle probes (#482)', () => {
         resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
         eliminated: false,
         reputation: 100,
+        itemStash: [],
       })),
       alliances: { pairs: [], proposals: [] },
       cities: [

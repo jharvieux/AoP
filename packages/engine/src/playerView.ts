@@ -5,7 +5,15 @@ import type { BattleReport, CombatStatsData } from './combat'
 import type { ContentCatalog } from './content'
 import type { GridTopology, TileType } from './map'
 import type { StandingOrder } from './tactics'
-import type { GameSetup, GameState, GameStatus, MarchOrder, SailOrder, TroopStack } from './types'
+import type {
+  CaptainStats,
+  GameSetup,
+  GameState,
+  GameStatus,
+  MarchOrder,
+  SailOrder,
+  TroopStack,
+} from './types'
 import { tileKey, visibleTilesWithAllies } from './visibility'
 
 /**
@@ -154,6 +162,8 @@ export interface ViewPlayer {
   reputation: number
   /** Present only on the viewer's own row. */
   resources?: ResourcePool
+  /** The faction item stash (#498) — own-row disclosure only, like the treasury. */
+  itemStash?: string[]
 }
 
 export interface ViewCity {
@@ -166,6 +176,8 @@ export interface ViewCity {
   garrison?: Record<string, number>
   unitAvailability?: Record<string, number>
   builtThisRound?: boolean
+  /** The stationed captain (#498) — interior information, own cities only. */
+  garrisonCaptainId?: string
 }
 
 export interface ViewCaptain {
@@ -180,6 +192,17 @@ export interface ViewCaptain {
   maxMovementPoints?: number
   xp?: number
   skills?: string[]
+  /** Spent stat points (#498) — own-captain detail, like xp/skills. */
+  stats?: CaptainStats
+  /** Held item ids (#498) — own-captain detail, like the troop manifest. */
+  items?: string[]
+  /**
+   * True while this captain stands ashore with its flagship lost (#498) —
+   * own-captain detail. An enemy's shipless captain is omitted from the view
+   * entirely: it is not a targetable piece, and its presence would leak that
+   * the party beside it is captain-led.
+   */
+  shipLost?: true
   shipUpgrades?: Record<string, number>
   /**
    * The viewer's own pre-committed doctrine for this captain (#285): write-only
@@ -230,6 +253,12 @@ export interface ViewParty {
    * route is exactly the kind of intent §7 hides.
    */
   marchOrder?: MarchOrder
+  /**
+   * The captain leading this party (#498), if any — own-seat disclosure only:
+   * whether an enemy column is captain-led is exactly the kind of manifest
+   * detail §7 hides.
+   */
+  captainId?: string
 }
 
 export interface ViewEncounter {
@@ -282,6 +311,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
           eliminated: p.eliminated,
           reputation: p.reputation,
           resources: p.resources,
+          itemStash: p.itemStash,
         }
       : {
           id: p.id,
@@ -305,6 +335,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         garrison: c.garrison,
         unitAvailability: c.unitAvailability,
         builtThisRound: c.builtThisRound,
+        ...(c.garrisonCaptainId !== undefined ? { garrisonCaptainId: c.garrisonCaptainId } : {}),
       })
     } else if (exploredKeys.has(tileKey(c.position))) {
       // An enemy city is a static structure: revealed once its tile is explored,
@@ -336,13 +367,16 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         maxMovementPoints: cap.maxMovementPoints,
         xp: cap.xp,
         skills: cap.skills,
+        stats: cap.stats,
+        items: cap.items,
         shipUpgrades: cap.shipUpgrades,
         ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
         ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
         ...(cap.sailOrder ? { sailOrder: cap.sailOrder } : {}),
+        ...(cap.shipLost ? { shipLost: cap.shipLost } : {}),
         ...capturedFields,
       })
-    } else if (visibleKeys.has(tileKey(cap.position))) {
+    } else if (!cap.shipLost && visibleKeys.has(tileKey(cap.position))) {
       // Enemy captain in current vision: you see a hull of a known class at a
       // location — nothing about its manifest, orders, XP or upgrades.
       captains.push({
@@ -368,6 +402,7 @@ export function playerView(state: GameState, viewerId: string): PlayerView {
         movementPoints: party.movementPoints,
         maxMovementPoints: party.maxMovementPoints,
         ...(party.marchOrder ? { marchOrder: party.marchOrder } : {}),
+        ...(party.captainId !== undefined ? { captainId: party.captainId } : {}),
       })
     } else if (visibleKeys.has(tileKey(party.position))) {
       // Enemy party in current vision: a force sighted ashore at a location —

@@ -324,9 +324,13 @@ describe('attackCity — replay determinism (the contract)', () => {
 
 describe('attackCity — AI conquest behavior', () => {
   it('an AI captain adjacent to a beatable enemy city assaults it', () => {
+    // p2's captain is removed: docked at the capital it would join the city's
+    // defence as a port defender (#498), and the AI — scoring against that
+    // same defended combatant — would rightly prefer the naval duel instead.
     const state = assaultState({
       attackerTroops: [{ unitId: 'brute', count: 12 }],
       garrison: { grunt: 1 },
+      p2HasCaptain: false,
     })
     const action = nextAiAction(state, 'p1')
     expect(action.type).toBe('attackCity')

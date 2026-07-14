@@ -80,6 +80,8 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     troops: c.troops ?? [],
     xp: c.xp ?? 0,
     skills: c.skills ?? [],
+    stats: c.stats ?? { attack: 0, defense: 0, speed: 0 },
+    items: c.items ?? [],
     shipUpgrades: c.shipUpgrades ?? {},
     // Captured status (#309) is public in the view (unlike the fields above),
     // so it's forwarded rather than defaulted.

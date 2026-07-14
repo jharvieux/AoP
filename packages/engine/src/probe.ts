@@ -16,7 +16,10 @@ import { createCombatStats, type BattleReport, type CombatStats } from './combat
 import {
   aiTacticDriverForOwner,
   captainToCombatant,
+  cityPortDefenders,
   cityToCombatant,
+  navalCombatant,
+  partyLeader,
   partyToCombatant,
   prizeSpawnFor,
 } from './reducer'
@@ -152,8 +155,8 @@ export function probeBoardingBattle(
   try {
     const result = resolveTacticalCombat(
       {
-        attacker: captainToCombatant(attacker, content),
-        defender: captainToCombatant(target, content),
+        attacker: navalCombatant(game, attacker, content),
+        defender: navalCombatant(game, target, content),
       },
       stats,
       game.rngState,
@@ -229,6 +232,7 @@ export function probeCityAssault(
           city,
           content,
           game.players.find((p) => p.id === city.ownerId)?.faction,
+          cityPortDefenders(game, city),
         ),
       },
       stats,
@@ -266,7 +270,12 @@ export function probePartyBattle(
     throw new Error('No board tuning configured for a land battle')
   }
 
-  return probeLandBoard(game, partyToCombatant(attacker), partyToCombatant(target), commands)
+  return probeLandBoard(
+    game,
+    partyToCombatant(attacker, partyLeader(game, attacker), game.config.content),
+    partyToCombatant(target, partyLeader(game, target), game.config.content),
+    commands,
+  )
 }
 
 /**
@@ -291,11 +300,12 @@ export function probePartyAssault(
 
   return probeLandBoard(
     game,
-    partyToCombatant(attacker),
+    partyToCombatant(attacker, partyLeader(game, attacker), game.config.content),
     cityToCombatant(
       city,
       game.config.content,
       game.players.find((p) => p.id === city.ownerId)?.faction,
+      cityPortDefenders(game, city),
     ),
     commands,
   )
@@ -400,8 +410,8 @@ export function probeTacticalBattle(
   try {
     const result = resolveTacticalCombat(
       {
-        attacker: captainToCombatant(attacker, content),
-        defender: captainToCombatant(target, content),
+        attacker: navalCombatant(game, attacker, content),
+        defender: navalCombatant(game, target, content),
       },
       stats,
       game.rngState,

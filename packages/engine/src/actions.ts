@@ -8,7 +8,7 @@ import type { Coord } from '@aop/shared'
 import type { BoardCommand, BoardOrder } from './battleBoard'
 import type { EncounterChoice } from './content'
 import type { StandingOrder, TacticId } from './tactics'
-import type { SailTargetKind, TroopStack } from './types'
+import type { CaptainStat, SailTargetKind, TroopStack } from './types'
 
 export interface EndTurnAction {
   type: 'endTurn'
@@ -132,6 +132,12 @@ export interface DisembarkAction {
   to: Coord
   /** Troops to land, drawn from the ship's hold. Must be non-empty. */
   troops: TroopStack[]
+  /**
+   * Land the captain with the party (#498): the party fights with the
+   * captain's combat bonuses, feeds it XP and land finds, and the ship stays
+   * anchored — orderless and immobile — until the party re-boards it.
+   */
+  withCaptain?: boolean
 }
 
 /**
@@ -335,6 +341,60 @@ export interface ChooseCaptainSkillAction {
   skillId: string
 }
 
+/**
+ * Spend a level-up stat point on a captain (#498) — one earned per level above
+ * 1, in addition to the skill pick. Pending points are derived
+ * (`level − 1 − pointsSpent`), so this is valid whenever that count is
+ * positive. Per-point effects are content data (`ContentCatalog.captainStats`).
+ */
+export interface ChooseCaptainStatAction {
+  type: 'chooseCaptainStat'
+  playerId: string
+  captainId: string
+  stat: CaptainStat
+}
+
+/**
+ * Station a docked captain in an owned city (#498). While garrisoned the
+ * captain is immobile (no move/attack/disembark, and it is not a naval
+ * target); in exchange its ship strength and combat bonuses join the city's
+ * defence. If the city falls, the garrisoned captain is captured with it.
+ */
+export interface GarrisonCaptainAction {
+  type: 'garrisonCaptain'
+  playerId: string
+  captainId: string
+  cityId: string
+}
+
+/** Release a city's garrisoned captain back to sea duty (#498). */
+export interface UngarrisonCaptainAction {
+  type: 'ungarrisonCaptain'
+  playerId: string
+  cityId: string
+}
+
+/**
+ * Move an item from the faction stash onto a captain docked at an owned city
+ * (#498). Rejected when the captain already carries the catalog's cap.
+ */
+export interface TakeItemAction {
+  type: 'takeItem'
+  playerId: string
+  captainId: string
+  cityId: string
+  itemId: string
+}
+
+/** Move an item from a docked captain into the faction stash (#498). */
+export interface DepositItemAction {
+  type: 'depositItem'
+  playerId: string
+  captainId: string
+  cityId: string
+  itemId: string
+}
+
 /** Buy the next level on one of a captain's ship's upgrade tracks (#22) at a city shipyard. */
 export interface UpgradeShipAction {
   type: 'upgradeShip'
@@ -446,6 +506,11 @@ export type Action =
   | TransferTroopsAction
   | GainCaptainXpAction
   | ChooseCaptainSkillAction
+  | ChooseCaptainStatAction
+  | GarrisonCaptainAction
+  | UngarrisonCaptainAction
+  | TakeItemAction
+  | DepositItemAction
   | UpgradeShipAction
   | ResolveEncounterAction
   | CaptureSiteAction

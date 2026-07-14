@@ -205,6 +205,11 @@ function reqEnum<T extends string>(value: unknown, allowed: readonly T[], field:
   return value as T
 }
 
+function reqBoolean(value: unknown, field: string): boolean {
+  if (typeof value !== 'boolean') throw badField(field, 'a boolean')
+  return value
+}
+
 function reqObject(value: unknown, field: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw badField(field, 'an object')
@@ -391,6 +396,35 @@ export function sanitizeAction(action: Action): Action {
         captainId: reqString(action.captainId, 'captainId'),
         skillId: reqString(action.skillId, 'skillId'),
       }
+    case 'chooseCaptainStat':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        stat: reqEnum(action.stat, ['attack', 'defense', 'speed'] as const, 'stat'),
+      }
+    case 'garrisonCaptain':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        cityId: reqString(action.cityId, 'cityId'),
+      }
+    case 'ungarrisonCaptain':
+      return {
+        type: action.type,
+        playerId,
+        cityId: reqString(action.cityId, 'cityId'),
+      }
+    case 'takeItem':
+    case 'depositItem':
+      return {
+        type: action.type,
+        playerId,
+        captainId: reqString(action.captainId, 'captainId'),
+        cityId: reqString(action.cityId, 'cityId'),
+        itemId: reqString(action.itemId, 'itemId'),
+      }
     case 'upgradeShip':
       return {
         type: action.type,
@@ -472,6 +506,9 @@ export function sanitizeAction(action: Action): Action {
         captainId: reqString(action.captainId, 'captainId'),
         to: reqCoord(action.to, 'to'),
         troops: reqArray(action.troops, 'troops', reqTroopStack),
+        ...(action.withCaptain !== undefined
+          ? { withCaptain: reqBoolean(action.withCaptain, 'withCaptain') }
+          : {}),
       }
     case 'moveParty':
       return {

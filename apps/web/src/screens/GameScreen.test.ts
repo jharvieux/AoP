@@ -37,6 +37,8 @@ describe('findViewerCaptainAtCity on a hex map (#385: mapDistance, not chebyshev
       troops: [{ unitId: 'swashbuckler', count: 6 }],
       xp: 0,
       skills: [],
+      stats: { attack: 0, defense: 0, speed: 0 },
+      items: [],
       shipUpgrades: {},
       captured: false,
     }
