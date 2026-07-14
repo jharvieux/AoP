@@ -229,6 +229,8 @@ export interface AiTuning {
   upgradeScoreBase: number
   /** Score for spending an available captain skill pick. */
   skillPickScoreBase: number
+  /** Score for spending an available captain stat point (#498). */
+  statPickScoreBase: number
   /**
    * Score for recruiting a replacement captain when captain-less (#308).
    * Tuned to comfortably outscore any economy action — recovering from zero
@@ -372,6 +374,28 @@ export interface CityDefenseTuning {
   turretAttackMult: number
   /** Turret defense as a multiple of the highest-tier available unit's defense. */
   turretDefenseMult: number
+}
+
+/**
+ * Captain stat points (#498): one point per level above 1, spent via
+ * `chooseCaptainStat` in addition to the skill pick. Attack/defense points fold
+ * into the same percentage combat-bonus channel as skills; speed points add
+ * movement at refresh. Balance data — the engine reads these from the frozen
+ * catalog (`ContentCatalog.captainStats`) and hardcodes none of them.
+ */
+export interface CaptainStatTuning {
+  /** Attack bonus percentage per attack stat point. */
+  attackPctPerPoint: number
+  /** Defense bonus percentage per defense stat point. */
+  defensePctPerPoint: number
+  /** Movement points per speed stat point, granted at movement refresh. */
+  speedMovementPerPoint: number
+}
+
+export const CAPTAIN_STAT_TUNING: CaptainStatTuning = {
+  attackPctPerPoint: 2,
+  defensePctPerPoint: 2,
+  speedMovementPerPoint: 1,
 }
 
 // Calibrated against the #442 assault probes (landing party vs militia-only
@@ -616,6 +640,9 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+  // A stat point is the same free-value spend as a skill pick — never leave one
+  // banked while economy verbs idle below it.
+  statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
 }
