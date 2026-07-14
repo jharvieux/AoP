@@ -745,11 +745,9 @@ export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   // MAP_DIMENSIONS entry (xlarge, 96 since the 2026-07-14 4x-area quadrupling;
   // #473 previously moved it 40 -> 48). minSize deliberately stays at the old
   // smallest preset so every community map published before the quadrupling
-  // remains valid. NOTE the wire-format caveat: MAP_CODE_MAX_BYTES
-  // (@aop/shared/communityMaps.ts) still guarantees a fit only for typical
-  // (RLE-compressible) maps at 96x96 — a zero-compression adversarial 96x96
-  // map is legal but exceeds the byte cap and is cleanly rejected at publish;
-  // raising the cap needs a companion DB migration (operator-gated, see #507).
+  // remains valid. MAP_CODE_MAX_BYTES (@aop/shared/communityMaps.ts) was
+  // raised to 256 KiB in lock-step (#507), so even a zero-compression
+  // adversarial 96x96 map fits; only entity-spam payloads exceed the cap.
   minSize: 24,
   maxSize: 96,
   minPlayers: 2,
