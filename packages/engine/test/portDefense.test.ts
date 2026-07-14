@@ -404,6 +404,37 @@ describe('city falls with its harbor (#498)', () => {
     }
   })
 
+  it('clears a neighbour city’s garrison marker when its captain is captured in port range', () => {
+    // c4 garrisons Deepwater at (11,7) but is anchored at (12,6) — inside the
+    // assaulted city's port range too. When Port Royal falls, c4 is captured
+    // with the harbor, and Deepwater's garrison marker must not dangle.
+    const base = defendedState()
+    const state: GameState = {
+      ...base,
+      captains: [...base.captains, makeCaptain('c4', 'p2', { x: 12, y: 6 })],
+      cities: [
+        ...base.cities,
+        {
+          id: 'p2-city-2',
+          ownerId: 'p2',
+          name: 'Deepwater',
+          position: { x: 11, y: 7 },
+          buildings: ['townhall'],
+          builtThisRound: false,
+          garrison: {},
+          unitAvailability: {},
+          garrisonCaptainId: 'c4',
+        },
+      ],
+    }
+    const next = assault(state)
+    expect(next.cities.find((c) => c.id === 'p2-city')!.ownerId).toBe('p1')
+    expect(next.captains.find((c) => c.id === 'c4')!.captured).toBe(true)
+    const neighbour = next.cities.find((c) => c.id === 'p2-city-2')!
+    expect(neighbour.ownerId).toBe('p2')
+    expect(neighbour.garrisonCaptainId).toBeUndefined()
+  })
+
   it('a successful defense keeps the garrisoned captain in place and everyone free', () => {
     const state = portState({
       captains: [

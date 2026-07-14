@@ -1265,12 +1265,15 @@ function attackCity(
     return c
   })
 
-  const cities = state.cities.map((c) => {
-    if (c.id !== target.id) return c
-    return attackerWon
-      ? cityCaptured(c, attacker.ownerId)
-      : cityAfterDefense(c, result.defenderTroops)
-  })
+  const cities = clearGarrisonMarkers(
+    state.cities.map((c) => {
+      if (c.id !== target.id) return c
+      return attackerWon
+        ? cityCaptured(c, attacker.ownerId)
+        : cityAfterDefense(c, result.defenderTroops)
+    }),
+    attackerWon ? portDefenderIds : new Set(),
+  )
 
   const { players, alliances } = betrayalAdjusted(state, attacker.ownerId, target.ownerId)
 
@@ -1342,6 +1345,22 @@ function cityCaptured(city: CityState, newOwnerId: string): CityState {
   // The old owner's garrisoned captain was captured with the city (#498).
   delete captured.garrisonCaptainId
   return captured
+}
+
+/**
+ * Drop any garrison marker naming a captain in `capturedIds` (#498) — a
+ * captive holds no post. The assaulted city itself is cleared by
+ * {@link cityCaptured}; this catches the rare neighbour case where a captain
+ * garrisoned at one city stood in port range of another that just fell.
+ */
+function clearGarrisonMarkers(cities: CityState[], capturedIds: ReadonlySet<string>): CityState[] {
+  if (capturedIds.size === 0) return cities
+  return cities.map((c) => {
+    if (c.garrisonCaptainId === undefined || !capturedIds.has(c.garrisonCaptainId)) return c
+    const next = { ...c }
+    delete next.garrisonCaptainId
+    return next
+  })
 }
 
 /**
@@ -1926,12 +1945,15 @@ function partyAssaultCity(
         p.id === attacker.id ? { ...p, troops: result.attackerTroops, movementPoints: 0 } : p,
       )
     : state.parties.filter((p) => p.id !== attacker.id)
-  const cities = state.cities.map((c) => {
-    if (c.id !== target.id) return c
-    return attackerWon
-      ? cityCaptured(c, attacker.ownerId)
-      : cityAfterDefense(c, result.defenderTroops)
-  })
+  const cities = clearGarrisonMarkers(
+    state.cities.map((c) => {
+      if (c.id !== target.id) return c
+      return attackerWon
+        ? cityCaptured(c, attacker.ownerId)
+        : cityAfterDefense(c, result.defenderTroops)
+    }),
+    attackerWon ? portDefenderIds : new Set(),
+  )
 
   // Captain-led attacker (#498): a winning leader banks combat XP like a sea
   // assault's attacker; a destroyed party's leader is captured by the city's
