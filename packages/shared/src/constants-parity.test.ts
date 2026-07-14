@@ -42,9 +42,11 @@ describe('TS constants ↔ SQL constraints parity', () => {
     expect(sql).toContain(pattern)
   })
 
-  it('MAP_CODE_MAX_BYTES appears in community_maps.sql map_code constraint', () => {
-    const sql = readMigration('20260707063000_community_maps.sql')
-    // The constraint is: `map_code text not null check (octet_length(map_code) <= 65536)`
+  it('MAP_CODE_MAX_BYTES appears in the map_code cap migration constraint', () => {
+    // 20260714000000 (#507) supersedes the original 64 KiB inline check from
+    // 20260707063000_community_maps.sql — the newest constraint per column wins.
+    const sql = readMigration('20260714000000_community_maps_map_code_cap.sql')
+    // The constraint is: `check (octet_length(map_code) <= 262144)`
     const pattern = `octet_length(map_code) <= ${MAP_CODE_MAX_BYTES}`
     expect(sql).toContain(pattern)
   })

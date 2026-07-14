@@ -165,17 +165,21 @@ describe('publish policy', () => {
 describe('map-code size budget at the raised 96x96 ceiling', () => {
   // The RLE wire format has no compression floor, and validateMapDefinition caps
   // neither island-id magnitude nor encounter/resource-node counts — so a map can
-  // be maximally hostile to the codec while remaining fully LEGAL. Since the
-  // 4x-area quadrupling raised maxSize 48 -> 96, the worst legal map no longer
-  // fits under MAP_CODE_MAX_BYTES: raising the byte cap requires a companion DB
-  // migration (`octet_length` check in community_maps.sql), which is
-  // operator-gated — tracked as #507. Until then the pinned contract is:
+  // be maximally hostile to the codec while remaining fully LEGAL. #507 raised
+  // MAP_CODE_MAX_BYTES 64 KiB -> 256 KiB (companion migration
+  // 20260714000000_community_maps_map_code_cap.sql) after the 4x-area quadrupling
+  // pushed the zero-compression 96x96 worst case (~178 KiB) past the old cap.
+  // The pinned contract is now:
+  //  - the "any legal map fits" guarantee holds again at the 96 ceiling: even a
+  //    zero-compression full-grid map with hundreds of entities fits (~1.4x
+  //    headroom), as it did at the 48 ceiling before the quadrupling,
+  //  - the guarantee is per-tile, not per-entity: entity COUNTS are unbounded,
+  //    so a legal map stuffed with thousands of encounters/resource nodes can
+  //    still exceed the cap — the byte gate rejects it CLEANLY, never truncated
+  //    or silently overflowed (the cap is the anti-spam backstop, not a promise
+  //    that unbounded payloads fit),
   //  - every REAL map (RLE-compressible, worst observed ~20 KiB at 96x96 with
-  //    8 players) fits with wide margin,
-  //  - the pre-quadrupling guarantee is preserved at the old 48 ceiling
-  //    (nothing publishable before is rejected now),
-  //  - a zero-compression adversarial 96x96 map is rejected CLEANLY by the
-  //    byte gate — never truncated or silently overflowed.
+  //    8 players) fits with wide margin.
 
   /**
    * A worst-case-but-valid map: water types alternate and every water tile
@@ -243,11 +247,22 @@ describe('map-code size budget at the raised 96x96 ceiling', () => {
     expect(mapCodeExceedsSizeLimit(code)).toBe(false)
   })
 
-  it('an adversarial zero-compression 96x96 map is legal but cleanly rejected by the byte gate (#507)', () => {
+  it('an adversarial zero-compression 96x96 map now fits under the raised cap (#507)', () => {
+    // The restored "any legal map fits" guarantee: the worst zero-RLE full-grid
+    // map at the current maxSize (~178 KiB measured) encodes under 256 KiB.
     const { def, payload } = worstCaseLegalMap(MAP_VALIDATION_LIMITS.maxSize, 200)
+    expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS)).toEqual({ valid: true, errors: [] })
+    const code = encodeMapCodePayload(payload)
+    expect(mapCodeExceedsSizeLimit(code)).toBe(false)
+  })
+
+  it('a legal map bloated with unbounded entities is still cleanly rejected by the byte gate', () => {
+    // Entity counts are not validation-capped, so the byte cap remains the only
+    // backstop against entity-spam payloads: 2000 encounters + 2000 resource
+    // nodes on the same worst-case grid (~386 KiB measured) stays legal but
+    // over-cap. Encoding never throws or truncates — the gate is the guard.
+    const { def, payload } = worstCaseLegalMap(MAP_VALIDATION_LIMITS.maxSize, 2000)
     expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS).valid).toBe(true)
-    // Encoding itself never throws or truncates — the byte gate is the guard.
-    // Lifting this rejection is #507 (byte-cap raise needs a DB migration).
     const code = encodeMapCodePayload(payload)
     expect(mapCodeExceedsSizeLimit(code)).toBe(true)
   })
@@ -279,9 +294,10 @@ describe('map-code size budget at the raised 96x96 ceiling', () => {
       }
       const code = encodeMapCodePayload(payload)
       // Map codes are prefix + base64, pure ASCII, so length === UTF-8 bytes.
-      // Worst probed real map (xlarge, 8p, 20 seeds) was ~20 KiB — pin half
-      // the cap so a codec regression eating the margin fails here first.
-      expect(code.length, `${mapSize} ${playerCount}p`).toBeLessThan(MAP_CODE_MAX_BYTES / 2)
+      // Worst probed real map (xlarge, 8p, 20 seeds) was ~20 KiB — pin an
+      // eighth of the (now 256 KiB) cap, the same 32 KiB bar as before the
+      // #507 raise, so a codec regression eating the margin fails here first.
+      expect(code.length, `${mapSize} ${playerCount}p`).toBeLessThan(MAP_CODE_MAX_BYTES / 8)
     }
   })
 })

@@ -89,8 +89,8 @@ see `@aop/shared/leaderboard.ts` for the full reasoning. Season support and any 
 
 The five community-map functions (#63 Tier 2) back the map editor's community library.
 `publish-map` is the hardened write path: it rejects guest/anonymous sessions
-(publishing requires a registered account — operator decision), enforces a 64 KiB size
-cap and a 5-per-hour-per-author rate limit (constants + reasoning in
+(publishing requires a registered account — operator decision), enforces a 256 KiB size
+cap (#507) and a 5-per-hour-per-author rate limit (constants + reasoning in
 `@aop/shared/communityMaps.ts`), and — never trusting the client's own validation —
 decodes the submitted Tier-1 map code (`@aop/shared/mapCodes.ts`, which itself rejects
 decode bombs) and re-runs the engine's `validateMapDefinition` against the same

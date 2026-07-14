@@ -7,11 +7,11 @@
  * changed in one place:
  *
  *  - **Size cap** ({@link MAP_CODE_MAX_BYTES}): the largest *legal* map
- *    (48x48 as of #473, the engine's `maxSize`) with zero RLE compression
- *    encodes to roughly 35 KiB even with a long multi-byte name and many
- *    islands/entities, so 64 KiB retains ~1.8x headroom for any real map
- *    while rejecting megabyte spam payloads outright. (At 40x40, before
- *    #473, the same worst case was ~26 KiB.)
+ *    (96x96 since the 4x-area quadrupling, the engine's `maxSize`) with zero
+ *    RLE compression encodes to roughly 178 KiB even with a long multi-byte
+ *    name and hundreds of entities, so 256 KiB retains ~1.4x headroom for any
+ *    real map while rejecting megabyte spam payloads outright. (The same
+ *    worst case was ~35 KiB at 48x48, ~26 KiB at 40x40.)
  *  - **Publish rate limit** ({@link PUBLISH_MAX_PER_WINDOW} per
  *    {@link PUBLISH_WINDOW_MS}): 5 maps/hour/author. Authoring a map takes
  *    minutes at minimum, so an honest author never notices; a spam script is
@@ -31,15 +31,17 @@
 import { utf8ByteLength } from './mapCodes'
 
 /**
- * Largest legal map code size in bytes. The largest legal map (48x48, since
- * #473 raised `MAP_VALIDATION_LIMITS.maxSize` from 40) with zero RLE
- * compression encodes to ~35 KiB worst case, so 64 KiB retains ~1.8x
- * headroom for any real map while rejecting megabyte spam payloads outright.
- * Mirrored by `community_maps.sql` (`octet_length(map_code) <= 65536`).
- * Changing this REQUIRES a companion migration — never edit an applied
- * migration. Verified by `constants-parity.test.ts`.
+ * Largest legal map code size in bytes. The largest legal map (96x96, since
+ * the 4x-area quadrupling raised `MAP_VALIDATION_LIMITS.maxSize` from 48)
+ * with zero RLE compression encodes to ~178 KiB worst case, so 256 KiB
+ * retains ~1.4x headroom for any real map while rejecting megabyte spam
+ * payloads outright (#507). Mirrored by
+ * `20260714000000_community_maps_map_code_cap.sql`
+ * (`octet_length(map_code) <= 262144`). Changing this REQUIRES a companion
+ * migration — never edit an applied migration. Verified by
+ * `constants-parity.test.ts`.
  */
-export const MAP_CODE_MAX_BYTES = 64 * 1024
+export const MAP_CODE_MAX_BYTES = 256 * 1024
 
 /**
  * Maximum length of a community map's published name. Mirrored by

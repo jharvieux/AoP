@@ -11,8 +11,8 @@
 //    @aop/content limits the editor uses. The Tier-1 client already validates
 //    before export, but a client can always be modified — an invalid map never
 //    reaches the table.
-//  - **Size cap**: MAP_CODE_MAX_BYTES (64 KiB, @aop/shared) — ~2x the largest
-//    legal map's worst-case encoding; the table's octet_length check backs it up.
+//  - **Size cap**: MAP_CODE_MAX_BYTES (256 KiB since #507, @aop/shared) — ~1.4x the
+//    largest legal map's worst-case encoding; the table's octet_length check backs it up.
 //  - **Rate limit**: PUBLISH_MAX_PER_WINDOW (5) per PUBLISH_WINDOW_MS (1 h) per
 //    author, counted over all rows including removed ones (soft delete makes
 //    remove-and-republish count against the window).
