@@ -13,7 +13,7 @@
  * get a namespaced id here to avoid ever colliding with a faction/unit/ship id.
  */
 
-import type { EncounterKind } from '@aop/engine'
+import type { EncounterKind, LandEncounterKind } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
 
 /**
@@ -26,12 +26,29 @@ import type { FactionId } from '@aop/shared'
 export const TILE_ART_TYPES: readonly string[] = ['land', 'port']
 
 /**
- * Sea-encounter kinds with a theme-overridable sprite (#494). Land encounters
- * (`LandEncounterKind`) render through a separate, not-yet-themeable sprite
- * table in MapCanvas (`LAND_ENCOUNTER_SPRITE_URL`) — only sea encounters route
- * through `resolveSpriteUrl`.
+ * Sea-encounter kinds with a theme-overridable sprite (#494). Hand-listed
+ * rather than derived from `@aop/content`'s `ENCOUNTERS` catalog because that
+ * object's keys mix in `spawnDensity`/`minStartDistance` alongside the kind
+ * keys — there's no clean values-only export to draw from.
  */
 export const SEA_ENCOUNTER_KINDS: readonly EncounterKind[] = ['merchant', 'natives', 'settlers']
+
+/**
+ * Land-encounter kinds with a theme-overridable sprite (#494 audit fix,
+ * PR #520). `MapCanvas.tsx`'s land-encounter render pass calls
+ * `resolveSpriteUrl(themeSpriteUrlRef.current, encounterContentId(enc.kind),
+ * LAND_ENCOUNTER_SPRITE_URL[enc.kind])` — the exact same theming path as sea
+ * encounters, just with a land-specific default-art table — so these are
+ * themeable today too and need their own editor slot. Hand-listed for the
+ * same reason as `SEA_ENCOUNTER_KINDS`: `@aop/content`'s `LAND_ENCOUNTERS`
+ * catalog keys mix in `spawnDensity`/`minStartDistance` alongside the kind
+ * keys.
+ */
+export const LAND_ENCOUNTER_KINDS: readonly LandEncounterKind[] = [
+  'nativeVillage',
+  'hermit',
+  'banditCamp',
+]
 
 /** Theme-pack content id for a map tile type's sprite override. */
 export function tileContentId(tileType: string): string {

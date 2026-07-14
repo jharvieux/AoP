@@ -6,6 +6,7 @@ import {
   cityContentId,
   encounterContentId,
   factionFlagContentId,
+  LAND_ENCOUNTER_KINDS,
   partyContentId,
   resolveSpriteUrl,
   SEA_ENCOUNTER_KINDS,
@@ -111,13 +112,24 @@ describe('resolveSpriteUrl', () => {
   })
 })
 
-describe('TILE_ART_TYPES / SEA_ENCOUNTER_KINDS (#494 editor slot enumeration)', () => {
+describe('TILE_ART_TYPES / SEA_ENCOUNTER_KINDS / LAND_ENCOUNTER_KINDS (#494 editor slot enumeration)', () => {
   it('lists exactly the tile types that route through resolveSpriteUrl (land/port)', () => {
     expect(TILE_ART_TYPES).toEqual(['land', 'port'])
   })
 
   it('lists exactly the sea-encounter kinds that route through resolveSpriteUrl', () => {
     expect(SEA_ENCOUNTER_KINDS).toEqual(['merchant', 'natives', 'settlers'])
+  })
+
+  it('lists exactly the land-encounter kinds that route through resolveSpriteUrl', () => {
+    expect(LAND_ENCOUNTER_KINDS).toEqual(['nativeVillage', 'hermit', 'banditCamp'])
+  })
+
+  it('sea and land encounter kinds never collide, so their encounter: content ids stay distinct', () => {
+    const overlap = SEA_ENCOUNTER_KINDS.filter((k) =>
+      (LAND_ENCOUNTER_KINDS as readonly string[]).includes(k),
+    )
+    expect(overlap).toEqual([])
   })
 })
 

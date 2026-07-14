@@ -7,6 +7,7 @@ import {
   cityBackdropContentId,
   cityContentId,
   encounterContentId,
+  LAND_ENCOUNTER_KINDS,
   partyContentId,
   SEA_ENCOUNTER_KINDS,
   tileContentId,
@@ -218,6 +219,17 @@ export function ThemePackEditor({
         {SEA_ENCOUNTER_KINDS.map((kind) => (
           <li key={kind} className="garrison-row">
             <span className="garrison-row__name">{slotLabel(kind)}</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', encounterContentId(kind))]}
+              onUpload={(file) => onAssetUpload('sprite', encounterContentId(kind), file)}
+              onClear={() => onAssetClear('sprite', encounterContentId(kind))}
+            />
+          </li>
+        ))}
+        {LAND_ENCOUNTER_KINDS.map((kind) => (
+          <li key={kind} className="garrison-row">
+            <span className="garrison-row__name">{slotLabel(kind)} (land)</span>
             <AssetUploadControl
               kind="sprite"
               asset={pack.assets[assetKey('sprite', encounterContentId(kind))]}
