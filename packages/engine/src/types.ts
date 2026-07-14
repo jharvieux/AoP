@@ -192,7 +192,12 @@ export interface Captain {
    * (prize flow), but the captain — being ashore — was NOT captured. A
    * ship-lost captain stands with its party (position tracks the party), can
    * take no ship action, and is not a naval target; it is captured only when
-   * its party is destroyed. Absent for every captain that still has a hull.
+   * its party is destroyed. Its ways back into play (#499): the party embarks
+   * onto any own ship, or stands at an owned city — either transfers the
+   * captain to the recruitment pool (still `shipLost`, leading nothing — see
+   * `captainAwaitingCommand`), from which `recruitCaptain` re-commissions it
+   * onto a fresh hull, clearing the flag. Absent for every captain that still
+   * has a hull.
    */
   shipLost?: true
 }

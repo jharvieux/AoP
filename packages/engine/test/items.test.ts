@@ -221,6 +221,20 @@ describe('rollItemDrop (#498)', () => {
     expect(rollItemDrop(ITEM_CATALOG, 1, rng)).toEqual(rollItemDrop(ITEM_CATALOG, 1, rng))
   })
 
+  it('is independent of the item catalog key order (#499 audit)', () => {
+    // Same defs, reversed insertion order: every seed must pick identically,
+    // or drops would diverge between catalogs serialized in different orders.
+    const reversed: ItemCatalogLike = {
+      ...ITEM_CATALOG,
+      defs: Object.fromEntries(Object.entries(ITEM_CATALOG.defs).reverse()),
+    }
+    for (let seed = 0; seed < 50; seed++) {
+      expect(rollItemDrop(reversed, 1, seedRng(seed))).toEqual(
+        rollItemDrop(ITEM_CATALOG, 1, seedRng(seed)),
+      )
+    }
+  })
+
   it('a zero chance misses with a single draw; weight 0 items are never picked', () => {
     const miss = rollItemDrop(ITEM_CATALOG, 0, seedRng(9))
     expect(miss.itemId).toBeNull()

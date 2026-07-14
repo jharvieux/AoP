@@ -296,6 +296,11 @@ export function applyActionWithOutcome(state: GameState, action: Action): Action
       break
   }
 
+  // Stranded-captain rescue, port case (#499): any ship-lost leader whose
+  // party now stands at a city its owner controls transfers to the
+  // recruitment pool, whichever action put the pieces there.
+  next = rescueStrandedLeaders(next)
+
   // Fold newly-visible tiles (cities + captain positions) into the acting
   // player's exploration history — the persistent half of the fog of war (#14).
   next = {
@@ -1758,22 +1763,34 @@ function autoContinueMarchOrders(state: GameState, playerId: string): GameState 
  * party's stack order: if everything fits the party leaves the map, otherwise
  * the remainder stays ashore as the same party. Costs no movement on either
  * piece — the ship's boats do the work.
+ *
+ * A party led by a SHIP-LOST captain (#499) may board any own ship this way —
+ * its own flagship is gone, so the reunite rule cannot apply. The rescued
+ * captain transfers instantly to the owner's recruitment pool (no passenger
+ * state): it stays `shipLost`, leads nothing, and is re-commissioned later
+ * via `recruitCaptain` — see {@link captainAwaitingCommand}.
  */
 function embark(state: GameState, action: EmbarkAction): GameState {
   const party = ownedParty(state, action.partyId, action)
   const captain = ownedCaptain(state, action.captainId, action)
-  // A captain-led party (#498) re-boards only its own captain's anchored ship —
-  // the reunite that restores ship control. A leader does not abandon its
-  // flagship for a berth on another hull, and a shipless leader has nothing to
-  // re-board (see the deferral issue for stranded-captain rescue).
-  if (party.captainId !== undefined && party.captainId !== captain.id) {
-    throw new InvalidActionError(
-      `${party.id} is led by ${party.captainId} and can only re-board that captain's ship`,
-      action,
-    )
-  }
-  if (party.captainId !== undefined && captain.shipLost) {
+  // The receiving captain must actually have a hull: a ship-lost captain has
+  // nothing to re-board — neither its own former party (#498) nor, standing
+  // ashore, anyone else's troops.
+  if (captain.shipLost) {
     throw new InvalidActionError(`${captain.id}'s ship was lost; there is nothing to re-board`, action) // prettier-ignore
+  }
+  // A captain-led party (#498) re-boards only its own captain's anchored ship —
+  // the reunite that restores ship control; a leader does not abandon its
+  // flagship for a berth on another hull. A ship-lost leader (#499) has no
+  // flagship left, so any own ship may take the column aboard — the rescue.
+  if (party.captainId !== undefined && party.captainId !== captain.id) {
+    const leader = state.captains.find((c) => c.id === party.captainId)
+    if (!leader?.shipLost) {
+      throw new InvalidActionError(
+        `${party.id} is led by ${party.captainId} and can only re-board that captain's ship`,
+        action,
+      )
+    }
   }
   if (mapDistance(state.map, party.position, captain.position) !== 1) {
     throw new InvalidActionError(`${captain.id} is not adjacent to the party`, action)
@@ -1807,8 +1824,9 @@ function embark(state: GameState, action: EmbarkAction): GameState {
         ? state.parties.map((p) => {
             if (p.id !== party.id) return p
             const remainder: LandingParty = { ...p, troops: ashore }
-            // The captain boards with whoever fits (#498): a partial reunite
-            // leaves the remainder ashore as an ordinary, unled party.
+            // The captain boards with whoever fits (#498/#499): a partial
+            // reunite — or rescue — leaves the remainder ashore as an
+            // ordinary, unled party.
             delete remainder.captainId
             return remainder
           })
@@ -2096,6 +2114,56 @@ export function partyLedBy(state: GameState, captainId: string): LandingParty | 
   return state.parties.find((p) => p.captainId === captainId)
 }
 
+/**
+ * A rescued, ship-lost captain awaiting a new command (#499): its party has
+ * embarked onto another own ship, or reached an owned city — either way it now
+ * leads nothing and holds no hull. Such a captain sits in the owner's
+ * recruitment pool (like a captive whose captivity has lapsed, but with no
+ * wait and no captor): inert on the board — no actions, no vision, not a
+ * target — until re-commissioned onto a fresh hull via `recruitCaptain`.
+ * Takes the pieces rather than a GameState so client views (which see the
+ * same fields) share the exact predicate.
+ */
+export function captainAwaitingCommand(
+  captain: Pick<Captain, 'id' | 'captured' | 'shipLost'>,
+  parties: readonly Pick<LandingParty, 'captainId'>[],
+): boolean {
+  return (
+    !captain.captured &&
+    captain.shipLost === true &&
+    !parties.some((p) => p.captainId === captain.id)
+  )
+}
+
+/**
+ * The port half of stranded-captain rescue (#499, operator decision
+ * 2026-07-14 "instant pool transfer"): a ship-lost captain whose party stands
+ * at a city its owner controls — on or beside the city tile — transfers to
+ * the recruitment pool at once; walking into your own port IS a rescue. The
+ * party stays ashore, unled. Runs after every action (see
+ * {@link applyActionWithOutcome}) so every route into that position — a
+ * march, a standing march order, an assault that takes the city, a city
+ * changing hands beside a stranded column, the stranding itself — triggers
+ * the same rule deterministically.
+ */
+function rescueStrandedLeaders(state: GameState): GameState {
+  let parties: LandingParty[] | null = null
+  state.parties.forEach((party, i) => {
+    if (party.captainId === undefined) return
+    const leader = state.captains.find((c) => c.id === party.captainId)
+    if (!leader?.shipLost) return
+    const atOwnedCity = state.cities.some(
+      (c) => c.ownerId === party.ownerId && mapDistance(state.map, party.position, c.position) <= 1,
+    )
+    if (!atOwnedCity) return
+    parties ??= [...state.parties]
+    const unled: LandingParty = { ...party }
+    delete unled.captainId
+    parties[i] = unled
+  })
+  return parties ? { ...state, parties } : state
+}
+
 /** The city this captain is garrisoning (#498), if any. */
 export function garrisonCityOf(state: GameState, captainId: string): CityState | undefined {
   return state.cities.find((c) => c.garrisonCaptainId === captainId)
@@ -2170,8 +2238,11 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
   }
   const player = state.players.find((p) => p.id === action.playerId)!
   const setup = state.config.setup
+  // Captives and pool-bound rescues (#499) are not fielded captains, so
+  // neither inflates the price of the very hire that brings one back.
   const liveCount = state.captains.filter(
-    (c) => c.ownerId === action.playerId && !c.captured,
+    (c) =>
+      c.ownerId === action.playerId && !c.captured && !captainAwaitingCommand(c, state.parties),
   ).length
   const cost = Math.ceil(setup.recruitCaptainBaseCost * setup.recruitCaptainCostGrowth ** liveCount)
   if (!canAfford(player.resources, { gold: cost })) {
@@ -2190,22 +2261,33 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
 
   let captains: Captain[]
   if (action.captainId) {
-    const captive = state.captains.find((c) => c.id === action.captainId)
-    if (!captive || captive.ownerId !== action.playerId || !captive.captured) {
-      throw new InvalidActionError(`${action.captainId} is not your captive to recruit`, action)
+    const candidate = state.captains.find((c) => c.id === action.captainId)
+    if (!candidate || candidate.ownerId !== action.playerId) {
+      throw new InvalidActionError(`${action.captainId} is not your captain to recruit`, action)
     }
-    if (captive.captivityReturnRound === undefined || state.round < captive.captivityReturnRound) {
-      throw new InvalidActionError(`${captive.id} is not yet eligible for recruitment`, action)
+    // Two candidate pools share this hire: a captive past its captivity round
+    // (#309), and a rescued ship-lost captain awaiting a new command (#499) —
+    // the latter eligible at once, rescued rather than ransomed.
+    if (candidate.captured) {
+      if (
+        candidate.captivityReturnRound === undefined ||
+        state.round < candidate.captivityReturnRound
+      ) {
+        throw new InvalidActionError(`${candidate.id} is not yet eligible for recruitment`, action)
+      }
+    } else if (!captainAwaitingCommand(candidate, state.parties)) {
+      throw new InvalidActionError(`${candidate.id} is not in the recruitment pool`, action)
     }
     captains = state.captains.map((c) => {
-      if (c.id !== captive.id) return c
+      if (c.id !== candidate.id) return c
       const revived: Captain = {
         ...c,
         captured: false,
         position: spawnPosition,
         // A rehired captive comes back on a starter hull (#374): its old ship
         // was handed to whoever captured it as a prize, so its upgrades go with
-        // it — the returning captain buys refits afresh.
+        // it — the returning captain buys refits afresh. A re-commissioned
+        // rescue (#499) lost hull and refits the same way.
         shipClassId: setup.ransomReturnShipClassId ?? setup.startingShipClass,
         shipUpgrades: {},
         movementPoints: setup.startingCaptainMovement,
@@ -2214,6 +2296,7 @@ function recruitCaptain(state: GameState, action: RecruitCaptainAction): GameSta
       }
       delete revived.capturedBy
       delete revived.captivityReturnRound
+      delete revived.shipLost
       return revived
     })
   } else {
@@ -3091,9 +3174,12 @@ function roundLimitWinner(state: GameState): string | null {
  * was just eliminated the turn advances so play can continue.
  */
 function settleEliminations(state: GameState): GameState {
+  // A ship-lost captain never keeps a seat alive on its own (#499): while it
+  // leads a party the party counts, and once pooled it is a hire-in-waiting,
+  // not a piece — a seat left with nothing but pooled captains is done.
   const players = state.players.map((p) =>
     !p.eliminated &&
-    !state.captains.some((c) => c.ownerId === p.id && !c.captured) &&
+    !state.captains.some((c) => c.ownerId === p.id && !c.captured && !c.shipLost) &&
     !state.cities.some((c) => c.ownerId === p.id) &&
     !state.parties.some((c) => c.ownerId === p.id)
       ? { ...p, eliminated: true }

@@ -16,6 +16,7 @@ import {
 import {
   availableSkillPicks,
   availableStatPoints,
+  captainAwaitingCommand,
   effectiveCaptainStats,
   effectiveShipStats,
   levelForXp,
@@ -545,8 +546,11 @@ function TavernModal({
   const { unitName, shipName } = useTheme()
   const portraitUrl = FACTIONS[faction].captainPortraitUrl
   // Mirrors the reducer's recruitCaptain cost formula exactly (#308/#309) so the
-  // button's price never drifts from what the engine actually charges.
-  const liveCaptainCount = captains.filter((c) => !c.captured).length
+  // button's price never drifts from what the engine actually charges. Captives
+  // and pool-bound rescues (#499) don't count as fielded there either.
+  const liveCaptainCount = captains.filter(
+    (c) => !c.captured && !captainAwaitingCommand(c, parties),
+  ).length
   const recruitCost = Math.ceil(
     setup.recruitCaptainBaseCost * setup.recruitCaptainCostGrowth ** liveCaptainCount,
   )
@@ -585,11 +589,15 @@ function TavernModal({
                 : 'No troops aboard'
             // A captive is naturally eligible for rehire once `round` reaches
             // its captivityReturnRound; ransomCaptain only pulls that round
-            // forward to now, it never rehires by itself (reducer.ts).
+            // forward to now, it never rehires by itself (reducer.ts). A
+            // rescued ship-lost captain (#499) is eligible at once — rescued,
+            // not ransomed.
+            const awaitingCommand = captainAwaitingCommand(cap, parties)
             const eligibleNow =
-              cap.captured &&
-              cap.captivityReturnRound !== undefined &&
-              round >= cap.captivityReturnRound
+              awaitingCommand ||
+              (cap.captured &&
+                cap.captivityReturnRound !== undefined &&
+                round >= cap.captivityReturnRound)
             const ransomCost = Math.ceil(setup.ransomBaseCost + cap.xp * setup.ransomXpMultiplier)
             return (
               <li key={cap.id} className="garrison-row captain-row">
@@ -610,10 +618,12 @@ function TavernModal({
                             ? ' — eligible for rehire'
                             : ` — held until round ${cap.captivityReturnRound}`
                         }`
-                      : `${troopsTotal} troop${troopsTotal === 1 ? '' : 's'} — ${troopsSummary}`}
+                      : awaitingCommand
+                        ? 'Ship lost — rescued, awaiting a new command'
+                        : `${troopsTotal} troop${troopsTotal === 1 ? '' : 's'} — ${troopsSummary}`}
                   </span>
                 </div>
-                {cap.captured && (
+                {(cap.captured || awaitingCommand) && (
                   <div className="garrison-row__actions">
                     {eligibleNow ? (
                       <button
