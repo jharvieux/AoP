@@ -1,12 +1,15 @@
 import {
   AI_TUNING,
   BUILDINGS,
+  CAPTAIN_STAT_TUNING,
   CAPTAIN_XP_THRESHOLDS,
   CITY_DEFENSE_TUNING,
   ENCOUNTERS,
   FACTIONS,
   GAME_SETUP,
   INLAND_SETTLEMENTS,
+  ITEM_DROPS,
+  ITEMS,
   LAND_ENCOUNTERS,
   LAND_SITES,
   RECRUIT_REPLENISH_INTERVAL,
@@ -103,6 +106,28 @@ export function buildCatalog(): ContentCatalog {
       density: INLAND_SETTLEMENTS.density,
       buildings: [...INLAND_SETTLEMENTS.buildings],
       minStartDistance: INLAND_SETTLEMENTS.minStartDistance,
+    },
+    captainStats: {
+      attackPctPerPoint: CAPTAIN_STAT_TUNING.attackPctPerPoint,
+      defensePctPerPoint: CAPTAIN_STAT_TUNING.defensePctPerPoint,
+      speedMovementPerPoint: CAPTAIN_STAT_TUNING.speedMovementPerPoint,
+    },
+    items: {
+      defs: Object.fromEntries(
+        Object.values(ITEMS).map((item) => [
+          item.id,
+          {
+            attackBonusPct: item.attackBonusPct,
+            defenseBonusPct: item.defenseBonusPct,
+            speedBonus: item.speedBonus,
+            weight: item.weight,
+          },
+        ]),
+      ),
+      captainItemCap: ITEM_DROPS.captainItemCap,
+      seaEncounterDropChance: ITEM_DROPS.seaEncounterDropChance,
+      landHaulDropChance: ITEM_DROPS.landHaulDropChance,
+      landEncounterDropChance: ITEM_DROPS.landEncounterDropChance,
     },
   }
 }

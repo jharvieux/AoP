@@ -6,6 +6,7 @@ import {
   type Action,
   type BoardOrder,
   type Captain,
+  type CaptainStat,
   type CityState,
   type EncounterChoice,
   type GameMap,
@@ -83,6 +84,8 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
     troops: cap.troops,
     xp: cap.xp ?? 0,
     skills: cap.skills ?? [],
+    stats: cap.stats ?? { attack: 0, defense: 0, speed: 0 },
+    items: cap.items ?? [],
     shipUpgrades: cap.shipUpgrades ?? {},
     captured: cap.captured,
     ...(cap.capturedBy !== undefined ? { capturedBy: cap.capturedBy } : {}),
@@ -92,6 +95,7 @@ export function captainFromView(cap: ViewCaptain): Captain | null {
     ...(cap.standingOrders ? { standingOrders: cap.standingOrders } : {}),
     ...(cap.boardOrders ? { boardOrders: cap.boardOrders } : {}),
     ...(cap.sailOrder ? { sailOrder: cap.sailOrder } : {}),
+    ...(cap.shipLost ? { shipLost: cap.shipLost } : {}),
   }
 }
 
@@ -117,6 +121,7 @@ export function partyFromView(party: ViewParty): LandingParty | null {
     maxMovementPoints: party.maxMovementPoints ?? party.movementPoints,
     troops: party.troops,
     ...(party.marchOrder ? { marchOrder: party.marchOrder } : {}),
+    ...(party.captainId !== undefined ? { captainId: party.captainId } : {}),
   }
 }
 
@@ -132,6 +137,7 @@ export function cityFromView(city: ViewCity): CityState | null {
     builtThisRound: city.builtThisRound ?? false,
     garrison: city.garrison,
     unitAvailability: city.unitAvailability,
+    ...(city.garrisonCaptainId !== undefined ? { garrisonCaptainId: city.garrisonCaptainId } : {}),
   }
 }
 
@@ -512,6 +518,21 @@ export const matchAction = {
   chooseCaptainSkill(view: PlayerView, captainId: string, skillId: string): Action {
     return { type: 'chooseCaptainSkill', playerId: view.viewerId, captainId, skillId }
   },
+  chooseCaptainStat(view: PlayerView, captainId: string, stat: CaptainStat): Action {
+    return { type: 'chooseCaptainStat', playerId: view.viewerId, captainId, stat }
+  },
+  garrisonCaptain(view: PlayerView, captainId: string, cityId: string): Action {
+    return { type: 'garrisonCaptain', playerId: view.viewerId, captainId, cityId }
+  },
+  ungarrisonCaptain(view: PlayerView, cityId: string): Action {
+    return { type: 'ungarrisonCaptain', playerId: view.viewerId, cityId }
+  },
+  takeItem(view: PlayerView, captainId: string, cityId: string, itemId: string): Action {
+    return { type: 'takeItem', playerId: view.viewerId, captainId, cityId, itemId }
+  },
+  depositItem(view: PlayerView, captainId: string, cityId: string, itemId: string): Action {
+    return { type: 'depositItem', playerId: view.viewerId, captainId, cityId, itemId }
+  },
   upgradeShip(view: PlayerView, cityId: string, captainId: string, track: string): Action {
     return { type: 'upgradeShip', playerId: view.viewerId, cityId, captainId, track }
   },
@@ -527,8 +548,21 @@ export const matchAction = {
   ransomCaptain(view: PlayerView, captainId: string): Action {
     return { type: 'ransomCaptain', playerId: view.viewerId, captainId }
   },
-  disembark(view: PlayerView, captainId: string, to: Coord, troops: TroopStack[]): Action {
-    return { type: 'disembark', playerId: view.viewerId, captainId, to, troops }
+  disembark(
+    view: PlayerView,
+    captainId: string,
+    to: Coord,
+    troops: TroopStack[],
+    withCaptain?: boolean,
+  ): Action {
+    return {
+      type: 'disembark',
+      playerId: view.viewerId,
+      captainId,
+      to,
+      troops,
+      ...(withCaptain ? { withCaptain: true } : {}),
+    }
   },
   moveParty(view: PlayerView, partyId: string, to: Coord): Action {
     return { type: 'moveParty', playerId: view.viewerId, partyId, to }
