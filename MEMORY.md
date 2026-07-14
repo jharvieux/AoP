@@ -1,3 +1,34 @@
+## D-047 — 2026-07-14 — #517 map entity-count ceilings (maxEncounters/maxResourceNodes = 200 each)
+
+**Decision.** `MAP_VALIDATION_LIMITS` (@aop/content's `tuning.ts`, mirrored in the engine's
+`MapValidationLimits` shape) gains `maxEncounters`/`maxResourceNodes`, both 200, enforced by
+`validateMapDefinition` with specific `encounter-count-exceeded`/`resource-node-count-exceeded`
+errors (type, count, ceiling in the message). Deferred from #516 (that PR raised
+`MAP_CODE_MAX_BYTES` to 256 KiB but only capped dimensions, not entity counts — a legal map
+could carry ~2000 encounters + 2000 resource nodes, ~395 KiB, relying on the byte gate alone
+to reject it).
+
+**Why 200.** Measured against the largest legal map (96x96, 8p): the procedural
+water-encounter scatter (`ENCOUNTER_CATALOG.spawnDensity` 0.012/navigable-water-tile) places
+~80 encounters there (6733 measured navigable water tiles) — 200 keeps 2.5x headroom over
+that natural density. Resource nodes have no procedural equivalent (author-placed only); the
+canonical authored `STARTING_MAP` places 4 nodes for 2 players on 48x48, which scales to ~16
+at the 96x96/8p ceiling — 200 keeps >10x headroom. Both ceilings sit an order of magnitude
+below the 2000-per-type spam case, so the entity-count check now rejects that case first,
+with the byte gate remaining the final backstop (still load-bearing: a highly
+RLE-compressible map could otherwise spend its saved byte budget on far more entities than
+the byte gate alone would imply).
+
+**Rejected.** Leaving the byte gate as the only backstop (works only when tiles compress
+poorly — a real, compressible map could hide a large entity count in the byte budget it
+saves on tiles). Not a RULES_VERSION bump: validation runs at publish/load time, not inside
+replay — no GameState/action semantics changed. No DB migration: entity counts aren't
+mirrored in a SQL check constraint (only byte/length caps are), confirmed via
+`constants-parity.test.ts`'s existing coverage. ENGINE_VERSION regenerated (content/engine
+source changed).
+
+---
+
 ## D-046 — 2026-07-14 — Evening sweep: AI v2 live (garrison/led-parties/items/endgame), rescue+toast plumbing, theme/zoom UI
 
 **Sweep of 8 issues, 5 batches, all landed** (PRs #518 #521 #520 #525; #524 shipyard art

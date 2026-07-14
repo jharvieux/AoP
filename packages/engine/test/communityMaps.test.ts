@@ -163,21 +163,25 @@ describe('publish policy', () => {
 })
 
 describe('map-code size budget at the raised 96x96 ceiling', () => {
-  // The RLE wire format has no compression floor, and validateMapDefinition caps
-  // neither island-id magnitude nor encounter/resource-node counts — so a map can
-  // be maximally hostile to the codec while remaining fully LEGAL. #507 raised
-  // MAP_CODE_MAX_BYTES 64 KiB -> 256 KiB (companion migration
+  // The RLE wire format has no compression floor, and (pre-#517)
+  // validateMapDefinition capped neither island-id magnitude nor
+  // encounter/resource-node counts — so a map could be maximally hostile to
+  // the codec while remaining fully LEGAL. #507 raised MAP_CODE_MAX_BYTES
+  // 64 KiB -> 256 KiB (companion migration
   // 20260714000000_community_maps_map_code_cap.sql) after the 4x-area quadrupling
   // pushed the zero-compression 96x96 worst case (~178 KiB) past the old cap.
   // The pinned contract is now:
   //  - the "any legal map fits" guarantee holds again at the 96 ceiling: even a
-  //    zero-compression full-grid map with hundreds of entities fits (~1.4x
-  //    headroom), as it did at the 48 ceiling before the quadrupling,
-  //  - the guarantee is per-tile, not per-entity: entity COUNTS are unbounded,
-  //    so a legal map stuffed with thousands of encounters/resource nodes can
-  //    still exceed the cap — the byte gate rejects it CLEANLY, never truncated
-  //    or silently overflowed (the cap is the anti-spam backstop, not a promise
-  //    that unbounded payloads fit),
+  //    zero-compression full-grid map with hundreds of entities (right up to
+  //    the #517 per-type ceilings) fits (~1.4x headroom), as it did at the 48
+  //    ceiling before the quadrupling,
+  //  - the guarantee is per-tile, not per-entity: entity counts are now capped
+  //    per type (MAP_VALIDATION_LIMITS.maxEncounters/maxResourceNodes, #517),
+  //    so a map stuffed with thousands of encounters/resource nodes is
+  //    rejected by validateMapDefinition itself, with a specific
+  //    encounter-count-exceeded/resource-node-count-exceeded error — the byte
+  //    gate no longer has to catch entity spam alone (it remains the final
+  //    backstop for payloads that are merely huge for other reasons),
   //  - every REAL map (RLE-compressible, worst observed ~20 KiB at 96x96 with
   //    8 players) fits with wide margin.
 
@@ -256,15 +260,79 @@ describe('map-code size budget at the raised 96x96 ceiling', () => {
     expect(mapCodeExceedsSizeLimit(code)).toBe(false)
   })
 
-  it('a legal map bloated with unbounded entities is still cleanly rejected by the byte gate', () => {
-    // Entity counts are not validation-capped, so the byte cap remains the only
-    // backstop against entity-spam payloads: 2000 encounters + 2000 resource
-    // nodes on the same worst-case grid (~386 KiB measured) stays legal but
-    // over-cap. Encoding never throws or truncates — the gate is the guard.
+  it('a map bloated with entity-spam is now rejected by the entity-count check, earlier than the byte gate', () => {
+    // #517: 2000 encounters + 2000 resource nodes on the same worst-case grid
+    // (~386 KiB measured) is still over the byte cap too — but the per-type
+    // entity-count ceiling (200 each, MAP_VALIDATION_LIMITS.maxEncounters/
+    // maxResourceNodes) now rejects it FIRST, with a specific error naming
+    // each offending type, its count, and the ceiling — rather than the map
+    // failing only because its encoding happened to be large.
     const { def, payload } = worstCaseLegalMap(MAP_VALIDATION_LIMITS.maxSize, 2000)
-    expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS).valid).toBe(true)
+    const result = validateMapDefinition(def, MAP_VALIDATION_LIMITS)
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContainEqual({
+      code: 'encounter-count-exceeded',
+      message: `map has 2000 encounters, exceeding the maximum of ${MAP_VALIDATION_LIMITS.maxEncounters}`,
+    })
+    expect(result.errors).toContainEqual({
+      code: 'resource-node-count-exceeded',
+      message: `map has 2000 resource nodes, exceeding the maximum of ${MAP_VALIDATION_LIMITS.maxResourceNodes}`,
+    })
+    // The byte gate still backstops the same payload — belt and suspenders.
     const code = encodeMapCodePayload(payload)
     expect(mapCodeExceedsSizeLimit(code)).toBe(true)
+  })
+
+  describe('per-type entity-count ceilings (#517)', () => {
+    it('exactly maxEncounters/maxResourceNodes entities each is still legal (at-limit passes)', () => {
+      const { def } = worstCaseLegalMap(
+        MAP_VALIDATION_LIMITS.maxSize,
+        MAP_VALIDATION_LIMITS.maxEncounters,
+      )
+      expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS)).toEqual({ valid: true, errors: [] })
+    })
+
+    it('one encounter over the ceiling is rejected with a specific encounter-count-exceeded error', () => {
+      const { def } = worstCaseLegalMap(
+        MAP_VALIDATION_LIMITS.maxSize,
+        MAP_VALIDATION_LIMITS.maxEncounters + 1,
+      )
+      const result = validateMapDefinition(def, MAP_VALIDATION_LIMITS)
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContainEqual({
+        code: 'encounter-count-exceeded',
+        message:
+          `map has ${MAP_VALIDATION_LIMITS.maxEncounters + 1} encounters, exceeding the maximum ` +
+          `of ${MAP_VALIDATION_LIMITS.maxEncounters}`,
+      })
+      // Same helper mirrors the count into resourceNodes too, so that error fires as well.
+      expect(result.errors).toContainEqual({
+        code: 'resource-node-count-exceeded',
+        message:
+          `map has ${MAP_VALIDATION_LIMITS.maxResourceNodes + 1} resource nodes, exceeding the ` +
+          `maximum of ${MAP_VALIDATION_LIMITS.maxResourceNodes}`,
+      })
+    })
+
+    it('one resource node over the ceiling alone is rejected with a specific resource-node-count-exceeded error', () => {
+      const { def } = worstCaseLegalMap(
+        MAP_VALIDATION_LIMITS.maxSize,
+        MAP_VALIDATION_LIMITS.maxEncounters,
+      )
+      const overLimitDef: MapDefinition = {
+        ...def,
+        resourceNodes: [...def.resourceNodes!, { kind: 'gold', position: { x: 0, y: 30 } }],
+      }
+      const result = validateMapDefinition(overLimitDef, MAP_VALIDATION_LIMITS)
+      expect(result.valid).toBe(false)
+      expect(result.errors).toContainEqual({
+        code: 'resource-node-count-exceeded',
+        message:
+          `map has ${MAP_VALIDATION_LIMITS.maxResourceNodes + 1} resource nodes, exceeding the ` +
+          `maximum of ${MAP_VALIDATION_LIMITS.maxResourceNodes}`,
+      })
+      expect(result.errors.some((e) => e.code === 'encounter-count-exceeded')).toBe(false)
+    })
   })
 
   it('typical (generated) maps at every size, including 96x96 xlarge, encode comfortably under the cap', () => {

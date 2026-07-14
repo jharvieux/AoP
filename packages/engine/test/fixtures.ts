@@ -163,4 +163,7 @@ export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   maxPlayers: 8,
   minStartDistance: 5,
   maxHomeIslandAreaRatio: 1.5,
+  // Mirrors @aop/content's real values (#517) — see tuning.ts for sizing rationale.
+  maxEncounters: 200,
+  maxResourceNodes: 200,
 }
