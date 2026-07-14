@@ -105,6 +105,8 @@ function makeCaptain(
     troops,
     xp: 0,
     skills: [],
+    stats: { attack: 0, defense: 0, speed: 0 },
+    items: [],
     shipUpgrades: {},
     captured: false,
   }
@@ -182,6 +184,7 @@ function islandState(opts: {
       resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
       eliminated: false,
       reputation: 100,
+      itemStash: [],
     })),
     alliances: { pairs: opts.allied ? [{ a: 'p1', b: 'p2' }] : [], proposals: [] },
     cities,

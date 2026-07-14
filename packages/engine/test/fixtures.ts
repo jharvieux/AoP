@@ -117,6 +117,7 @@ export const AI_TUNING: AiTuning = {
   garrisonReserveFraction: 0.3,
   upgradeScoreBase: 20,
   skillPickScoreBase: 90,
+  statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
 }

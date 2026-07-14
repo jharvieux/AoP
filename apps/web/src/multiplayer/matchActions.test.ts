@@ -453,6 +453,8 @@ describe('captainFromView / cityFromView (own-detail widening)', () => {
       troops: [{ unitId: 'swashbuckler', count: 6 }],
       xp: 10,
       skills: ['navigator'],
+      stats: { attack: 0, defense: 0, speed: 0 },
+      items: [],
       shipUpgrades: { hull: 1 },
       captured: false,
     })

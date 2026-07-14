@@ -894,6 +894,8 @@ function landCaptain(
     troops,
     xp: 0,
     skills: [],
+    stats: { attack: 0, defense: 0, speed: 0 },
+    items: [],
     shipUpgrades: {},
     captured: false,
   }
@@ -975,6 +977,7 @@ function landState(opts: {
       resources: { gold: 0, timber: 0, iron: 0, rum: 0 },
       eliminated: false,
       reputation: 100,
+      itemStash: [],
       aiProfile: { personality: 'opportunist' as const, difficulty: 'normal' as const },
     })),
     alliances: { pairs: [], proposals: [] },
