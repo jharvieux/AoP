@@ -983,6 +983,15 @@ export interface SubmitResult {
    * response, and never rides a snapshot, broadcast, or another seat's view.
    */
   encounterOutcome?: EncounterOutcome
+  /**
+   * Item a `captureSite` land-haul turned up on the caller's own action, if
+   * any (#527) — the multiplayer twin of `ActionOutcome.siteItemGained`
+   * (#503), threaded through exactly like `encounterOutcome` above: captured
+   * only from the acting seat's own `applyActionWithOutcome` call, never one
+   * produced by the AI auto-play loop, and rides only that seat's own
+   * response (never a snapshot, broadcast, or another seat's view).
+   */
+  siteItemGained?: string
 }
 
 /**
@@ -1071,11 +1080,13 @@ export async function submitActionInternal(
   let next: GameState
   let battleReport: BattleReport | undefined
   let encounterOutcome: EncounterOutcome | undefined
+  let siteItemGained: string | undefined
   try {
     const outcome = applyActionWithOutcome(state, owned)
     next = outcome.state
     battleReport = outcome.battleReport
     encounterOutcome = outcome.encounterOutcome
+    siteItemGained = outcome.siteItemGained
   } catch (err) {
     if (err instanceof InvalidActionError) throw new AppError('INVALID_ACTION', err.message)
     throw err
@@ -1131,7 +1142,7 @@ export async function submitActionInternal(
 
   await finalize(db, matchId, state)
   await mirrorAllianceIds(db, matchId, state)
-  return { seq: count, state, battleReport, encounterOutcome }
+  return { seq: count, state, battleReport, encounterOutcome, siteItemGained }
 }
 
 /**
