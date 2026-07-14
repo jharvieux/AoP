@@ -6,24 +6,33 @@
  * (ports, resource nodes, encounters) can migrate to hex without depending on
  * the seeded generator (@aop/content cannot import @aop/engine; see hexMap.ts).
  *
- * Layout: an otherwise-empty `MAP_SIZE`×`MAP_SIZE` sea with one single-tile
- * home island per player at opposite corners, plus a scatter of resource
- * nodes and encounters (one of each kind) on the open water between them.
- * Every non-port coordinate is `deep` water, so the map is trivially
- * connected and every authored position is legal on both a square and a hex
- * interpretation of the same coordinates.
+ * Layout: a `MAP_SIZE`×`MAP_SIZE` sea with one home ISLAND per player at
+ * opposite corners — a solid radius-`HOME_ISLAND_RADIUS` disc with the port on
+ * its centre-facing rim — plus a scatter of resource nodes and encounters (one
+ * of each kind) on the open water between them. The original authored map had
+ * single-TILE port islands with zero land, which made it conquest-inert
+ * (D-039: landing parties were structurally impossible). The 4x-area map
+ * quadrupling (operator directive, 2026-07-14) doubled its dimensions and gave
+ * each capital a real island, so it now meets the land-assault guarantee every
+ * generated map is held to: a party can come ashore beyond the city's rim and
+ * march overland to assault it (see `hasLandAssaultRoute` in @aop/engine and
+ * the property test in packages/engine/test/landAssaultGuarantee.test.ts).
+ * Coordinates are the pre-quadrupling layout scaled by 2, so the map keeps its
+ * recognizable opposite-corners shape.
  *
- * Home islands sit on cardinal (not diagonal) offsets from their port
- * (`{x: port.x + 1, y: port.y}` etc.) — the one offset pair whose adjacency
- * survives hex reinterpretation regardless of row parity (see hex.ts's
- * `NEIGHBORS_EVEN_ROW`/`NEIGHBORS_ODD_ROW`: `{col: ±1, row: 0}` and
- * `{col: 0, row: ±1}` appear in both tables; only the diagonal pair differs).
- * That is what lets `startingMapHex.ts` reuse this layout verbatim instead of
- * hand-tuning start positions per topology.
+ * Home-island ports sit on the disc rim with the start position on a cardinal
+ * (not diagonal) offset (`{x: port.x + 1, y: port.y}` etc.) — the one offset
+ * pair whose adjacency survives hex reinterpretation regardless of row parity
+ * (see hex.ts's `NEIGHBORS_EVEN_ROW`/`NEIGHBORS_ODD_ROW`: `{col: ±1, row: 0}`
+ * and `{col: 0, row: ±1}` appear in both tables; only the diagonal pair
+ * differs). That is what lets `startingMapHex.ts` reuse this layout verbatim
+ * instead of hand-tuning start positions per topology. The discs themselves
+ * are likewise hex-safe: a solid disc is connected under cardinal moves alone,
+ * and every cardinal pair is hex-adjacent in both row parities.
  *
- * `MAP_SIZE` matches @aop/content's own `MAP_VALIDATION_LIMITS.minSize` (see
- * tuning.ts) so this authored map sits at the same floor a generated map
- * would.
+ * `MAP_SIZE` matches `MAP_DIMENSIONS.small` (@aop/engine map.ts) — the
+ * authored map plays at the same scale as the smallest generated preset, and
+ * sits well inside @aop/content's `MAP_VALIDATION_LIMITS` (24..96).
  */
 
 export type StartingMapTileType = 'deep' | 'shallows' | 'land' | 'port'
@@ -44,11 +53,15 @@ export interface StartingMapDefinition {
   }[]
 }
 
-export const MAP_SIZE = 24
+export const MAP_SIZE = 48
 
-const PORTS: { x: number; y: number; island: number }[] = [
-  { x: 3, y: 3, island: 0 },
-  { x: 20, y: 20, island: 1 },
+/** Radius of each home-island disc (matches the generated small/medium/large radius). */
+const HOME_ISLAND_RADIUS = 3
+
+/** Disc centres sit inland of their port, which faces the map centre. */
+const ISLANDS: { center: { x: number; y: number }; port: { x: number; y: number } }[] = [
+  { center: { x: 4, y: 4 }, port: { x: 6, y: 6 } },
+  { center: { x: 43, y: 43 }, port: { x: 41, y: 41 } },
 ]
 
 function buildTiles(): StartingMapDefinition['tiles'] {
@@ -56,8 +69,34 @@ function buildTiles(): StartingMapDefinition['tiles'] {
     type: 'deep' as StartingMapTileType,
     island: -1,
   }))
-  for (const port of PORTS) {
-    tiles[port.y * MAP_SIZE + port.x] = { type: 'port', island: port.island }
+  const at = (x: number, y: number) => y * MAP_SIZE + x
+  ISLANDS.forEach(({ center, port }, island) => {
+    for (let dy = -HOME_ISLAND_RADIUS; dy <= HOME_ISLAND_RADIUS; dy++) {
+      for (let dx = -HOME_ISLAND_RADIUS; dx <= HOME_ISLAND_RADIUS; dx++) {
+        if (dx * dx + dy * dy > HOME_ISLAND_RADIUS * HOME_ISLAND_RADIUS) continue
+        tiles[at(center.x + dx, center.y + dy)] = { type: 'land', island }
+      }
+    }
+    tiles[at(port.x, port.y)] = { type: 'port', island }
+  })
+  // Coastline, mirroring the generator: any deep tile touching land becomes
+  // shallows. The 8-neighbourhood is a superset of both hex parities'
+  // 6-neighbourhoods, so the hex reinterpretation keeps land off deep water too.
+  for (let y = 0; y < MAP_SIZE; y++) {
+    for (let x = 0; x < MAP_SIZE; x++) {
+      if (tiles[at(x, y)]!.type !== 'deep') continue
+      let coastal = false
+      for (let dy = -1; dy <= 1 && !coastal; dy++) {
+        for (let dx = -1; dx <= 1 && !coastal; dx++) {
+          if (dx === 0 && dy === 0) continue
+          const nx = x + dx
+          const ny = y + dy
+          if (nx < 0 || ny < 0 || nx >= MAP_SIZE || ny >= MAP_SIZE) continue
+          if (tiles[at(nx, ny)]!.type === 'land') coastal = true
+        }
+      }
+      if (coastal) tiles[at(x, y)]!.type = 'shallows'
+    }
   }
   return tiles
 }
@@ -73,18 +112,19 @@ export const STARTING_MAP: StartingMapDefinition = {
   // Cardinal-adjacent to each port (see file doc comment) so both squads
   // remain coastal under a hex reinterpretation too.
   startPositions: [
-    { x: PORTS[0]!.x + 1, y: PORTS[0]!.y },
-    { x: PORTS[1]!.x - 1, y: PORTS[1]!.y },
+    { x: ISLANDS[0]!.port.x + 1, y: ISLANDS[0]!.port.y },
+    { x: ISLANDS[1]!.port.x - 1, y: ISLANDS[1]!.port.y },
   ],
+  // The pre-quadrupling scatter, scaled by 2 with the board.
   resourceNodes: [
-    { kind: 'gold', position: { x: 10, y: 10 }, ownerSeat: 0 },
-    { kind: 'timber', position: { x: 14, y: 8 } },
-    { kind: 'iron', position: { x: 9, y: 15 } },
-    { kind: 'rum', position: { x: 15, y: 9 } },
+    { kind: 'gold', position: { x: 20, y: 20 }, ownerSeat: 0 },
+    { kind: 'timber', position: { x: 28, y: 16 } },
+    { kind: 'iron', position: { x: 18, y: 30 } },
+    { kind: 'rum', position: { x: 30, y: 18 } },
   ],
   encounters: [
-    { kind: 'merchant', position: { x: 12, y: 12 } },
-    { kind: 'natives', position: { x: 6, y: 18 } },
-    { kind: 'settlers', position: { x: 17, y: 5 } },
+    { kind: 'merchant', position: { x: 24, y: 24 } },
+    { kind: 'natives', position: { x: 12, y: 36 } },
+    { kind: 'settlers', position: { x: 34, y: 10 } },
   ],
 }

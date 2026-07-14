@@ -65,8 +65,14 @@
  * fields, but every combat and movement refresh involving stats or items
  * resolves differently, so a v8 log replays to a silently different state and
  * replaying across the boundary is refused.
+ * v10 — map quadrupling (operator directive, 2026-07-14): every MAP_DIMENSIONS
+ * preset doubles both dimensions (4x area), and generation gains the
+ * land-assault-guarantee post-pass. MAP_DIMENSIONS is an engine constant (not
+ * frozen into config like the content-side setup numbers), so a v9 action log
+ * replayed on this build regenerates a differently-sized map from the same
+ * (seed, mapSize) and silently diverges — replay across the boundary is refused.
  */
-export const RULES_VERSION = 9
+export const RULES_VERSION = 10
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

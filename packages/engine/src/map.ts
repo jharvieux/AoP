@@ -53,14 +53,19 @@ export interface GameMap {
 }
 
 export const MAP_DIMENSIONS: Record<MapSize, number> = {
-  small: 24,
-  medium: 32,
-  large: 40,
-  // #468: continues the +8 step of small→medium→large. Neutral-city count
-  // already scales off this via the size/6..size/4 formula below, and the
-  // per-size home-island radius override (see GameSetup) is what actually
-  // grows island interiors rather than just adding more empty sea.
-  xlarge: 48,
+  // Operator directive (2026-07-14): every size preset is 4x its former AREA —
+  // both dimensions doubled (24/32/40/48 -> 48/64/80/96). Correlated content
+  // knobs scaled in lock-step (see GAME_SETUP.homeIslandRadius and its xlarge
+  // override in @aop/content): island discs doubled their radius so land area
+  // keeps pace with sea area, which also gives every size real island
+  // interiors — inland settlements now appear at every size, not just xlarge
+  // (D-038 superseded). Neutral-island count already scales off `size` via the
+  // size/6..size/4 formula below. Changing these breaks replay of generated
+  // maps, so it bumps RULES_VERSION.
+  small: 48,
+  medium: 64,
+  large: 80,
+  xlarge: 96,
 }
 
 const SIZE_CODE: Record<MapSize, number> = { small: 1, medium: 2, large: 3, xlarge: 4 }
@@ -248,13 +253,164 @@ export function generateMap(
 
   // Ports + start positions: for each home island, mark the land tile nearest the
   // map centre as a port, then spawn the captain on the water tile just inward.
+  const ports: Coord[] = []
   for (let i = 0; i < playerCount; i++) {
     const portTile = nearestLandToCenter(map, islandCenters[i]!, i, center)
     map.tiles[tileIndex(map, portTile.x, portTile.y)]!.type = 'port'
     map.startPositions.push(waterAdjacentTowardCenter(map, portTile, center))
+    ports.push(portTile)
+  }
+
+  // Land-assault guarantee (operator directive, 2026-07-14): every capital must
+  // be assailable overland, structurally — never by luck of the seed. Home
+  // islands are solid discs so this post-pass is a no-op on healthy output; it
+  // exists as a deterministic, RNG-free repair net (see ensureLandAssaultRoute)
+  // so the guarantee is by construction, not by retry.
+  for (const port of ports) {
+    ensureLandAssaultRoute(map, port)
   }
 
   return map
+}
+
+/**
+ * Water tiles a ship can actually reach: the flood-fill closure of `seeds`
+ * (normally the map's start positions) over water under the map's topology.
+ * A land-locked pond is water but not navigable — a party cannot be delivered
+ * to its shore — so land-assault checks must use this, not raw water adjacency.
+ */
+export function navigableWaterTiles(map: GameMap, seeds: readonly Coord[]): Set<number> {
+  const visited = new Set<number>()
+  const queue: Coord[] = []
+  for (const s of seeds) {
+    const idx = tileIndex(map, s.x, s.y)
+    if (isWaterTile(tileAt(map, s)) && !visited.has(idx)) {
+      visited.add(idx)
+      queue.push(s)
+    }
+  }
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const n of mapNeighbors(map, current)) {
+      const idx = tileIndex(map, n.x, n.y)
+      if (visited.has(idx) || !isWaterTile(tileAt(map, n))) continue
+      visited.add(idx)
+      queue.push(n)
+    }
+  }
+  return visited
+}
+
+/**
+ * The land-assault guarantee (operator directive, 2026-07-14): a city on tile
+ * `city` must be attackable by a landing party marching overland. Concretely,
+ * mirroring the reducer's rules (disembark: a `land` tile at map-distance 1
+ * from a ship on navigable water; parties march `land` tiles only; a party
+ * assaults from a tile adjacent to the city), there must exist:
+ *
+ *  - a **disembark tile** `d`: a `land` tile adjacent to navigable water and
+ *    NOT adjacent to the city itself (so the landing cannot be trivially
+ *    contested from the walls, and a genuine overland march exists), and
+ *  - an **assault position** `a`: a `land` tile adjacent to the city,
+ *
+ * with `d` and `a` in the same land-connected component. `navigableWater`
+ * defaults to {@link navigableWaterTiles} seeded from the map's start
+ * positions. Used by the generator's repair post-pass and by the property
+ * tests that hold authored maps to the same guarantee.
+ */
+export function hasLandAssaultRoute(
+  map: GameMap,
+  city: Coord,
+  navigableWater?: ReadonlySet<number>,
+): boolean {
+  const navigable = navigableWater ?? navigableWaterTiles(map, map.startPositions)
+  // Multi-source flood fill over `land` from every assault position; succeed
+  // the moment the component reaches a qualifying disembark tile.
+  const visited = new Set<number>()
+  const queue: Coord[] = []
+  for (const n of mapNeighbors(map, city)) {
+    if (tileAt(map, n)?.type !== 'land') continue
+    const idx = tileIndex(map, n.x, n.y)
+    if (!visited.has(idx)) {
+      visited.add(idx)
+      queue.push(n)
+    }
+  }
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (
+      mapDistance(map, current, city) > 1 &&
+      mapNeighbors(map, current).some((n) => navigable.has(tileIndex(map, n.x, n.y)))
+    ) {
+      return true
+    }
+    for (const n of mapNeighbors(map, current)) {
+      const idx = tileIndex(map, n.x, n.y)
+      if (visited.has(idx) || tileAt(map, n)?.type !== 'land') continue
+      visited.add(idx)
+      queue.push(n)
+    }
+  }
+  return false
+}
+
+/**
+ * Deterministic, RNG-free repair for a capital missing the land-assault
+ * guarantee: grow a two-tile land bridge off the port — a `firstStep` tile
+ * adjacent to the port and a `secondStep` beyond it (the new disembark tile) —
+ * trying candidate directions in the fixed {@link mapNeighbors} order and
+ * keeping the first that verifiably restores the guarantee (re-checked against
+ * recomputed navigability, so a repair can never sever the sea route it needs).
+ * Bounded (≤ 8×8 candidate pairs), draws nothing from the RNG, and touches the
+ * map only when the guarantee actually fails — healthy generation output is
+ * byte-identical to a build without this pass. Throws if no candidate works:
+ * an impossible board must fail loudly at generation, not surface as a
+ * conquest-inert map in play.
+ */
+function ensureLandAssaultRoute(map: GameMap, port: Coord): void {
+  let navigable = navigableWaterTiles(map, map.startPositions)
+  if (hasLandAssaultRoute(map, port, navigable)) return
+
+  const island = map.tiles[tileIndex(map, port.x, port.y)]!.island
+  const isStart = (c: Coord) => map.startPositions.some((s) => s.x === c.x && s.y === c.y)
+  const convertible = (c: Coord) => isWaterTile(tileAt(map, c)) && !isStart(c)
+
+  for (const firstStep of mapNeighbors(map, port)) {
+    if (!convertible(firstStep)) continue
+    for (const secondStep of mapNeighbors(map, firstStep)) {
+      if (mapDistance(map, secondStep, port) <= 1 || !convertible(secondStep)) continue
+      const tiles = [firstStep, secondStep].map((c) => map.tiles[tileIndex(map, c.x, c.y)]!)
+      const saved = tiles.map((t) => ({ ...t }))
+      for (const t of tiles) {
+        t.type = 'land'
+        t.island = island
+      }
+      navigable = navigableWaterTiles(map, map.startPositions)
+      // A repair must never buy the guarantee by sealing a strait: every start
+      // must stay sea-reachable from the first (the map validator's contract).
+      const fromFirst = navigableWaterTiles(map, [map.startPositions[0]!])
+      const seaIntact = map.startPositions.every((s) => fromFirst.has(tileIndex(map, s.x, s.y)))
+      if (seaIntact && hasLandAssaultRoute(map, port, navigable)) {
+        // Local coastline fix-up: the new land's deep neighbours become shallows,
+        // matching the generator's coastline pass.
+        for (const c of [firstStep, secondStep]) {
+          for (const n of mapNeighbors(map, c)) {
+            const tile = map.tiles[tileIndex(map, n.x, n.y)]!
+            if (tile.type === 'deep') tile.type = 'shallows'
+          }
+        }
+        return
+      }
+      tiles.forEach((t, i) => {
+        t.type = saved[i]!.type
+        t.island = saved[i]!.island
+      })
+    }
+  }
+  throw new Error(
+    `Cannot guarantee a land-assault route for the capital at ${port.x},${port.y} — ` +
+      'no two-tile land bridge restores an overland approach',
+  )
 }
 
 function nearestLandToCenter(

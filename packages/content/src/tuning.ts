@@ -482,14 +482,18 @@ export const GAME_SETUP: GameSetup = {
   // and it keeps a landed force catchable by ships pacing the coast (#465).
   partyMovementPoints: 3,
   startingShipClass: 'sloop',
-  homeIslandRadius: 2,
-  // #468: doubling xlarge's home-island radius roughly quadruples its usable
-  // land per island (disc area scales with r²) — the point of the XL size is
-  // more interior land for the #469 epic, not just a wider empty-sea canvas.
-  // Neutral islands scale the same way, since generateMap derives their
-  // radius from this same resolved value. small/medium/large are absent here
-  // so their generation stays byte-identical to pre-#468 output.
-  homeIslandRadiusOverrides: { xlarge: 4 },
+  // Doubled from 2 alongside the 4x-area map quadrupling (operator directive,
+  // 2026-07-14): disc area scales with r², so doubling the radius keeps each
+  // island's land in proportion to the doubled map dimensions — and gives
+  // EVERY size real island interiors, so inland settlements and land warfare
+  // now appear on every board, not just xlarge (extends #468's scaling
+  // philosophy to all sizes; D-038's "xlarge is where they appear" is
+  // superseded). Neutral islands scale the same way, since generateMap derives
+  // their radius from this same resolved value.
+  homeIslandRadius: 4,
+  // #468's xlarge override, doubled in the same 4x-area rescale: xlarge stays
+  // the interior-land flagship at twice the flat radius.
+  homeIslandRadiusOverrides: { xlarge: 8 },
   // Increased from 0.34 to 0.40 to slow first contact (#322); home islands now
   // sit ~2 tiles farther apart, reducing early rush timing pressure.
   homeIslandRingRadiusFactor: 0.4,
@@ -553,10 +557,10 @@ export const RECRUIT_REPLENISH_INTERVAL = 5
 export interface InlandSettlementTuning {
   /**
    * Target count ≈ floor(interiorLandTiles * density), capped by how many
-   * interior tiles the generated islands actually offer. Small/medium/large
-   * maps (home-island radius 2) have almost no interior, so they seed few or
-   * none; the extra-large board (#468, radius 4) is where they appear in
-   * numbers — exactly the land gameplay space the epic (#469) opened up.
+   * interior tiles the generated islands actually offer. Since the 4x-area map
+   * quadrupling (2026-07-14) every size generates radius-4+ island discs with
+   * real interiors, so settlements appear on every board — land warfare
+   * everywhere, not just xlarge (which, at radius 8, still offers the most).
    */
   density: number
   /**
@@ -729,13 +733,17 @@ export interface MapValidationLimits {
 }
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
-  // The authored/community-map size range. minSize matches the smallest
-  // MAP_DIMENSIONS entry (map.ts); maxSize now matches the largest (xlarge,
-  // 48) too — #473 raised it from 40 after confirming the community-map
-  // wire format's RLE size budget (MAP_CODE_MAX_BYTES in
-  // @aop/shared/communityMaps.ts) tolerates a 48x48 map with room to spare.
+  // The authored/community-map size range. maxSize matches the largest
+  // MAP_DIMENSIONS entry (xlarge, 96 since the 2026-07-14 4x-area quadrupling;
+  // #473 previously moved it 40 -> 48). minSize deliberately stays at the old
+  // smallest preset so every community map published before the quadrupling
+  // remains valid. NOTE the wire-format caveat: MAP_CODE_MAX_BYTES
+  // (@aop/shared/communityMaps.ts) still guarantees a fit only for typical
+  // (RLE-compressible) maps at 96x96 — a zero-compression adversarial 96x96
+  // map is legal but exceeds the byte cap and is cleanly rejected at publish;
+  // raising the cap needs a companion DB migration (operator-gated, see #507).
   minSize: 24,
-  maxSize: 48,
+  maxSize: 96,
   minPlayers: 2,
   maxPlayers: 8,
   // Same crowding floor the generated-map fairness tests enforce (map.test.ts).

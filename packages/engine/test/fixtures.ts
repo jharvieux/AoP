@@ -69,8 +69,8 @@ export const GAME_SETUP: GameSetup = {
   startingCaptainMovement: 5,
   partyMovementPoints: 3,
   startingShipClass: 'sloop',
-  homeIslandRadius: 2,
-  homeIslandRadiusOverrides: { xlarge: 4 },
+  homeIslandRadius: 4,
+  homeIslandRadiusOverrides: { xlarge: 8 },
   homeIslandRingRadiusFactor: 0.4,
   startingBuildings: ['townhall', 'barracks'],
   cityVisionRadius: 3,
@@ -151,7 +151,7 @@ export const AI_DIFFICULTIES: Record<AiDifficulty, AiDifficultyModifier> = {
 
 export const MAP_VALIDATION_LIMITS: MapValidationLimits = {
   minSize: 24,
-  maxSize: 48, // #473: mirrors @aop/content's real value (was 40 pre-#473)
+  maxSize: 96, // mirrors @aop/content's real value (4x-area quadrupling; was 48 per #473)
   minPlayers: 2,
   maxPlayers: 8,
   minStartDistance: 5,
