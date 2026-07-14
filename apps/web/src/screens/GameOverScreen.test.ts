@@ -30,4 +30,18 @@ describe('classifyGameOver', () => {
       'defeat-abandoned',
     )
   })
+
+  // #508: a round-limit ending with no winner leaves every crew alive — without
+  // the flag it would misread as defeat-abandoned ("rival crews sail on").
+  it('is a draw when the round limit expired with no winner and crews still alive (#508)', () => {
+    expect(classifyGameOver(null, [{ eliminated: false }, { eliminated: false }], true)).toBe(
+      'draw',
+    )
+  })
+
+  it('stays victory/defeat when the round limit produced a winner (#508)', () => {
+    const alive = [{ eliminated: false }, { eliminated: false }]
+    expect(classifyGameOver('player-0', alive, true)).toBe('victory')
+    expect(classifyGameOver('player-1', alive, true)).toBe('defeat')
+  })
 })

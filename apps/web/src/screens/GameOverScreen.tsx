@@ -20,7 +20,8 @@ interface GameOverScreenProps {
  * The four ways a match reaches this screen (#426 added `defeat-abandoned`):
  * - `victory` — the human seat won.
  * - `defeat` — a rival seat won outright.
- * - `draw` — no winner because every crew went down together.
+ * - `draw` — no winner: every crew went down together, or the round limit
+ *   (#508) expired with the leaders even on cities and gold.
  * - `defeat-abandoned` — no winner because the human resigned or was
  *   eliminated while rival AI crews sailed on. Reads as a defeat, but is
  *   distinct from a mutual-destruction draw and needs its own copy.
@@ -33,9 +34,11 @@ export type GameOverKind = 'victory' | 'defeat' | 'draw' | 'defeat-abandoned'
 export function classifyGameOver(
   winnerId: string | null,
   players: readonly { eliminated: boolean }[],
+  endedByRoundLimit = false,
 ): GameOverKind {
   if (winnerId === 'player-0') return 'victory'
   if (winnerId !== null) return 'defeat'
+  if (endedByRoundLimit) return 'draw'
   return players.every((p) => p.eliminated) ? 'draw' : 'defeat-abandoned'
 }
 
@@ -47,7 +50,7 @@ export function GameOverScreen({
 }: GameOverScreenProps) {
   const { factionName } = useTheme()
   const winner = game.players.find((p) => p.id === game.winnerId)
-  const kind = classifyGameOver(game.winnerId, game.players)
+  const kind = classifyGameOver(game.winnerId, game.players, game.endedByRoundLimit ?? false)
   const isPlayerWinner = kind === 'victory'
   const isDraw = kind === 'draw'
   // header/icon key collapses the two defeat kinds — the distinct copy is in
@@ -88,7 +91,11 @@ export function GameOverScreen({
 
         {isDraw && (
           <div className="winner-info">
-            <p className="winner-faction">No victor — all crews lost</p>
+            <p className="winner-faction">
+              {game.endedByRoundLimit
+                ? 'No victor — the round limit expired with the fleets even'
+                : 'No victor — all crews lost'}
+            </p>
           </div>
         )}
 
