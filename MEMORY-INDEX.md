@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-042 — 2026-07-14 — #498 captain expansion shipped (stats+skill picks, garrison/port defense all-captured, items w/ 8-cap+stash, captain-led parties, RULES_VERSION→8); sim −5% captures; AI v2 deferred #500; monitor fixed after 95/95 failures (#497); Seer PR #496 rebuilt
 - D-041 — 2026-07-13 — #444 art pipeline migrated A1111 → ComfyUI (torch 2.13 MPS clean, tooling in scripts/art/); DreamShaperXL Turbo evaluated 8/8 coherent vs DS8 6/8 but more 3D-render style — adoption deferred to operator
 - D-040 — 2026-07-12 — #482 party UX round 2: standing march orders (marchOrder + setMarchOrder/clearMarchOrder, pause on new contact OR blocked route, RULES_VERSION→7), dotted march-route preview + pennants, interactive tactical land battles via probePartyBattle/probePartyAssault (both kinds, single-player; MP stays auto-resolve pending #422), MatchScreen party controls (all nine verbs via pure PlayerView classifiers)
 - D-039 — 2026-07-12 — #475 AI land player: planner disembarks/marches/assaults with parties (captain-preserving attrition vector), intercepts + reinforces vs enemy parties, re-embarks stranded ones; planner+content only, RULES_VERSION 6 (bumped by sibling #466/#467); conquestReachable inert (authored map has no land), new generated-map battery: 89→75 captures but captains-captured 67→44 (−34%), 25 captures by party, 56/96 disembark

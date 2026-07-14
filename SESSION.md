@@ -1,79 +1,57 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-12 late (party UX round 2 + party art shipped; 26 issues closed today)._
+_Last updated: 2026-07-14 (captain-expansion epic #498 shipped; monitor green; city scene polished)._
 
 ## Just completed
 
-**#482 (party UX round 2) shipped in full, closing the party arc**: standing march orders
-(engine, RULES_VERSION 6→7, auto-march with loud interruption), dotted route previews from
-engine pathfinding, BOTH land battle kinds playable on the tactical board (zero reducer
-changes — probes + existing boardCommands), full multiplayer party controls (PR #484,
-audit spotless); and operator-approved party sprites for all five factions integrated with
-theme-override support and color-banner fallback (PR #485 — Spanish flag corrected to
-Cross of Burgundy, Dutch banner rebuilt to canonical tricolor after one rejection). Art
-WIP branch deleted post-merge; provenance MANIFEST in-repo. Follow-up filed: #486
-(ThemePackEditor lacks an upload slot for the new party override). MEMORY through D-040.
-
-**The land-expansion epic (#469) went from operator vision to fully shipped in one
-evening**, on top of the earlier waves (sweep + city rework completion + conquest levers —
-see PRs #456/#464 SESSION versions for the morning/afternoon detail):
-
-- **#477** (#465, built at Fable) — landing parties: `GameState.parties`, five new actions
-  (disembark/moveParty/embark/attackParty/partyAssaultCity), RULES_VERSION 4→5, replay
-  tests, playable UI. Operator decisions: land assaults face FULL defenses; stranded
-  parties persist until rescued.
-- **#480** (#466 #467) — land content: mines (ongoing income via persistent claims that
-  flip on enemy recapture), one-time haul sites, land encounters, inland neutral
-  settlements (sea-unreachable by construction, party-capture only, no shipyards when
-  landlocked). Separate placement-RNG stream keeps same-seed pre-existing matches
-  byte-identical. RULES_VERSION 5→6.
-- **#479** (#475) — the AI plays land: disembarks attrition parties (captain-preserving:
-  −34% captains lost in sims), marches/assaults incl. inland settlements, intercepts
-  enemy parties, reinforces threatened cities (with a `partyThreatMinRatio` floor so
-  nuisance parties can't freeze logistics). Two real crashes caught pre-merge by the
-  audit/reconciliation loop: AI shipyard-at-landlocked-city, and multiplayer
-  `sanitizeAction` missing the two new actions (#480).
-- **#472/#478** (#468 #473) — extra-large maps (48-wide, doubled home-island radius)
-  everywhere: single-player, private multiplayer, quick-match (migration file
-  `20260712000000_matchmaking_queue_xlarge_map_size.sql` — **applies on next deploy
-  dispatch**), and authored maps (ceiling 40→48, size budget CI-pinned at ~3KiB margin).
-- **#481** (#476) — party UX: partial-march, range shading, minimap presence, MP readout,
-  and a real bug fix (site capture was unreachable via tap; now a tested pure classifier).
-- **MEMORY through D-039** (D-037 landing parties, D-038 land content, D-039 AI land).
-
-**Day totals**: 24 issues closed, 15 feature/docs PRs + 5 dependabot PRs merged, main
-green throughout. RULES_VERSION 2→6 over the day (resign fix, conquest cadence, land
-domain, land content).
+- **#498 captain expansion shipped end-to-end** (D-042): captain stats with level-up picks
+  (alongside skills), garrison + ships-in-port city defense with all-captured stakes,
+  13-item drop system (8-cap + faction stash + port transfer), captain-led landing
+  parties with anchored-ship rules. RULES_VERSION 7→8. PRs #501 (engine/content/MP/AI)
+  and #504 (UI), both audited clean. Sim battery: captures 75→71 (−5%, acceptable).
+- **Synthetic monitor green for the first time ever** (PR #497): it had failed all 95
+  lifetime runs asserting 403 on a probe the Supabase gateway 401s pre-function; now
+  probes with the anon-key bearer to the functions' real 403 boundary. Full diagnosis on
+  #425.
+- **Sentry Seer auto-PR #496** (neutral-city faction crash, AOP-CLIENT-1): unsound as
+  submitted (didn't compile, no tests); rebuilt through audit→fix→re-audit into a
+  strict `factionOfPlayer` / nullable `factionOfOwner` split. Merged.
+- **City scene playthrough polish** (PRs #489, #495, #491): tap-city-to-manage, new
+  operator-approved backdrop + slot layout, fit-to-viewport + zoom controls, 2× town
+  hall via alpha-trimmed sprites, turret flag, label chips.
+- **Issue sweep**: #486 (ThemePackEditor party slot, PR #492) and #490 (shipyard feather
+  - artLoaded fix, PR #491) merged; follow-ups #493, #494 filed.
+- **#444 ComfyUI migration** (D-041, PR #488): pipeline on current torch/MPS, tooling in
+  scripts/art/, DreamShaperXL Turbo evaluated (adoption = operator per-batch call).
 
 ## In flight
 
-None. No open PRs, no worktrees, no background processes.
+None. No open PRs, no worktrees in use, no background processes.
 
 ## Next step
 
-- **Operator playthrough** is the real next gate: new city scene, conquest pacing
-  (`siegeStickinessBonus` 40 — dial down if too aggressive), land gameplay on an
-  xlarge map (interiors are tiny below xlarge), inland settlements, mine claims.
-- **#482** — party UX round 2 (standing march orders need engine state; tactical land
-  battles; party art; multiplayer party controls).
-- **#444** — ComfyUI migration before the next art batch (party/site art wants it).
-- **#422** — live-defender lockstep (dedicated two-client session).
-- Dispatch `deploy.yml` when convenient — the xlarge quick-match migration and all of
-  today's engine changes need an edge-function deploy (ENGINE_VERSION moved many times).
+- **Operator playthrough of the captain expansion** — stat picks, garrisoning, items,
+  captain-led parties; balance dials all in @aop/content (CAPTAIN_STAT_TUNING,
+  ITEM_DROPS).
+- **#500 AI v2** — AI never garrisons or leads parties yet, so harbor-capture and led
+  parties barely fire in AI matches; do before judging balance vs AI.
+- **#499** — stranded shipless-captain rescue path (+2 audit-suggested tests).
+- **#502/#503** — item-found toasts missing in multiplayer / for land hauls.
+- **Deploy dispatch still pending** — ENGINE_VERSION moved again (a lot); edge functions
+  need a deploy.yml run (xlarge migration applies then too).
 
 ## Blocked on user
 
-- `VERCEL_TOKEN` repo secret (#425 — the only remaining piece).
-- ~28 stale local `feature/sweep-*` branch refs from PRIOR sessions + two old stashes
-  (`stash@{0}` 2026-07-07, `stash@{1}` older) — one popped itself onto the checkout
-  mid-session and was restored; say the word to clear them after a merged-PR check.
-- `needs-human-fix` backlog: Capacitor/native cluster (#98 #100 #156 #159 #160 #161),
-  #4 (Phase 3 epic).
+- `VERCEL_TOKEN` repo secret (#425); optional `SUPABASE_DB_URL` for the monitor's cron
+  heartbeat check.
+- `needs-human-fix` backlog unchanged: Capacitor cluster (#98 #100 #156 #159 #160 #161),
+  #4 (Phase 3 epic), #422 (live-defender lockstep — needs a dedicated two-client session).
+- Art follow-ups awaiting operator style calls: #493 (shipyard cutout regen), #494
+  (ThemePackEditor missing slot families).
 
 ## Open questions
 
-- Conquest/land pacing after a real playthrough (all dials are single content numbers).
-- Mine claims: persistent-claim semantics (pays after the party leaves, flips on enemy
-  recapture) was the executor's reading of "held" — operator veto welcome (#480 PR body).
-- Whether battle-board turrets should use the shipped-but-unwired `turret.png`.
+- Captain-expansion balance after a real playthrough (stat rates, item drop chances,
+  port-defense strength — all single content numbers).
+- DreamShaperXL Turbo adoption for future art batches (D-041: contact-sheet both).
