@@ -1,3 +1,20 @@
+## D-045 — 2026-07-14 — #508 configurable round limit (optional GameSetup.roundLimit, additive, no RULES_VERSION bump)
+
+**Decision.** Round limit is a game-start option (SP NewGameSetup + MP private-match
+settings; quick match stays unlimited). Absent = unlimited = pre-existing behavior,
+proven byte-identical by test — hence no RULES_VERSION bump. Limit N = last round
+played (ends before phantom-round income). **Winner at cap: most cities → gold
+treasury tiebreak → draw (winnerId null)** — operator-vetoable, isolated in the pure
+`roundLimitWinner` function. Limit is public to both seats (rides GameSetup through
+PlayerView). No DB migration (matches.settings is code-validated JSONB).
+
+**Rejected.** Engine-level default limit (changes existing behavior); seat-order
+tiebreak (arbitrary advantage). **Deferred:** #509 AI round-limit awareness.
+
+**Artifacts.** PR #511 (audited + rebind-re-audited post map-rebase), issue #508.
+
+---
+
 ## D-044 — 2026-07-14 — Map quadrupling: 4x area on every preset, structural land-assault guarantee, authored map rebuilt with land (RULES_VERSION→10)
 
 **Decision.** Operator directive (verbatim): "Quadruple size of all maps and adjust them so

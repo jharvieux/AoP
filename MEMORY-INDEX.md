@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-045 — 2026-07-14 — #508 configurable round limit (optional roundLimit in setup, additive no-bump; cap winner = cities→gold→draw, operator-vetoable; AI awareness deferred #509)
 - D-044 — 2026-07-14 — Map quadrupling: 4x area all presets (48/64/80/96), structural land-assault guarantee w/ RNG-free repair post-pass + property battery, authored map rebuilt w/ land at measured spacing (69 captures/96), RULES_VERSION→10; land warfare dominant in sims, capital conquest thins w/ distance (#510); byte-cap raise operator-gated (#507)
 - D-043 — 2026-07-14 — #498 rebalance: flat captain stats (+N per unit, not %), items boost stats (RULES_VERSION→9)
 - D-042 — 2026-07-14 — #498 captain expansion shipped (stats+skill picks, garrison/port defense all-captured, items w/ 8-cap+stash, captain-led parties, RULES_VERSION→8); sim −5% captures; AI v2 deferred #500; monitor fixed after 95/95 failures (#497); Seer PR #496 rebuilt
