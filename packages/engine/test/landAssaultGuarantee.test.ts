@@ -85,7 +85,7 @@ describe('land-assault guarantee on generated maps', () => {
 
   it('inland settlements appear at every size and are overland-assailable', () => {
     // Density/minStartDistance mirror @aop/content's INLAND_SETTLEMENTS.
-    const tuning = { density: 0.08, minStartDistance: 2 }
+    const tuning = { density: 0.08, buildings: ['townhall', 'barracks'], minStartDistance: 2 }
     for (const size of SIZES) {
       let total = 0
       for (const seed of SEEDS) {

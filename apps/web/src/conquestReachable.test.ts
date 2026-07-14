@@ -54,7 +54,7 @@ import { buildCatalog } from './catalog'
  * target with no cross-turn planner memory.
  *
  * Measured on this battery (25-round cap; CAP=40 is identical — conquest saturates
- * by round 25):
+ * by round 25), on the PRE-quadrupling 24x24 authored map with no land:
  *   baseline            captures  3 / 96, repelled  0, maxSameCityAssaults 1
  *   +capacity only      captures  4 / 96, repelled  0, maxSameCityAssaults 1
  *   +attrition (#462)   captures 13 / 96, repelled 16, maxSameCityAssaults 1
@@ -62,6 +62,20 @@ import { buildCatalog } from './catalog'
  * i.e. sustaining the siege is what finally makes ground-down cities fall — and it is
  * *more* cost-effective, not less: repelled-per-capture drops from 1.23 to 0.68, so the
  * extra captains spent convert into conquest rather than feeding the turrets.
+ *
+ * RE-PINNED for the 4x-area map quadrupling (operator directive, 2026-07-14).
+ * The authored map is now 48x48 and each capital sits on a real radius-3
+ * island (see @aop/content maps/startingMap.ts), so the land-assault vector —
+ * structurally impossible on the old zero-land map (D-039) — is live HERE
+ * too, and this battery now guards it: every match disembarks a landing
+ * party, and parties finish a material share of the captures. Island spacing
+ * was swept on this very battery (numbers in startingMap.ts's doc comment):
+ * naive 2x-scaled corner spacing killed conquest outright (0 assaults of any
+ * kind — flagships duel mid-sea while garrisons outgrow the attrition floor),
+ * so the islands flank the centre at the measured spacing instead. Current
+ * measured totals (25-round cap, flat-stats era #498/#506): captures 69/96
+ * (24 by landing party), repelled sea assaults 18, party-only losses 181,
+ * 72/96 matches multi-wave, 96/96 matches disembark.
  */
 
 function starterTroops(faction: FactionId) {
@@ -103,14 +117,19 @@ function matchConfig(seed: number, a: FactionId, b: FactionId): GameConfig {
 interface MatchOutcome {
   /** Times a city changed owner. */
   captures: number
+  /** Captures whose flipping action was a land-side party assault (post-quadrupling). */
+  capturesByParty: number
   /** Assaults the attacker lost — its captain was captured (the attrition-wave signal). */
   repelledAssaults: number
+  /** Landing parties put ashore — the land vector firing at all. */
+  disembarks: number
   /**
    * The most times any single (attacker, city) pair was assaulted in the match —
-   * the multi-wave-siege signal (#471). Every `attackCity` is a real board battle
-   * (the reducer rejects an invalid one), so `>= 2` means the AI sailed a second
-   * loaded captain back to a city it had already assaulted, sustaining the siege
-   * rather than taking a one-off shot.
+   * the multi-wave-siege signal (#471), counting BOTH assault vectors (sea
+   * `attackCity` and land `partyAssaultCity`; both are real battles — the
+   * reducer rejects invalid ones), so `>= 2` means the AI delivered a second
+   * wave onto a city it had already assaulted, sustaining the siege rather
+   * than taking a one-off shot.
    */
   bestSameCityAssaults: number
 }
@@ -119,7 +138,9 @@ interface MatchOutcome {
 function runMatch(config: GameConfig, maxRounds: number): MatchOutcome {
   let state = createGame(config)
   let captures = 0
+  let capturesByParty = 0
   let repelledAssaults = 0
+  let disembarks = 0
   const assaultsPerTarget = new Map<string, number>()
   let safety = 0
   const safetyCap = maxRounds * state.players.length + 10
@@ -131,21 +152,31 @@ function runMatch(config: GameConfig, maxRounds: number): MatchOutcome {
       const before = state.cities.map((c) => c.ownerId)
       const capturedBefore = state.captains.filter((c) => c.captured).length
       state = applyAction(state, action)
-      if (action.type === 'attackCity') {
+      if (action.type === 'disembark') disembarks++
+      if (action.type === 'attackCity' || action.type === 'partyAssaultCity') {
         const key = `${action.playerId}:${action.targetCityId}`
         assaultsPerTarget.set(key, (assaultsPerTarget.get(key) ?? 0) + 1)
-        // A repelled assault captures the attacking captain (the cost of an
+      }
+      if (action.type === 'attackCity') {
+        // A repelled sea assault captures the attacking captain (the cost of an
         // attrition wave); a won assault does not.
         if (state.captains.filter((c) => c.captured).length > capturedBefore) repelledAssaults++
       }
       const after = state.cities.map((c) => c.ownerId)
-      for (let i = 0; i < after.length; i++) if (before[i] !== after[i]) captures++
+      for (let i = 0; i < after.length; i++) {
+        if (before[i] !== after[i]) {
+          captures++
+          if (action.type === 'partyAssaultCity') capturesByParty++
+        }
+      }
       if (action.type === 'endTurn') break
     }
   }
   return {
     captures,
+    capturesByParty,
     repelledAssaults,
+    disembarks,
     bestSameCityAssaults: Math.max(0, ...assaultsPerTarget.values()),
   }
 }
@@ -168,16 +199,17 @@ function battery(): GameConfig[] {
 describe('conquest reachability in full-content AI-vs-AI matches (#453/#462/#471)', () => {
   const outcomes = battery().map((config) => runMatch(config, 25))
   const totalCaptures = outcomes.reduce((sum, o) => sum + o.captures, 0)
+  const totalByParty = outcomes.reduce((sum, o) => sum + o.capturesByParty, 0)
   const totalRepelled = outcomes.reduce((sum, o) => sum + o.repelledAssaults, 0)
   const maxSameCityAssaults = Math.max(...outcomes.map((o) => o.bestSameCityAssaults))
   const matchesWithMultiWave = outcomes.filter((o) => o.bestSameCityAssaults >= 2).length
+  const matchesWithDisembark = outcomes.filter((o) => o.disembarks > 0).length
 
   it('conquest is materially more common than #461’s 3/96 baseline', () => {
-    // #462 landed 13/96. #471's siege-commitment bonus lets loaded captains press
-    // reachable attrition sieges instead of dithering, so ground-down cities now
-    // actually fall: observed 77/96 on this branch. Assert a floor well above 13
-    // with headroom for future balance nudges, so a regression back toward
-    // "conquest barely happens" fails here.
+    // #462 landed 13/96; #471's siege-commitment bonus took the pre-quadrupling
+    // map to 77/96, and the quadrupled land-bearing layout measures 69/96.
+    // Assert a floor well above 13 with headroom for future balance nudges, so
+    // a regression back toward "conquest barely happens" fails here.
     expect(totalCaptures).toBeGreaterThanOrEqual(40)
   })
 
@@ -185,19 +217,29 @@ describe('conquest reachability in full-content AI-vs-AI matches (#453/#462/#471
     // Impossible under the old absolute engage gate (it only assaulted when it
     // reliably won, so the baseline repelled-count was 0). A non-zero count is
     // the fingerprint of the attrition floor: the AI now spends captains to thin
-    // garrisons it cannot yet beat outright.
+    // garrisons it cannot yet beat outright. Observed 18 post-quadrupling (the
+    // captain-preserving land vector absorbs most attrition waves now).
     expect(totalRepelled).toBeGreaterThanOrEqual(1)
   })
 
   it('sustains multi-wave sieges on a single city (#471)', () => {
-    // #462's residual limit: no attacker ever assaulted the same city twice
-    // (bestSameCityAssaults == 1 across all 96 matches, even at a 40-round cap) —
+    // #462's residual limit: no attacker ever assaulted the same city twice —
     // a loaded captain's attrition approach scored below the economy verbs, so it
-    // never delivered a follow-up wave. The siege-commitment bonus fixes that:
-    // observed 27/96 matches now sustain a second wave on one target. Assert the
-    // war-of-attrition arc the design envisioned actually occurs.
+    // never delivered a follow-up wave. The siege-commitment bonus fixes that,
+    // and post-quadrupling the waves are mostly landing parties: observed 72/96
+    // matches sustain a second wave on one target. Assert the war-of-attrition
+    // arc the design envisioned actually occurs.
     expect(maxSameCityAssaults).toBeGreaterThanOrEqual(2)
     expect(matchesWithMultiWave).toBeGreaterThanOrEqual(5)
+  })
+
+  it('the land vector is live on the authored map — parties land and take cities (D-039 fixed)', () => {
+    // On the pre-quadrupling zero-land map every one of these was structurally
+    // pinned to 0. Observed post-quadrupling: 96/96 matches disembark, parties
+    // finish 24 of the 69 captures. Assert broad floors so the authored map
+    // regressing to a conquest-inert or sea-only board fails here.
+    expect(matchesWithDisembark).toBeGreaterThanOrEqual(50)
+    expect(totalByParty).toBeGreaterThanOrEqual(5)
   })
 
   it('is deterministic — a match yields the identical outcome on every run', () => {

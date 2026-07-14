@@ -6,19 +6,30 @@
  * (ports, resource nodes, encounters) can migrate to hex without depending on
  * the seeded generator (@aop/content cannot import @aop/engine; see hexMap.ts).
  *
- * Layout: a `MAP_SIZE`×`MAP_SIZE` sea with one home ISLAND per player at
- * opposite corners — a solid radius-`HOME_ISLAND_RADIUS` disc with the port on
- * its centre-facing rim — plus a scatter of resource nodes and encounters (one
- * of each kind) on the open water between them. The original authored map had
- * single-TILE port islands with zero land, which made it conquest-inert
- * (D-039: landing parties were structurally impossible). The 4x-area map
- * quadrupling (operator directive, 2026-07-14) doubled its dimensions and gave
- * each capital a real island, so it now meets the land-assault guarantee every
- * generated map is held to: a party can come ashore beyond the city's rim and
- * march overland to assault it (see `hasLandAssaultRoute` in @aop/engine and
- * the property test in packages/engine/test/landAssaultGuarantee.test.ts).
- * Coordinates are the pre-quadrupling layout scaled by 2, so the map keeps its
- * recognizable opposite-corners shape.
+ * Layout: a `MAP_SIZE`×`MAP_SIZE` sea with one home ISLAND per player on the
+ * main diagonal, flanking the centre — a solid radius-`HOME_ISLAND_RADIUS`
+ * disc with the port on its centre-facing rim — plus the familiar scatter of
+ * resource nodes and encounters (one of each kind) on the open water between
+ * them. The original authored map had single-TILE port islands with zero land,
+ * which made it conquest-inert (D-039: landing parties were structurally
+ * impossible). The 4x-area map quadrupling (operator directive, 2026-07-14)
+ * doubled its dimensions and gave each capital a real island, so it now meets
+ * the land-assault guarantee every generated map is held to: a party can come
+ * ashore beyond the city's rim and march overland to assault it (see
+ * `hasLandAssaultRoute` in @aop/engine and the property test in
+ * packages/engine/test/landAssaultGuarantee.test.ts).
+ *
+ * Port spacing is a MEASURED choice, not an accident of scaling. Sweeping the
+ * island positions along the diagonal on the 96-match conquest battery
+ * (conquestReachable.test.ts wiring; `pnpm --filter @aop/tools exec tsx
+ * src/land-battery.ts authored`): at the naively-scaled corner spacing (ports
+ * ~35 apart) NO match ever assaults a city — the flagships duel mid-sea while
+ * garrisons outgrow the AI's attrition floor, and conquest is structurally
+ * dead; at ~19 apart, 9 captures across the battery; at ~15 apart (this
+ * layout), 69 captures with 24 by landing party, 18 repelled sea assaults,
+ * and 72/96 matches sustaining multi-wave sieges — the conquest-reachable
+ * regime the pre-quadrupling map delivered (#453/#462/#471), now with the
+ * land vector carrying a third of the captures. The corners stay open ocean.
  *
  * Home-island ports sit on the disc rim with the start position on a cardinal
  * (not diagonal) offset (`{x: port.x + 1, y: port.y}` etc.) — the one offset
@@ -60,8 +71,8 @@ const HOME_ISLAND_RADIUS = 3
 
 /** Disc centres sit inland of their port, which faces the map centre. */
 const ISLANDS: { center: { x: number; y: number }; port: { x: number; y: number } }[] = [
-  { center: { x: 4, y: 4 }, port: { x: 6, y: 6 } },
-  { center: { x: 43, y: 43 }, port: { x: 41, y: 41 } },
+  { center: { x: 14, y: 14 }, port: { x: 16, y: 16 } },
+  { center: { x: 33, y: 33 }, port: { x: 31, y: 31 } },
 ]
 
 function buildTiles(): StartingMapDefinition['tiles'] {
