@@ -55,8 +55,18 @@
  * roll; city assaults now fold port defenders into the defence and capture
  * them on a fall. A v7 snapshot lacks the required fields and replays its
  * encounter log to different rolls, so replaying across the boundary is refused.
+ * v9 — flat captain stats (#498 rebalance): the MEANING of `Captain.stats`
+ * attack/defense changes — stat points are now flat per-unit adds to every
+ * commanded unit's attack/defense scores, applied before the skills'
+ * percentage scaling, instead of feeding the percentage channel; and items no
+ * longer carry their own percentages — they boost the carrier's stats
+ * (`ItemLike.stats`, live while carried, inert in the stash), with speed items
+ * flowing through the same stat channel at refresh. No new actions or state
+ * fields, but every combat and movement refresh involving stats or items
+ * resolves differently, so a v8 log replays to a silently different state and
+ * replaying across the boundary is refused.
  */
-export const RULES_VERSION = 8
+export const RULES_VERSION = 9
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

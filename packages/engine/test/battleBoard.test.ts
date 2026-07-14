@@ -176,6 +176,27 @@ describe('resolveBoardBattle', () => {
     expect(resolveBoardBattle(input, stats, rng, aiBoth, 'boarding').rng).not.toBe(rng)
   })
 
+  it('applies flat captain-stat adds (#498) to every stack of the boosted side', () => {
+    // Identical mirror armies and rng; only the attacker carries a flat add.
+    // The two timelines are rng-identical up to the first attacker-side strike
+    // (defender strikes are untouched by the attacker's attackFlatBonus), so
+    // that strike isolates the flat add: strictly more damage on the same roll.
+    const stats = createCombatStats(statsData())
+    const boosted = { ...input, attacker: { ...input.attacker, attackFlatBonus: 5 } }
+    const firstAttackerStrike = (r: ReturnType<typeof resolveBoardBattle>) => {
+      const attackerIds = new Set(
+        r.log.stacks.filter((s) => s.side === 'attacker').map((s) => s.id),
+      )
+      return r.log.events.find(
+        (e): e is Extract<BoardEvent, { type: 'attack' | 'retaliation' }> =>
+          e.type === 'attack' && attackerIds.has(e.stackId),
+      )!
+    }
+    const plain = resolveBoardBattle(input, stats, seedRng(7), aiBoth, 'boarding')
+    const flat = resolveBoardBattle(boosted, stats, seedRng(7), aiBoth, 'boarding')
+    expect(firstAttackerStrike(flat).damage).toBeGreaterThan(firstAttackerStrike(plain).damage)
+  })
+
   it('deploys the attacker on the west column and the defender on the east', () => {
     const stats = createCombatStats(statsData())
     const { log } = resolveBoardBattle(

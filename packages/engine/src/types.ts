@@ -101,8 +101,10 @@ export type CaptainStat = 'attack' | 'defense' | 'speed'
 /**
  * Points spent per captain attribute (#498). Pending points are derived —
  * `level − 1 − (attack + defense + speed)` — so no pending-choice state exists.
- * Attack/defense fold into the same percentage combat-bonus channel as skills
- * (rates in `ContentCatalog.captainStats`); speed adds movement at refresh.
+ * Attack/defense points add FLAT per-unit attack/defense to every unit under
+ * the captain, before the skills' percentage scaling (per-point amounts in
+ * `ContentCatalog.captainStats`); speed adds movement at refresh. Carried
+ * items boost these stats (see skills.ts `effectiveCaptainStats`).
  */
 export interface CaptainStats {
   attack: number

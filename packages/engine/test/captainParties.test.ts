@@ -57,7 +57,7 @@ const CATALOG: ContentCatalog = {
     'pirates-gunnery-1': { factionId: 'pirates', tier: 1, attackBonusPct: 10, defenseBonusPct: 0 },
   },
   captainXpThresholds: [0, 150, 400],
-  captainStats: { attackPctPerPoint: 2, defensePctPerPoint: 2, speedMovementPerPoint: 1 },
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
 }
 
 /** Island land x 4–11 / y 4–7, port at (11,5) — same layout as landingParties.test.ts. */
@@ -303,9 +303,12 @@ describe('led-party combat (#498)', () => {
     const state = ashoreState({ p2City: false })
     const leader = state.captains.find((c) => c.id === 'c1')!
     const combatant = partyToCombatant(state.parties[0]!, leader, CATALOG)
-    // 10% skill + 1 attack point × 2%/pt.
-    expect(combatant.attackBonusPct).toBe(12)
-    expect(partyToCombatant(state.parties[0]!).attackBonusPct).toBeUndefined()
+    // The skill keeps its 10%; the attack point is a flat +1 per unit.
+    expect(combatant.attackBonusPct).toBe(10)
+    expect(combatant.attackFlatBonus).toBe(1)
+    const unled = partyToCombatant(state.parties[0]!)
+    expect(unled.attackBonusPct).toBeUndefined()
+    expect(unled.attackFlatBonus).toBeUndefined()
   })
 
   it('a led party beating an enemy party banks combat XP for its leader', () => {

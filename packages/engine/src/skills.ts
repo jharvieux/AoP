@@ -1,12 +1,13 @@
 import type { ContentCatalog } from './content'
-import type { Captain } from './types'
+import type { Captain, CaptainStats } from './types'
 
 /**
  * Captain skill trees (#21) and stat points/items (#498): pure XP/level math
  * plus the combat bonus a captain's chosen skills, spent stat points, and held
- * items confer. The bonus is handed to combat.ts as a per-combatant
- * attack/defense percentage (see the reducer's toCombatant), so combat.ts
- * never needs to know anything about captains, skills, stats, or items.
+ * items confer. Skills stay percentages; stat points (level-up picks plus item
+ * boosts) are flat per-unit adds. Both channels are handed to combat.ts on the
+ * combatant (see the reducer's toCombatant), so combat.ts never needs to know
+ * anything about captains, skills, stats, or items.
  */
 
 /** Level reached at `xp`, given the catalog's cumulative-XP thresholds. */
@@ -36,12 +37,43 @@ export function availableStatPoints(captain: Captain, thresholds: readonly numbe
 export interface CombatBonus {
   attackBonusPct: number
   defenseBonusPct: number
+  /** Flat attack added to every unit under this captain, before percentage scaling. */
+  attackFlatBonus: number
+  /** Flat defense added to every unit under this captain, before percentage scaling. */
+  defenseFlatBonus: number
 }
 
 /**
- * Sums the attack/defense percentage bonuses of a captain's chosen skills,
- * spent stat points (#498, per-point rates from the catalog), and held items.
- * Sources absent from the catalog contribute nothing.
+ * A captain's effective stats (#498): level-up-spent points plus the boosts of
+ * every CARRIED item — carried is equipped, all 8 hold slots are live; stash
+ * items are inert. The single aggregation point: the reducer, the AI, the
+ * battle board, and the UI all derive combat/speed effects from this, so they
+ * can never disagree on what a captain's items are worth.
+ */
+export function effectiveCaptainStats(
+  captain: Captain,
+  catalog: ContentCatalog | undefined,
+): CaptainStats {
+  const stats = { ...captain.stats }
+  if (catalog?.items) {
+    for (const itemId of captain.items) {
+      const def = catalog.items.defs[itemId]
+      if (!def) continue
+      stats.attack += def.stats.attack
+      stats.defense += def.stats.defense
+      stats.speed += def.stats.speed
+    }
+  }
+  return stats
+}
+
+/**
+ * The combat bonus a captain confers on every unit under their command:
+ * percentage channel from chosen skills, flat per-unit channel from effective
+ * attack/defense stats (level-up points + carried-item boosts, per-point
+ * amounts from the catalog). Sources absent from the catalog contribute
+ * nothing. Combat applies flat before percent:
+ * `(unit.attack + flat) * (1 + pct/100)`.
  */
 export function captainCombatBonus(captain: Captain, catalog: ContentCatalog): CombatBonus {
   let attackBonusPct = 0
@@ -52,35 +84,24 @@ export function captainCombatBonus(captain: Captain, catalog: ContentCatalog): C
     attackBonusPct += def.attackBonusPct
     defenseBonusPct += def.defenseBonusPct
   }
+  let attackFlatBonus = 0
+  let defenseFlatBonus = 0
   if (catalog.captainStats) {
-    attackBonusPct += captain.stats.attack * catalog.captainStats.attackPctPerPoint
-    defenseBonusPct += captain.stats.defense * catalog.captainStats.defensePctPerPoint
+    const stats = effectiveCaptainStats(captain, catalog)
+    attackFlatBonus = stats.attack * catalog.captainStats.attackPerPoint
+    defenseFlatBonus = stats.defense * catalog.captainStats.defensePerPoint
   }
-  if (catalog.items) {
-    for (const itemId of captain.items) {
-      const def = catalog.items.defs[itemId]
-      if (!def) continue
-      attackBonusPct += def.attackBonusPct
-      defenseBonusPct += def.defenseBonusPct
-    }
-  }
-  return { attackBonusPct, defenseBonusPct }
+  return { attackBonusPct, defenseBonusPct, attackFlatBonus, defenseFlatBonus }
 }
 
 /**
- * Extra movement points this captain regains at refresh (#498): speed stat
- * points times the catalog's per-point rate, plus every held item's speed
- * bonus. Zero without a catalog — no balance data, no bonus.
+ * Extra movement points this captain regains at refresh (#498): effective
+ * speed (stat points + carried-item boosts) times the catalog's per-point
+ * rate. Read only at refresh, so an item taken mid-turn moves the ship from
+ * the NEXT refresh — never retroactively this turn. Zero without a catalog —
+ * no balance data, no bonus.
  */
 export function captainSpeedBonus(captain: Captain, catalog: ContentCatalog | undefined): number {
-  if (!catalog) return 0
-  let bonus = catalog.captainStats
-    ? captain.stats.speed * catalog.captainStats.speedMovementPerPoint
-    : 0
-  if (catalog.items) {
-    for (const itemId of captain.items) {
-      bonus += catalog.items.defs[itemId]?.speedBonus ?? 0
-    }
-  }
-  return bonus
+  if (!catalog?.captainStats) return 0
+  return effectiveCaptainStats(captain, catalog).speed * catalog.captainStats.speedMovementPerPoint
 }

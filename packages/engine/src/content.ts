@@ -55,21 +55,25 @@ export interface SkillLike {
 
 /**
  * Per-point effect of the three captain stats (#498), injected from
- * @aop/content like every other balance number. Attack/defense rates feed the
- * same percentage combat-bonus channel as skills; speed feeds movement refresh.
+ * @aop/content like every other balance number. Attack/defense points are FLAT
+ * per-unit adds — a captain with attack stat N adds `N × attackPerPoint` to the
+ * attack score of every unit under their command, applied before the skills'
+ * percentage scaling; speed feeds movement refresh.
  */
 export interface CaptainStatTuningLike {
-  attackPctPerPoint: number
-  defensePctPerPoint: number
+  attackPerPoint: number
+  defensePerPoint: number
   speedMovementPerPoint: number
 }
 
-/** One collectible item's passive effect (#498). Names/descriptions stay in @aop/content — the engine needs only numbers. */
+/**
+ * One collectible item's passive effect (#498): stat-point boosts, live while
+ * the item is carried (stash items are inert). Names/descriptions stay in
+ * @aop/content — the engine needs only numbers.
+ */
 export interface ItemLike {
-  attackBonusPct: number
-  defenseBonusPct: number
-  /** Extra movement points at refresh for the carrying captain. */
-  speedBonus: number
+  /** Stat points this item adds to its carrier's attack/defense/speed. */
+  stats: { attack: number; defense: number; speed: number }
   /** Relative weight for the seeded drop roll — higher is more common. */
   weight: number
 }

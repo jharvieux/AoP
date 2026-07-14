@@ -5,24 +5,29 @@ import {
   availableStatPoints,
   captainsOf,
   captainToCombatant,
+  combatantStrength,
+  createCombatStats,
   createGame,
   InvalidActionError,
   playerView,
   replay,
   type Action,
   type CaptainStat,
+  type CombatStatsData,
   type ContentCatalog,
   type GameConfig,
   type GameState,
 } from '../src'
-import { GAME_SETUP } from './fixtures'
+import { COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
 /**
  * Captain stat points (#498): one point per level above 1, earned IN ADDITION
  * to the skill pick, spent via `chooseCaptainStat`. The pending count is
  * derived (`level − 1 − pointsSpent`) — no pending-choice state — and every
- * per-point effect (attack/defense percentage, speed movement) is content
- * data, never an engine constant. All of it must replay bit-exact.
+ * per-point effect (flat per-unit attack/defense, speed movement) is content
+ * data, never an engine constant. Attack/defense points add FLAT to every
+ * commanded unit's score BEFORE the skills' percentage scaling. All of it must
+ * replay bit-exact.
  */
 
 const CATALOG: ContentCatalog = {
@@ -43,7 +48,14 @@ const CATALOG: ContentCatalog = {
     'pirates-gunnery-1': { factionId: 'pirates', tier: 1, attackBonusPct: 10, defenseBonusPct: 0 },
   },
   captainXpThresholds: [0, 100, 250, 500],
-  captainStats: { attackPctPerPoint: 2, defensePctPerPoint: 2, speedMovementPerPoint: 1 },
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
+}
+
+const STATS: CombatStatsData = {
+  units: [{ id: 'deckhand', attack: 2, defense: 1, health: 6 }],
+  ships: [{ id: 'sloop', hull: 40, cannons: 6, speed: 5 }],
+  combat: COMBAT_TUNING,
+  tactics: TACTICS_TUNING,
 }
 
 function testConfig(): GameConfig {
@@ -148,24 +160,48 @@ describe('chooseCaptainStat action (#498)', () => {
   })
 })
 
-describe('stat-point effects (#498)', () => {
-  it('folds attack/defense points into the combat-bonus channel at the content rate', () => {
-    const cap = captainsOf(stateWithXp(500, { attack: 2, defense: 1, speed: 0 }), 'p1')[0]!
-    const combatant = captainToCombatant(cap, CATALOG)
-    expect(combatant.attackBonusPct).toBe(4)
-    expect(combatant.defenseBonusPct).toBe(2)
-  })
-
-  it('stacks with skill bonuses on the same channel', () => {
-    const base = stateWithXp(500, { attack: 1, defense: 0, speed: 0 })
+describe('stat-point effects (#498, flat per-unit adds)', () => {
+  /** p1's captain with the given stats/skills, crewed by 4 deckhands. */
+  function crewedCombatant(
+    stats: { attack: number; defense: number; speed: number },
+    skills: string[] = [],
+  ) {
+    const base = stateWithXp(500, stats)
     const state: GameState = {
       ...base,
       captains: base.captains.map((c) =>
-        c.ownerId === 'p1' ? { ...c, skills: ['pirates-gunnery-1'] } : c,
+        c.ownerId === 'p1' ? { ...c, skills, troops: [{ unitId: 'deckhand', count: 4 }] } : c,
       ),
     }
-    const combatant = captainToCombatant(captainsOf(state, 'p1')[0]!, CATALOG)
-    expect(combatant.attackBonusPct).toBe(12)
+    return captainToCombatant(captainsOf(state, 'p1')[0]!, CATALOG)
+  }
+
+  it('carries attack/defense points as flat per-unit adds at the content per-point amount', () => {
+    const combatant = crewedCombatant({ attack: 2, defense: 1, speed: 0 })
+    expect(combatant.attackFlatBonus).toBe(2)
+    expect(combatant.defenseFlatBonus).toBe(1)
+    // The percentage channel belongs to skills alone now.
+    expect(combatant.attackBonusPct).toBe(0)
+    expect(combatant.defenseBonusPct).toBe(0)
+  })
+
+  it('a 2-attack unit under a 3-attack captain fights at effective 5', () => {
+    const stats = createCombatStats(STATS)
+    const trained = crewedCombatant({ attack: 3, defense: 0, speed: 0 })
+    // Ship: 40×0.25 + 6×1 = 16. Crew: 4 × ((2+3)×1 + (1+0)×0.5) = 22.
+    expect(combatantStrength(trained, stats)).toBe(38)
+    const untrained = crewedCombatant({ attack: 0, defense: 0, speed: 0 })
+    // Same crew at its printed attack 2: 16 + 4 × (2 + 0.5) = 26.
+    expect(combatantStrength(untrained, stats)).toBe(26)
+  })
+
+  it('applies flat before percent: (unit.attack + flat) × (1 + pct/100)', () => {
+    const stats = createCombatStats(STATS)
+    const combatant = crewedCombatant({ attack: 3, defense: 0, speed: 0 }, ['pirates-gunnery-1'])
+    expect(combatant.attackBonusPct).toBe(10)
+    expect(combatant.attackFlatBonus).toBe(3)
+    // Crew: 4 × ((2+3) × 1.1 + (1+0) × 0.5) = 24; ship 16.
+    expect(combatantStrength(combatant, stats)).toBe(40)
   })
 
   it('adds speed points to the movement allowance at refresh', () => {

@@ -3,6 +3,7 @@ import {
   applyAction,
   applyActionWithOutcome,
   captainToCombatant,
+  effectiveCaptainStats,
   playerView,
   replay,
   rollItemDrop,
@@ -24,17 +25,19 @@ import { GAME_SETUP } from './fixtures'
 /**
  * Captain items (#498): seeded drops from sea encounters, land hauls, and land
  * encounters; a per-captain carry cap with faction-stash overflow; stash
- * transfers at an owned port; and passive attack/defense/speed effects folded
- * into the same channels as skills. Every drop is an RNG draw in the replayed
- * stream, so all of it must replay bit-exact.
+ * transfers at an owned port; and passive stat boosts — a carried item raises
+ * its captain's attack/defense/speed stats, which feed the flat per-unit
+ * combat adds and the movement refresh exactly like trained points. Stash
+ * items are inert. Every drop is an RNG draw in the replayed stream, so all of
+ * it must replay bit-exact.
  */
 
 /** Drop chances pinned to 1 so every success drops — deterministic branches. */
 const ITEM_CATALOG: ItemCatalogLike = {
   defs: {
-    cutlass: { attackBonusPct: 5, defenseBonusPct: 0, speedBonus: 0, weight: 1 },
-    charm: { attackBonusPct: 0, defenseBonusPct: 4, speedBonus: 0, weight: 1 },
-    boots: { attackBonusPct: 0, defenseBonusPct: 0, speedBonus: 2, weight: 1 },
+    cutlass: { stats: { attack: 1, defense: 0, speed: 0 }, weight: 1 },
+    charm: { stats: { attack: 0, defense: 2, speed: 0 }, weight: 1 },
+    boots: { stats: { attack: 0, defense: 0, speed: 2 }, weight: 1 },
   },
   captainItemCap: 2,
   seaEncounterDropChance: 1,
@@ -50,7 +53,7 @@ const CATALOG: ContentCatalog = {
   ships: { sloop: { hull: 40, cannons: 6, speed: 5, crewCapacity: 12, upgrades: {} } },
   skills: {},
   captainXpThresholds: [0, 150, 400],
-  captainStats: { attackPctPerPoint: 2, defensePctPerPoint: 2, speedMovementPerPoint: 1 },
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
   items: ITEM_CATALOG,
   encounters: {
     merchant: {
@@ -224,8 +227,8 @@ describe('rollItemDrop (#498)', () => {
     const skewed: ItemCatalogLike = {
       ...ITEM_CATALOG,
       defs: {
-        cutlass: { attackBonusPct: 5, defenseBonusPct: 0, speedBonus: 0, weight: 0 },
-        charm: { attackBonusPct: 0, defenseBonusPct: 4, speedBonus: 0, weight: 1 },
+        cutlass: { stats: { attack: 1, defense: 0, speed: 0 }, weight: 0 },
+        charm: { stats: { attack: 0, defense: 2, speed: 0 }, weight: 1 },
       },
     }
     for (let seed = 0; seed < 20; seed++) {
@@ -443,12 +446,42 @@ describe('takeItem / depositItem (#498)', () => {
   })
 })
 
-describe('passive item effects (#498)', () => {
-  it('held items fold into the combat-bonus channel', () => {
+describe('passive item effects (#498: carried items boost stats)', () => {
+  it('carried items raise effective stats, feeding the flat per-unit combat adds', () => {
     const cap = makeCaptain('c1', 'p1', DOCK, ['cutlass', 'charm'])
+    expect(effectiveCaptainStats(cap, CATALOG)).toEqual({ attack: 1, defense: 2, speed: 0 })
     const combatant = captainToCombatant(cap, CATALOG)
-    expect(combatant.attackBonusPct).toBe(5)
-    expect(combatant.defenseBonusPct).toBe(4)
+    // 1 attack + 2 defense stat points × 1/pt flat; the percent channel is skills-only.
+    expect(combatant.attackFlatBonus).toBe(1)
+    expect(combatant.defenseFlatBonus).toBe(2)
+    expect(combatant.attackBonusPct).toBe(0)
+    expect(combatant.defenseBonusPct).toBe(0)
+  })
+
+  it('item boosts stack on top of trained points', () => {
+    const cap: Captain = {
+      ...makeCaptain('c1', 'p1', DOCK, ['cutlass']),
+      stats: { attack: 2, defense: 0, speed: 0 },
+    }
+    expect(effectiveCaptainStats(cap, CATALOG).attack).toBe(3)
+    expect(captainToCombatant(cap, CATALOG).attackFlatBonus).toBe(3)
+  })
+
+  it('every item in a full hold counts — all carried slots are live at the cap', () => {
+    // captainItemCap is 2 in this catalog; both carried items boost.
+    const cap = makeCaptain('c1', 'p1', DOCK, ['cutlass', 'cutlass'])
+    expect(cap.items).toHaveLength(ITEM_CATALOG.captainItemCap)
+    expect(effectiveCaptainStats(cap, CATALOG).attack).toBe(2)
+  })
+
+  it('stash items are inert — only the carrying captain is boosted', () => {
+    const state = itemState({
+      captains: [makeCaptain('c1', 'p1', DOCK)],
+      p1Stash: ['cutlass', 'charm'],
+    })
+    const cap = state.captains[0]!
+    expect(effectiveCaptainStats(cap, CATALOG)).toEqual({ attack: 0, defense: 0, speed: 0 })
+    expect(captainToCombatant(cap, CATALOG).attackFlatBonus).toBe(0)
   })
 
   it('item speed adds to the movement allowance at refresh', () => {
@@ -456,6 +489,25 @@ describe('passive item effects (#498)', () => {
     state = applyAction(state, { type: 'endTurn', playerId: 'p1' })
     state = applyAction(state, { type: 'endTurn', playerId: 'p2' })
     expect(state.captains[0]!.movementPoints).toBe(GAME_SETUP.startingCaptainMovement + 2)
+  })
+
+  it('a speed item taken mid-turn moves the ship from the NEXT refresh, never retroactively', () => {
+    const state = itemState({
+      captains: [makeCaptain('c1', 'p1', DOCK)],
+      p1Stash: ['boots'],
+    })
+    const before = state.captains[0]!.movementPoints
+    let next = applyAction(state, {
+      type: 'takeItem',
+      playerId: 'p1',
+      captainId: 'c1',
+      cityId: 'p1-city',
+      itemId: 'boots',
+    })
+    expect(next.captains[0]!.movementPoints).toBe(before)
+    next = applyAction(next, { type: 'endTurn', playerId: 'p1' })
+    next = applyAction(next, { type: 'endTurn', playerId: 'p2' })
+    expect(next.captains[0]!.movementPoints).toBe(GAME_SETUP.startingCaptainMovement + 2)
   })
 })
 
