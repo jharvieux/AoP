@@ -71,8 +71,17 @@
  * frozen into config like the content-side setup numbers), so a v9 action log
  * replayed on this build regenerates a differently-sized map from the same
  * (seed, mapSize) and silently diverges — replay across the boundary is refused.
+ * v11 — stranded-captain rescue (#499, operator decision 2026-07-14 "instant
+ * pool transfer"): `embark` now accepts a ship-lost leader's party onto ANY
+ * own adjacent ship (previously rejected) and pools the rescued captain;
+ * every action gains a port-rescue sweep (a ship-lost leader whose party
+ * stands at an owned city transfers to the recruitment pool); and
+ * `recruitCaptain` accepts such a pooled rescue as an immediately-eligible
+ * rehire candidate. A v11 log can contain actions a v10 build rejects, and a
+ * v10 state with a stranded column beside an owned city replays to different
+ * party leadership here, so replaying across the boundary is refused.
  */
-export const RULES_VERSION = 10
+export const RULES_VERSION = 11
 
 /**
  * Thrown by `applyAction`/`applyActionWithOutcome` when `state.config.rulesVersion`

@@ -8,12 +8,14 @@
  *
  * Run from the repo root with:
  *
- *     pnpm --filter @aop/tools exec tsx src/land-battery.ts [sizes] [seeds] [maxRounds]
+ *     pnpm --filter @aop/tools exec tsx src/land-battery.ts [sizes] [seeds] [maxRounds] [roundLimit]
  *
  * e.g. `... src/land-battery.ts small,medium 24 30` (the defaults) reproduces
  * the CI battery; `... src/land-battery.ts xlarge 8 40` probes a size/cap. The
  * pseudo-size `authored` runs the fixed STARTING_MAP_HEX board instead of a
- * generated one — the same wiring as `conquestReachable.test.ts`.
+ * generated one — the same wiring as `conquestReachable.test.ts`. The optional
+ * fourth argument sets `GameSetup.roundLimit` (#508/#509), so the battery can
+ * measure the AI's round-capped endgame play; omit it for uncapped matches.
  */
 
 import {
@@ -160,12 +162,18 @@ function starterTroops(faction: FactionId) {
 /** `authored` = the fixed STARTING_MAP_HEX board (conquestReachable.test.ts wiring). */
 type BatterySize = MapSize | 'authored'
 
-function matchConfig(seed: number, size: BatterySize, a: FactionId, b: FactionId): GameConfig {
+function matchConfig(
+  seed: number,
+  size: BatterySize,
+  a: FactionId,
+  b: FactionId,
+  roundLimit?: number,
+): GameConfig {
   return {
     seed,
     mapSize: size === 'authored' ? 'small' : size,
     ...(size === 'authored' ? { mapDefinition: STARTING_MAP_HEX as MapDefinition } : {}),
-    setup: GAME_SETUP,
+    setup: roundLimit === undefined ? GAME_SETUP : { ...GAME_SETUP, roundLimit },
     combatStats: combatStatsData(),
     content: buildCatalog(),
     aiTuning: AI_TUNING,
@@ -197,6 +205,8 @@ interface LandOutcome {
   capturesByParty: number
   partyLosses: number
   seaRepelled: number
+  /** Total captain-capture events, any cause — the captain-economy signal (#475/#510). */
+  captainsCaptured: number
   disembarks: number
   /** City flips of player capitals (vs neutral inland settlements). */
   capitalCaptures: number
@@ -213,6 +223,7 @@ function runMatch(config: GameConfig, maxRounds: number): LandOutcome {
     capturesByParty: 0,
     partyLosses: 0,
     seaRepelled: 0,
+    captainsCaptured: 0,
     disembarks: 0,
     capitalCaptures: 0,
     firstCaptureRound: null,
@@ -237,8 +248,10 @@ function runMatch(config: GameConfig, maxRounds: number): LandOutcome {
         assaultsPerTarget.set(key, waves)
         if (waves > outcome.bestSameCityAssaults) outcome.bestSameCityAssaults = waves
       }
-      if (action.type === 'attackCity') {
-        if (state.captains.filter((c) => c.captured).length > capturedBefore) outcome.seaRepelled++
+      const capturedNow = state.captains.filter((c) => c.captured).length
+      if (capturedNow > capturedBefore) {
+        outcome.captainsCaptured += capturedNow - capturedBefore
+        if (action.type === 'attackCity') outcome.seaRepelled++
       }
       if (action.type === 'partyAssaultCity' && state.parties.length < partiesBefore) {
         outcome.partyLosses++
@@ -266,6 +279,7 @@ function runMatch(config: GameConfig, maxRounds: number): LandOutcome {
 const sizes = (process.argv[2] ?? 'small,medium').split(',') as BatterySize[]
 const seedCount = Number(process.argv[3] ?? 24)
 const maxRounds = Number(process.argv[4] ?? 30)
+const roundLimit = process.argv[5] === undefined ? undefined : Number(process.argv[5])
 
 for (const size of sizes) {
   const outcomes: LandOutcome[] = []
@@ -273,8 +287,8 @@ for (const size of sizes) {
   for (let seed = 1; seed <= seedCount; seed++) {
     const a = FACTION_IDS[seed % FACTION_IDS.length]!
     const b = FACTION_IDS[(seed + 1) % FACTION_IDS.length]!
-    outcomes.push(runMatch(matchConfig(seed, size, a, b), maxRounds))
-    outcomes.push(runMatch(matchConfig(seed, size, b, a), maxRounds))
+    outcomes.push(runMatch(matchConfig(seed, size, a, b, roundLimit), maxRounds))
+    outcomes.push(runMatch(matchConfig(seed, size, b, a, roundLimit), maxRounds))
   }
   const ms = Date.now() - started
   const sum = (f: (o: LandOutcome) => number) => outcomes.reduce((s, o) => s + f(o), 0)
@@ -286,9 +300,10 @@ for (const size of sizes) {
       ? (firstRounds.reduce((s, r) => s + r, 0) / firstRounds.length).toFixed(1)
       : 'n/a'
   console.log(
-    `${size.padEnd(8)} matches=${outcomes.length} rounds<=${maxRounds} ` +
+    `${size.padEnd(8)} matches=${outcomes.length} rounds<=${maxRounds}${roundLimit !== undefined ? ` roundLimit=${roundLimit}` : ''} ` +
       `captures=${sum((o) => o.captures)} byParty=${sum((o) => o.capturesByParty)} ` +
       `capitals=${sum((o) => o.capitalCaptures)} partyLosses=${sum((o) => o.partyLosses)} seaRepelled=${sum((o) => o.seaRepelled)} ` +
+      `captainsCaptured=${sum((o) => o.captainsCaptured)} ` +
       `disembarkMatches=${outcomes.filter((o) => o.disembarks > 0).length} ` +
       `multiWaveMatches=${outcomes.filter((o) => o.bestSameCityAssaults >= 2).length} ` +
       `avgFirstCaptureRound=${avgFirst} wallClock=${(ms / 1000).toFixed(1)}s`,

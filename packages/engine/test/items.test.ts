@@ -221,6 +221,20 @@ describe('rollItemDrop (#498)', () => {
     expect(rollItemDrop(ITEM_CATALOG, 1, rng)).toEqual(rollItemDrop(ITEM_CATALOG, 1, rng))
   })
 
+  it('is independent of the item catalog key order (#499 audit)', () => {
+    // Same defs, reversed insertion order: every seed must pick identically,
+    // or drops would diverge between catalogs serialized in different orders.
+    const reversed: ItemCatalogLike = {
+      ...ITEM_CATALOG,
+      defs: Object.fromEntries(Object.entries(ITEM_CATALOG.defs).reverse()),
+    }
+    for (let seed = 0; seed < 50; seed++) {
+      expect(rollItemDrop(reversed, 1, seedRng(seed))).toEqual(
+        rollItemDrop(ITEM_CATALOG, 1, seedRng(seed)),
+      )
+    }
+  })
+
   it('a zero chance misses with a single draw; weight 0 items are never picked', () => {
     const miss = rollItemDrop(ITEM_CATALOG, 0, seedRng(9))
     expect(miss.itemId).toBeNull()
@@ -293,7 +307,7 @@ describe('item drops from the three sources (#498)', () => {
     expect(next.players[0]!.itemStash).toEqual([encounterOutcome!.itemGained])
   })
 
-  it('a haul site capture finds an item for the leading captain, else the stash', () => {
+  it('a haul site capture finds an item for the leading captain, else the stash — and reports it (#503)', () => {
     const led = itemState({
       captains: [makeCaptain('c1', 'p1', { x: 3, y: 5 })],
       parties: [makeParty('lp1', 'p1', { x: 6, y: 5 }, 'c1')],
@@ -301,17 +315,21 @@ describe('item drops from the three sources (#498)', () => {
       p1City: false,
     })
     const capture: Action = { type: 'captureSite', playerId: 'p1', partyId: 'lp1', siteId: 'site-0' } // prettier-ignore
-    const next = applyAction(led, capture)
+    const { state: next, siteItemGained } = applyActionWithOutcome(led, capture)
     expect(next.captains[0]!.items).toHaveLength(1)
     expect(next.players[0]!.itemStash).toEqual([])
+    // The find surfaces on the ActionOutcome (#503) — a client needs no
+    // before/after item-list diff to announce it.
+    expect(siteItemGained).toBe(next.captains[0]!.items[0])
 
     const unled = itemState({
       parties: [makeParty('lp1', 'p1', { x: 6, y: 5 })],
       siteAt: { kind: 'ruins', x: 6, y: 5 },
       p1City: false,
     })
-    const next2 = applyAction(unled, capture)
-    expect(next2.players[0]!.itemStash).toHaveLength(1)
+    const outcome2 = applyActionWithOutcome(unled, capture)
+    expect(outcome2.state.players[0]!.itemStash).toHaveLength(1)
+    expect(outcome2.siteItemGained).toBe(outcome2.state.players[0]!.itemStash[0])
   })
 
   it('a hold-site capture draws no item and no RNG', () => {
@@ -320,7 +338,7 @@ describe('item drops from the three sources (#498)', () => {
       siteAt: { kind: 'mine', x: 6, y: 5 },
       p1City: false,
     })
-    const next = applyAction(state, {
+    const { state: next, siteItemGained } = applyActionWithOutcome(state, {
       type: 'captureSite',
       playerId: 'p1',
       partyId: 'lp1',
@@ -328,6 +346,7 @@ describe('item drops from the three sources (#498)', () => {
     })
     expect(next.rngState).toBe(state.rngState)
     expect(next.players[0]!.itemStash).toEqual([])
+    expect(siteItemGained).toBeUndefined()
   })
 
   it('a successful land encounter drops to the leader, who also banks the XP', () => {

@@ -1,8 +1,28 @@
-import { FACTIONS, SHIP_CLASSES, THEME_AUDIO_SLOTS } from '@aop/content'
+import { BUILDINGS, FACTIONS, SHIP_CLASSES, THEME_AUDIO_SLOTS } from '@aop/content'
 import { FACTION_IDS, type FactionId } from '@aop/shared'
 import { useRef } from 'react'
-import { partyContentId } from '../mapSprites'
+import {
+  buildingContentId,
+  buildingSlotIds,
+  cityBackdropContentId,
+  cityContentId,
+  encounterContentId,
+  LAND_ENCOUNTER_KINDS,
+  partyContentId,
+  SEA_ENCOUNTER_KINDS,
+  tileContentId,
+  TILE_ART_TYPES,
+} from '../mapSprites'
 import { assetKey, type ThemeAsset, type ThemeAssetKind, type ThemePack } from '../theme/types'
+
+/** Title-cases a lower-camel/kebab content-id fragment for a slot label, e.g.
+ * `'land'` -> `'Land'`, `'nativeVillage'` -> `'Native Village'`. Display-only —
+ * never touches the content id itself, which stays the exact string
+ * `resolveSpriteUrl` looks up. */
+function slotLabel(id: string): string {
+  const spaced = id.replace(/[-:]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2')
+  return spaced.replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 interface AssetUploadControlProps {
   kind: ThemeAssetKind
@@ -149,6 +169,88 @@ export function ThemePackEditor({
             />
           </li>
         ))}
+      </ul>
+
+      <h3>Tiles</h3>
+      <ul className="building-list">
+        {TILE_ART_TYPES.map((tileType) => (
+          <li key={tileType} className="garrison-row">
+            <span className="garrison-row__name">{slotLabel(tileType)}</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', tileContentId(tileType))]}
+              onUpload={(file) => onAssetUpload('sprite', tileContentId(tileType), file)}
+              onClear={() => onAssetClear('sprite', tileContentId(tileType))}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <h3>Cities &amp; Buildings</h3>
+      <ul className="building-list">
+        {[true, false].map((own) => (
+          <li key={String(own)} className="garrison-row">
+            <span className="garrison-row__name">{own ? 'Own City' : 'Enemy City'}</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', cityContentId(own))]}
+              onUpload={(file) => onAssetUpload('sprite', cityContentId(own), file)}
+              onClear={() => onAssetClear('sprite', cityContentId(own))}
+            />
+          </li>
+        ))}
+      </ul>
+      <ul className="building-list">
+        {buildingSlotIds(Object.keys(BUILDINGS)).map((id) => (
+          <li key={id} className="garrison-row">
+            <span className="garrison-row__name">{BUILDINGS[id]?.name ?? slotLabel(id)}</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', buildingContentId(id))]}
+              onUpload={(file) => onAssetUpload('sprite', buildingContentId(id), file)}
+              onClear={() => onAssetClear('sprite', buildingContentId(id))}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <h3>Encounters</h3>
+      <ul className="building-list">
+        {SEA_ENCOUNTER_KINDS.map((kind) => (
+          <li key={kind} className="garrison-row">
+            <span className="garrison-row__name">{slotLabel(kind)}</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', encounterContentId(kind))]}
+              onUpload={(file) => onAssetUpload('sprite', encounterContentId(kind), file)}
+              onClear={() => onAssetClear('sprite', encounterContentId(kind))}
+            />
+          </li>
+        ))}
+        {LAND_ENCOUNTER_KINDS.map((kind) => (
+          <li key={kind} className="garrison-row">
+            <span className="garrison-row__name">{slotLabel(kind)} (land)</span>
+            <AssetUploadControl
+              kind="sprite"
+              asset={pack.assets[assetKey('sprite', encounterContentId(kind))]}
+              onUpload={(file) => onAssetUpload('sprite', encounterContentId(kind), file)}
+              onClear={() => onAssetClear('sprite', encounterContentId(kind))}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <h3>Backdrop</h3>
+      <ul className="building-list">
+        <li className="garrison-row">
+          <span className="garrison-row__name">City Scene Backdrop</span>
+          <AssetUploadControl
+            kind="sprite"
+            asset={pack.assets[assetKey('sprite', cityBackdropContentId())]}
+            onUpload={(file) => onAssetUpload('sprite', cityBackdropContentId(), file)}
+            onClear={() => onAssetClear('sprite', cityBackdropContentId())}
+          />
+        </li>
       </ul>
 
       <h3>Audio</h3>

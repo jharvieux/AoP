@@ -29,7 +29,14 @@ import {
 } from 'pixi.js'
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
-import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
+import {
+  cellCenter,
+  cellPolygon,
+  fitScale,
+  mapPixelExtent,
+  pixelToCell,
+  visibleCellBounds,
+} from './mapLayout'
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { Minimap } from './Minimap'
 import {
@@ -56,7 +63,16 @@ import { cssToken } from './colorTokens'
  */
 
 const TILE = 32
+// #512: the fixed floor for maps that already fit comfortably at this zoom — the
+// quadrupled boards (up to 96x96 = 3072px world) don't, so the *effective* floor
+// (see `clampScale` below) is whichever is smaller: this fixed value, or the scale
+// that fits the whole board in the viewport (`mapLayout`'s `fitScale`). Unchanged
+// behavior for every map that already fit at 0.4.
 const MIN_SCALE = 0.4
+// Hard safety floor beneath the size-aware minimum, so a pathological viewport
+// (zero-size mid-mount, a folded/split-screen window) can never collapse the
+// computed fit scale to zero or negative.
+const ABSOLUTE_MIN_SCALE = 0.08
 const MAX_SCALE = 3
 
 // Exported so the map editor canvas (#41) renders tiles/encounters with the
@@ -364,6 +380,8 @@ export interface MapControls {
   zoomBy: (factor: number) => void
   centerOn: (tile: Coord) => void
   centerOnFleet: () => void
+  /** Zoom out (if needed) to the whole-board fit scale and center on the map (#512). */
+  fitToMap: () => void
 }
 
 export interface MapCanvasProps {
@@ -718,7 +736,26 @@ export function MapCanvas(props: MapCanvasProps) {
     const lastCaptainPos = new Map<string, Coord>()
     const shipAnims = new Map<string, ShipAnim>()
 
-    const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
+    // Navigation controls (#346): center the camera on a tile, on the viewer's
+    // fleet, and zoom about the viewport center — the button/minimap analogs of
+    // the existing pointer pan/zoom. All use CSS-pixel container dims, the same
+    // space as `view` and the pointer handlers.
+    const viewportSize = () => ({
+      w: containerRef.current?.clientWidth ?? pixiApp.renderer.width,
+      h: containerRef.current?.clientHeight ?? pixiApp.renderer.height,
+    })
+
+    // Size-aware minimum zoom (#512): the whole-board fit scale for the current
+    // map + viewport, so 96x96 boards can zoom out far enough to see the whole
+    // thing instead of clamping at the fixed `MIN_SCALE` a small map uses.
+    function minScale(): number {
+      const { w, h } = viewportSize()
+      const map = propsRef.current.map
+      const extent = mapPixelExtent(mapTopology(map), map.width, map.height, TILE)
+      return Math.max(ABSOLUTE_MIN_SCALE, Math.min(MIN_SCALE, fitScale(extent, w, h)))
+    }
+
+    const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(minScale(), s))
 
     function zoomAt(screenX: number, screenY: number, targetScale: number) {
       const clamped = clampScale(targetScale)
@@ -730,14 +767,6 @@ export function MapCanvas(props: MapCanvasProps) {
       dirtyRef.current = true
     }
 
-    // Navigation controls (#346): center the camera on a tile, on the viewer's
-    // fleet, and zoom about the viewport center — the button/minimap analogs of
-    // the existing pointer pan/zoom. All use CSS-pixel container dims, the same
-    // space as `view` and the pointer handlers.
-    const viewportSize = () => ({
-      w: containerRef.current?.clientWidth ?? pixiApp.renderer.width,
-      h: containerRef.current?.clientHeight ?? pixiApp.renderer.height,
-    })
     function centerOn(tile: Coord) {
       const { w, h } = viewportSize()
       const c = cellCenter(mapTopology(propsRef.current.map), tile.x, tile.y, TILE)
@@ -758,6 +787,17 @@ export function MapCanvas(props: MapCanvasProps) {
         // Prefer the selected captain when it's the viewer's, else the first.
         const target = mine.find((c) => c.id === selectedCaptainId) ?? mine[0]!
         centerOn(target.position)
+      },
+      fitToMap: () => {
+        const { w, h } = viewportSize()
+        const map = propsRef.current.map
+        const extent = mapPixelExtent(mapTopology(map), map.width, map.height, TILE)
+        // clampScale re-derives the same fit scale as this frame's floor, so this
+        // lands exactly on it (never fights its own clamp).
+        view.scale = clampScale(fitScale(extent, w, h))
+        view.x = w / 2 - (extent.width / 2) * view.scale
+        view.y = h / 2 - (extent.height / 2) * view.scale
+        dirtyRef.current = true
       },
     }
     // Mirror to the parent's ref (#373) so out-of-canvas UI can recenter too.
@@ -1849,6 +1889,15 @@ export function MapCanvas(props: MapCanvasProps) {
           onClick={() => controlsRef.current?.centerOnFleet()}
         >
           ⌖
+        </button>
+        <button
+          type="button"
+          className="map-nav-button"
+          aria-label="Fit to map"
+          title="Fit whole map"
+          onClick={() => controlsRef.current?.fitToMap()}
+        >
+          ⛶
         </button>
       </div>
 

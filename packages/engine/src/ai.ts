@@ -8,6 +8,7 @@ import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex } from './map
 import { findLandPath, findPath } from './pathfinding'
 import {
   applyAction,
+  captainAwaitingCommand,
   cityPortDefenders,
   cityToCombatant,
   garrisonCityOf,
@@ -17,7 +18,7 @@ import {
 } from './reducer'
 import { nextFloat, seedRng } from './rng'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
-import { availableSkillPicks, availableStatPoints, levelForXp } from './skills'
+import { availableSkillPicks, availableStatPoints, captainCombatBonus, levelForXp } from './skills'
 import type {
   AiPersonality,
   Captain,
@@ -58,6 +59,18 @@ const FALLBACK_ENGAGE_MIN_RATIO = 0.9
  */
 const FALLBACK_ATTRITION_MIN_RATIO = FALLBACK_ENGAGE_MIN_RATIO
 const FALLBACK_ATTRITION_SCORE_MULT = 0.5
+/**
+ * With no tuning configured the land-attrition floor equals the sea attrition
+ * floor, so the sub-floor land band (#510) is empty and the AI gates land
+ * pressure exactly as it did pre-#510. Real matches inject a lower floor.
+ */
+const FALLBACK_LAND_ATTRITION_MIN_RATIO = FALLBACK_ATTRITION_MIN_RATIO
+/**
+ * With no tuning configured the endgame horizon is 0 rounds, so round-limit
+ * scoring (#509) never engages and a capped, tuning-less match plays exactly
+ * as before. Real matches inject a positive horizon.
+ */
+const FALLBACK_ENDGAME_HORIZON_ROUNDS = 0
 /**
  * With no tuning configured the siege-commitment bonus is 0, so conquest scores
  * exactly as it did pre-#471 (#462 attrition, no stickiness). Real matches inject
@@ -183,6 +196,35 @@ export interface AiTuning {
   recruitCaptainScoreBase: number
   /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
   ransomScoreBase: number
+  /**
+   * Land-attrition floor (#510): the minimum assault ratio at which the AI
+   * still presses the *land* vector — landing and marching parties — against a
+   * city it cannot dent by the sea rules. Strictly below {@link attritionMinRatio}
+   * (the sea floor, which protects captains: a failed sea assault captures one).
+   * A failed land wave costs only troops, so pressure can continue against a
+   * garrison that has snowballed past the sea floor — without this band, a
+   * distant capital's garrison outgrowing `attritionMinRatio` froze conquest
+   * scoring permanently (the #510 structural cutoff). Scaled by the same
+   * personality `engageMinRatioMult` as the other ratio floors.
+   */
+  landAttritionMinRatio: number
+  /** Score for garrisoning a docked captain into a threatened owned city (#500). */
+  garrisonCaptainScoreBase: number
+  /** Score for releasing a garrisoned captain once its city is no longer threatened (#500). */
+  ungarrisonCaptainScoreBase: number
+  /** Score for picking the best stash item up onto a captain docked at an owned city (#500). */
+  takeItemScoreBase: number
+  /**
+   * Rounds remaining (including the current one) at or under which a match
+   * with a configured {@link GameSetup.roundLimit} switches to endgame scoring
+   * (#509): city capture/hold verbs scale by {@link endgameCityScoreMult} and
+   * long-payback economy verbs by {@link endgameEconomyScoreMult}. 0 disables.
+   */
+  endgameHorizonRounds: number
+  /** Endgame multiplier (>1) on city capture and hold scores (#509). */
+  endgameCityScoreMult: number
+  /** Endgame multiplier (<1) on long-payback economy scores — construct, ship upgrades (#509). */
+  endgameEconomyScoreMult: number
 }
 
 /**
@@ -329,6 +371,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   // (an aggressive seat both fights and attrits at worse odds).
   const attritionMinRatio =
     (baseTuning?.attritionMinRatio ?? FALLBACK_ATTRITION_MIN_RATIO) * weights.engageMinRatioMult
+  // The land floor (#510) shares the sea floor's personality appetite; with no
+  // tuning it equals the sea floor, leaving the sub-floor band empty.
+  const landAttritionMinRatio =
+    (baseTuning?.landAttritionMinRatio ?? FALLBACK_LAND_ATTRITION_MIN_RATIO) *
+    weights.engageMinRatioMult
   const attritionScoreMult = baseTuning?.attritionScoreMult ?? FALLBACK_ATTRITION_SCORE_MULT
   // Siege commitment scales with the same combat appetite as the attack score: an
   // aggressive seat presses a siege harder, an economic one less so.
@@ -357,6 +404,18 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     baseTuning?.recruitCaptainScoreBase ?? FALLBACK_RECRUIT_CAPTAIN_SCORE_BASE
   const ransomScoreBase = baseTuning?.ransomScoreBase ?? FALLBACK_RANSOM_SCORE_BASE
 
+  // Round-limit awareness (#509): inside the endgame horizon of a capped match
+  // the winner is most cities → gold, so city capture/hold verbs scale up and
+  // long-payback economy verbs (construct, refits) scale down. A pure scoring
+  // adjustment — no new subsystem, and uncapped matches are untouched.
+  const roundLimit = state.config.setup.roundLimit
+  const endgame =
+    roundLimit !== undefined &&
+    roundLimit - state.round + 1 <=
+      (baseTuning?.endgameHorizonRounds ?? FALLBACK_ENDGAME_HORIZON_ROUNDS)
+  const cityMult = endgame ? (baseTuning?.endgameCityScoreMult ?? 1) : 1
+  const econMult = endgame ? (baseTuning?.endgameEconomyScoreMult ?? 1) : 1
+
   const candidates: ScoredAction[] = [{ action: { type: 'endTurn', playerId }, score: 0 }]
   const consider = (candidate: ScoredAction | null): void => {
     if (candidate) candidates.push(candidate)
@@ -376,6 +435,11 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   consider(planRansomCaptain(state, playerId, ransomScoreBase))
 
   for (const cap of myCaptains) {
+    // Garrisoned, party-leading, and shipless captains (#498/#500) hold no sea
+    // verbs — every candidate this loop emits is a ship action the reducer
+    // would reject. Their refresh keeps movement at 0 in real play, but the
+    // explicit skip keeps a handcrafted or mid-transition state crash-free.
+    if (cap.shipLost || garrisonCityOf(state, cap.id) || partyLedBy(state, cap.id)) continue
     if (cap.movementPoints < 1) continue
 
     for (const enemy of enemies) {
@@ -419,21 +483,44 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     // assault is a land board battle, so it only applies when the match has
     // board tuning (matches without it resolve combat naval-only).
     if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
-      for (const city of enemyCities) {
+      const cityRatios = enemyCities.map((city) =>
+        cityAssaultRatio(
+          state,
+          cap,
+          city,
+          stats,
+          catalog,
+          state.players.find((p) => p.id === city.ownerId)?.faction,
+        ),
+      )
+      // Stall detector (#510): the sub-floor land band opens ONLY when no enemy
+      // city anywhere is within this captain's ordinary bands — the structural
+      // cutoff where garrison snowball outpaced travel time and the planner
+      // froze. While any in-band target exists, troops are worth more massed
+      // into real waves than spent on sub-floor grinds (measured: an unscoped
+      // band drained the attrition pipeline and capital captures fell on every
+      // map size).
+      const stalled = cityRatios.every((r) => r < attritionMinRatio)
+      for (const [cityIndex, city] of enemyCities.entries()) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = cityAssaultRatio(state, cap, city, stats, catalog, cityFaction)
+        const ratio = cityRatios[cityIndex]!
         // Attrition warfare (#462): a landing party that can't win outright is
         // still worth landing when it will meaningfully thin a garrison that
         // persists between assaults (recruited-troop casualties stick, and pools
         // replenish only every few rounds — #453), so a later wave or captain
-        // finishes the weakened city. `attritionMinRatio` is the cost floor:
-        // below it the party is too weak to dent the defenders and would just
-        // feed the captain to the turrets. Attrition scores below any winning
-        // assault and rises with the ratio, so each successful thinning makes the
-        // next wave score higher.
+        // finishes the weakened city. `attritionMinRatio` is the cost floor for
+        // the SEA vector: below it a repelled assault just feeds the captain to
+        // the turrets. Attrition scores below any winning assault and rises with
+        // the ratio, so each successful thinning makes the next wave score higher.
         const winning = ratio >= engageMinRatio
         const attrition = !winning && ratio >= attritionMinRatio
-        if (!winning && !attrition) continue
+        // Sub-floor land band (#510), stall-gated: below the sea floor but above
+        // the land floor, only the party vector presses on — a repelled land
+        // wave costs troops, never a captain, so a stalled AI keeps grinding a
+        // garrison that snowballed past `attritionMinRatio` instead of freezing
+        // conquest scoring permanently.
+        const landOnly = stalled && !winning && !attrition && ratio >= landAttritionMinRatio
+        if (!winning && !attrition && !landOnly) continue
         const combatMult = winning ? 1 : attritionScoreMult
         // Siege commitment (#471): a ratio-scaled bonus that lifts an *attrition*
         // wave (a city the captain can't yet win, combatMult < 1) above the economy
@@ -446,16 +533,27 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         // garrison rebuilds, so successive waves converge on one target with no
         // cross-turn planner memory.
         const siegeBonus = winning ? 0 : siegeStickinessBonus * ratio
-        // Land vector (#475): on an attrition wave, if this captain can put a
-        // party ashore within overland reach of the city, prefer to — a repelled
-        // land assault costs only the party, a repelled sea assault costs the
-        // captain. The party then marches and assaults over the next turns
-        // (scored in the landing-party loop below). Scoped to attrition: a
-        // winnable city is taken immediately and safely by sea, so landing a
-        // party first would only delay a capture it does not risk losing.
-        if (attrition) {
+        // Land vector (#475): on an attrition (or sub-floor, #510) wave, if this
+        // captain can put a party ashore within overland reach of the city,
+        // prefer to — a repelled land assault costs only the party, a repelled
+        // sea assault costs the captain. The party then marches and assaults
+        // over the next turns (scored in the landing-party loop below). Scoped
+        // to below the engage gate on purpose: a winnable coastal city is taken
+        // immediately and safely by sea, and scoring winnable-city landings was
+        // measured (like #471's winnable siege bonus) to send every strong
+        // captain beelining after soft settlements — capital sieges starved and
+        // captured cities churned in trade loops.
+        if (attrition || landOnly) {
           const landing = disembarkTileToward(state, cap, city)
           if (landing) {
+            // Captain-led party (#500): lead the column ashore when the leader's
+            // combat bonuses turn the assault into an expected WIN — leader XP,
+            // bonuses, and land finds justify anchoring the ship. Never lead a
+            // wave expected to lose: a destroyed led party's captain is captured.
+            const ledRatio = ledPartyAssaultRatio(state, cap, city, stats, catalog, cityFaction)
+            const lead = ledRatio !== null && ledRatio > ratio && ledRatio >= engageMinRatio
+            const landRatio = lead ? ledRatio : ratio
+            const landWinning = landRatio >= engageMinRatio
             consider({
               action: {
                 type: 'disembark',
@@ -463,12 +561,17 @@ export function nextAiAction(state: GameState, playerId: string): Action {
                 captainId: cap.id,
                 to: landing,
                 troops: cap.troops.map((t) => ({ ...t })),
+                ...(lead ? { withCaptain: true } : {}),
               },
-              score: attackScoreBase * ratio * combatMult + siegeBonus + landAssaultBonus * ratio,
+              score:
+                (attackScoreBase * landRatio * (landWinning ? 1 : attritionScoreMult) +
+                  (landWinning ? 0 : siegeBonus) +
+                  landAssaultBonus * landRatio) *
+                cityMult,
             })
           }
         }
-        if (mapDistance(state.map, cap.position, city.position) <= 1) {
+        if ((winning || attrition) && mapDistance(state.map, cap.position, city.position) <= 1) {
           consider({
             action: {
               type: 'attackCity',
@@ -476,18 +579,19 @@ export function nextAiAction(state: GameState, playerId: string): Action {
               captainId: cap.id,
               targetCityId: city.id,
             },
-            score: attackScoreBase * ratio * combatMult + siegeBonus,
+            score: (attackScoreBase * ratio * combatMult + siegeBonus) * cityMult,
           })
           continue
         }
         const step = approachCity(state, cap, city, pathCache)
         if (step) {
           const score =
-            (advanceScoreBase +
+            ((advanceScoreBase +
               (1 / (1 + mapDistance(state.map, cap.position, city.position))) *
                 advanceDistanceBonus) *
               combatMult +
-            siegeBonus
+              siegeBonus) *
+            cityMult
           consider({
             action: { type: 'moveCaptain', playerId, captainId: cap.id, to: step },
             score,
@@ -524,13 +628,28 @@ export function nextAiAction(state: GameState, playerId: string): Action {
 
       // Assault / march on enemy cities — the same attrition/siege machinery the
       // captain uses. The land-assault premium always applies here: a party has
-      // no safer sea alternative, so it should press rather than idle.
-      for (const city of enemyCities) {
-        const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = partyCityAssaultRatio(state, party, city, stats, catalog, cityFaction)
+      // no safer sea alternative, so it should press rather than idle. Like the
+      // captain loop, the sub-floor band (#510) opens only when the party is
+      // stalled — no city within its ordinary bands — so a repelled-but-cheap
+      // grind continues where the old single floor froze, without diverting
+      // parties that still have real targets.
+      const cityRatios = enemyCities.map((city) =>
+        partyCityAssaultRatio(
+          state,
+          party,
+          city,
+          stats,
+          catalog,
+          state.players.find((p) => p.id === city.ownerId)?.faction,
+        ),
+      )
+      const floor = cityRatios.every((r) => r < attritionMinRatio)
+        ? landAttritionMinRatio
+        : attritionMinRatio
+      for (const [cityIndex, city] of enemyCities.entries()) {
+        const ratio = cityRatios[cityIndex]!
         const winning = ratio >= engageMinRatio
-        const attrition = !winning && ratio >= attritionMinRatio
-        if (!winning && !attrition) continue
+        if (!winning && ratio < floor) continue
         const combatMult = winning ? 1 : attritionScoreMult
         const siegeBonus = winning ? 0 : siegeStickinessBonus * ratio
         const landBonus = landAssaultBonus * ratio
@@ -543,7 +662,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
               partyId: party.id,
               targetCityId: city.id,
             },
-            score: attackScoreBase * ratio * combatMult + siegeBonus + landBonus,
+            score: (attackScoreBase * ratio * combatMult + siegeBonus + landBonus) * cityMult,
           })
           continue
         }
@@ -553,12 +672,13 @@ export function nextAiAction(state: GameState, playerId: string): Action {
           consider({
             action: { type: 'moveParty', playerId, partyId: party.id, to: step },
             score:
-              (advanceScoreBase +
+              ((advanceScoreBase +
                 (1 / (1 + mapDistance(state.map, party.position, city.position))) *
                   advanceDistanceBonus) *
                 combatMult +
-              siegeBonus +
-              landBonus,
+                siegeBonus +
+                landBonus) *
+              cityMult,
           })
         }
       }
@@ -586,14 +706,52 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   // Economy verbs (#67) all need the content catalog and its tuning; without
   // both, the AI plays combat-only, exactly as it did before this feature.
   if (catalog && tuning) {
+    // Endgame (#509): construct and refits are long-payback spends — a building
+    // finished with three rounds left never repays — so their scores damp while
+    // recruit (instant garrison strength, i.e. city-holding) stays untouched.
+    const econTuning = endgame
+      ? {
+          ...tuning,
+          buildScoreScale: tuning.buildScoreScale * econMult,
+          upgradeScoreBase: tuning.upgradeScoreBase * econMult,
+        }
+      : tuning
     consider(planSkillPick(state, playerId, catalog, tuning))
     consider(planStatPick(state, playerId, catalog, tuning))
-    consider(planConstruct(state, playerId, catalog, tuning))
+    consider(planConstruct(state, playerId, catalog, econTuning))
     consider(planRecruit(state, playerId, catalog, tuning))
     consider(planGarrisonToShip(state, playerId, catalog, tuning, threatenedCityIds))
-    consider(planUpgrade(state, playerId, catalog, tuning))
+    consider(planUpgrade(state, playerId, catalog, econTuning))
     // Reinforce a threatened city from a captain docked at it (counter, #475).
-    consider(planReinforceCity(state, playerId, threatenedCityIds, reinforceCityScoreBase))
+    // Holding cities IS the round-limit scoreboard, so it scales with cityMult.
+    consider(
+      planReinforceCity(state, playerId, threatenedCityIds, reinforceCityScoreBase * cityMult),
+    )
+    // Garrison verbs (#500): commit a docked captain to a threatened city's
+    // defence, and stand it down again once the threat has passed. Standing
+    // down is skipped inside the endgame horizon — held cities are the
+    // scoreboard, and a released captain cannot re-berth until next turn.
+    consider(
+      planGarrisonCaptain(
+        state,
+        playerId,
+        threatenedCityIds,
+        tuning.garrisonCaptainScoreBase * cityMult,
+      ),
+    )
+    if (!endgame) {
+      consider(
+        planUngarrisonCaptain(
+          state,
+          playerId,
+          threatenedCityIds,
+          tuning.ungarrisonCaptainScoreBase,
+        ),
+      )
+    }
+    // Stash pickup (#500): carried items boost a captain's combat bonuses, so
+    // an idle stash at an owned port is free strength left on the table.
+    consider(planTakeItem(state, playerId, catalog, tuning))
   }
 
   // Difficulty (#25): a lower-skill seat sometimes takes the runner-up move.
@@ -727,6 +885,40 @@ function combatantVsCityRatio(
   return attacker / garrison
 }
 
+/**
+ * The captain's assault ratio against `city` if it lands WITH its party (#500):
+ * the same troops-only comparison as {@link cityAssaultRatio}, plus the
+ * leader's combat bonuses (skills + stats + carried items) — exactly the
+ * combatant the reducer resolves for a led party's assault. Null when there is
+ * no catalog to price the bonuses (then the AI never leads).
+ */
+function ledPartyAssaultRatio(
+  state: GameState,
+  cap: Captain,
+  city: CityState,
+  stats: CombatStats | null,
+  content: ContentCatalog | undefined,
+  factionId: string | undefined,
+): number | null {
+  if (!content) return null
+  const bonus = captainCombatBonus(cap, content)
+  return combatantVsCityRatio(
+    state,
+    {
+      ...toCombatant(cap),
+      shipStats: { hull: 0, cannons: 0, speed: 0 },
+      attackBonusPct: bonus.attackBonusPct,
+      defenseBonusPct: bonus.defenseBonusPct,
+      attackFlatBonus: bonus.attackFlatBonus,
+      defenseFlatBonus: bonus.defenseFlatBonus,
+    },
+    city,
+    stats,
+    content,
+    factionId,
+  )
+}
+
 /** Strength ratio of two landing parties (#475): troops plus any leading captain's bonuses (#498). */
 function partyVsPartyRatio(
   state: GameState,
@@ -807,16 +999,31 @@ function overlandDistance(
  * party's tile. Returns null when the city is unreachable overland this turn.
  */
 function landStepTowardCity(state: GameState, party: LandingParty, city: CityState): Coord | null {
+  return landStepToward(state, party, cityLandApproaches(state, city), city.position)
+}
+
+/**
+ * The farthest land tile the party can reach this turn along the shortest
+ * overland route to any of `targets`, preferring the step that ends nearest
+ * `goal` — shared by the march-on-city and march-home (#500) verbs. Every
+ * returned tile is a valid {@link MovePartyAction} destination.
+ */
+function landStepToward(
+  state: GameState,
+  party: LandingParty,
+  targets: readonly Coord[],
+  goal: Coord,
+): Coord | null {
   const blocked = partyTileBlocks(state, party.id)
   let best: { step: Coord; dist: number } | null = null
-  for (const target of cityLandApproaches(state, city)) {
+  for (const target of targets) {
     if (blocked.has(tileIndex(state.map, target.x, target.y))) continue
     const path = findLandPath(state.map, party.position, target, blocked)
     if (!path || path.length < 2) continue
     const idx = Math.min(party.movementPoints, path.length - 1)
     if (idx < 1) continue
     const step = path[idx]!
-    const dist = mapDistance(state.map, step, city.position)
+    const dist = mapDistance(state.map, step, goal)
     if (!best || dist < best.dist) best = { step, dist }
   }
   return best?.step ?? null
@@ -824,8 +1031,11 @@ function landStepTowardCity(state: GameState, party: LandingParty, city: CitySta
 
 /**
  * Re-embark a purposeless party (#475): board it onto a friendly, un-captured
- * captain's ship on an adjacent water tile with spare crew room. Returns null
- * when no such ship is beside it — the party then holds (stranded until rescued).
+ * captain's ship on an adjacent water tile with spare crew room. A captain-led
+ * party (#498/#500) only re-boards its own anchored ship — when that ship is
+ * not adjacent, the party marches home toward it instead, so a leading captain
+ * is never left stranded ashore once its purpose is spent. Returns null when
+ * nothing applies — an unled party then holds (stranded until rescued).
  */
 function planEmbarkParty(
   state: GameState,
@@ -834,17 +1044,29 @@ function planEmbarkParty(
   catalog: ContentCatalog | undefined,
   score: number,
 ): ScoredAction | null {
-  // A captain-led party (#498) only re-boards its own ship; the AI never leads
-  // one today, but skip defensively so a mixed state can't crash the turn.
-  if (party.captainId !== undefined) return null
+  if (party.captainId !== undefined) {
+    const leader = state.captains.find((c) => c.id === party.captainId)
+    // A shipless leader (#498) has nothing to re-board; the party holds with it.
+    if (!leader || leader.captured || leader.shipLost) return null
+    if (mapDistance(state.map, leader.position, party.position) === 1) {
+      return shipHasRoom(leader, catalog)
+        ? { action: { type: 'embark', playerId, partyId: party.id, captainId: leader.id }, score }
+        : null
+    }
+    // March home: toward the land tiles bordering the anchored ship.
+    const shores = mapNeighbors(state.map, leader.position).filter(
+      (n) => tileAt(state.map, n)?.type === 'land',
+    )
+    const step = landStepToward(state, party, shores, leader.position)
+    return step
+      ? { action: { type: 'moveParty', playerId, partyId: party.id, to: step }, score }
+      : null
+  }
   for (const cap of state.captains) {
     if (cap.ownerId !== playerId || cap.captured || cap.shipLost) continue
     if (partyLedBy(state, cap.id)) continue
     if (mapDistance(state.map, cap.position, party.position) !== 1) continue
-    const shipDef = catalog?.ships[cap.shipClassId]
-    const capacity = shipDef ? effectiveShipStats(shipDef, cap.shipUpgrades).crewCapacity : Infinity
-    const aboard = cap.troops.reduce((sum, t) => sum + t.count, 0)
-    if (capacity - aboard <= 0) continue
+    if (!shipHasRoom(cap, catalog)) continue
     return {
       action: { type: 'embark', playerId, partyId: party.id, captainId: cap.id },
       score,
@@ -853,15 +1075,27 @@ function planEmbarkParty(
   return null
 }
 
+/** Whether the captain's ship has any spare crew capacity to embark troops into. */
+function shipHasRoom(cap: Captain, catalog: ContentCatalog | undefined): boolean {
+  const shipDef = catalog?.ships[cap.shipClassId]
+  const capacity = shipDef ? effectiveShipStats(shipDef, cap.shipUpgrades).crewCapacity : Infinity
+  return capacity - cap.troops.reduce((sum, t) => sum + t.count, 0) > 0
+}
+
 /**
- * Ids of owned cities a *dangerous* hostile (non-allied) party is marching on:
- * within `radius`, and at least `minRatio` of the city's intrinsic auto-defence
- * strength — militia, turrets and fortification, garrison excluded (#475 audit).
- * The size floor stops a trivial party from freezing a city's garrison→ship
+ * Ids of owned cities a *dangerous* hostile (non-allied) force is marching or
+ * sailing on: within `radius`, and at least `minRatio` of the city's intrinsic
+ * auto-defence strength — militia, turrets, fortification, and the port's
+ * defending ships (#498/#500 audit), garrison excluded (#475 audit). Hostile
+ * forces are landing parties (#475) and troop-carrying enemy captains (#500) —
+ * a loaded hull in the roads is the assault threat garrisoning exists to meet.
+ * The size floor stops a trivial force from freezing a city's garrison→ship
  * pipeline forever; the garrison-independent basis keeps the verdict stable
  * while reinforce/garrison-to-ship move troops within a turn (see
- * {@link AiTuning.partyThreatMinRatio}). With no combat stats there is no way
- * to judge size, so any party in radius counts — the defensively-safe reading.
+ * {@link AiTuning.partyThreatMinRatio}); port defenders are stable too — a
+ * docked captain stays in the port set whether garrisoned or not. With no
+ * combat stats there is no way to judge size, so any hostile force in radius
+ * counts — the defensively-safe reading.
  */
 function threatenedCities(
   state: GameState,
@@ -871,29 +1105,57 @@ function threatenedCities(
   stats: CombatStats | null,
   catalog: ContentCatalog | undefined,
 ): Set<string> {
-  const foes = state.parties.filter(
-    (p) => p.ownerId !== playerId && !areAllied(state, playerId, p.ownerId),
+  const hostile = (ownerId: string): boolean =>
+    ownerId !== playerId && !areAllied(state, playerId, ownerId)
+  const foeParties = state.parties.filter((p) => hostile(p.ownerId))
+  // A captain threatens only what its landing force could assault: captured,
+  // shipless, garrisoned, and party-leading captains hold no sea assault, and
+  // an empty hold cannot storm anything.
+  const foeCaptains = state.captains.filter(
+    (c) =>
+      hostile(c.ownerId) &&
+      !c.captured &&
+      !c.shipLost &&
+      !garrisonCityOf(state, c.id) &&
+      !partyLedBy(state, c.id) &&
+      c.troops.some((t) => t.count > 0),
   )
   const threatened = new Set<string>()
-  if (foes.length === 0) return threatened
+  if (foeParties.length === 0 && foeCaptains.length === 0) return threatened
   const myFaction = state.players.find((p) => p.id === playerId)?.faction
   for (const city of state.cities) {
     if (city.ownerId !== playerId) continue
-    const near = foes.filter((p) => mapDistance(state.map, p.position, city.position) <= radius)
-    if (near.length === 0) continue
+    const inRadius = (pos: Coord): boolean => mapDistance(state.map, pos, city.position) <= radius
+    const nearParties = foeParties.filter((p) => inRadius(p.position))
+    const nearCaptains = foeCaptains.filter((c) => inRadius(c.position))
+    if (nearParties.length === 0 && nearCaptains.length === 0) continue
     if (!stats) {
       threatened.add(city.id)
       continue
     }
     const basis = combatantStrength(
-      cityToCombatant({ ...city, garrison: {} }, catalog, myFaction),
+      cityToCombatant(
+        { ...city, garrison: {} },
+        catalog,
+        myFaction,
+        cityPortDefenders(state, city),
+      ),
       stats,
     )
+    const floor = minRatio * basis
+    // A captain's threat strength is its landing force — troops only, ship
+    // excluded — the same basis the AI prices its own sea assaults on (#442).
     if (
-      near.some(
+      nearParties.some(
         (p) =>
-          combatantStrength(partyToCombatant(p, partyLeader(state, p), catalog), stats) >=
-          minRatio * basis,
+          combatantStrength(partyToCombatant(p, partyLeader(state, p), catalog), stats) >= floor,
+      ) ||
+      nearCaptains.some(
+        (c) =>
+          combatantStrength(
+            { ...toCombatant(c), shipStats: { hull: 0, cannons: 0, speed: 0 } },
+            stats,
+          ) >= floor,
       )
     ) {
       threatened.add(city.id)
@@ -919,10 +1181,14 @@ function planReinforceCity(
   if (threatened.size === 0) return null
   for (const city of state.cities) {
     if (!threatened.has(city.id)) continue
+    // Shipless and party-leading captains (#498/#500) stand ashore — their
+    // "docked" position is the party's, and the reducer rejects transfers.
     const captain = state.captains.find(
       (c) =>
         c.ownerId === playerId &&
         !c.captured &&
+        !c.shipLost &&
+        !partyLedBy(state, c.id) &&
         mapDistance(state.map, c.position, city.position) <= 1 &&
         c.troops.some((t) => t.count > 0),
     )
@@ -939,6 +1205,117 @@ function planReinforceCity(
         count: stack.count,
       },
       score,
+    }
+  }
+  return null
+}
+
+/**
+ * Garrison a docked captain into a threatened owned city (#500): while
+ * garrisoned it cannot be sunk at sea or lured away, and its ship strength and
+ * combat bonuses join the city's defence — the committed counterpart of
+ * {@link planReinforceCity}. Fires only for cities in {@link threatenedCities}
+ * with no garrisoned captain yet and a friendly captain docked. Never
+ * immobilizes the seat's last sea-capable captain: garrisoning it would trade
+ * all mobility (and, if the city falls, the captain itself) for one city's
+ * defence — the reinforce verb already covers that city with troops.
+ */
+function planGarrisonCaptain(
+  state: GameState,
+  playerId: string,
+  threatened: ReadonlySet<string>,
+  score: number,
+): ScoredAction | null {
+  if (threatened.size === 0) return null
+  const mobile = state.captains.filter(
+    (c) =>
+      c.ownerId === playerId &&
+      !c.captured &&
+      !c.shipLost &&
+      !partyLedBy(state, c.id) &&
+      !garrisonCityOf(state, c.id),
+  )
+  if (mobile.length < 2) return null
+  for (const city of state.cities) {
+    if (!threatened.has(city.id) || city.garrisonCaptainId !== undefined) continue
+    const docked = mobile.filter((c) => mapDistance(state.map, c.position, city.position) <= 1)
+    if (docked.length === 0) continue
+    // Prefer the emptiest hull: a loaded captain is the offense vector, and the
+    // garrison duty needs the ship and its bonuses, not the cargo.
+    const pick = docked.reduce((a, b) => (troopsAboard(b) < troopsAboard(a) ? b : a))
+    return {
+      action: { type: 'garrisonCaptain', playerId, captainId: pick.id, cityId: city.id },
+      score,
+    }
+  }
+  return null
+}
+
+/**
+ * Release a garrisoned captain back to sea duty once its city is no longer
+ * threatened (#500) — the garrison verb's other half. Rejoining the fleet is
+ * how a stood-down defender becomes offense again; while any threat persists
+ * the captain stays committed.
+ */
+function planUngarrisonCaptain(
+  state: GameState,
+  playerId: string,
+  threatened: ReadonlySet<string>,
+  score: number,
+): ScoredAction | null {
+  for (const city of state.cities) {
+    if (city.ownerId !== playerId || city.garrisonCaptainId === undefined) continue
+    if (threatened.has(city.id)) continue
+    const captain = state.captains.find((c) => c.id === city.garrisonCaptainId)
+    if (!captain || captain.ownerId !== playerId || captain.captured) continue
+    return { action: { type: 'ungarrisonCaptain', playerId, cityId: city.id }, score }
+  }
+  return null
+}
+
+/** Total troops aboard a captain's ship. */
+function troopsAboard(cap: Captain): number {
+  return cap.troops.reduce((sum, t) => sum + t.count, 0)
+}
+
+/**
+ * Pick the most valuable stash item up onto a captain docked at an owned city
+ * (#500): stashed items are inert, carried items add to the captain's combat
+ * bonuses — so an idle stash is free strength left on the table. One item per
+ * action; the planner re-fires until every captain is at the carry cap or the
+ * stash is empty. Deposits stay manual: finds already bank passively via the
+ * overflow rule, so the AI never plays `depositItem` (nothing to gain).
+ */
+function planTakeItem(
+  state: GameState,
+  playerId: string,
+  catalog: ContentCatalog,
+  tuning: AiTuning,
+): ScoredAction | null {
+  const items = catalog.items
+  if (!items) return null
+  const player = requirePlayer(state, playerId)
+  if (player.itemStash.length === 0) return null
+  for (const captain of captainsOf(state, playerId)) {
+    // The reducer's stash-transfer rule: docked at an owned city, in command of
+    // its hull (garrisoned is fine — a berthed defender still equips).
+    if (captain.captured || captain.shipLost || partyLedBy(state, captain.id)) continue
+    if (captain.items.length >= items.captainItemCap) continue
+    const city = state.cities.find(
+      (c) => c.ownerId === playerId && mapDistance(state.map, captain.position, c.position) <= 1,
+    )
+    if (!city) continue
+    let best: { itemId: string; value: number } | null = null
+    for (const itemId of player.itemStash) {
+      const def = items.defs[itemId]
+      if (!def) continue
+      const value = def.stats.attack + def.stats.defense + def.stats.speed
+      if (!best || value > best.value) best = { itemId, value }
+    }
+    if (!best) return null
+    return {
+      action: { type: 'takeItem', playerId, captainId: captain.id, cityId: city.id, itemId: best.itemId }, // prettier-ignore
+      score: tuning.takeItemScoreBase,
     }
   }
   return null
@@ -1034,9 +1411,15 @@ function bestRecruitCity(
   )
   if (eligible.length === 0) return null
 
+  // A pooled enemy rescue (#499) is off the board — its stale position is
+  // no front to launch toward.
   const frontPoints = [
     ...state.cities.filter((c) => c.ownerId !== playerId).map((c) => c.position),
-    ...state.captains.filter((c) => c.ownerId !== playerId && !c.captured).map((c) => c.position),
+    ...state.captains
+      .filter(
+        (c) => c.ownerId !== playerId && !c.captured && !captainAwaitingCommand(c, state.parties),
+      )
+      .map((c) => c.position),
   ]
   const distToFront = (city: CityState): number =>
     frontPoints.length === 0
@@ -1056,14 +1439,19 @@ function bestRecruitCity(
  * (or, if one is eligible, rehire) one from an owned port — the AI's own
  * escape from the coin-flip loss #308 fixed. Only fires while captain-less;
  * a seat with a live captain builds its fleet through combat/advance scoring
- * instead of proactively stacking captains.
+ * instead of proactively stacking captains. A pooled rescue (#499,
+ * `captainAwaitingCommand`) is inert, not fielded — it must not count as
+ * live here, or a seat whose only captain gets rescued into the pool never
+ * recruits again and goes permanently passive at sea.
  */
 function planRecruitCaptain(
   state: GameState,
   playerId: string,
   scoreBase: number,
 ): ScoredAction | null {
-  const liveCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
+  const liveCaptains = captainsOf(state, playerId).filter(
+    (c) => !c.captured && !captainAwaitingCommand(c, state.parties),
+  )
   if (liveCaptains.length > 0) return null
   const city = bestRecruitCity(state, playerId, state.config.content)
   if (!city) return null
@@ -1075,6 +1463,12 @@ function planRecruitCaptain(
   )
   if (!canAfford(player.resources, { gold: cost })) return null
 
+  // Rehire before minting: a pooled rescue (eligible at once) or a captive
+  // past its captivity round keeps its XP/skills/stats at the same price a
+  // fresh nobody would cost.
+  const pooledRescue = state.captains.find(
+    (c) => c.ownerId === playerId && captainAwaitingCommand(c, state.parties),
+  )
   const eligibleCaptive = state.captains.find(
     (c) =>
       c.ownerId === playerId &&
@@ -1082,9 +1476,10 @@ function planRecruitCaptain(
       c.captivityReturnRound !== undefined &&
       state.round >= c.captivityReturnRound,
   )
+  const rehire = pooledRescue ?? eligibleCaptive
   return {
-    action: eligibleCaptive
-      ? { type: 'recruitCaptain', playerId, cityId: city.id, captainId: eligibleCaptive.id }
+    action: rehire
+      ? { type: 'recruitCaptain', playerId, cityId: city.id, captainId: rehire.id }
       : { type: 'recruitCaptain', playerId, cityId: city.id },
     score: scoreBase,
   }
@@ -1112,12 +1507,16 @@ function planRansomCaptain(
   )
   if (myCaptives.length === 0) return null
 
-  const myLive = captainsOf(state, playerId).filter((c) => !c.captured).length
+  // Pooled rescues (#499) are inert until re-commissioned — count only
+  // fielded captains on both sides of the outnumbered check.
+  const fielded = (ownerId: string): number =>
+    state.captains.filter(
+      (c) => c.ownerId === ownerId && !c.captured && !captainAwaitingCommand(c, state.parties),
+    ).length
+  const myLive = fielded(playerId)
   const enemyMaxLive = Math.max(
     0,
-    ...state.players
-      .filter((p) => p.id !== playerId && !p.eliminated)
-      .map((p) => state.captains.filter((c) => c.ownerId === p.id && !c.captured).length),
+    ...state.players.filter((p) => p.id !== playerId && !p.eliminated).map((p) => fielded(p.id)),
   )
   if (myLive >= enemyMaxLive) return null
 
@@ -1224,9 +1623,11 @@ function planConstruct(
   }
 }
 
-/** No live captain left — the recovery states of #308/#439. */
+/** No live captain left — the recovery states of #308/#439; a pooled rescue (#499) is not fielded. */
 function isCaptainless(state: GameState, playerId: string): boolean {
-  return captainsOf(state, playerId).every((c) => c.captured)
+  return captainsOf(state, playerId).every(
+    (c) => c.captured || captainAwaitingCommand(c, state.parties),
+  )
 }
 
 /**
@@ -1294,12 +1695,15 @@ function planGarrisonToShip(
     // (#475) — that both undoes a reinforcement and leaves it soft. This also
     // keeps reinforce/garrison-to-ship from oscillating within a single turn.
     if (threatened.has(city.id)) continue
-    // Captured captains (#309) cannot act — proposing a transfer to one would
-    // be rejected by the reducer and crash the AI's turn.
+    // Captured captains (#309) cannot act, and shipless or party-leading ones
+    // (#498/#500) hold no transferable ship — proposing a transfer to any of
+    // them would be rejected by the reducer and crash the AI's turn.
     const captain = state.captains.find(
       (c) =>
         c.ownerId === playerId &&
         !c.captured &&
+        !c.shipLost &&
+        !partyLedBy(state, c.id) &&
         mapDistance(state.map, c.position, city.position) <= 1,
     )
     if (!captain) continue
@@ -1357,6 +1761,9 @@ function planUpgrade(
     }
     for (const captain of state.captains) {
       if (captain.ownerId !== playerId || captain.captured) continue
+      // No hull to refit: the ship was lost, or sits anchored while its captain
+      // leads a party ashore (#498/#500) — the reducer rejects the upgrade.
+      if (captain.shipLost || partyLedBy(state, captain.id)) continue
       if (mapDistance(state.map, captain.position, city.position) > 1) continue
       const ship = catalog.ships[captain.shipClassId]
       if (!ship) continue
@@ -1393,7 +1800,8 @@ function planSkillPick(
   const player = requirePlayer(state, playerId)
 
   for (const captain of captainsOf(state, playerId)) {
-    if (captain.captured) continue
+    // Captured and pooled (#499) captains are inert — no picks until back in play.
+    if (captain.captured || captainAwaitingCommand(captain, state.parties)) continue
     if (availableSkillPicks(captain, catalog.captainXpThresholds) < 1) continue
     const level = levelForXp(captain.xp, catalog.captainXpThresholds)
 
@@ -1425,10 +1833,12 @@ function planSkillPick(
 }
 
 /**
- * Stat points (#498, v1 policy from the epic): spend an available point on
- * attack while the captain carries troops aboard (it is a fighting hull), on
- * defense otherwise (an empty ship mostly needs to survive). Requires the
- * catalog's stat tuning — without it the reducer rejects the action.
+ * Stat points (#498 v1, role-aware per #500): spend an available point by the
+ * captain's current duty — defense for a garrisoned captain (its bonuses exist
+ * to make its city survive), attack for one leading a party ashore or carrying
+ * troops (a fighting force), defense otherwise (an empty ship mostly needs to
+ * survive). Requires the catalog's stat tuning — without it the reducer
+ * rejects the action.
  */
 function planStatPick(
   state: GameState,
@@ -1438,9 +1848,11 @@ function planStatPick(
 ): ScoredAction | null {
   if (!catalog.captainStats) return null
   for (const captain of captainsOf(state, playerId)) {
-    if (captain.captured) continue
+    // Captured and pooled (#499) captains are inert — no picks until back in play.
+    if (captain.captured || captainAwaitingCommand(captain, state.parties)) continue
     if (availableStatPoints(captain, catalog.captainXpThresholds) < 1) continue
-    const stat: CaptainStat = captain.troops.some((t) => t.count > 0) ? 'attack' : 'defense'
+    const assault = partyLedBy(state, captain.id) || captain.troops.some((t) => t.count > 0)
+    const stat: CaptainStat = !garrisonCityOf(state, captain.id) && assault ? 'attack' : 'defense'
     return {
       action: { type: 'chooseCaptainStat', playerId, captainId: captain.id, stat },
       score: tuning.statPickScoreBase,
