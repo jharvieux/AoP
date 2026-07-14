@@ -243,6 +243,14 @@ export interface AiTuning {
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
 export interface GameSetup {
+  /**
+   * Round cap (#508): the last round played — at the next round boundary the
+   * match ends (most cities wins, gold breaks ties, still tied is a draw).
+   * Absent means unlimited; deliberately absent from {@link GAME_SETUP} so
+   * every game defaults to the uncapped pre-#508 behavior and the host opts
+   * in per match (New Game Setup presets / lobby settings).
+   */
+  roundLimit?: number
   /** Gold each player starts with. */
   startingGold: number
   /** Movement points a starting captain regains each turn. */
