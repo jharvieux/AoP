@@ -6,13 +6,22 @@ import { cityUnlocksCaptains, unlockedRecruitTier } from './economy'
 import { areAllied, captainsOf, currentPlayer } from './game'
 import { isWaterTile, mapDistance, mapNeighbors, tileAt, tileIndex } from './map'
 import { findLandPath, findPath } from './pathfinding'
-import { applyAction, cityToCombatant, partyToCombatant } from './reducer'
+import {
+  applyAction,
+  cityPortDefenders,
+  cityToCombatant,
+  garrisonCityOf,
+  partyLeader,
+  partyLedBy,
+  partyToCombatant,
+} from './reducer'
 import { nextFloat, seedRng } from './rng'
 import { effectiveShipStats, nextUpgradeCost } from './ships'
-import { availableSkillPicks, levelForXp } from './skills'
+import { availableSkillPicks, availableStatPoints, levelForXp } from './skills'
 import type {
   AiPersonality,
   Captain,
+  CaptainStat,
   CityState,
   GameState,
   LandingParty,
@@ -164,6 +173,8 @@ export interface AiTuning {
   garrisonReserveFraction: number
   upgradeScoreBase: number
   skillPickScoreBase: number
+  /** Score for spending an available captain stat point (#498) — the skill pick's sibling. */
+  statPickScoreBase: number
   /**
    * Score for recruiting a replacement captain when captain-less (#308).
    * Not folded into any personality/economy overlay — recovering from zero
@@ -238,6 +249,7 @@ function effectiveTuning(base: AiTuning, weights: AiPersonalityWeights): AiTunin
     garrisonToShipScoreBase: base.garrisonToShipScoreBase * weights.economyScoreMult,
     upgradeScoreBase: base.upgradeScoreBase * weights.economyScoreMult,
     skillPickScoreBase: base.skillPickScoreBase * weights.economyScoreMult,
+    statPickScoreBase: base.statPickScoreBase * weights.economyScoreMult,
   }
 }
 
@@ -288,8 +300,15 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   const myCaptains = captainsOf(state, playerId).filter((c) => !c.captured)
   // Alliance awareness (#25, Phase 3 prep): the AI never targets an ally.
   // Captured captains (#309) are already out of the fight — nothing to engage.
+  // Garrisoned and shipless captains (#498) are not naval targets either: the
+  // reducer rejects attacking them (assault the city / the party instead).
   const enemies = state.captains.filter(
-    (c) => c.ownerId !== playerId && !areAllied(state, playerId, c.ownerId) && !c.captured,
+    (c) =>
+      c.ownerId !== playerId &&
+      !areAllied(state, playerId, c.ownerId) &&
+      !c.captured &&
+      !c.shipLost &&
+      !garrisonCityOf(state, c.id),
   )
   // Conquest targets (#344): enemy cities the AI may assault or advance on.
   // Allied seats' cities are never targeted — the AI does not betray (#25).
@@ -402,7 +421,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
     if (stats?.battle && cap.troops.reduce((sum, t) => sum + t.count, 0) > 0) {
       for (const city of enemyCities) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = cityAssaultRatio(cap, city, stats, catalog, cityFaction)
+        const ratio = cityAssaultRatio(state, cap, city, stats, catalog, cityFaction)
         // Attrition warfare (#462): a landing party that can't win outright is
         // still worth landing when it will meaningfully thin a garrison that
         // persists between assaults (recruited-troop casualties stick, and pools
@@ -493,7 +512,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
       for (const foe of state.parties) {
         if (foe.ownerId === playerId || areAllied(state, playerId, foe.ownerId)) continue
         if (mapDistance(state.map, party.position, foe.position) > 1) continue
-        const ratio = partyVsPartyRatio(party, foe, stats)
+        const ratio = partyVsPartyRatio(state, party, foe, stats)
         if (ratio >= engageMinRatio) {
           hasPurpose = true
           consider({
@@ -508,7 +527,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
       // no safer sea alternative, so it should press rather than idle.
       for (const city of enemyCities) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
-        const ratio = partyCityAssaultRatio(party, city, stats, catalog, cityFaction)
+        const ratio = partyCityAssaultRatio(state, party, city, stats, catalog, cityFaction)
         const winning = ratio >= engageMinRatio
         const attrition = !winning && ratio >= attritionMinRatio
         if (!winning && !attrition) continue
@@ -568,6 +587,7 @@ export function nextAiAction(state: GameState, playerId: string): Action {
   // both, the AI plays combat-only, exactly as it did before this feature.
   if (catalog && tuning) {
     consider(planSkillPick(state, playerId, catalog, tuning))
+    consider(planStatPick(state, playerId, catalog, tuning))
     consider(planConstruct(state, playerId, catalog, tuning))
     consider(planRecruit(state, playerId, catalog, tuning))
     consider(planGarrisonToShip(state, playerId, catalog, tuning, threatenedCityIds))
@@ -642,6 +662,7 @@ function toCombatant(c: Captain) {
  * is truly zero. The caller has already verified the captain carries troops.
  */
 function cityAssaultRatio(
+  state: GameState,
   cap: Captain,
   city: CityState,
   stats: CombatStats | null,
@@ -649,6 +670,7 @@ function cityAssaultRatio(
   factionId: string | undefined,
 ): number {
   return combatantVsCityRatio(
+    state,
     { ...toCombatant(cap), shipStats: { hull: 0, cannons: 0, speed: 0 } },
     city,
     stats,
@@ -665,17 +687,30 @@ function cityAssaultRatio(
  * party carries troops (parties are never empty).
  */
 function partyCityAssaultRatio(
+  state: GameState,
   party: LandingParty,
   city: CityState,
   stats: CombatStats | null,
   content: ContentCatalog | undefined,
   factionId: string | undefined,
 ): number {
-  return combatantVsCityRatio(partyToCombatant(party), city, stats, content, factionId)
+  return combatantVsCityRatio(
+    state,
+    partyToCombatant(party, partyLeader(state, party), content),
+    city,
+    stats,
+    content,
+    factionId,
+  )
 }
 
-/** Strength of `mine` against a city's full defence — shared by sea and land assaults. */
+/**
+ * Strength of `mine` against a city's full defence — shared by sea and land
+ * assaults. Scores against the exact defender the reducer resolves, port
+ * defenders (#498) included, so a garrisoned harbor reads as harder to crack.
+ */
 function combatantVsCityRatio(
+  state: GameState,
   mine: Combatant,
   city: CityState,
   stats: CombatStats | null,
@@ -684,16 +719,28 @@ function combatantVsCityRatio(
 ): number {
   if (!stats) return Infinity
   const attacker = combatantStrength(mine, stats)
-  const garrison = combatantStrength(cityToCombatant(city, content, factionId), stats)
+  const garrison = combatantStrength(
+    cityToCombatant(city, content, factionId, cityPortDefenders(state, city)),
+    stats,
+  )
   if (garrison <= 0) return Infinity
   return attacker / garrison
 }
 
-/** Strength ratio of two landing parties (#475): troops only, no ship, no captain skills. */
-function partyVsPartyRatio(mine: LandingParty, foe: LandingParty, stats: CombatStats): number {
-  const foeStrength = combatantStrength(partyToCombatant(foe), stats)
+/** Strength ratio of two landing parties (#475): troops plus any leading captain's bonuses (#498). */
+function partyVsPartyRatio(
+  state: GameState,
+  mine: LandingParty,
+  foe: LandingParty,
+  stats: CombatStats,
+): number {
+  const content = state.config.content
+  const foeStrength = combatantStrength(partyToCombatant(foe, partyLeader(state, foe), content), stats) // prettier-ignore
   if (foeStrength <= 0) return Infinity
-  return combatantStrength(partyToCombatant(mine), stats) / foeStrength
+  return (
+    combatantStrength(partyToCombatant(mine, partyLeader(state, mine), content), stats) /
+    foeStrength
+  )
 }
 
 /** Tile indices every landing party currently occupies — the overland block set (#475). */
@@ -787,8 +834,12 @@ function planEmbarkParty(
   catalog: ContentCatalog | undefined,
   score: number,
 ): ScoredAction | null {
+  // A captain-led party (#498) only re-boards its own ship; the AI never leads
+  // one today, but skip defensively so a mixed state can't crash the turn.
+  if (party.captainId !== undefined) return null
   for (const cap of state.captains) {
-    if (cap.ownerId !== playerId || cap.captured) continue
+    if (cap.ownerId !== playerId || cap.captured || cap.shipLost) continue
+    if (partyLedBy(state, cap.id)) continue
     if (mapDistance(state.map, cap.position, party.position) !== 1) continue
     const shipDef = catalog?.ships[cap.shipClassId]
     const capacity = shipDef ? effectiveShipStats(shipDef, cap.shipUpgrades).crewCapacity : Infinity
@@ -838,7 +889,13 @@ function threatenedCities(
       cityToCombatant({ ...city, garrison: {} }, catalog, myFaction),
       stats,
     )
-    if (near.some((p) => combatantStrength(partyToCombatant(p), stats) >= minRatio * basis)) {
+    if (
+      near.some(
+        (p) =>
+          combatantStrength(partyToCombatant(p, partyLeader(state, p), catalog), stats) >=
+          minRatio * basis,
+      )
+    ) {
       threatened.add(city.id)
     }
   }
@@ -1362,6 +1419,31 @@ function planSkillPick(
         },
         score: tuning.skillPickScoreBase,
       }
+    }
+  }
+  return null
+}
+
+/**
+ * Stat points (#498, v1 policy from the epic): spend an available point on
+ * attack while the captain carries troops aboard (it is a fighting hull), on
+ * defense otherwise (an empty ship mostly needs to survive). Requires the
+ * catalog's stat tuning — without it the reducer rejects the action.
+ */
+function planStatPick(
+  state: GameState,
+  playerId: string,
+  catalog: ContentCatalog,
+  tuning: AiTuning,
+): ScoredAction | null {
+  if (!catalog.captainStats) return null
+  for (const captain of captainsOf(state, playerId)) {
+    if (captain.captured) continue
+    if (availableStatPoints(captain, catalog.captainXpThresholds) < 1) continue
+    const stat: CaptainStat = captain.troops.some((t) => t.count > 0) ? 'attack' : 'defense'
+    return {
+      action: { type: 'chooseCaptainStat', playerId, captainId: captain.id, stat },
+      score: tuning.statPickScoreBase,
     }
   }
   return null
