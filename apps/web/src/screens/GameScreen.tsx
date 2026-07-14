@@ -26,7 +26,7 @@ import {
   type TacticId,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
-import { canAfford, type Coord } from '@aop/shared'
+import { canAfford, type Coord, type FactionId } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
@@ -176,6 +176,44 @@ export function findViewerCaptainAtCity(
   return captains.find(
     (c) => c.ownerId === viewerId && mapDistance(map, c.position, cityPosition) <= 1,
   )
+}
+
+/**
+ * Resolves an owner id that is always a real player — captain and
+ * landing-party `ownerId`s. `packages/engine/src/game.ts` only ever seeds
+ * captains with `ownerId: p.id` and the reducer only ever creates parties
+ * from `action.playerId` (both validated against `state.players`), so
+ * neither can carry the `'neutral'` sentinel inland settlements use. An
+ * unmatched id here is therefore a genuine data bug, not "no faction" — this
+ * throws instead of returning `undefined`, so a future regression fails loud
+ * with a clear message instead of reproducing Sentry AOP-CLIENT-1 (a bare
+ * `.find()!.faction` crashing with "Cannot read properties of undefined").
+ */
+export function factionOfPlayer(
+  players: readonly Pick<GameState['players'][number], 'id' | 'faction'>[],
+  ownerId: string,
+): FactionId {
+  const player = players.find((p) => p.id === ownerId)
+  if (!player) {
+    throw new Error(`factionOfPlayer: no player with id "${ownerId}"`)
+  }
+  return player.faction
+}
+
+/**
+ * Resolves a city owner id, which may be the `'neutral'` sentinel inland
+ * settlements are seeded with (`packages/engine/src/game.ts:198`) — the one
+ * `ownerId` in the whole game that isn't a real player. Returns `undefined`
+ * for that case so callers can render a "Neutral" fallback; any other
+ * unmatched id still throws via {@link factionOfPlayer}, since that would be
+ * a genuine bug rather than the known neutral-city case.
+ */
+export function factionOfOwner(
+  players: readonly Pick<GameState['players'][number], 'id' | 'faction'>[],
+  ownerId: string,
+): FactionId | undefined {
+  if (ownerId === 'neutral') return undefined
+  return factionOfPlayer(players, ownerId)
 }
 
 /** The decision {@link classifySelectedPartyTileTap} returns for GameScreen to dispatch. */
@@ -437,8 +475,22 @@ export function GameScreen({
     [game.captains, viewer.id],
   )
 
-  function factionOf(ownerId: string) {
-    return game.players.find((p) => p.id === ownerId)!.faction
+  // Captain/party owners are always real players — fail loud (#AOP-CLIENT-1
+  // postmortem) rather than defensively swallowing an id that shouldn't occur.
+  function factionOf(ownerId: string): FactionId {
+    return factionOfPlayer(game.players, ownerId)
+  }
+
+  // City owners may be the `'neutral'` sentinel (inland settlements) — this is
+  // the one path where "no faction" is an expected, correct outcome.
+  function cityFactionOf(ownerId: string): FactionId | undefined {
+    return factionOfOwner(game.players, ownerId)
+  }
+
+  /** Display name for a city's owner, "Neutral" for the sentinel case. */
+  function cityFactionLabel(ownerId: string): string {
+    const id = cityFactionOf(ownerId)
+    return id ? factionName(id, FACTIONS[id].name) : 'Neutral'
   }
 
   /**
@@ -1126,11 +1178,7 @@ export function GameScreen({
     return {
       attacker: combatantStrength(captainToCombatant(selectedCaptain, game.config.content), stats),
       garrison: combatantStrength(
-        cityToCombatant(
-          assaultCity,
-          game.config.content,
-          game.players.find((p) => p.id === assaultCity.ownerId)?.faction,
-        ),
+        cityToCombatant(assaultCity, game.config.content, cityFactionOf(assaultCity.ownerId)),
         stats,
       ),
     }
@@ -1148,7 +1196,7 @@ export function GameScreen({
         cityToCombatant(
           partyAssaultCity,
           game.config.content,
-          game.players.find((p) => p.id === partyAssaultCity.ownerId)?.faction,
+          cityFactionOf(partyAssaultCity.ownerId),
         ),
         stats,
       ),
@@ -1616,6 +1664,7 @@ export function GameScreen({
             }
           }}
           factionOf={factionOf}
+          cityFactionOf={cityFactionOf}
           controlsRef={mapControlsRef}
         />
         {eventFeed.length > 0 && (
@@ -1902,12 +1951,8 @@ export function GameScreen({
         >
           <section>
             <p className="building-option__hint">
-              {factionName(
-                factionOf(assaultCity.ownerId),
-                FACTIONS[factionOf(assaultCity.ownerId)].name,
-              )}{' '}
-              stronghold. Your landing force storms the garrison — win it and the city is yours;
-              lose and your captain is taken captive.
+              {cityFactionLabel(assaultCity.ownerId)} stronghold. Your landing force storms the
+              garrison — win it and the city is yours; lose and your captain is taken captive.
             </p>
             {assaultStrength && (
               <p className="building-option__hint">
@@ -2033,12 +2078,9 @@ export function GameScreen({
         >
           <section>
             <p className="building-option__hint">
-              {factionName(
-                factionOf(partyAssaultCity.ownerId),
-                FACTIONS[factionOf(partyAssaultCity.ownerId)].name,
-              )}{' '}
-              stronghold. The city defends at full strength from the land side too — militia and
-              turrets included. Win and it is yours; lose and the party is destroyed.
+              {cityFactionLabel(partyAssaultCity.ownerId)} stronghold. The city defends at full
+              strength from the land side too — militia and turrets included. Win and it is yours;
+              lose and the party is destroyed.
             </p>
             {partyAssaultStrength && (
               <p className="building-option__hint">
@@ -2069,12 +2111,7 @@ export function GameScreen({
         <BottomSheet title={enemyCityInfo.name} onClose={() => setEnemyCityInfoId(null)}>
           <section>
             <p className="building-option__hint">
-              Held by{' '}
-              {factionName(
-                factionOf(enemyCityInfo.ownerId),
-                FACTIONS[factionOf(enemyCityInfo.ownerId)].name,
-              )}
-              .
+              Held by {cityFactionLabel(enemyCityInfo.ownerId)}.
             </p>
             {visibleKeys.has(`${enemyCityInfo.position.x},${enemyCityInfo.position.y}`) ? (
               <>

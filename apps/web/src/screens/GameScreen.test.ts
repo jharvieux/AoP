@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { hexDistance, type Captain, type GameMap } from '@aop/engine'
 import type { Coord } from '@aop/shared'
-import { classifySelectedPartyTileTap, findViewerCaptainAtCity } from './GameScreen'
+import {
+  classifySelectedPartyTileTap,
+  factionOfOwner,
+  factionOfPlayer,
+  findViewerCaptainAtCity,
+} from './GameScreen'
 
 /**
  * #385: `viewerCaptainAtCity` gates recruit/load-troops/unload-troops/
@@ -143,5 +148,46 @@ describe('classifySelectedPartyTileTap (#476: act on own tile, not re-select)', 
     expect(
       classifySelectedPartyTileTap(party, viewerId, [{ ...siteHere, claimedBy: 'seat-1' }], []),
     ).toEqual({ action: 'captureSite', siteId: 'site-1' })
+  })
+})
+
+/**
+ * #AOP-CLIENT-1: `GameScreen`'s owner-id-to-faction lookup used to be a
+ * single `game.players.find((p) => p.id === ownerId)!.faction` shared by
+ * every caller. Inland settlements seed `ownerId: 'neutral'`
+ * (packages/engine/src/game.ts:198), which never matches a player, so any
+ * city-rendering path crashed with "Cannot read properties of undefined
+ * (reading 'faction')". The fix splits the lookup by domain instead of
+ * defensively `?.`-guarding every call site: `factionOfPlayer` stays strict
+ * for captain/party owners (always real players), and `factionOfOwner`
+ * layers the one legitimate neutral-sentinel case on top.
+ */
+describe('factionOfPlayer / factionOfOwner (#AOP-CLIENT-1: neutral-owned cities)', () => {
+  const players = [
+    { id: 'seat-0', faction: 'pirates' as const },
+    { id: 'seat-1', faction: 'british' as const },
+  ]
+
+  it('factionOfPlayer resolves a real player id to its faction', () => {
+    expect(factionOfPlayer(players, 'seat-0')).toBe('pirates')
+    expect(factionOfPlayer(players, 'seat-1')).toBe('british')
+  })
+
+  it('factionOfPlayer throws for an unmatched id (fail loud, never neutral)', () => {
+    expect(() => factionOfPlayer(players, 'neutral')).toThrow(/no player/i)
+    expect(() => factionOfPlayer(players, 'nobody')).toThrow(/no player/i)
+  })
+
+  it('factionOfOwner resolves a real player id exactly like factionOfPlayer', () => {
+    expect(factionOfOwner(players, 'seat-0')).toBe('pirates')
+    expect(factionOfOwner(players, 'seat-1')).toBe('british')
+  })
+
+  it('factionOfOwner returns undefined for the neutral sentinel', () => {
+    expect(factionOfOwner(players, 'neutral')).toBeUndefined()
+  })
+
+  it('factionOfOwner still throws for a genuinely unmatched, non-neutral id', () => {
+    expect(() => factionOfOwner(players, 'nobody')).toThrow(/no player/i)
   })
 })
