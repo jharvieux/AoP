@@ -1068,13 +1068,14 @@ describe('AI landing-party logistics & counter (#475)', () => {
   })
 
   it('reinforces a threatened city from a docked captain (transfer to garrison)', () => {
-    // The b1:5 party (strength 17.5) clears the threat floor — partyThreatMinRatio
-    // 0.4 (×1.1 opportunist) of the city's intrinsic defence (3 militia grunts +
-    // 2 turrets ≈ 24) is ≈ 10.6 — so the docked captain hands its troops to the
-    // garrison to meet it.
+    // The b1:8 party (strength 28) clears the threat floor — partyThreatMinRatio
+    // 0.4 (×1.1 opportunist) of the city's intrinsic defence: 3 militia grunts +
+    // 2 turrets ≈ 24 plus the docked sloop's port defence (#500 audit threading:
+    // hull 40×0.25 + cannons 6 = 16) ≈ 40, floor ≈ 17.6 — so the docked captain
+    // hands its troops to the garrison to meet it.
     const state = landState({
       captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
-      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 8 }])],
       cities: [p1CityAt({ x: 4, y: 5 }, {})],
     })
     const action = nextAiAction(state, 'p1')
@@ -1088,7 +1089,7 @@ describe('AI landing-party logistics & counter (#475)', () => {
 
   it('ignores a trivial nuisance party — the garrison→ship pipeline is not frozen (#475 audit)', () => {
     // A single-troop party (strength 3.5) camps within partyThreatRadius but far
-    // below the threat floor (≈ 10.6, see above). Before the size floor, ANY
+    // below the threat floor (≈ 17.6, see above). Before the size floor, ANY
     // party in radius froze the city's garrison→ship loading forever — a cheap
     // exploit against the AI. The docked captain must still load the surplus.
     const state = landState({
@@ -1176,5 +1177,212 @@ describe('AI landing-party crash-safety & determinism (#475)', () => {
     expect(nextAiAction(build(), 'p1')).toEqual(nextAiAction(build(), 'p1'))
     // And a whole turn replays bit-exact.
     expect(JSON.stringify(runAiTurn(build(), 'p1'))).toBe(JSON.stringify(runAiTurn(build(), 'p1')))
+  })
+})
+
+/** LAND_CATALOG plus captain stat tuning (#498) — lets stat-point verbs resolve. */
+const STAT_CATALOG: ContentCatalog = {
+  ...LAND_CATALOG,
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
+}
+
+describe('AI captain-expansion verbs (#500)', () => {
+  it('garrisons a docked captain into a threatened city', () => {
+    // The brute party towers over the threat floor; the docked, empty c1 commits
+    // to the city's defence while c2 keeps the fleet mobile.
+    const state = landState({
+      captains: [
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+        landCaptain('c2', 'p1', { x: 13, y: 7 }, []),
+      ],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'garrisonCaptain',
+      playerId: 'p1',
+      captainId: 'c1',
+      cityId: 'p1-city',
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never garrisons the seat’s last sea-capable captain', () => {
+    // Identical threat, but c1 is the only captain: immobilizing it would trade
+    // all mobility for one city's defence, so the seat holds instead.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+
+  it('a troop-carrying enemy captain in the roads also threatens the city (naval threat, #500)', () => {
+    // Same layout as the garrison test but the threat sails instead of marching:
+    // an enemy hull whose landing force clears the same floor.
+    const state = landState({
+      captains: [
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+        landCaptain('c2', 'p1', { x: 13, y: 7 }, []),
+        landCaptain('e1', 'p2', { x: 3, y: 6 }, [{ unitId: 'brute', count: 12 }]),
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('garrisonCaptain')
+  })
+
+  it('releases the garrisoned captain once the threat has passed', () => {
+    const base = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 5 }, []), movementPoints: 0 }],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = {
+      ...base,
+      cities: base.cities.map((c) => ({ ...c, garrisonCaptainId: 'c1' })),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({ type: 'ungarrisonCaptain', playerId: 'p1', cityId: 'p1-city' })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('picks the most valuable stash item up onto a docked captain', () => {
+    const catalog: ContentCatalog = {
+      ...LAND_CATALOG,
+      items: {
+        defs: {
+          trinket: { stats: { attack: 1, defense: 0, speed: 0 }, weight: 1 },
+          blade: { stats: { attack: 3, defense: 2, speed: 0 }, weight: 1 },
+        },
+        captainItemCap: 2,
+        seaEncounterDropChance: 0,
+        landHaulDropChance: 0,
+        landEncounterDropChance: 0,
+      },
+    }
+    const base = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = {
+      ...base,
+      config: { ...base.config, content: catalog },
+      players: base.players.map((p) =>
+        p.id === 'p1' ? { ...p, itemStash: ['trinket', 'blade'] } : p,
+      ),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'takeItem',
+      playerId: 'p1',
+      captainId: 'c1',
+      cityId: 'p1-city',
+      itemId: 'blade',
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('lands WITH the captain when its bonuses turn the wave into an expected win', () => {
+    // Unled, 6 grunts (36) vs the 13-strong b1 garrison + turrets (52.5) is an
+    // attrition wave (ratio ≈ 0.69). Led, +10 flat attack per grunt lifts the
+    // party to 96 — ratio ≈ 1.8, a clear win — so the captain marches ashore
+    // with the column instead of feeding it in unled.
+    const base = landState({
+      captains: [
+        {
+          ...landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }]),
+          stats: { attack: 10, defense: 0, speed: 0 },
+        },
+      ],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+    })
+    const state = { ...base, config: { ...base.config, content: STAT_CATALOG } }
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBe(true)
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never leads a wave it still expects to lose', () => {
+    // Same layout, no stat points: leading adds nothing, and a destroyed led
+    // party's captain is captured — so the party lands unled.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBeUndefined()
+  })
+
+  it('spends stat points by duty: garrisoned defends, party-leading attacks', () => {
+    // A garrisoned captain picks defense even with troops aboard (its bonuses
+    // exist to make the city survive) …
+    const garrisonedBase = landState({
+      captains: [
+        {
+          ...landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }]),
+          movementPoints: 0,
+          xp: 200,
+        },
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const garrisoned = {
+      ...garrisonedBase,
+      config: { ...garrisonedBase.config, content: STAT_CATALOG },
+      cities: garrisonedBase.cities.map((c) => ({ ...c, garrisonCaptainId: 'c1' })),
+    }
+    expect(nextAiAction(garrisoned, 'p1')).toEqual({
+      type: 'chooseCaptainStat',
+      playerId: 'p1',
+      captainId: 'c1',
+      stat: 'defense',
+    })
+
+    // … and a captain leading a party ashore picks attack even with an empty hold.
+    const leadingBase = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0, xp: 200 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 4, y: 4 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    const leading = { ...leadingBase, config: { ...leadingBase.config, content: STAT_CATALOG } }
+    expect(nextAiAction(leading, 'p1')).toEqual({
+      type: 'chooseCaptainStat',
+      playerId: 'p1',
+      captainId: 'c1',
+      stat: 'attack',
+    })
+  })
+
+  it('marches a purposeless led party home to its anchored ship and re-boards it', () => {
+    // The led party sits mid-island with nothing to fight; its own ship waits
+    // anchored at (3,4). It must march toward the shore tile beside the ship …
+    const far = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 7, y: 6 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    const march = nextAiAction(far, 'p1')
+    expect(march.type).toBe('moveParty')
+    expect(() => applyAction(far, march)).not.toThrow()
+
+    // … and once adjacent, re-board exactly that captain's ship.
+    const home = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 4, y: 4 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    expect(nextAiAction(home, 'p1')).toEqual({
+      type: 'embark',
+      playerId: 'p1',
+      partyId: 'pa',
+      captainId: 'c1',
+    })
   })
 })

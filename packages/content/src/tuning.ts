@@ -239,6 +239,26 @@ export interface AiTuning {
   recruitCaptainScoreBase: number
   /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
   ransomScoreBase: number
+  /**
+   * Score for garrisoning a docked captain into a threatened owned city (#500).
+   * Between `garrisonToShipScoreBase` and `reinforceCityScoreBase`: a threatened
+   * city first absorbs a docked captain's troops (reinforce), then commits the
+   * emptied hull itself. Unscaled, like the other defensive counters.
+   */
+  garrisonCaptainScoreBase: number
+  /**
+   * Score for releasing a garrisoned captain once no threat remains (#500).
+   * Low — pure logistics, above idling and below every offensive/economic verb,
+   * like `partyRescueScoreBase`.
+   */
+  ungarrisonCaptainScoreBase: number
+  /**
+   * Score for picking the most valuable stash item up onto a captain docked at
+   * an owned city (#500). Stashed items are inert; carried ones add combat
+   * bonuses — free strength, so it outranks routine logistics but never a
+   * fight or a threatened city's defence.
+   */
+  takeItemScoreBase: number
 }
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
@@ -660,6 +680,14 @@ export const AI_TUNING: AiTuning = {
   statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
+  // Between garrisonToShip (30) and reinforce (60) by design: a threatened city
+  // first absorbs the docked hull's troops, then commits the emptied hull.
+  garrisonCaptainScoreBase: 55,
+  // Matches partyRescueScoreBase's logistics band: above idling, below all else.
+  ungarrisonCaptainScoreBase: 15,
+  // Above garrisonToShip/recruit (30/25) — equipping a captain is instant,
+  // permanent strength — below reinforce (60) and every combat verb.
+  takeItemScoreBase: 45,
 }
 
 /**

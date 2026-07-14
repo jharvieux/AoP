@@ -120,6 +120,9 @@ export const AI_TUNING: AiTuning = {
   statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
+  garrisonCaptainScoreBase: 55,
+  ungarrisonCaptainScoreBase: 15,
+  takeItemScoreBase: 45,
 }
 
 export const AI_PERSONALITIES: Record<AiPersonality, AiPersonalityWeights> = {
