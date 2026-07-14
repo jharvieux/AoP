@@ -397,6 +397,15 @@ export interface GameSetup {
    * field, so it's optional and absent-safe for pre-#305 saves/replays.
    */
   battleResolution?: 'tactical' | 'auto'
+  /**
+   * Round cap (#508): the last round that is played. When the round counter
+   * would advance past it, the match ends instead — winner is the living seat
+   * with the most cities, ties broken by gold treasury, still tied is a draw
+   * (`winnerId: null`). Absent means unlimited, the pre-#508 behavior; the
+   * field is purely additive with a safe default, so it needs no
+   * RULES_VERSION bump.
+   */
+  roundLimit?: number
 }
 
 export interface GameConfig {
@@ -676,4 +685,12 @@ export interface GameState {
   actionCount: number
   status: GameStatus
   winnerId: string | null
+  /**
+   * Set (to `true`) only when the match ended by hitting
+   * {@link GameSetup.roundLimit} (#508) — lets clients tell a cap ending
+   * (surviving seats compared on cities/gold, possibly a draw) apart from an
+   * elimination or abandonment ending. Never present on any other path, so
+   * pre-#508 logs replay to byte-identical states.
+   */
+  endedByRoundLimit?: true
 }
