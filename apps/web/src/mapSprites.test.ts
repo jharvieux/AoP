@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildingContentId,
+  buildingSlotIds,
   cityBackdropContentId,
   cityContentId,
   encounterContentId,
   factionFlagContentId,
+  LAND_ENCOUNTER_KINDS,
   partyContentId,
   resolveSpriteUrl,
+  SEA_ENCOUNTER_KINDS,
   tileContentId,
+  TILE_ART_TYPES,
 } from './mapSprites'
 
 describe('mapSprites content ids', () => {
@@ -105,5 +109,44 @@ describe('resolveSpriteUrl', () => {
     expect(resolveSpriteUrl(spriteUrl, partyContentId('dutch'), '/art/parties/dutch.png')).toBe(
       '/art/parties/dutch.png',
     )
+  })
+})
+
+describe('TILE_ART_TYPES / SEA_ENCOUNTER_KINDS / LAND_ENCOUNTER_KINDS (#494 editor slot enumeration)', () => {
+  it('lists exactly the tile types that route through resolveSpriteUrl (land/port)', () => {
+    expect(TILE_ART_TYPES).toEqual(['land', 'port'])
+  })
+
+  it('lists exactly the sea-encounter kinds that route through resolveSpriteUrl', () => {
+    expect(SEA_ENCOUNTER_KINDS).toEqual(['merchant', 'natives', 'settlers'])
+  })
+
+  it('lists exactly the land-encounter kinds that route through resolveSpriteUrl', () => {
+    expect(LAND_ENCOUNTER_KINDS).toEqual(['nativeVillage', 'hermit', 'banditCamp'])
+  })
+
+  it('sea and land encounter kinds never collide, so their encounter: content ids stay distinct', () => {
+    const overlap = SEA_ENCOUNTER_KINDS.filter((k) =>
+      (LAND_ENCOUNTER_KINDS as readonly string[]).includes(k),
+    )
+    expect(overlap).toEqual([])
+  })
+})
+
+describe('buildingSlotIds (#494)', () => {
+  it('appends the citadel corner-tower pseudo-id after every real building id', () => {
+    expect(buildingSlotIds(['townhall', 'citadel'])).toEqual([
+      'townhall',
+      'citadel',
+      'citadel:tower',
+    ])
+  })
+
+  it('never drops or reorders the caller-supplied building ids', () => {
+    expect(buildingSlotIds([])).toEqual(['citadel:tower'])
+  })
+
+  it("the tower pseudo-id resolves to the same content id CityScene's special case uses", () => {
+    expect(buildingContentId('citadel:tower')).toBe('building:citadel:tower')
   })
 })

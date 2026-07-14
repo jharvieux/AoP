@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   cellCenter,
   cellPolygon,
+  fitScale,
   hexCorners,
   hexSize,
   mapPixelExtent,
@@ -137,6 +138,25 @@ describe('mapPixelExtent', () => {
         expect(c.y + s).toBeLessThanOrEqual(extent.height + 1e-9)
       }
     }
+  })
+})
+
+describe('fitScale (#512)', () => {
+  it('picks the tighter axis when the extent is wider than it is tall', () => {
+    // 3072x3072 world (96x96 @ TILE) into an 800x600 viewport: height binds.
+    expect(fitScale({ width: 3072, height: 3072 }, 800, 600)).toBeCloseTo(600 / 3072)
+  })
+
+  it('picks the tighter axis when the viewport is wider than it is tall', () => {
+    expect(fitScale({ width: 3072, height: 3072 }, 390, 844)).toBeCloseTo(390 / 3072)
+  })
+
+  it('returns a scale > 1 when the extent is smaller than the viewport', () => {
+    expect(fitScale({ width: 768, height: 768 }, 1200, 1200)).toBeCloseTo(1200 / 768)
+  })
+
+  it('degenerate (zero) extent returns 1 instead of Infinity/NaN', () => {
+    expect(fitScale({ width: 0, height: 0 }, 800, 600)).toBe(1)
   })
 })
 

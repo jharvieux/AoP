@@ -144,6 +144,24 @@ export function mapPixelExtent(
 }
 
 /**
+ * The scale at which a `{width, height}` pixel extent fits entirely inside a
+ * `viewportWidth x viewportHeight` viewport — the "whole-board fit" zoom level
+ * (#512). The smaller of the two axis ratios wins, so the fit never overflows
+ * either dimension. Used both as MapCanvas's size-aware minimum-zoom floor
+ * (quadrupled boards can zoom out far enough to see the whole thing) and by
+ * its fit-to-map button (which jumps straight to this scale). Returns 1 for a
+ * degenerate (zero or negative) extent, so callers never divide by zero.
+ */
+export function fitScale(
+  extent: { width: number; height: number },
+  viewportWidth: number,
+  viewportHeight: number,
+): number {
+  if (extent.width <= 0 || extent.height <= 0) return 1
+  return Math.min(viewportWidth / extent.width, viewportHeight / extent.height)
+}
+
+/**
  * The inclusive range of tile coords that can be on screen, clamped to the map.
  * Square reproduces MapCanvas's prior culling window exactly (1-tile pad). Hex
  * inverse-projects the four viewport corners to cells and pads by 2 to cover the

@@ -13,7 +13,42 @@
  * get a namespaced id here to avoid ever colliding with a faction/unit/ship id.
  */
 
+import type { EncounterKind, LandEncounterKind } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
+
+/**
+ * Tile types with a theme-overridable sprite today (#494). Water tiles
+ * (`deep`/`shallows`) paint procedurally in MapCanvas's painted-world pass and
+ * never reach `resolveSpriteUrl` — only `land`/`port` tiles look up art — so
+ * these are the only tile content ids worth an editor upload slot. Revisit if
+ * water ever gets sprite-art support.
+ */
+export const TILE_ART_TYPES: readonly string[] = ['land', 'port']
+
+/**
+ * Sea-encounter kinds with a theme-overridable sprite (#494). Hand-listed
+ * rather than derived from `@aop/content`'s `ENCOUNTERS` catalog because that
+ * object's keys mix in `spawnDensity`/`minStartDistance` alongside the kind
+ * keys — there's no clean values-only export to draw from.
+ */
+export const SEA_ENCOUNTER_KINDS: readonly EncounterKind[] = ['merchant', 'natives', 'settlers']
+
+/**
+ * Land-encounter kinds with a theme-overridable sprite (#494 audit fix,
+ * PR #520). `MapCanvas.tsx`'s land-encounter render pass calls
+ * `resolveSpriteUrl(themeSpriteUrlRef.current, encounterContentId(enc.kind),
+ * LAND_ENCOUNTER_SPRITE_URL[enc.kind])` — the exact same theming path as sea
+ * encounters, just with a land-specific default-art table — so these are
+ * themeable today too and need their own editor slot. Hand-listed for the
+ * same reason as `SEA_ENCOUNTER_KINDS`: `@aop/content`'s `LAND_ENCOUNTERS`
+ * catalog keys mix in `spawnDensity`/`minStartDistance` alongside the kind
+ * keys.
+ */
+export const LAND_ENCOUNTER_KINDS: readonly LandEncounterKind[] = [
+  'nativeVillage',
+  'hermit',
+  'banditCamp',
+]
 
 /** Theme-pack content id for a map tile type's sprite override. */
 export function tileContentId(tileType: string): string {
@@ -44,6 +79,19 @@ export function encounterContentId(kind: string): string {
 /** Theme-pack content id for a city building's sprite override (#447). */
 export function buildingContentId(buildingId: string): string {
   return `building:${buildingId}`
+}
+
+/**
+ * Building-family ids with a theme-overridable sprite (#494): every real
+ * `@aop/content` building id, plus the citadel's separate corner-tower
+ * accessory sprite (`CityScene.tsx`'s special-cased
+ * `buildingContentId('citadel:tower')`), which isn't a `BUILDINGS` key itself.
+ * Takes the caller's building ids rather than importing `@aop/content`
+ * directly, so this stays a pure function of its input like the rest of this
+ * module.
+ */
+export function buildingSlotIds(buildingIds: readonly string[]): string[] {
+  return [...buildingIds, 'citadel:tower']
 }
 
 /** Theme-pack content id for the city scene's backdrop image override (#447). */
