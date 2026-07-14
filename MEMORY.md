@@ -1,3 +1,31 @@
+## D-046 — 2026-07-14 — Evening sweep: AI v2 live (garrison/led-parties/items/endgame), rescue+toast plumbing, theme/zoom UI
+
+**Sweep of 8 issues, 5 batches, all landed** (PRs #518 #521 #520 #525; #524 shipyard art
+left open for operator style approval). Highlights: **AI v2** (#500/#509/#510, PR #525) —
+the planner now garrisons against naval threats (never the last mobile captain), leads
+parties ashore only on expected-win, takes stash items at port, makes role-aware stat
+picks, plays the scoreboard under a round limit, and the #510 spacing-20 capital-conquest
+stall is broken (0→46 captures/96) via a stall-gated landAttritionMinRatio (0.20) after
+two measured-and-rejected designs (documented in-code; naive variants starved sieges —
+#526). **Rescue** (#499, PR #521, RULES_VERSION→11): operator-decided instant pool
+transfer; modeled as shipLost+leading-nothing (no new fields), port-proximity sweep,
+recruitCaptain rehire; ghost-hull embark bug fixed inline. **Toasts**: #503 SP land-haul
+(siteItemGained) + #502 MP transport (acting-seat-only, structurally leak-proof) — the
+two halves were never cross-wired, filed #527. **UI** (#494/#512, PR #520): theme slots
+for every themeable family (audit caught the missing land-encounter kinds), whole-board
+fit zoom for 96² maps.
+
+**Process notes.** One primary-checkout contamination (stale pre-#521 reducer.ts staged
+on main) was caught by the stop hook and restored from HEAD; no agent admitted the write —
+watch for recurrence. Composition auditing between same-sweep PRs earned its keep twice
+(#521×#525: pooled captains invisible to four planner liveness checks, fixed pre-merge;
+#518×#521: the #527 gap).
+
+**Follow-ups filed**: #519 #522 #523 #526 #527. Prior gate items still open: #524
+(operator), VERCEL_TOKEN (optional now, #425).
+
+---
+
 ## D-045 — 2026-07-14 — #508 configurable round limit (optional GameSetup.roundLimit, additive, no RULES_VERSION bump)
 
 **Decision.** Round limit is a game-start option (SP NewGameSetup + MP private-match
