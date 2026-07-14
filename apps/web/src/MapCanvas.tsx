@@ -1181,6 +1181,10 @@ export function MapCanvas(props: MapCanvasProps) {
         const key = `${cap.position.x},${cap.position.y}`
         const own = cap.ownerId === viewerId
         if (!own && !visibleKeys.has(key)) continue
+        // A shipLost captain (#498) has no hull left — the anchored ship was
+        // taken as a prize when its ashore captain was defeated. Nothing to
+        // draw here; the landing party sprite carries the captain instead.
+        if (cap.shipLost) continue
 
         // Detect a move since the last draw (#297): reconstruct the sea path just
         // travelled and animate along it instead of snapping straight to the new tile.
@@ -1225,11 +1229,21 @@ export function MapCanvas(props: MapCanvasProps) {
           defaultShipSpriteUrl,
         )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
+        // Anchored (#498): this captain is ashore leading a landing party —
+        // the ship sits here, orderless, until the captain re-embarks. Dimmed
+        // plus a dark anchor ring under the hull so it reads as "not sailing"
+        // at a glance, distinct from a normal docked/idle ship.
+        const anchored = parties.some((p) => p.captainId === cap.id)
         // Hull shadow on the water (#394); the ambient bob rides above it.
         entities.ellipse(cx, cy + TILE * 0.24, TILE * 0.28, TILE * 0.09).fill({
           color: 0x000000,
           alpha: 0.25,
         })
+        if (anchored) {
+          entities
+            .ellipse(cx, cy + TILE * 0.24, TILE * 0.36, TILE * 0.13)
+            .stroke({ width: 2, color: 0x1a1a1a, alpha: 0.55 })
+        }
         if (texture) {
           const sprite = shipPool.get(cap.id)
           const size = TILE * (SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
@@ -1237,6 +1251,7 @@ export function MapCanvas(props: MapCanvasProps) {
           sprite.width = size
           sprite.height = size
           sprite.position.set(cx, cy)
+          sprite.alpha = anchored ? 0.55 : 1
           shipSpritesRef.current.set(cap.id, { sprite, baseX: cx, baseY: cy })
           continue
         }
@@ -1244,10 +1259,13 @@ export function MapCanvas(props: MapCanvasProps) {
         // base, with an own-ship highlight ring on top so own-vs-enemy stays legible even
         // when two factions' colors are close.
         entities.circle(cx, cy, TILE / 2.6)
-        entities.fill(faction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP))
+        entities.fill({
+          color: faction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP),
+          alpha: anchored ? 0.55 : 1,
+        })
         if (own) {
           entities.circle(cx, cy, TILE / 2.6)
-          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: anchored ? 0.5 : 0.9 })
         }
       }
       // Drop tracking for captains that no longer exist at all (sunk, eliminated seat, …) —

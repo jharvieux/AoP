@@ -17,6 +17,7 @@ import {
   type BoardActivationView,
   type BoardCommand,
   type BoardOrder,
+  type CaptainStat,
   type EncounterChoice,
   type EncounterKind,
   type GameState,
@@ -25,13 +26,15 @@ import {
   type TacticContext,
   type TacticId,
 } from '@aop/engine'
-import { FACTIONS } from '@aop/content'
+import { FACTIONS, ITEMS } from '@aop/content'
 import { canAfford, type Coord, type FactionId } from '@aop/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { findApproachPath } from '../approach'
+import { captainAshoreState } from '../captainAshore'
 import { partyBlockedSet } from '../partyMarch'
 import { classifyPartyRangeOverlay } from '../partyRange'
+import { portDefenderCount } from '../portDefenders'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
@@ -151,6 +154,10 @@ interface GameScreenProps {
   /** Structured result of the last combat, shown in the battle sheet (#39). */
   battleReport: BattleReport | null
   onDismissBattleReport: () => void
+  /** The last item an encounter dropped (#498), for a "Found: <item>" line in
+   * the turn-event feed. A fresh object every time one is found, so a repeat
+   * find of the same item still re-triggers the feed (mirrors `battleReport`). */
+  itemFound: { itemId: string } | null
   onAction: (action: Action) => void
   onSaveSlot: (slotId: string) => Promise<void>
   /** Throws on failure (#237) — SaveScreen catches it and keeps its sheet open. */
@@ -261,6 +268,7 @@ export function GameScreen({
   game,
   battleReport,
   onDismissBattleReport,
+  itemFound,
   onAction,
   onSaveSlot,
   onLoadSlot,
@@ -298,6 +306,9 @@ export function GameScreen({
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null)
   const [disembarkTile, setDisembarkTile] = useState<Coord | null>(null)
   const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
+  /** Land the captain with the party (#498) — resets to unchecked each time
+   * the sheet opens; the captain's own ship stays anchored, orderless. */
+  const [disembarkWithCaptain, setDisembarkWithCaptain] = useState(false)
   const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
   const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
   // Interactive land battles (#482): the in-progress party-vs-party melee and
@@ -411,6 +422,13 @@ export function GameScreen({
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleReport])
+
+  useEffect(() => {
+    if (!itemFound) return
+    const item = ITEMS[itemFound.itemId]
+    pushEvent(`Found: ${item?.name ?? itemFound.itemId}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemFound])
 
   const selectedCaptain = selectedCaptainId
     ? (game.captains.find((c) => c.id === selectedCaptainId) ?? null)
@@ -668,8 +686,12 @@ export function GameScreen({
 
   function handleTileClick(x: number, y: number) {
     if (!isViewerTurn || game.status !== 'active') return
+    // A shipLost captain (#498) has no hull left — its position is a phantom
+    // duplicate of its landing party's tile (see captainAshore.ts). Excluding
+    // it here lets a tap on that tile select the co-located party instead of
+    // a nonexistent ship.
     const ownHere = game.captains.find(
-      (c) => c.ownerId === viewer.id && c.position.x === x && c.position.y === y,
+      (c) => c.ownerId === viewer.id && !c.shipLost && c.position.x === x && c.position.y === y,
     )
     if (ownHere) {
       // Embark (#465): with a party selected, tapping an adjacent own ship
@@ -747,6 +769,10 @@ export function GameScreen({
       if (ownCityHere) openCity(ownCityHere.id)
       return
     }
+    // An anchored or shipLost captain (#498) has no ship orders to give — the
+    // engine already rejects every one (`requireShipControl`, reducer.ts);
+    // this just saves a round trip on a tap that could never do anything.
+    if (captainAshoreState(selectedCaptain, game.parties)) return
     const key = `${x},${y}`
 
     // Fog rules unchanged (#376): a target is only tappable while currently
@@ -822,6 +848,7 @@ export function GameScreen({
       tapFeedback()
       setDisembarkTile({ x, y })
       setDisembarkCounts(Object.fromEntries(selectedCaptain.troops.map((t) => [t.unitId, t.count])))
+      setDisembarkWithCaptain(false)
       return
     }
 
@@ -956,8 +983,10 @@ export function GameScreen({
       captainId: selectedCaptain.id,
       to: disembarkTile,
       troops,
+      ...(disembarkWithCaptain ? { withCaptain: true } : {}),
     })
     setDisembarkTile(null)
+    setDisembarkWithCaptain(false)
     setSelectedCaptainId(null)
   }
 
@@ -1584,6 +1613,47 @@ export function GameScreen({
         skillId,
       })
     },
+    onChooseCaptainStat: (stat: CaptainStat) => {
+      if (!viewerCaptainAtCity) return
+      onAction({
+        type: 'chooseCaptainStat',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        stat,
+      })
+    },
+    onGarrisonCaptain: () => {
+      if (!viewerCaptainAtCity) return
+      onAction({
+        type: 'garrisonCaptain',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        cityId: viewerCity.id,
+      })
+    },
+    onUngarrisonCaptain: () => {
+      onAction({ type: 'ungarrisonCaptain', playerId: viewer.id, cityId: viewerCity.id })
+    },
+    onTakeItem: (itemId: string) => {
+      if (!viewerCaptainAtCity) return
+      onAction({
+        type: 'takeItem',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        cityId: viewerCity.id,
+        itemId,
+      })
+    },
+    onDepositItem: (itemId: string) => {
+      if (!viewerCaptainAtCity) return
+      onAction({
+        type: 'depositItem',
+        playerId: viewer.id,
+        captainId: viewerCaptainAtCity.id,
+        cityId: viewerCity.id,
+        itemId,
+      })
+    },
     onUpgradeShip: (track: string) => {
       if (!viewerCaptainAtCity) return
       onAction({
@@ -1745,8 +1815,18 @@ export function GameScreen({
         {(selectedCaptain || selectedParty) && (
           <div className="selection-info" role="status">
             {selectedCaptain
-              ? `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
-              : `${selectedParty!.name} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`}
+              ? (() => {
+                  const ashore = captainAshoreState(selectedCaptain, game.parties)
+                  return ashore
+                    ? `${selectedCaptain.name} — anchored, captain ashore leading a landing party${ashore === 'shipLost' ? ' (ship lost)' : ''}`
+                    : `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
+                })()
+              : (() => {
+                  const leader = selectedParty!.captainId
+                    ? game.captains.find((c) => c.id === selectedParty!.captainId)
+                    : undefined
+                  return `${selectedParty!.name}${leader ? ` — led by ${leader.name}` : ''} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`
+                })()}
             {/* Cancel affordance for a queued march (#482) — the route itself
                 shows as the dotted preview while the party stays selected. */}
             {selectedParty?.marchOrder && isViewerTurn && (
@@ -1989,6 +2069,7 @@ export function GameScreen({
           title="Put a landing party ashore?"
           onClose={() => {
             setDisembarkTile(null)
+            setDisembarkWithCaptain(false)
           }}
         >
           <section>
@@ -2029,6 +2110,15 @@ export function GameScreen({
                 </div>
               )
             })}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={disembarkWithCaptain}
+                onChange={(e) => setDisembarkWithCaptain(e.target.checked)}
+              />
+              Land with {selectedCaptain.name} (the ship stays anchored here, orderless, until the
+              captain re-embarks)
+            </label>
             <div className="button-group">
               <button
                 className="primary"
@@ -2205,11 +2295,14 @@ export function GameScreen({
           city={viewerCity}
           captain={viewerCaptainAtCity}
           captains={viewerCaptains}
+          parties={game.parties}
           faction={viewer.faction}
           resources={viewer.resources}
           setup={game.config.setup}
           round={game.round}
           playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
+          playerItemStash={viewer.itemStash}
+          portDefenderCount={portDefenderCount(viewerCaptains, game.parties, game.map, viewerCity)}
           cities={viewerCities}
           onSelectCity={openCity}
           onClose={() => setCityOpen(false)}
