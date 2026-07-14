@@ -108,8 +108,8 @@ export function buildCatalog(): ContentCatalog {
       minStartDistance: INLAND_SETTLEMENTS.minStartDistance,
     },
     captainStats: {
-      attackPctPerPoint: CAPTAIN_STAT_TUNING.attackPctPerPoint,
-      defensePctPerPoint: CAPTAIN_STAT_TUNING.defensePctPerPoint,
+      attackPerPoint: CAPTAIN_STAT_TUNING.attackPerPoint,
+      defensePerPoint: CAPTAIN_STAT_TUNING.defensePerPoint,
       speedMovementPerPoint: CAPTAIN_STAT_TUNING.speedMovementPerPoint,
     },
     items: {
@@ -117,9 +117,11 @@ export function buildCatalog(): ContentCatalog {
         Object.values(ITEMS).map((item) => [
           item.id,
           {
-            attackBonusPct: item.attackBonusPct,
-            defenseBonusPct: item.defenseBonusPct,
-            speedBonus: item.speedBonus,
+            stats: {
+              attack: item.statBonuses.attack ?? 0,
+              defense: item.statBonuses.defense ?? 0,
+              speed: item.statBonuses.speed ?? 0,
+            },
             weight: item.weight,
           },
         ]),
