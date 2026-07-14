@@ -33,13 +33,15 @@ export class MatchActionError extends Error {
 /** One accepted `submit-action` response: the new authoritative sequence and
  * the caller's refreshed fog-locked view (docs/MULTIPLAYER.md §5.4).
  * `battleReport` is present only when the action was an attack (#285);
- * `encounterOutcome` only when it resolved a sea/land encounter (#502) —
- * both are the caller's own outcome, never another seat's. */
+ * `encounterOutcome` only when it resolved a sea/land encounter (#502);
+ * `siteItemGained` only when it was a `captureSite` land haul (#527) —
+ * all three are the caller's own outcome, never another seat's. */
 export interface SubmitActionResult {
   seq: number
   view: PlayerView
   battleReport?: BattleReport
   encounterOutcome?: EncounterOutcome
+  siteItemGained?: string
 }
 
 /**
