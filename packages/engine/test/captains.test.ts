@@ -632,50 +632,52 @@ describe('ransomCaptain action (#309)', () => {
   })
 })
 
-describe('fog of war along a travel path (#295)', () => {
-  // Far enough from the port row (below) that a home city's own vision disc
-  // (cityVisionRadius: 3, see fixtures.ts) never reaches the lane the captains
-  // sail along — otherwise city vision could mask the bug this suite targets.
-  const LANE_Y = 8
+// Far enough from the port row (below) that a home city's own vision disc
+// (cityVisionRadius: 3, see fixtures.ts) never reaches the lane the captains
+// sail along — otherwise city vision could mask the bugs the fog suites below
+// target.
+const LANE_Y = 8
 
-  /**
-   * A straight, all-deep-water lane, long enough for multi-step moves, with the
-   * two players parked at either end. Gives full control over path shape and
-   * length, unlike the generated map used elsewhere in this file.
-   */
-  function laneConfig(length: number, movement = GAME_SETUP.startingCaptainMovement): GameConfig {
-    const width = length + 1
-    const height = LANE_Y + 1
-    const tiles: Tile[] = Array.from({ length: width * height }, () => ({
-      type: 'deep',
-      island: -1,
-    }))
-    // Each seat's capital sits on a port tile (createGame looks one up per home
-    // island); tuck them onto row y=0, far from the y=LANE_Y row the captains
-    // actually sail along.
-    tiles[0 * width + 0] = { type: 'port', island: 0 }
-    tiles[0 * width + (width - 1)] = { type: 'port', island: 1 }
-    const mapDefinition: MapDefinition = {
-      width,
-      height,
-      tiles,
-      startPositions: [
-        { x: 0, y: LANE_Y },
-        { x: width - 1, y: LANE_Y },
-      ],
-    }
-    return {
-      seed: 1,
-      mapSize: 'medium',
-      mapDefinition,
-      setup: { ...GAME_SETUP, startingCaptainMovement: movement },
-      players: [
-        { id: 'p1', name: 'Player 1', faction: 'pirates', isAI: false },
-        { id: 'p2', name: 'Player 2', faction: 'british', isAI: true },
-      ],
-    }
+/**
+ * A straight, all-deep-water lane, long enough for multi-step moves, with the
+ * two players parked at either end. Gives full control over path shape and
+ * length, unlike the generated map used elsewhere in this file. Shared by the
+ * fog-of-war suites (#295, #522).
+ */
+function laneConfig(length: number, movement = GAME_SETUP.startingCaptainMovement): GameConfig {
+  const width = length + 1
+  const height = LANE_Y + 1
+  const tiles: Tile[] = Array.from({ length: width * height }, () => ({
+    type: 'deep',
+    island: -1,
+  }))
+  // Each seat's capital sits on a port tile (createGame looks one up per home
+  // island); tuck them onto row y=0, far from the y=LANE_Y row the captains
+  // actually sail along.
+  tiles[0 * width + 0] = { type: 'port', island: 0 }
+  tiles[0 * width + (width - 1)] = { type: 'port', island: 1 }
+  const mapDefinition: MapDefinition = {
+    width,
+    height,
+    tiles,
+    startPositions: [
+      { x: 0, y: LANE_Y },
+      { x: width - 1, y: LANE_Y },
+    ],
   }
+  return {
+    seed: 1,
+    mapSize: 'medium',
+    mapDefinition,
+    setup: { ...GAME_SETUP, startingCaptainMovement: movement },
+    players: [
+      { id: 'p1', name: 'Player 1', faction: 'pirates', isAI: false },
+      { id: 'p2', name: 'Player 2', faction: 'british', isAI: true },
+    ],
+  }
+}
 
+describe('fog of war along a travel path (#295)', () => {
   it.each([1, 2, 3, 5])(
     'explores every tile crossed by a %d-step move, not just the destination',
     (steps) => {
@@ -749,5 +751,78 @@ describe('fog of war along a travel path (#295)', () => {
     for (let x = 0; x <= 5; x++) {
       expect(a.exploredTiles['p1']).toContain(tileKey({ x, y: LANE_Y }))
     }
+  })
+})
+
+describe('captured captains grant no vision (#522)', () => {
+  /**
+   * Sail p1's captain far down the lane — well outside its capital's vision
+   * disc — then mark it captured on the spot, the position a real capture
+   * freezes it at for the whole captivity.
+   */
+  function captiveFarFromHome() {
+    const movement = 10
+    const state = createGame(laneConfig(20, movement))
+    const cap = captainsOf(state, 'p1')[0]!
+    const site = { x: cap.position.x + movement, y: cap.position.y }
+    const moved = applyAction(state, {
+      type: 'moveCaptain',
+      playerId: 'p1',
+      captainId: cap.id,
+      to: site,
+    })
+    return { captured: withCapturedCaptain(moved, cap.id, 'p2', 0), moved, capId: cap.id, site }
+  }
+
+  it('revokes live vision around the capture site the moment the captain is captured', () => {
+    const { captured, moved, site } = captiveFarFromHome()
+    // Guard: before the capture, the site really was lit by this captain alone.
+    expect(currentlyVisibleTiles(moved, 'p1').map(tileKey)).toContain(tileKey(site))
+    const visible = new Set(currentlyVisibleTiles(captured, 'p1').map(tileKey))
+    const { captainVisionRadius } = captured.config.setup
+    for (const tile of tilesInRadius(site, captainVisionRadius, captured.map)) {
+      expect(visible.has(tileKey(tile))).toBe(false)
+    }
+  })
+
+  it('keeps the capture site explored (fog memory) across later actions while it stays dark', () => {
+    const { captured, site } = captiveFarFromHome()
+    const next = applyAction(captured, { type: 'endTurn', playerId: 'p1' })
+    const explored = new Set(next.exploredTiles['p1'] ?? [])
+    const { captainVisionRadius } = next.config.setup
+    for (const tile of tilesInRadius(site, captainVisionRadius, next.map)) {
+      expect(explored.has(tileKey(tile))).toBe(true)
+    }
+    expect(currentlyVisibleTiles(next, 'p1').map(tileKey)).not.toContain(tileKey(site))
+  })
+
+  it('restores live vision the moment the captain returns to service', () => {
+    // recruitCaptain's rehire path clears `captured` (asserted by the #309
+    // suites above); visibility recomputes live from that flag, so clearing it
+    // is the whole restoration story.
+    const { captured, capId, site } = captiveFarFromHome()
+    const freed: GameState = {
+      ...captured,
+      captains: captured.captains.map((c) => {
+        if (c.id !== capId) return c
+        const { capturedBy: _by, captivityReturnRound: _round, ...rest } = c
+        return { ...rest, captured: false }
+      }),
+    }
+    expect(currentlyVisibleTiles(freed, 'p1').map(tileKey)).toContain(tileKey(site))
+  })
+
+  it('replays a log with a captive in play to a bit-identical state', () => {
+    const { captured } = captiveFarFromHome()
+    const log: Action[] = [
+      { type: 'endTurn', playerId: 'p1' },
+      { type: 'moveCaptain', playerId: 'p2', captainId: 'cap-p2', to: { x: 15, y: LANE_Y } },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'endTurn', playerId: 'p1' },
+    ]
+    const a = replay(captured, log)
+    const b = replay(captured, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    expect(a.actionCount).toBe(captured.actionCount + log.length)
   })
 })

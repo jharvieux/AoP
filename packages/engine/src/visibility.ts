@@ -59,7 +59,12 @@ export function currentlyVisibleTiles(state: GameState, playerId: string): Coord
     // party it stands on the party's tile (whose identical radius already
     // covers the same ground), and once rescued to the recruitment pool its
     // board position is a stale footnote, not a lookout.
-    if (captain.ownerId === playerId && !captain.shipLost) {
+    // A captured captain (#522) is no lookout either: its position freezes at
+    // the capture site for the whole captivity (even after the captor sails
+    // the prize away), so a live disc there would be a free intelligence post
+    // deep in enemy waters. Captives are already excluded as *contacts* in
+    // currentContacts below for the same reason.
+    if (captain.ownerId === playerId && !captain.shipLost && !captain.captured) {
       add(captain.position, captainVisionRadius)
     }
   }
