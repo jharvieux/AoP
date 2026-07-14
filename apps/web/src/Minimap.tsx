@@ -8,6 +8,7 @@ import {
 import type { Coord } from '@aop/shared'
 import { useEffect, useRef, type RefObject } from 'react'
 import { cssToken } from './colorTokens'
+import { shouldDrawCaptainDot } from './fleetVisibility'
 import { cellCenter, cellPolygon, mapPixelExtent, pixelToCell } from './mapLayout'
 import { TILE_COLOR } from './MapCanvas'
 
@@ -135,6 +136,11 @@ export function Minimap({
       dot(city.position, own ? OWN_CITY : ENEMY_CITY, 2.5)
     }
     for (const cap of captains) {
+      // A pooled (rescued, ship-lost, unled) captain's position is the stale
+      // beach it was rescued from (#523) — the engine already treats it as
+      // inert (no vision, no targeting), so the minimap shouldn't draw it as
+      // a live ship either.
+      if (!shouldDrawCaptainDot(cap, parties)) continue
       const own = cap.ownerId === viewerId
       if (!own && !visibleKeys.has(`${cap.position.x},${cap.position.y}`)) continue
       dot(cap.position, own ? OWN_SHIP : ENEMY_SHIP, 2)

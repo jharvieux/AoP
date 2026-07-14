@@ -38,6 +38,7 @@ import {
   visibleCellBounds,
 } from './mapLayout'
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
+import { fleetCaptains } from './fleetVisibility'
 import { Minimap } from './Minimap'
 import {
   cityContentId,
@@ -781,8 +782,8 @@ export function MapCanvas(props: MapCanvasProps) {
       },
       centerOn,
       centerOnFleet: () => {
-        const { captains, viewerId, selectedCaptainId } = propsRef.current
-        const mine = captains.filter((c) => c.ownerId === viewerId && !c.captured)
+        const { captains, parties = [], viewerId, selectedCaptainId } = propsRef.current
+        const mine = fleetCaptains(captains, parties, viewerId)
         if (mine.length === 0) return
         // Prefer the selected captain when it's the viewer's, else the first.
         const target = mine.find((c) => c.id === selectedCaptainId) ?? mine[0]!
