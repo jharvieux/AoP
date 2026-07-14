@@ -53,34 +53,9 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
-      # --- 3. Web client: build + deploy to Vercel production. No vercel.json/.vercel
-      # dir is committed (gitignored, per Vercel's own convention), so `vercel pull`
-      # fetches the project's build settings and env vars fresh every run.
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-      - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-        working-directory: apps/web
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Build for Vercel
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-        working-directory: apps/web
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      - name: Deploy to Vercel (production)
-        id: vercel_deploy
-        run: |
-          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-        working-directory: apps/web
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-
-      # --- 4. Smoke tests: confirm both the function stack and the web bundle actually
-      # came up before calling the deploy done.
+      # --- 3. Function smoke test, deliberately BEFORE the Vercel tier (operator-approved
+      # restructure, 2026-07-14): with VERCEL_TOKEN unset the Vercel steps skip, and this
+      # must still run — it verifies the edge-function deploy that already happened above.
       #
       # list-open-matches requires a real user JWT (`requireUserId` in
       # supabase/functions/_shared/client.ts calls `auth.getUser()` on the bearer token,
@@ -115,7 +90,59 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      # --- 4. Web client: build + deploy to Vercel production. SKIPPED without
+      # VERCEL_TOKEN (operator-approved, 2026-07-14): the web tier auto-deploys via
+      # Vercel's GitHub integration on every main merge, so a token-less dispatch still
+      # ships db + functions and goes green instead of dying here with the remaining
+      # steps skipped. Setting the token upgrades a dispatch to an atomic three-tier
+      # deploy from one commit (closes the merge-time/dispatch-time ENGINE_VERSION skew
+      # window — the #249 scenario this workflow exists for). No vercel.json/.vercel
+      # dir is committed (gitignored, per Vercel's own convention), so `vercel pull`
+      # fetches the project's build settings and env vars fresh every run.
+      - name: Check Vercel configuration
+        id: vercel_config
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::notice::VERCEL_TOKEN not configured — skipping the Vercel tier; the web app auto-deploys from main via the Vercel GitHub integration (#425)."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Install Vercel CLI
+        if: steps.vercel_config.outputs.configured == 'true'
+        run: npm install --global vercel@latest
+      - name: Pull Vercel project settings
+        if: steps.vercel_config.outputs.configured == 'true'
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Build for Vercel
+        if: steps.vercel_config.outputs.configured == 'true'
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy to Vercel (production)
+        id: vercel_deploy
+        if: steps.vercel_config.outputs.configured == 'true'
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # --- 5. Web smoke test: only meaningful when the Vercel tier above actually
+      # deployed (it probes that deploy's URL); the auto-deployed web tier is watched by
+      # the synthetic monitor instead.
       - name: Smoke test — web app is live
+        if: steps.vercel_config.outputs.configured == 'true'
         run: |
           status=$(curl -s -o /dev/null -w '%{http_code}' "${{ steps.vercel_deploy.outputs.url }}")
           echo "HTTP $status"
