@@ -159,6 +159,29 @@ describe('captain recovery (#308/#309)', () => {
     expect(action).toEqual({ type: 'recruitCaptain', playerId: 'p1', cityId: 'p2-capital' })
   })
 
+  it('rehires its pooled ship-lost captain rather than counting it as live (#499 interplay)', () => {
+    // p1's only captain sits in the recruitment pool (`captainAwaitingCommand`:
+    // ship lost, leading no party) — inert, not fielded. Before the fix the
+    // desperate-recruit gate counted it as live, so the seat never recruited
+    // again and went permanently passive at sea.
+    const base = createGame(config(5, 5))
+    const p1cap = captainsOf(base, 'p1')[0]!
+    const state: GameState = {
+      ...base,
+      captains: base.captains.map((c) =>
+        c.id === p1cap.id ? { ...c, shipLost: true, troops: [], movementPoints: 0 } : c,
+      ),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-capital',
+      captainId: p1cap.id,
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
   it('ransoms an eligible captive when outnumbered and affordable', () => {
     // p1 keeps one live captain (so the higher-scoring planRecruitCaptain
     // stays out of the running — it only fires when captain-less) plus one
@@ -449,6 +472,21 @@ describe('economy AI', () => {
       captainId: captain.id,
       skillId: 'pirates-t2',
     })
+  })
+
+  it('spends no skill pick on a pooled captain (#499: pooled is inert)', () => {
+    // Same level-up as above, but the captain has been rescued into the
+    // recruitment pool (ship lost, leading no party) — the pick waits until
+    // it is re-commissioned.
+    let state = createGame(econConfig())
+    const captain = captainsOf(state, 'p1')[0]!
+    state = {
+      ...state,
+      captains: state.captains.map((c) =>
+        c.id === captain.id ? { ...c, xp: 200, shipLost: true, troops: [] } : c,
+      ),
+    }
+    expect(nextAiAction(state, 'p1').type).not.toBe('chooseCaptainSkill')
   })
 
   it('buys the cheapest ship upgrade at a docked shipyard', () => {
@@ -1068,13 +1106,14 @@ describe('AI landing-party logistics & counter (#475)', () => {
   })
 
   it('reinforces a threatened city from a docked captain (transfer to garrison)', () => {
-    // The b1:5 party (strength 17.5) clears the threat floor — partyThreatMinRatio
-    // 0.4 (×1.1 opportunist) of the city's intrinsic defence (3 militia grunts +
-    // 2 turrets ≈ 24) is ≈ 10.6 — so the docked captain hands its troops to the
-    // garrison to meet it.
+    // The b1:8 party (strength 28) clears the threat floor — partyThreatMinRatio
+    // 0.4 (×1.1 opportunist) of the city's intrinsic defence: 3 militia grunts +
+    // 2 turrets ≈ 24 plus the docked sloop's port defence (#500 audit threading:
+    // hull 40×0.25 + cannons 6 = 16) ≈ 40, floor ≈ 17.6 — so the docked captain
+    // hands its troops to the garrison to meet it.
     const state = landState({
       captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
-      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 5 }])],
+      parties: [landParty('pe', 'p2', { x: 5, y: 5 }, [{ unitId: 'b1', count: 8 }])],
       cities: [p1CityAt({ x: 4, y: 5 }, {})],
     })
     const action = nextAiAction(state, 'p1')
@@ -1088,7 +1127,7 @@ describe('AI landing-party logistics & counter (#475)', () => {
 
   it('ignores a trivial nuisance party — the garrison→ship pipeline is not frozen (#475 audit)', () => {
     // A single-troop party (strength 3.5) camps within partyThreatRadius but far
-    // below the threat floor (≈ 10.6, see above). Before the size floor, ANY
+    // below the threat floor (≈ 17.6, see above). Before the size floor, ANY
     // party in radius froze the city's garrison→ship loading forever — a cheap
     // exploit against the AI. The docked captain must still load the surplus.
     const state = landState({
@@ -1176,5 +1215,317 @@ describe('AI landing-party crash-safety & determinism (#475)', () => {
     expect(nextAiAction(build(), 'p1')).toEqual(nextAiAction(build(), 'p1'))
     // And a whole turn replays bit-exact.
     expect(JSON.stringify(runAiTurn(build(), 'p1'))).toBe(JSON.stringify(runAiTurn(build(), 'p1')))
+  })
+})
+
+/** LAND_CATALOG plus captain stat tuning (#498) — lets stat-point verbs resolve. */
+const STAT_CATALOG: ContentCatalog = {
+  ...LAND_CATALOG,
+  captainStats: { attackPerPoint: 1, defensePerPoint: 1, speedMovementPerPoint: 1 },
+}
+
+describe('AI captain-expansion verbs (#500)', () => {
+  it('garrisons a docked captain into a threatened city', () => {
+    // The brute party towers over the threat floor; the docked, empty c1 commits
+    // to the city's defence while c2 keeps the fleet mobile.
+    const state = landState({
+      captains: [
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+        landCaptain('c2', 'p1', { x: 13, y: 7 }, []),
+      ],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'garrisonCaptain',
+      playerId: 'p1',
+      captainId: 'c1',
+      cityId: 'p1-city',
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never garrisons the seat’s last sea-capable captain', () => {
+    // Identical threat, but c1 is the only captain: immobilizing it would trade
+    // all mobility for one city's defence, so the seat holds instead.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+
+  it('a troop-carrying enemy captain in the roads also threatens the city (naval threat, #500)', () => {
+    // Same layout as the garrison test but the threat sails instead of marching:
+    // an enemy hull whose landing force clears the same floor.
+    const state = landState({
+      captains: [
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+        landCaptain('c2', 'p1', { x: 13, y: 7 }, []),
+        landCaptain('e1', 'p2', { x: 3, y: 6 }, [{ unitId: 'brute', count: 12 }]),
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('garrisonCaptain')
+  })
+
+  it('releases the garrisoned captain once the threat has passed', () => {
+    const base = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 5 }, []), movementPoints: 0 }],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = {
+      ...base,
+      cities: base.cities.map((c) => ({ ...c, garrisonCaptainId: 'c1' })),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({ type: 'ungarrisonCaptain', playerId: 'p1', cityId: 'p1-city' })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('picks the most valuable stash item up onto a docked captain', () => {
+    const catalog: ContentCatalog = {
+      ...LAND_CATALOG,
+      items: {
+        defs: {
+          trinket: { stats: { attack: 1, defense: 0, speed: 0 }, weight: 1 },
+          blade: { stats: { attack: 3, defense: 2, speed: 0 }, weight: 1 },
+        },
+        captainItemCap: 2,
+        seaEncounterDropChance: 0,
+        landHaulDropChance: 0,
+        landEncounterDropChance: 0,
+      },
+    }
+    const base = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = {
+      ...base,
+      config: { ...base.config, content: catalog },
+      players: base.players.map((p) =>
+        p.id === 'p1' ? { ...p, itemStash: ['trinket', 'blade'] } : p,
+      ),
+    }
+    const action = nextAiAction(state, 'p1')
+    expect(action).toEqual({
+      type: 'takeItem',
+      playerId: 'p1',
+      captainId: 'c1',
+      cityId: 'p1-city',
+      itemId: 'blade',
+    })
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('lands WITH the captain when its bonuses turn the wave into an expected win', () => {
+    // Unled, 6 grunts (36) vs the 13-strong b1 garrison + turrets (52.5) is an
+    // attrition wave (ratio ≈ 0.69). Led, +10 flat attack per grunt lifts the
+    // party to 96 — ratio ≈ 1.8, a clear win — so the captain marches ashore
+    // with the column instead of feeding it in unled.
+    const base = landState({
+      captains: [
+        {
+          ...landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }]),
+          stats: { attack: 10, defense: 0, speed: 0 },
+        },
+      ],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+    })
+    const state = { ...base, config: { ...base.config, content: STAT_CATALOG } }
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBe(true)
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never leads a wave it still expects to lose', () => {
+    // Same layout, no stat points: leading adds nothing, and a destroyed led
+    // party's captain is captured — so the party lands unled.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBeUndefined()
+  })
+
+  it('spends stat points by duty: garrisoned defends, party-leading attacks', () => {
+    // A garrisoned captain picks defense even with troops aboard (its bonuses
+    // exist to make the city survive) …
+    const garrisonedBase = landState({
+      captains: [
+        {
+          ...landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'grunt', count: 6 }]),
+          movementPoints: 0,
+          xp: 200,
+        },
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const garrisoned = {
+      ...garrisonedBase,
+      config: { ...garrisonedBase.config, content: STAT_CATALOG },
+      cities: garrisonedBase.cities.map((c) => ({ ...c, garrisonCaptainId: 'c1' })),
+    }
+    expect(nextAiAction(garrisoned, 'p1')).toEqual({
+      type: 'chooseCaptainStat',
+      playerId: 'p1',
+      captainId: 'c1',
+      stat: 'defense',
+    })
+
+    // … and a captain leading a party ashore picks attack even with an empty hold.
+    const leadingBase = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0, xp: 200 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 4, y: 4 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    const leading = { ...leadingBase, config: { ...leadingBase.config, content: STAT_CATALOG } }
+    expect(nextAiAction(leading, 'p1')).toEqual({
+      type: 'chooseCaptainStat',
+      playerId: 'p1',
+      captainId: 'c1',
+      stat: 'attack',
+    })
+  })
+
+  it('spends no stat point on a pooled captain (#499: pooled is inert)', () => {
+    // The captain has a point available but sits in the recruitment pool
+    // (ship lost, leading no party) — it gets no picks until re-commissioned.
+    const base = landState({
+      captains: [
+        { ...landCaptain('c1', 'p1', { x: 3, y: 5 }, []), shipLost: true, movementPoints: 0, xp: 200 }, // prettier-ignore
+      ],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    const state = { ...base, config: { ...base.config, content: STAT_CATALOG } }
+    expect(nextAiAction(state, 'p1').type).not.toBe('chooseCaptainStat')
+  })
+
+  it('marches a purposeless led party home to its anchored ship and re-boards it', () => {
+    // The led party sits mid-island with nothing to fight; its own ship waits
+    // anchored at (3,4). It must march toward the shore tile beside the ship …
+    const far = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 7, y: 6 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    const march = nextAiAction(far, 'p1')
+    expect(march.type).toBe('moveParty')
+    expect(() => applyAction(far, march)).not.toThrow()
+
+    // … and once adjacent, re-board exactly that captain's ship.
+    const home = landState({
+      captains: [{ ...landCaptain('c1', 'p1', { x: 3, y: 4 }, []), movementPoints: 0 }],
+      parties: [
+        { ...landParty('pa', 'p1', { x: 4, y: 4 }, [{ unitId: 'grunt', count: 6 }]), captainId: 'c1' }, // prettier-ignore
+      ],
+    })
+    expect(nextAiAction(home, 'p1')).toEqual({
+      type: 'embark',
+      playerId: 'p1',
+      partyId: 'pa',
+      captainId: 'c1',
+    })
+  })
+})
+
+describe('AI sub-floor land pressure (#510)', () => {
+  it('still lands a party on a garrison that snowballed past the sea attrition floor', () => {
+    // 6 grunts (36) vs a 33-strong b1 garrison + turrets (≈ 122.5): ratio ≈ 0.29
+    // — under the 0.44 sea floor (the pre-#510 planner froze here, forever) but
+    // over the 0.22 land floor, so the cheap party wave keeps the grind alive.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    if (action.type === 'disembark') expect(action.withCaptain).toBeUndefined()
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('never assaults such a city by sea — that band risks the captain', () => {
+    // Same ratio band, but the captain is parked beside the port with no landing
+    // tile in overland reach of the city (every island tile bordering it is
+    // held). The sea assault must NOT fire below the sea floor.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
+      parties: [
+        landParty('block1', 'p2', { x: 11, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block2', 'p2', { x: 11, y: 6 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block3', 'p2', { x: 10, y: 4 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block4', 'p2', { x: 10, y: 5 }, [{ unitId: 'brute', count: 40 }]),
+        landParty('block5', 'p2', { x: 10, y: 6 }, [{ unitId: 'brute', count: 40 }]),
+      ],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).not.toBe('attackCity')
+  })
+
+  it('a party below the sea floor still marches on the snowballed city', () => {
+    const state = landState({
+      parties: [landParty('pa', 'p1', { x: 4, y: 7 }, [{ unitId: 'grunt', count: 6 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 30 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('moveParty')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+})
+
+describe('AI round-limit endgame (#509)', () => {
+  // A market whose 100 gold/round is the clear peacetime pick — construct
+  // (score ≈ 55) beats a distant approach (≈ 13) until the horizon flips the
+  // weights: economy damps to ≈ 14 and the city verb boosts to ≈ 19.
+  const CATALOG_WITH_MARKET: ContentCatalog = {
+    ...LAND_CATALOG,
+    buildings: {
+      ...LAND_CATALOG.buildings,
+      market: { produces: { gold: 100 }, cost: {} },
+    },
+  }
+
+  function cappedState(roundLimit?: number): GameState {
+    const base = landState({
+      captains: [landCaptain('c1', 'p1', { x: 3, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {}), p2CityAt({ x: 11, y: 5 }, {})],
+    })
+    return {
+      ...base,
+      config: {
+        ...base.config,
+        content: CATALOG_WITH_MARKET,
+        setup: roundLimit === undefined ? GAME_SETUP : { ...GAME_SETUP, roundLimit },
+      },
+    }
+  }
+
+  it('an uncapped match keeps building; inside the horizon it sails for the scoreboard', () => {
+    // No round limit: the market is the best action, exactly as before #509.
+    const uncapped = nextAiAction(cappedState(), 'p1')
+    expect(uncapped.type).toBe('construct')
+
+    // Round 1 of a roundLimit-8 match is already inside the 8-round horizon:
+    // long-payback construction damps, city capture boosts, and the loaded
+    // captain sails for the enemy city instead.
+    const capped = cappedState(8)
+    const action = nextAiAction(capped, 'p1')
+    expect(action.type).toBe('moveCaptain')
+    expect(() => applyAction(capped, action)).not.toThrow()
+  })
+
+  it('a capped match far from its limit plays the standard line', () => {
+    // Round 1 with a 30-round cap: 30 rounds remain, horizon is 8 — no shift.
+    expect(nextAiAction(cappedState(30), 'p1').type).toBe('construct')
   })
 })

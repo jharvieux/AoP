@@ -239,6 +239,55 @@ export interface AiTuning {
   recruitCaptainScoreBase: number
   /** Score for ransoming an eligible captive when outnumbered and affordable (#309). */
   ransomScoreBase: number
+  /**
+   * Land-attrition floor (#510): the minimum assault ratio at which the AI
+   * still presses the *land* vector — landing and marching parties — against a
+   * city it may not assault by sea. Strictly below `attritionMinRatio` (the sea
+   * floor, which protects captains: a repelled sea assault captures one; a
+   * repelled land wave costs only troops). This is what keeps conquest pressure
+   * alive on large maps: with travel time, a distant capital's garrison
+   * outgrows the sea floor and the old single-floor gate froze approach/assault
+   * scoring permanently. Scaled by the personality `engageMinRatioMult`.
+   */
+  landAttritionMinRatio: number
+  /**
+   * Score for garrisoning a docked captain into a threatened owned city (#500).
+   * Between `garrisonToShipScoreBase` and `reinforceCityScoreBase`: a threatened
+   * city first absorbs a docked captain's troops (reinforce), then commits the
+   * emptied hull itself. Unscaled, like the other defensive counters.
+   */
+  garrisonCaptainScoreBase: number
+  /**
+   * Score for releasing a garrisoned captain once no threat remains (#500).
+   * Low — pure logistics, above idling and below every offensive/economic verb,
+   * like `partyRescueScoreBase`.
+   */
+  ungarrisonCaptainScoreBase: number
+  /**
+   * Score for picking the most valuable stash item up onto a captain docked at
+   * an owned city (#500). Stashed items are inert; carried ones add combat
+   * bonuses — free strength, so it outranks routine logistics but never a
+   * fight or a threatened city's defence.
+   */
+  takeItemScoreBase: number
+  /**
+   * Rounds remaining (including the current) at or under which a match with a
+   * configured `GameSetup.roundLimit` (#508) switches to endgame scoring
+   * (#509). 0 disables endgame awareness entirely.
+   */
+  endgameHorizonRounds: number
+  /**
+   * Endgame multiplier (#509) on city capture and hold scores — assaults,
+   * approaches, disembarks, reinforcement, captain garrisoning. At the cap the
+   * winner is most cities (gold tiebreak), so cities are the scoreboard.
+   */
+  endgameCityScoreMult: number
+  /**
+   * Endgame multiplier (#509) on long-payback economy scores — construct and
+   * ship upgrades — which cannot repay inside the horizon. Recruiting stays
+   * undamped: fresh garrison troops hold cities, which IS the scoreboard.
+   */
+  endgameEconomyScoreMult: number
 }
 
 /** Opening game state: starting economy, captain loadout, and map geometry. */
@@ -660,6 +709,30 @@ export const AI_TUNING: AiTuning = {
   statPickScoreBase: 90,
   recruitCaptainScoreBase: 500,
   ransomScoreBase: 50,
+  // 0.20 (#510): half the sea floor. Sim-tuned on the 96-match generated-map
+  // batteries: restores capital conquest on large boards (large 1 -> double
+  // digits of capital captures) by letting cheap party waves keep grinding a
+  // garrison that snowballed past the 0.40 sea floor during the long crossing,
+  // while small/medium totals and captain economy hold steady. Below ~0.15 the
+  // waves are pure troop waste (they barely dent militia before folding).
+  landAttritionMinRatio: 0.2,
+  // Between garrisonToShip (30) and reinforce (60) by design: a threatened city
+  // first absorbs the docked hull's troops, then commits the emptied hull.
+  garrisonCaptainScoreBase: 55,
+  // Matches partyRescueScoreBase's logistics band: above idling, below all else.
+  ungarrisonCaptainScoreBase: 15,
+  // Above garrisonToShip/recruit (30/25) — equipping a captain is instant,
+  // permanent strength — below reinforce (60) and every combat verb.
+  takeItemScoreBase: 45,
+  // 8 rounds (#509): roughly the time to finish one last siege or sail home a
+  // defender — long enough to redirect the fleet, short enough that most of a
+  // capped match still plays the standard line.
+  endgameHorizonRounds: 8,
+  endgameCityScoreMult: 1.5,
+  // 0.25 damps construct/refits without zeroing them: a building started at the
+  // horizon's edge may still repay, and a zero would make the damped verbs
+  // invisible to blunder-tier runner-up selection.
+  endgameEconomyScoreMult: 0.25,
 }
 
 /**
