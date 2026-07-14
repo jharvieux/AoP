@@ -35,9 +35,12 @@ interface SceneSlot {
  * Fixed scene layout: town hall centered at the top, economy to the left,
  * the recruitment chain to the right, walls across the front. Tuned against
  * art/city/backdrop.png (operator-approved 2026-07-13): land buildings stay
- * on the meadow, walls sit above the shoreline, and the shipyard — whose
- * sprite carries its own water — sits in the sea corner at the bottom-right;
- * re-tune together with any backdrop change. A building with no slot (future
+ * on the meadow, walls sit above the shoreline. The shipyard sits at the
+ * bottom-right where the backdrop's own shoreline runs closest to that
+ * corner (#493: shipyard.png is now a real grass-island cutout, no baked-in
+ * water — kept at this slot after a scene-composite check showed its grass
+ * base already lands right on the sand/water transition there); re-tune
+ * together with any backdrop change. A building with no slot (future
  * content) falls back to the overflow strip below the scene so it never
  * loses its tap target.
  */
