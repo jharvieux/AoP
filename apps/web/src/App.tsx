@@ -43,9 +43,10 @@ const ReplayScreen = lazy(() =>
   import('./replay/ReplayScreen').then((m) => ({ default: m.ReplayScreen })),
 )
 
-/** A dropped item id from the last resolved encounter (#498) — set only when
- * `outcome.encounterOutcome.itemGained` is present, so GameScreen's turn-event
- * feed can append a "Found: <item>" line the same way it narrates battles.
+/** A dropped item id from the last resolved encounter (#498) or land-haul
+ * capture (#503) — set when `outcome.encounterOutcome.itemGained` or
+ * `outcome.siteItemGained` is present, so GameScreen's turn-event feed can
+ * append a "Found: <item>" line the same way it narrates battles.
  * Always a fresh object when set, so a repeated identical find still
  * re-triggers GameScreen's effect (mirrors `battleReport` below). */
 interface ItemFound {
@@ -176,8 +177,9 @@ export function App() {
     setGame(next)
     setActionLog(nextLog)
     if (outcome.battleReport) setBattleReport(outcome.battleReport)
-    if (outcome.encounterOutcome?.itemGained) {
-      setItemFound({ itemId: outcome.encounterOutcome.itemGained })
+    const foundItemId = outcome.encounterOutcome?.itemGained ?? outcome.siteItemGained
+    if (foundItemId) {
+      setItemFound({ itemId: foundItemId })
     }
     // #237: autosave used to be `void saveGame(...)` — a QuotaExceededError
     // (or any other rejection) became an unhandled promise rejection while

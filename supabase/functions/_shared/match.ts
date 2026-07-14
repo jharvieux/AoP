@@ -15,6 +15,7 @@ import {
   type BattleReport,
   type BoardCommand,
   type BoardOrder,
+  type EncounterOutcome,
   type GameConfig,
   type GameState,
   type GridTopology,
@@ -972,6 +973,16 @@ export interface SubmitResult {
    * turn triggered it either, in single-player terms).
    */
   battleReport?: BattleReport
+  /**
+   * The structured encounter outcome of the caller's own action, if it was a
+   * resolveEncounter / resolvePartyEncounter (#502) — the multiplayer twin of
+   * the `ActionOutcome.encounterOutcome` single-player reads locally, so an
+   * item find ("Found: <item>") has a surface in a match too. Same fog rules
+   * as `battleReport`: it describes only the acting seat's own resolution
+   * (its reward, XP, troop deltas, item), goes only into that seat's own
+   * response, and never rides a snapshot, broadcast, or another seat's view.
+   */
+  encounterOutcome?: EncounterOutcome
 }
 
 /**
@@ -1059,10 +1070,12 @@ export async function submitActionInternal(
   const owned: Action = { ...action, playerId: seatPlayerId(callerSeat) }
   let next: GameState
   let battleReport: BattleReport | undefined
+  let encounterOutcome: EncounterOutcome | undefined
   try {
     const outcome = applyActionWithOutcome(state, owned)
     next = outcome.state
     battleReport = outcome.battleReport
+    encounterOutcome = outcome.encounterOutcome
   } catch (err) {
     if (err instanceof InvalidActionError) throw new AppError('INVALID_ACTION', err.message)
     throw err
@@ -1118,7 +1131,7 @@ export async function submitActionInternal(
 
   await finalize(db, matchId, state)
   await mirrorAllianceIds(db, matchId, state)
-  return { seq: count, state, battleReport }
+  return { seq: count, state, battleReport, encounterOutcome }
 }
 
 /**

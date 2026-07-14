@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyAction,
   applyActionWithOutcome,
+  captainAwaitingCommand,
   partyToCombatant,
   playerView,
   replay,
@@ -46,7 +47,11 @@ const STATS: CombatStatsData = {
 }
 
 const CATALOG: ContentCatalog = {
-  buildings: { townhall: { produces: { gold: 100 }, cost: {}, unlocksTier: 1 } },
+  buildings: {
+    townhall: { produces: { gold: 100 }, cost: {}, unlocksTier: 1 },
+    // Rescue re-commissioning (#499) goes through recruitCaptain's tavern gate.
+    tavern: { produces: {}, cost: {}, unlocksCaptains: true },
+  },
   units: {
     grunt: { factionId: 'pirates', tier: 1, goldCost: 25, weeklyGrowth: 8, attack: 5, defense: 2, health: 12 }, // prettier-ignore
     brute: { factionId: 'pirates', tier: 3, goldCost: 150, weeklyGrowth: 2, attack: 16, defense: 8, health: 44 }, // prettier-ignore
@@ -570,5 +575,253 @@ describe('led parties: fog and replay (#498)', () => {
     })
     expect(battleReport).toBeDefined()
     expect(battleReport!.winnerId).toBe('p1')
+  })
+})
+
+/**
+ * Stranded-captain rescue (#499, operator decision 2026-07-14 "instant pool
+ * transfer"): a ship-lost captain's party may embark onto ANY own adjacent
+ * ship, and a ship-lost leader whose party stands at an owned city is rescued
+ * on the spot. Either way the captain transfers instantly to the owner's
+ * recruitment pool — still `shipLost`, leading nothing (see
+ * captainAwaitingCommand) — and `recruitCaptain` re-commissions it onto a
+ * fresh hull at the normal fee, with no captivity wait.
+ */
+
+/** Give p1 an owned tavern city at the (11,5) port, and gold to hire with. */
+function withHomePort(state: GameState, gold = 1000): GameState {
+  return {
+    ...state,
+    cities: [
+      ...state.cities,
+      {
+        id: 'p1-port',
+        ownerId: 'p1',
+        name: 'Refuge',
+        position: { x: 11, y: 5 },
+        buildings: ['tavern'],
+        builtThisRound: false,
+        garrison: {},
+        unitAvailability: {},
+      },
+    ],
+    players: state.players.map((p) =>
+      p.id === 'p1' ? { ...p, resources: { ...p.resources, gold } } : p,
+    ),
+  }
+}
+
+describe('stranded-captain rescue (#499)', () => {
+  /** ashoreState plus p2's raider beside the anchored ship and p1's spare ship beside the party. */
+  const rescueBase = () =>
+    ashoreState({
+      p2City: false,
+      captains: [
+        makeCaptain('c2', 'p2', { x: 3, y: 3 }, [{ unitId: 'brute', count: 12 }]),
+        makeCaptain('c9', 'p1', { x: 4, y: 3 }),
+      ],
+      currentPlayerIndex: 1,
+    })
+
+  function sinkAnchored(state: GameState): GameState {
+    return applyAction(state, {
+      type: 'attackCaptain',
+      playerId: 'p2',
+      captainId: 'c2',
+      targetCaptainId: 'c1',
+    })
+  }
+
+  /** c1 already stranded (ship lost) leading lp1 at `at` — skips the naval defeat. */
+  function strandedState(
+    at: { x: number; y: number },
+    extra?: Partial<Parameters<typeof ledState>[0]>,
+  ): GameState {
+    return ledState({
+      captains: [
+        {
+          ...makeCaptain('c1', 'p1', at),
+          shipLost: true,
+          movementPoints: 0,
+          skills: ['pirates-gunnery-1'],
+        },
+        ...(extra?.captains ?? []),
+      ],
+      parties: [
+        makeParty('lp1', 'p1', at, [{ unitId: 'brute', count: 30 }], 'c1'),
+        ...(extra?.parties ?? []),
+      ],
+      ...(extra?.p2City !== undefined ? { p2City: extra.p2City } : {}),
+      ...(extra?.garrison !== undefined ? { garrison: extra.garrison } : {}),
+    })
+  }
+
+  it('a ship-lost leader’s party embarks onto ANY own ship; the captain pools instantly', () => {
+    let s = sinkAnchored(rescueBase())
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' })
+    s = applyAction(s, { type: 'embark', playerId: 'p1', partyId: 'lp1', captainId: 'c9' })
+
+    // The full column boards the spare ship; the party leaves the map.
+    expect(s.parties).toEqual([])
+    expect(s.captains.find((c) => c.id === 'c9')!.troops).toEqual([{ unitId: 'grunt', count: 4 }])
+
+    // The rescued captain is pooled: still ship-lost, leading nothing, not captured.
+    const c1 = s.captains.find((c) => c.id === 'c1')!
+    expect(c1.captured).toBe(false)
+    expect(c1.shipLost).toBe(true)
+    expect(captainAwaitingCommand(c1, s.parties)).toBe(true)
+    // Pooled captains stay off enemy views, like any ship-lost captain.
+    expect(playerView(s, 'p2').captains.some((c) => c.id === 'c1')).toBe(false)
+  })
+
+  it('a partial rescue boards what fits; the remainder stays ashore unled', () => {
+    let s = sinkAnchored(rescueBase())
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' })
+    // Cap the hold: 10 of 12 berths taken, party of 4 → only 2 fit.
+    s = {
+      ...s,
+      captains: s.captains.map((c) =>
+        c.id === 'c9' ? { ...c, troops: [{ unitId: 'grunt', count: 10 }] } : c,
+      ),
+    }
+    s = applyAction(s, { type: 'embark', playerId: 'p1', partyId: 'lp1', captainId: 'c9' })
+    const remainder = s.parties.find((p) => p.id === 'lp1')!
+    expect(remainder.troops).toEqual([{ unitId: 'grunt', count: 2 }])
+    expect(remainder.captainId).toBeUndefined()
+    // The captain boards with whoever fits — pooled all the same.
+    expect(
+      captainAwaitingCommand(
+        s.captains.find((c) => c.id === 'c1')!,
+        s.parties,
+      ),
+    ).toBe(true)
+  })
+
+  it('no party ever embarks ONTO a ship-lost captain — there is no hull to board', () => {
+    let s = sinkAnchored(rescueBase())
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' })
+    // An unled second party beside the stranded leader.
+    s = {
+      ...s,
+      parties: [...s.parties, makeParty('lp3', 'p1', { x: 4, y: 5 }, [{ unitId: 'grunt', count: 1 }])], // prettier-ignore
+    }
+    expect(() =>
+      applyAction(s, { type: 'embark', playerId: 'p1', partyId: 'lp3', captainId: 'c1' }),
+    ).toThrow(/nothing to re-board/)
+  })
+
+  it('recruitCaptain re-commissions a pooled rescue at once: new hull, sheet kept, fee paid', () => {
+    let s = withHomePort(sinkAnchored(rescueBase()))
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' })
+    s = applyAction(s, { type: 'embark', playerId: 'p1', partyId: 'lp1', captainId: 'c9' })
+    s = applyAction(s, {
+      type: 'recruitCaptain',
+      playerId: 'p1',
+      cityId: 'p1-port',
+      captainId: 'c1',
+    })
+
+    const c1 = s.captains.find((c) => c.id === 'c1')!
+    expect(c1.shipLost).toBeUndefined()
+    expect(c1.captured).toBe(false)
+    // Back to sea on the starter hull beside the port, refits gone, sheet kept.
+    expect(c1.shipClassId).toBe(GAME_SETUP.startingShipClass)
+    expect(c1.shipUpgrades).toEqual({})
+    expect(c1.skills).toEqual(['pirates-gunnery-1'])
+    expect(c1.stats).toEqual({ attack: 1, defense: 0, speed: 0 })
+    expect(c1.troops).toEqual([{ unitId: 'grunt', count: GAME_SETUP.recruitCaptainStartingCrew }])
+    expect(islandMap().tiles[c1.position.y * 16 + c1.position.x]!.type).toBe('deep')
+    // Fee: the pooled rescue is not a fielded captain, so only c9 scales the price.
+    const fee = Math.ceil(GAME_SETUP.recruitCaptainBaseCost * GAME_SETUP.recruitCaptainCostGrowth)
+    expect(s.players[0]!.resources.gold).toBe(1000 - fee)
+  })
+
+  it('a still-leading ship-lost captain is NOT in the pool — no re-flag by mail order', () => {
+    const s = withHomePort(strandedState({ x: 6, y: 5 }, { p2City: false }))
+    expect(() =>
+      applyAction(s, {
+        type: 'recruitCaptain',
+        playerId: 'p1',
+        cityId: 'p1-port',
+        captainId: 'c1',
+      }),
+    ).toThrow(/not in the recruitment pool/)
+  })
+
+  it('marching the stranded column to an owned city rescues the leader on the spot', () => {
+    let s = withHomePort(strandedState({ x: 9, y: 5 }, { p2City: false }))
+    s = applyAction(s, { type: 'moveParty', playerId: 'p1', partyId: 'lp1', to: { x: 10, y: 5 } })
+    const lp1 = s.parties.find((p) => p.id === 'lp1')!
+    expect(lp1.captainId).toBeUndefined()
+    const c1 = s.captains.find((c) => c.id === 'c1')!
+    expect(c1.position).toEqual({ x: 10, y: 5 })
+    expect(captainAwaitingCommand(c1, s.parties)).toBe(true)
+  })
+
+  it('taking a city with the stranded column rescues the leader too (and banks the XP)', () => {
+    const s0 = strandedState(
+      { x: 10, y: 5 },
+      { garrison: {}, captains: [makeCaptain('c2', 'p2', { x: 1, y: 10 })] },
+    )
+    const s = applyAction(s0, {
+      type: 'partyAssaultCity',
+      playerId: 'p1',
+      partyId: 'lp1',
+      targetCityId: 'p2-city',
+    })
+    expect(s.cities[0]!.ownerId).toBe('p1')
+    expect(s.parties.find((p) => p.id === 'lp1')!.captainId).toBeUndefined()
+    const c1 = s.captains.find((c) => c.id === 'c1')!
+    expect(c1.xp).toBe(GAME_SETUP.combatWinXp)
+    expect(captainAwaitingCommand(c1, s.parties)).toBe(true)
+  })
+
+  it('chained edge (#499 audit): ship lost, THEN the party destroyed — a plain captive, flag down', () => {
+    const s0 = ashoreState({
+      p2City: false,
+      captains: [
+        makeCaptain('c2', 'p2', { x: 3, y: 3 }, [{ unitId: 'brute', count: 12 }]),
+        // A spare keeps p1 alive after the loss, so the captive stays visible.
+        makeCaptain('spare1', 'p1', { x: 1, y: 1 }),
+      ],
+      parties: [makeParty('lp2', 'p2', { x: 5, y: 4 }, [{ unitId: 'brute', count: 30 }])],
+      currentPlayerIndex: 1,
+    })
+    let s = sinkAnchored(s0)
+    expect(s.captains.find((c) => c.id === 'c1')!.shipLost).toBe(true)
+    s = applyAction(s, { type: 'attackParty', playerId: 'p2', partyId: 'lp2', targetPartyId: 'lp1' }) // prettier-ignore
+    const c1 = s.captains.find((c) => c.id === 'c1')!
+    expect(c1.captured).toBe(true)
+    expect(c1.capturedBy).toBe('p2')
+    expect(c1.shipLost).toBeUndefined()
+  })
+
+  it('a seat left with nothing but pooled captains is eliminated', () => {
+    let s = sinkAnchored(rescueBase())
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' })
+    s = applyAction(s, { type: 'embark', playerId: 'p1', partyId: 'lp1', captainId: 'c9' })
+    s = applyAction(s, { type: 'endTurn', playerId: 'p1' })
+    // p2 sinks the rescue ship: p1 is down to the pooled c1 — a hire-in-waiting
+    // with no port to hire at is no seat at all.
+    s = applyAction(s, { type: 'attackCaptain', playerId: 'p2', captainId: 'c2', targetCaptainId: 'c9' }) // prettier-ignore
+    expect(s.players[0]!.eliminated).toBe(true)
+    expect(s.status).toBe('finished')
+    expect(s.winnerId).toBe('p2')
+  })
+
+  it('replays a strand-rescue-recommission log to an identical state', () => {
+    const base = withHomePort(rescueBase())
+    const log: Action[] = [
+      { type: 'attackCaptain', playerId: 'p2', captainId: 'c2', targetCaptainId: 'c1' },
+      { type: 'endTurn', playerId: 'p2' },
+      { type: 'embark', playerId: 'p1', partyId: 'lp1', captainId: 'c9' },
+      { type: 'recruitCaptain', playerId: 'p1', cityId: 'p1-port', captainId: 'c1' },
+    ]
+    const a = replay(base, log)
+    const b = replay(base, log)
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b))
+    const c1 = a.captains.find((c) => c.id === 'c1')!
+    expect(c1.shipLost).toBeUndefined()
+    expect(a.actionCount).toBe(log.length)
   })
 })

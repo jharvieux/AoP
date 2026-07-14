@@ -55,7 +55,13 @@ export function currentlyVisibleTiles(state: GameState, playerId: string): Coord
     if (city.ownerId === playerId) add(city.position, cityVisionRadius)
   }
   for (const captain of state.captains) {
-    if (captain.ownerId === playerId) add(captain.position, captainVisionRadius)
+    // A ship-lost captain (#499) contributes no vision of its own: leading a
+    // party it stands on the party's tile (whose identical radius already
+    // covers the same ground), and once rescued to the recruitment pool its
+    // board position is a stale footnote, not a lookout.
+    if (captain.ownerId === playerId && !captain.shipLost) {
+      add(captain.position, captainVisionRadius)
+    }
   }
   // A landing party (#465) sees as far as a captain — a scouting detachment,
   // not a fortress. Its own knob would be pure ceremony until play demands one.

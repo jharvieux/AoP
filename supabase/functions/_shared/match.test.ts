@@ -1098,6 +1098,102 @@ Deno.test(
 )
 
 Deno.test(
+  "submitAction: the caller's own resolveEncounter returns its encounterOutcome, and no other action grows the field (#502)",
+  async () => {
+    const starts: Coord[] = [
+      { x: 2, y: 3 },
+      { x: 12, y: 13 },
+    ]
+    const base = createGame(hexMatchConfig(42, starts))
+    const content = base.config.content!
+    // Snapshot a match state with an encounter hex-adjacent to seat-0's captain
+    // and every roll pinned to 1 (trade always succeeds, a success always drops
+    // an item) — reconstruction reads this snapshot verbatim, so this is simply
+    // a match whose frozen catalog had these odds; nothing is stubbed.
+    const state = {
+      ...base,
+      encounters: [
+        {
+          id: 'enc-1',
+          kind: 'merchant' as const,
+          position: { x: 3, y: 3 },
+          active: true,
+          respawnRound: null,
+        },
+      ],
+      config: {
+        ...base.config,
+        content: {
+          ...content,
+          encounters: {
+            ...content.encounters!,
+            merchant: {
+              respawnDelay: 0,
+              choices: { trade: { successChance: 1, reward: { gold: 10 }, xp: 5 } },
+            },
+          },
+          items: { ...content.items!, seaEncounterDropChance: 1 },
+        },
+      },
+    }
+    const db = mutableFakeDb({
+      matches: [
+        {
+          id: 'enc-1-match',
+          status: 'active',
+          seed: 42,
+          settings: START_MATCH_SETTINGS,
+          action_count: 0,
+        },
+      ],
+      match_snapshots: [{ match_id: 'enc-1-match', seq: 0, state }],
+      match_actions: [],
+      match_players: [
+        {
+          match_id: 'enc-1-match',
+          seat: 0,
+          user_id: 'user-a',
+          status: 'active',
+          alliance_id: null,
+        },
+        {
+          match_id: 'enc-1-match',
+          seat: 1,
+          user_id: 'user-b',
+          status: 'active',
+          alliance_id: null,
+        },
+      ],
+    })
+
+    // A non-encounter action never carries the field: it reports only the
+    // caller's own encounter resolution, exactly like battleReport for attacks.
+    // (Ordered before the resolution — resolving spends the captain's movement.)
+    const move = await submitAction(db, 'enc-1-match', 0, {
+      type: 'moveCaptain',
+      playerId: 'seat-0',
+      captainId: 'cap-seat-0',
+      to: { x: 3, y: 4 },
+    })
+    assertEquals(move.encounterOutcome, undefined)
+
+    // (3,4) is hex-adjacent to the encounter at (3,3) — resolve it from there.
+    const result = await submitAction(db, 'enc-1-match', 0, {
+      type: 'resolveEncounter',
+      playerId: 'seat-0',
+      captainId: 'cap-seat-0',
+      encounterId: 'enc-1',
+      choice: 'trade',
+    })
+    assertEquals(result.encounterOutcome?.encounterId, 'enc-1')
+    assertEquals(result.encounterOutcome?.success, true)
+    // The field the #502 toast reads — present because the pinned odds above
+    // guarantee the drop, so a regression here is a transport bug, not RNG.
+    assertNotEquals(result.encounterOutcome?.itemGained, undefined)
+  },
+)
+
+Deno.test(
   "playerView: fog-of-war on a hex map matches the engine's own topology-aware vision, not a Chebyshev box (#348 Phase 5)",
   () => {
     // get-player-view (supabase/functions/get-player-view/index.ts) calls `playerView`
