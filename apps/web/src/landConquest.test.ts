@@ -12,30 +12,33 @@ import { describe, expect, it } from 'vitest'
 import { buildCatalog } from './catalog'
 
 /**
- * Land-conquest behavior (#475). The conquest battery in `conquestReachable.test.ts`
- * runs on the authored `STARTING_MAP_HEX`, whose home "islands" are single port
- * tiles with NO land — so a landing party can never come ashore there and the AI's
- * new party logic is completely inert (that battery's numbers are unchanged by
- * #475, which is the point: no regression on the sea-assault contract).
+ * Land-conquest behavior (#475) on *generated* maps: home islands are solid
+ * land discs with the city on the rim — the geography where a party can land,
+ * march, and assault. (The authored-map battery lives in
+ * `conquestReachable.test.ts`; since the 4x-area quadrupling the authored map
+ * carries real islands too, so both batteries now guard the land vector.)
+ * This suite drives the same real full-content AI-vs-AI setup across a
+ * deterministic 96-match battery and measures how the land vector shapes
+ * conquest.
  *
- * This suite exercises the land vector on *generated* maps instead, whose home
- * islands are radius-2 land discs with the city on a land tile — the geography
- * where a party can land, march, and assault. It drives the same real full-content
- * AI-vs-AI setup across a deterministic 96-match battery and measures how the land
- * vector changes conquest.
- *
- * Measured on this battery (small+medium, 24 seeds × 2 seatings, 30-round cap):
+ * Originally measured (pre-quadrupling small+medium, radius-2 islands,
+ * 24 seeds × 2 seatings, 30-round cap):
  *   sea-only baseline (land vector off)  captures 89/96, 0 by party, 67 captains
  *                                        captured on failed assaults, 0 disembarks
  *   land vector on (#475)                captures 75/96, 25 by party, 44 captains
  *                                        captured, 62 party (troop-only) losses,
  *                                        56/96 matches disembark
- * The land vector trades ~14 raw captures for a 34% drop in captains captured
- * (67 → 44): the AI now spends cheap landing parties — not its captains — to grind
- * defended cities, and those parties finish a third of all captures. Fewer total
- * city-flips, markedly better captain economy — the honest trade a captain-
- * preserving land player makes. Because the engine is deterministic these counts
- * are exact and reproducible, not flaky statistics.
+ *
+ * RE-MEASURED after the 4x-area map quadrupling (operator directive,
+ * 2026-07-14: small/medium now 48/64 wide with radius-4 islands and inland
+ * settlements at every size) on the flat-stats rules (#498/#506): captures
+ * 197/96 matches (111 small + 86 medium) — most of them inland settlements,
+ * the new overland conquest layer — with 174 by party, 95/96 matches
+ * disembarking, and 329 party-only losses. Capital captures specifically get
+ * RARER with map size (25 small, 7 medium, ~0 large at the 30-round cap):
+ * doubled sailing distances give garrisons longer to snowball, a pacing shift
+ * reported to the operator with the quadrupling PR. Because the engine is
+ * deterministic these counts are exact and reproducible, not flaky statistics.
  */
 
 function starterTroops(faction: FactionId) {

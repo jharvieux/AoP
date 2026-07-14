@@ -1,3 +1,49 @@
+## D-044 — 2026-07-14 — Map quadrupling: 4x area on every preset, structural land-assault guarantee, authored map rebuilt with land (RULES_VERSION→10)
+
+**Decision.** Operator directive (verbatim): "Quadruple size of all maps and adjust them so
+they all allow land based attacks." Interpreted as 4x AREA — both dimensions doubled on
+every preset (`MAP_DIMENSIONS` 24/32/40/48 → 48/64/80/96) — and land attacks as a
+STRUCTURAL guarantee, never seed luck: every player capital (and every inland settlement)
+must be reachable by a landing party from at least one disembark tile — a land tile
+adjacent to navigable (ship-reachable, not pond) water — that is NOT adjacent to the city,
+marching overland to an assault position. Correlated content scaled in lock-step:
+`homeIslandRadius` 2→4 (xlarge override 4→8), so land keeps pace with sea (disc area ~r²)
+and EVERY size now has island interiors — inland settlements appear on every board,
+superseding D-038's "xlarge is where they appear". RULES_VERSION 9→10 (MAP_DIMENSIONS is an
+engine constant, not config-frozen, so same-seed generation changes break replays).
+
+**How.** Guarantee = `hasLandAssaultRoute`/`navigableWaterTiles` (map.ts, exported) +
+a generator post-pass `ensureLandAssaultRoute`: deterministic, RNG-FREE repair (grows a
+bounded two-tile land bridge off the port, fixed direction order, re-verifies navigability
+and start-to-start sea connectivity, throws if irreparable) — a no-op byte-for-byte on
+healthy output, never a retry loop. Property battery: `landAssaultGuarantee.test.ts` (25
+seeds × 4 sizes × square+hex + degenerate radius-0 repair cases); authored maps held to
+the same guarantee in `contentHexDeterminism.test.ts`. Authored `STARTING_MAP` rebuilt at
+48x48 with radius-3 home islands — port spacing is a MEASURED choice (sweep in
+startingMap.ts doc): naive 2x corner scaling gave ZERO assaults ever (flagships duel
+mid-sea while garrisons outgrow the attrition floor); the shipped ~15-apart layout restores
+69 captures/96 with 24 by landing party and 72/96 multi-wave sieges. New tools:
+`land-battery.ts` (parameterized conquest battery incl. `authored`), `map-preview.ts`
+(tile-dump PNG). MapCanvas now opens centered on the viewer's fleet (fixed top-left origin
+stranded spawns in fog at 96-wide); editor offers xlarge and resolves the per-size radius.
+
+**Measured.** Generated battery (30-round cap, flat-stats era): small 111 captures/48
+matches (93 by party, 25 capitals), medium 86/48 (81, 7), large 37/48 (37, 0), xlarge
+31/24 (31, 1) — land warfare dominant everywhere; capital conquest thins with distance
+(garrison snowball outpaces travel) → #510 (AI v2 adjunct). 96x96 in-app pan: 60fps
+(median 16.7ms), no errors. Typical 96x96 map code ≈20 KiB of the 64 KiB cap; the
+adversarial zero-RLE 96x96 exceeds it and is cleanly rejected — cap raise needs a DB
+migration, operator-gated → #507. Matchmaking size enum unchanged (names only) — NO new
+migration needed.
+
+**Rejected.** Retry-until-valid generation (unbounded draws); raising MAP_CODE_MAX_BYTES
+without its companion migration (parity test enforces the mirror); scaling fog/vision
+radii (bigger maps are relatively more fogged — deliberate exploration gameplay, single
+content numbers if the operator wants them scaled); minSize raise (existing community maps
+stay valid).
+
+---
+
 ## D-043 — 2026-07-14 — #498 rebalance: flat captain stats (+N per unit, not %), items boost stats (RULES_VERSION→9)
 
 **Decision.** Operator (2026-07-14, amending D-042's rates): captain attack/defense stat

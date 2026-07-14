@@ -48,7 +48,9 @@ interface MapEditorScreenProps {
   onTestPlay: (config: GameSetupConfig) => void
 }
 
-const MAP_SIZES: MapSize[] = ['small', 'medium', 'large']
+// All four presets: the authored-map ceiling (MAP_VALIDATION_LIMITS.maxSize)
+// now matches xlarge, so the editor can author at every size the game generates.
+const MAP_SIZES: MapSize[] = ['small', 'medium', 'large', 'xlarge']
 const TILE_LABEL: Record<string, string> = {
   deep: 'Sea',
   shallows: 'Shallows',
@@ -195,7 +197,9 @@ export function MapEditorScreen({ onBack, onTestPlay }: MapEditorScreenProps) {
           nextSeed,
           genSize,
           genPlayerCount,
-          GAME_SETUP.homeIslandRadius,
+          // Same per-size radius resolution as createGame (#468): xlarge
+          // generates with its larger island override, other sizes the flat value.
+          GAME_SETUP.homeIslandRadiusOverrides?.[genSize] ?? GAME_SETUP.homeIslandRadius,
           GAME_SETUP.homeIslandRingRadiusFactor,
           draft.name,
         ),

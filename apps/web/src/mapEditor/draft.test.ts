@@ -20,9 +20,9 @@ describe('blankDraft', () => {
   it('creates an all-deep-water map of the requested size with a unique id', () => {
     const a = blankDraft('small', 'A')
     const b = blankDraft('small', 'B')
-    expect(a.width).toBe(24)
-    expect(a.height).toBe(24)
-    expect(a.tiles).toHaveLength(24 * 24)
+    expect(a.width).toBe(48)
+    expect(a.height).toBe(48)
+    expect(a.tiles).toHaveLength(48 * 48)
     expect(a.tiles.every((t) => t.type === 'deep')).toBe(true)
     expect(a.startPositions).toEqual([])
     expect(a.id).not.toBe(b.id)
@@ -39,7 +39,7 @@ describe('draftFromGenerated', () => {
       GAME_SETUP.homeIslandRingRadiusFactor,
       'Rolled Seed 7',
     )
-    expect(draft.width).toBe(32)
+    expect(draft.width).toBe(64)
     expect(draft.startPositions).toHaveLength(3)
     expect(draft.encounters).toEqual([])
     expect(draft.resourceMarkers).toEqual([])
@@ -192,8 +192,12 @@ describe('cycleResourceMarkerOwner', () => {
 
 describe('nearestMapSize', () => {
   it('maps a draft width back to the closest MapSize label', () => {
+    expect(nearestMapSize(48)).toBe('small')
+    expect(nearestMapSize(64)).toBe('medium')
+    expect(nearestMapSize(80)).toBe('large')
+    expect(nearestMapSize(96)).toBe('xlarge')
+    // Pre-quadrupling widths (importable via old map codes) snap to the nearest preset.
     expect(nearestMapSize(24)).toBe('small')
-    expect(nearestMapSize(32)).toBe('medium')
-    expect(nearestMapSize(40)).toBe('large')
+    expect(nearestMapSize(40)).toBe('small')
   })
 })

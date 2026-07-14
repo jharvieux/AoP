@@ -763,6 +763,13 @@ export function MapCanvas(props: MapCanvasProps) {
     // Mirror to the parent's ref (#373) so out-of-canvas UI can recenter too.
     if (propsRef.current.controlsRef) propsRef.current.controlsRef.current = controlsRef.current
 
+    // Open on the viewer's fleet. The camera used to start at a fixed
+    // top-left offset, which happened to show the start ring on the old
+    // 24-48-wide boards; on the quadrupled maps (up to 96 wide) that corner
+    // is routinely empty fog and the player spawns off-screen. No-ops for a
+    // captainless viewer (spectators keep the default overview origin).
+    controlsRef.current.centerOnFleet()
+
     function draw(deltaMs: number) {
       // Advance in-flight sail animations before this frame's ship loop reads them, so a
       // freshly created one below (from a position change detected this same frame) starts

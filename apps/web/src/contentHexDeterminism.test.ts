@@ -6,7 +6,15 @@ import {
   STARTING_MAP_HEX,
   combatStatsData,
 } from '@aop/content'
-import { createGame, validateMapDefinition, type GameConfig, type MapDefinition } from '@aop/engine'
+import {
+  createGame,
+  hasLandAssaultRoute,
+  navigableWaterTiles,
+  validateMapDefinition,
+  type GameConfig,
+  type GameMap,
+  type MapDefinition,
+} from '@aop/engine'
 import { describe, expect, it } from 'vitest'
 import { buildCatalog } from './catalog'
 import { createDefaultPlayer, starterTroops } from './players'
@@ -82,6 +90,25 @@ describe('starting map content migration (square -> hex)', () => {
     for (let i = 0; i < 100; i++) {
       const state = createGame(config)
       expect(state).toEqual(first)
+    }
+  })
+
+  it('meets the land-assault guarantee on both topologies — the authored map is no longer conquest-inert (D-039)', () => {
+    // The same structural guarantee every generated capital is held to
+    // (packages/engine/test/landAssaultGuarantee.test.ts): a landing party can
+    // come ashore beyond each capital's rim and march overland to assault it.
+    for (const def of [STARTING_MAP, STARTING_MAP_HEX]) {
+      const map = def as GameMap
+      const navigable = navigableWaterTiles(map, map.startPositions)
+      for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+          if (map.tiles[y * map.width + x]!.type !== 'port') continue
+          expect(
+            hasLandAssaultRoute(map, { x, y }, navigable),
+            `${def.topology ?? 'square'} capital at ${x},${y}`,
+          ).toBe(true)
+        }
+      }
     }
   })
 

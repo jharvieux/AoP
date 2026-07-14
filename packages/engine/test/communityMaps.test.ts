@@ -162,16 +162,20 @@ describe('publish policy', () => {
   })
 })
 
-describe('map-code size budget at the 48x48 ceiling (#473)', () => {
+describe('map-code size budget at the raised 96x96 ceiling', () => {
   // The RLE wire format has no compression floor, and validateMapDefinition caps
   // neither island-id magnitude nor encounter/resource-node counts — so a map can
-  // be maximally hostile to the codec while remaining fully LEGAL. These tests pin
-  // the publish gate's behavior at the raised maxSize: the worst legal map with
-  // generous entity counts still fits under MAP_CODE_MAX_BYTES (~61 of 64 KiB —
-  // a format change that eats that margin must fail HERE, not at a player's
-  // publish attempt), and past the cap the encode->size-gate path rejects cleanly
-  // rather than truncating or overflowing silently.
-  const SIZE = MAP_VALIDATION_LIMITS.maxSize
+  // be maximally hostile to the codec while remaining fully LEGAL. Since the
+  // 4x-area quadrupling raised maxSize 48 -> 96, the worst legal map no longer
+  // fits under MAP_CODE_MAX_BYTES: raising the byte cap requires a companion DB
+  // migration (`octet_length` check in community_maps.sql), which is
+  // operator-gated — tracked as #507. Until then the pinned contract is:
+  //  - every REAL map (RLE-compressible, worst observed ~20 KiB at 96x96 with
+  //    8 players) fits with wide margin,
+  //  - the pre-quadrupling guarantee is preserved at the old 48 ceiling
+  //    (nothing publishable before is rejected now),
+  //  - a zero-compression adversarial 96x96 map is rejected CLEANLY by the
+  //    byte gate — never truncated or silently overflowed.
 
   /**
    * A worst-case-but-valid map: water types alternate and every water tile
@@ -181,34 +185,37 @@ describe('map-code size budget at the 48x48 ceiling (#473)', () => {
    * satisfied; `entityCount` encounters sit on water rows away from both
    * ports, plus the same number of resource nodes.
    */
-  function worstCaseLegalMap(entityCount: number): {
+  function worstCaseLegalMap(
+    size: number,
+    entityCount: number,
+  ): {
     def: MapDefinition
     payload: MapCodePayload
   } {
-    const tiles: Tile[] = Array.from({ length: SIZE * SIZE }, (_, i) => ({
+    const tiles: Tile[] = Array.from({ length: size * size }, (_, i) => ({
       type: i % 2 === 0 ? 'deep' : 'shallows',
       island: i,
     }))
-    const at = (x: number, y: number) => y * SIZE + x
+    const at = (x: number, y: number) => y * size + x
     tiles[at(1, 1)] = { type: 'port', island: 0 }
-    tiles[at(SIZE - 2, SIZE - 2)] = { type: 'port', island: 1 }
+    tiles[at(size - 2, size - 2)] = { type: 'port', island: 1 }
     const startPositions = [
       { x: 0, y: 0 }, // water, diagonal to home port 0
-      { x: SIZE - 1, y: SIZE - 1 }, // water, diagonal to home port 1
+      { x: size - 1, y: size - 1 }, // water, diagonal to home port 1
     ]
     // Rows 10..29 (encounters, must be water) and 30..39 (nodes) never touch
     // either port row, so every placement stays legal at any entityCount.
     const encounters: EncounterPlacement[] = Array.from({ length: entityCount }, (_, i) => ({
       kind: 'natives',
-      position: { x: i % SIZE, y: 10 + (Math.floor(i / SIZE) % 20) },
+      position: { x: i % size, y: 10 + (Math.floor(i / size) % 20) },
     }))
     const resourceNodes: ResourceNodePlacement[] = Array.from({ length: entityCount }, (_, i) => ({
       kind: 'gold',
-      position: { x: i % SIZE, y: 30 + (Math.floor(i / SIZE) % 10) },
+      position: { x: i % size, y: 30 + (Math.floor(i / size) % 10) },
     }))
     const def: MapDefinition = {
-      width: SIZE,
-      height: SIZE,
+      width: size,
+      height: size,
       tiles,
       startPositions,
       encounters,
@@ -216,8 +223,8 @@ describe('map-code size budget at the 48x48 ceiling (#473)', () => {
     }
     const payload: MapCodePayload = {
       name: 'x'.repeat(MAP_NAME_MAX_LENGTH),
-      width: SIZE,
-      height: SIZE,
+      width: size,
+      height: size,
       tiles,
       startPositions,
       encounters,
@@ -226,44 +233,56 @@ describe('map-code size budget at the 48x48 ceiling (#473)', () => {
     return { def, payload }
   }
 
-  it('a maximally adversarial but legal 48x48 map still encodes under MAP_CODE_MAX_BYTES', () => {
-    const { def, payload } = worstCaseLegalMap(200)
+  it('a maximally adversarial but legal map at the OLD 48 ceiling still encodes under MAP_CODE_MAX_BYTES', () => {
+    // The pre-quadrupling guarantee (#473) must survive the ceiling raise: no
+    // map that was publishable at the old ceiling becomes rejectable.
+    const { def, payload } = worstCaseLegalMap(48, 200)
     // Legality first — a rejected map would make the size claim vacuous.
     expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS)).toEqual({ valid: true, errors: [] })
     const code = encodeMapCodePayload(payload)
     expect(mapCodeExceedsSizeLimit(code)).toBe(false)
   })
 
-  it('past the cap, the same legal shape is cleanly rejected by the publish size gate', () => {
-    const { def, payload } = worstCaseLegalMap(500)
+  it('an adversarial zero-compression 96x96 map is legal but cleanly rejected by the byte gate (#507)', () => {
+    const { def, payload } = worstCaseLegalMap(MAP_VALIDATION_LIMITS.maxSize, 200)
     expect(validateMapDefinition(def, MAP_VALIDATION_LIMITS).valid).toBe(true)
     // Encoding itself never throws or truncates — the byte gate is the guard.
+    // Lifting this rejection is #507 (byte-cap raise needs a DB migration).
     const code = encodeMapCodePayload(payload)
     expect(mapCodeExceedsSizeLimit(code)).toBe(true)
   })
 
-  it('a typical (generated) 48x48 map encodes comfortably under the cap', () => {
-    const def = mapToDefinition(
-      generateMap(
-        11,
-        'xlarge',
-        4,
-        GAME_SETUP.homeIslandRadiusOverrides?.xlarge ?? GAME_SETUP.homeIslandRadius,
-        GAME_SETUP.homeIslandRingRadiusFactor,
-      ),
-    )
-    const payload: MapCodePayload = {
-      name: 'x'.repeat(MAP_NAME_MAX_LENGTH),
-      width: def.width,
-      height: def.height,
-      tiles: def.tiles,
-      startPositions: def.startPositions,
-      encounters: [],
-      resourceMarkers: [],
+  it('typical (generated) maps at every size, including 96x96 xlarge, encode comfortably under the cap', () => {
+    for (const [mapSize, playerCount] of [
+      ['small', 2],
+      ['medium', 4],
+      ['large', 6],
+      ['xlarge', 8],
+    ] as const) {
+      const def = mapToDefinition(
+        generateMap(
+          11,
+          mapSize,
+          playerCount,
+          GAME_SETUP.homeIslandRadiusOverrides?.[mapSize] ?? GAME_SETUP.homeIslandRadius,
+          GAME_SETUP.homeIslandRingRadiusFactor,
+        ),
+      )
+      const payload: MapCodePayload = {
+        name: 'x'.repeat(MAP_NAME_MAX_LENGTH),
+        width: def.width,
+        height: def.height,
+        tiles: def.tiles,
+        startPositions: def.startPositions,
+        encounters: [],
+        resourceMarkers: [],
+      }
+      const code = encodeMapCodePayload(payload)
+      // Map codes are prefix + base64, pure ASCII, so length === UTF-8 bytes.
+      // Worst probed real map (xlarge, 8p, 20 seeds) was ~20 KiB — pin half
+      // the cap so a codec regression eating the margin fails here first.
+      expect(code.length, `${mapSize} ${playerCount}p`).toBeLessThan(MAP_CODE_MAX_BYTES / 2)
     }
-    const code = encodeMapCodePayload(payload)
-    // Map codes are prefix + base64, pure ASCII, so length === UTF-8 bytes.
-    expect(code.length).toBeLessThan(MAP_CODE_MAX_BYTES / 2)
   })
 })
 
