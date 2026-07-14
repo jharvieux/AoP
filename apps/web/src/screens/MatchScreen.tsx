@@ -14,6 +14,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdSlot } from '../AdSlot'
 import { impactFeedback, shipMoveFeedback, tapFeedback } from '../audio/feedback'
 import { useAuth } from '../auth'
+import { captainAshoreState } from '../captainAshore'
+import { portDefenderCount } from '../portDefenders'
 import { resolveSupabaseConfig } from '../auth/config'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BottomSheet } from '../components/BottomSheet'
@@ -117,6 +119,8 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null)
   const [disembarkTile, setDisembarkTile] = useState<Coord | null>(null)
   const [disembarkCounts, setDisembarkCounts] = useState<Record<string, number>>({})
+  /** Land the captain with the party (#498) — resets each time the sheet opens. */
+  const [disembarkWithCaptain, setDisembarkWithCaptain] = useState(false)
   const [partyAttackTargetId, setPartyAttackTargetId] = useState<string | null>(null)
   const [partyAssaultCityId, setPartyAssaultCityId] = useState<string | null>(null)
   const [landEncounterId, setLandEncounterId] = useState<string | null>(null)
@@ -526,6 +530,18 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     }
     const intent = interpretTileClick(view, board.map, selectedCaptainId, x, y)
     if (!intent) return
+    // An anchored or shipLost captain (#498) has no ship orders to give — the
+    // engine already rejects every one (`requireShipControl`, reducer.ts);
+    // this just saves a round trip. Reselecting something else still works.
+    if (
+      selectedCaptain &&
+      captainAshoreState(selectedCaptain, view.parties) &&
+      intent.kind !== 'selectCaptain' &&
+      intent.kind !== 'selectParty' &&
+      intent.kind !== 'openCity'
+    ) {
+      return
+    }
     switch (intent.kind) {
       case 'selectCaptain':
         setSelectedCaptainId(intent.captainId)
@@ -547,6 +563,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         setDisembarkCounts(
           Object.fromEntries((selectedCaptain?.troops ?? []).map((t) => [t.unitId, t.count])),
         )
+        setDisembarkWithCaptain(false)
         break
       }
       case 'openCity':
@@ -643,8 +660,11 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       .filter((t) => t.count > 0)
     if (troops.length === 0) return
     impactFeedback()
-    void submit(matchAction.disembark(view, selectedCaptain.id, disembarkTile, troops))
+    void submit(
+      matchAction.disembark(view, selectedCaptain.id, disembarkTile, troops, disembarkWithCaptain),
+    )
     setDisembarkTile(null)
+    setDisembarkWithCaptain(false)
     setSelectedCaptainId(null)
   }
 
@@ -978,11 +998,24 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       </div>
 
       <div className="bottom-action-bar">
-        {/* Selected-party readout + queued-march cancel (#482), mirroring GameScreen. */}
-        {selectedParty && (
+        {/* Selected-captain/party readout (#498's ashore note + leader badge,
+            mirroring GameScreen) + queued-march cancel (#482). */}
+        {(selectedCaptain || selectedParty) && (
           <div className="selection-info" role="status">
-            {`${selectedParty.name} — Movement ${selectedParty.movementPoints ?? 0}/${selectedParty.maxMovementPoints ?? 0}`}
-            {selectedParty.marchOrder && myTurn && (
+            {selectedCaptain
+              ? (() => {
+                  const ashore = captainAshoreState(selectedCaptain, view.parties)
+                  return ashore
+                    ? `${selectedCaptain.name} — anchored, captain ashore leading a landing party${ashore === 'shipLost' ? ' (ship lost)' : ''}`
+                    : `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints ?? 0}/${selectedCaptain.maxMovementPoints ?? 0}`
+                })()
+              : (() => {
+                  const leader = selectedParty!.captainId
+                    ? view.captains.find((c) => c.id === selectedParty!.captainId)
+                    : undefined
+                  return `${selectedParty!.name}${leader ? ` — led by ${leader.name}` : ''} — Movement ${selectedParty!.movementPoints ?? 0}/${selectedParty!.maxMovementPoints ?? 0}`
+                })()}
+            {selectedParty?.marchOrder && myTurn && (
               <button
                 type="button"
                 className="secondary"
@@ -1167,7 +1200,13 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
       )}
 
       {disembarkTile && selectedCaptain && (
-        <BottomSheet title="Put a landing party ashore?" onClose={() => setDisembarkTile(null)}>
+        <BottomSheet
+          title="Put a landing party ashore?"
+          onClose={() => {
+            setDisembarkTile(null)
+            setDisembarkWithCaptain(false)
+          }}
+        >
           <section>
             <p className="building-option__hint">
               Choose the troops to land. The party steps ashore now (one movement point) and can
@@ -1206,6 +1245,15 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
                 </div>
               )
             })}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={disembarkWithCaptain}
+                onChange={(e) => setDisembarkWithCaptain(e.target.checked)}
+              />
+              Land with {selectedCaptain.name} (the ship stays anchored here, orderless, until the
+              captain re-embarks)
+            </label>
             <div className="button-group">
               <button
                 className="primary"
@@ -1321,16 +1369,19 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
         </BottomSheet>
       )}
 
-      {openCity && openCityState && viewer?.resources && (
+      {openCity && openCityState && viewer?.resources && board && (
         <CityScreen
           city={openCityState}
           captain={captainAtOpenCity}
           captains={myCaptains}
+          parties={myParties}
           faction={viewer.faction}
           resources={viewer.resources}
           setup={view.rules.setup}
           round={view.round}
           playerName={(id) => view.players.find((p) => p.id === id)?.name ?? id}
+          playerItemStash={viewer.itemStash ?? []}
+          portDefenderCount={portDefenderCount(myCaptains, myParties, board.map, openCityState)}
           cities={myCities}
           onSelectCity={setOpenCityId}
           onClose={() => setOpenCityId(null)}
@@ -1364,6 +1415,23 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           onChooseCaptainSkill={(skillId) => {
             if (!captainAtOpenCity) return
             void submit(matchAction.chooseCaptainSkill(view, captainAtOpenCity.id, skillId))
+          }}
+          onChooseCaptainStat={(stat) => {
+            if (!captainAtOpenCity) return
+            void submit(matchAction.chooseCaptainStat(view, captainAtOpenCity.id, stat))
+          }}
+          onGarrisonCaptain={() => {
+            if (!captainAtOpenCity) return
+            void submit(matchAction.garrisonCaptain(view, captainAtOpenCity.id, openCity.id))
+          }}
+          onUngarrisonCaptain={() => void submit(matchAction.ungarrisonCaptain(view, openCity.id))}
+          onTakeItem={(itemId) => {
+            if (!captainAtOpenCity) return
+            void submit(matchAction.takeItem(view, captainAtOpenCity.id, openCity.id, itemId))
+          }}
+          onDepositItem={(itemId) => {
+            if (!captainAtOpenCity) return
+            void submit(matchAction.depositItem(view, captainAtOpenCity.id, openCity.id, itemId))
           }}
           onUpgradeShip={(track) => {
             if (!captainAtOpenCity) return

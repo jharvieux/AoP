@@ -43,6 +43,15 @@ const ReplayScreen = lazy(() =>
   import('./replay/ReplayScreen').then((m) => ({ default: m.ReplayScreen })),
 )
 
+/** A dropped item id from the last resolved encounter (#498) — set only when
+ * `outcome.encounterOutcome.itemGained` is present, so GameScreen's turn-event
+ * feed can append a "Found: <item>" line the same way it narrates battles.
+ * Always a fresh object when set, so a repeated identical find still
+ * re-triggers GameScreen's effect (mirrors `battleReport` below). */
+interface ItemFound {
+  itemId: string
+}
+
 type Screen =
   | 'title'
   | 'menu'
@@ -86,6 +95,8 @@ export function App() {
   // Structured result of the last combat, for the battle report sheet (#39).
   // Derived output, never part of the replayable state or the saved log.
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null)
+  // The last item an encounter dropped (#498), for GameScreen's event feed.
+  const [itemFound, setItemFound] = useState<ItemFound | null>(null)
   // A test-play match launched from the map editor (#41) skips autosave and
   // returns to the editor (not the main menu) when it ends.
   const [isTestPlay, setIsTestPlay] = useState(false)
@@ -165,6 +176,9 @@ export function App() {
     setGame(next)
     setActionLog(nextLog)
     if (outcome.battleReport) setBattleReport(outcome.battleReport)
+    if (outcome.encounterOutcome?.itemGained) {
+      setItemFound({ itemId: outcome.encounterOutcome.itemGained })
+    }
     // #237: autosave used to be `void saveGame(...)` — a QuotaExceededError
     // (or any other rejection) became an unhandled promise rejection while
     // the game kept "autosaving" into the void, with zero feedback right when
@@ -356,6 +370,7 @@ export function App() {
             game={game}
             battleReport={battleReport}
             onDismissBattleReport={handleDismissBattleReport}
+            itemFound={itemFound}
             onAction={handleAction}
             onSaveSlot={handleSaveSlot}
             onLoadSlot={handleLoadSlot}

@@ -93,6 +93,11 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     // Own captains carry their sail order (#372) so the map can fly the
     // destination flag and the screen can raise the paused-order banner.
     ...(c.sailOrder ? { sailOrder: c.sailOrder } : {}),
+    // shipLost (#498) is disclosed for the viewer's own captains only (an
+    // enemy's shipless captain is omitted from the view entirely — see
+    // playerView.ts) — forwarded so MapCanvas can skip drawing a phantom hull
+    // for one, exactly like the single-player board already does.
+    ...(c.shipLost ? { shipLost: c.shipLost } : {}),
   }))
 
   const cities: CityState[] = view.cities.map((c) => ({
@@ -104,6 +109,8 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     builtThisRound: c.builtThisRound ?? false,
     garrison: c.garrison ?? {},
     unitAvailability: c.unitAvailability ?? {},
+    // Own-city interior detail (#498), like buildings/garrison above.
+    ...(c.garrisonCaptainId !== undefined ? { garrisonCaptainId: c.garrisonCaptainId } : {}),
   }))
 
   const parties: LandingParty[] = view.parties.map((p) => ({
@@ -117,6 +124,9 @@ export function boardFromPlayerView(view: PlayerView): BoardFromView {
     // Own parties carry their march order (#482) so the map can fly the
     // destination pennant and draw the queued route, like a ship's sailOrder.
     ...(p.marchOrder ? { marchOrder: p.marchOrder } : {}),
+    // Own-party detail (#498) — which captain (if any) leads this party ashore,
+    // so MapCanvas can dim/ring the anchored ship the same way single-player does.
+    ...(p.captainId !== undefined ? { captainId: p.captainId } : {}),
   }))
 
   const encounters: EncounterState[] = view.encounters.map((e) => ({

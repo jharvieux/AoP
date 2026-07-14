@@ -1,7 +1,10 @@
 import {
   BUILDINGS,
+  CAPTAIN_STAT_TUNING,
   CAPTAIN_XP_THRESHOLDS,
   FACTIONS,
+  ITEM_DROPS,
+  ITEMS,
   SHIP_CLASSES,
   SHIP_UPGRADE_TRACKS,
   buildingDisplayName,
@@ -11,22 +14,33 @@ import {
 } from '@aop/content'
 import {
   availableSkillPicks,
+  availableStatPoints,
   effectiveShipStats,
   levelForXp,
   type BoardOrder,
   type Captain,
+  type CaptainStat,
   type CityState,
   type GameSetup,
+  type LandingParty,
   type StandingOrder,
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
 import { useState } from 'react'
+import { captainAshoreState } from './captainAshore'
 import { tapFeedback } from './audio/feedback'
 import { buildUnavailableReason, buildingFacts, unitFacts } from './cityBuildingInfo'
 import { BottomSheet } from './components/BottomSheet'
 import { useTheme } from './theme/ThemeContext'
 import { UI_ICON } from './uiIcons'
+
+const CAPTAIN_STATS: readonly CaptainStat[] = ['attack', 'defense', 'speed']
+const CAPTAIN_STAT_LABELS: Record<CaptainStat, string> = {
+  attack: 'Attack',
+  defense: 'Defense',
+  speed: 'Speed',
+}
 
 /**
  * Per-building management modals for the graphical city view (#429–#432).
@@ -163,11 +177,21 @@ interface CityBuildingModalProps {
   city: CityState
   captain: Captain | undefined
   captains: Captain[]
+  /** The viewer's own landing parties (#498) — needed to tell an ashore,
+   * ship-anchored captain apart from one actually in command of their hull
+   * (see {@link captainAshoreState}), so garrison/item ship-actions can be
+   * gated the same way the engine's `requireShipControl` gates them. */
+  parties: LandingParty[]
   faction: FactionId
   resources: ResourcePool
   setup: GameSetup
   round: number
   playerName: (id: string) => string
+  /** The faction item stash (#498) — take-item source for a docked captain. */
+  playerItemStash: string[]
+  /** Own captains currently contributing "ships in port" defense to this city
+   * (#498) — garrisoned captain plus any other own captain within a tile. */
+  portDefenderCount: number
   onClose: () => void
   onBuild: (buildingId: string) => void
   onRecruit: (unitId: string) => void
@@ -175,9 +199,18 @@ interface CityBuildingModalProps {
   onSetStandingOrders: (orders: StandingOrder[]) => void
   onSetBoardOrders: (orders: BoardOrder[]) => void
   onChooseCaptainSkill: (skillId: string) => void
+  onChooseCaptainStat: (stat: CaptainStat) => void
   onUpgradeShip: (track: string) => void
   onRecruitCaptain: (captainId?: string) => void
   onRansomCaptain: (captainId: string) => void
+  /** Station the docked captain as this city's garrison (#498). */
+  onGarrisonCaptain: () => void
+  /** Release this city's garrisoned captain back to sea duty (#498). */
+  onUngarrisonCaptain: () => void
+  /** Move an item from the faction stash onto the docked captain (#498). */
+  onTakeItem: (itemId: string) => void
+  /** Move an item from the docked captain into the faction stash (#498). */
+  onDepositItem: (itemId: string) => void
 }
 
 /** Routes a tapped building to its management modal. */
@@ -478,16 +511,21 @@ function TavernModal({
   buildingId,
   captain,
   captains,
+  parties,
   faction,
   resources,
   setup,
   round,
   playerName,
+  playerItemStash,
   onSetStandingOrders,
   onSetBoardOrders,
   onChooseCaptainSkill,
+  onChooseCaptainStat,
   onRecruitCaptain,
   onRansomCaptain,
+  onTakeItem,
+  onDepositItem,
   onClose,
 }: CityBuildingModalProps) {
   const { unitName, shipName } = useTheme()
@@ -686,6 +724,130 @@ function TavernModal({
                     })}
                   </ul>
                 </>
+              )
+            })()}
+          </section>
+
+          <section>
+            <h3>Stat training — {captain.name}</h3>
+            {(() => {
+              const points = availableStatPoints(captain, CAPTAIN_XP_THRESHOLDS)
+              return (
+                <>
+                  <p className="building-option__hint">
+                    {points > 0
+                      ? `${points} stat point${points === 1 ? '' : 's'} available.`
+                      : 'No stat points available yet — earn more XP to level up.'}
+                  </p>
+                  <ul className="building-list">
+                    {CAPTAIN_STATS.map((stat) => {
+                      const perPoint =
+                        stat === 'attack'
+                          ? `+${CAPTAIN_STAT_TUNING.attackPctPerPoint}% attack`
+                          : stat === 'defense'
+                            ? `+${CAPTAIN_STAT_TUNING.defensePctPerPoint}% defense`
+                            : `+${CAPTAIN_STAT_TUNING.speedMovementPerPoint} movement`
+                      return (
+                        <li key={stat} className="garrison-row">
+                          <span className="garrison-row__name">{CAPTAIN_STAT_LABELS[stat]}</span>
+                          <span className="garrison-row__counts">
+                            {captain.stats[stat]} spent — {perPoint}/point
+                          </span>
+                          <div className="garrison-row__actions">
+                            <button
+                              disabled={points <= 0}
+                              onClick={() => {
+                                tapFeedback()
+                                onChooseCaptainStat(stat)
+                              }}
+                            >
+                              Train
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )
+            })()}
+          </section>
+
+          <section>
+            <h3>Inventory — {captain.name}</h3>
+            {(() => {
+              const ashore = captainAshoreState(captain, parties)
+              return (
+                <>
+                  <p className="building-option__hint">
+                    {captain.items.length}/{ITEM_DROPS.captainItemCap} items carried.
+                    {ashore &&
+                      ' Ashore leading a landing party — the ship cannot trade items right now.'}
+                  </p>
+                  {captain.items.length === 0 ? (
+                    <p className="building-option__hint">No items held.</p>
+                  ) : (
+                    <ul className="building-list">
+                      {captain.items.map((itemId, index) => {
+                        const item = ITEMS[itemId]
+                        return (
+                          <li key={`${itemId}-${index}`} className="garrison-row">
+                            <span className="garrison-row__name">{item?.name ?? itemId}</span>
+                            <span className="garrison-row__counts">{item?.description ?? ''}</span>
+                            <div className="garrison-row__actions">
+                              <button
+                                disabled={!!ashore}
+                                onClick={() => {
+                                  tapFeedback()
+                                  onDepositItem(itemId)
+                                }}
+                              >
+                                Deposit
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              )
+            })()}
+          </section>
+
+          <section>
+            <h3>Faction stash</h3>
+            {(() => {
+              const ashore = captainAshoreState(captain, parties)
+              const full = captain.items.length >= ITEM_DROPS.captainItemCap
+              return playerItemStash.length === 0 ? (
+                <p className="building-option__hint">
+                  No items in the stash — found items overflow here once {captain.name}'s hold is
+                  full.
+                </p>
+              ) : (
+                <ul className="building-list">
+                  {playerItemStash.map((itemId, index) => {
+                    const item = ITEMS[itemId]
+                    return (
+                      <li key={`${itemId}-${index}`} className="garrison-row">
+                        <span className="garrison-row__name">{item?.name ?? itemId}</span>
+                        <span className="garrison-row__counts">{item?.description ?? ''}</span>
+                        <div className="garrison-row__actions">
+                          <button
+                            disabled={!!ashore || full}
+                            onClick={() => {
+                              tapFeedback()
+                              onTakeItem(itemId)
+                            }}
+                          >
+                            {full ? `${captain.name} full` : `Take for ${captain.name}`}
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
               )
             })()}
           </section>

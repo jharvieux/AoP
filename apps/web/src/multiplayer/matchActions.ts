@@ -189,8 +189,11 @@ export function interpretTileClick(
   x: number,
   y: number,
 ): TileIntent {
+  // A shipLost captain (#498) has no hull left — its position is a phantom
+  // duplicate of its landing party's tile — so it's excluded here to let a
+  // tap on that tile select the co-located party instead of a nonexistent ship.
   const ownHere = view.captains.find(
-    (c) => c.ownerId === view.viewerId && c.position.x === x && c.position.y === y,
+    (c) => c.ownerId === view.viewerId && !c.shipLost && c.position.x === x && c.position.y === y,
   )
   if (ownHere) return { kind: 'selectCaptain', captainId: ownHere.id }
 
@@ -327,7 +330,10 @@ export function interpretPartyTileClick(
   const adjacent = (pos: Coord) => mapDistance(map, party.position, pos) <= 1
 
   // An own ship: adjacent re-boards the party; anywhere else selects it.
-  const ownCaptainHere = view.captains.find((c) => c.ownerId === view.viewerId && here(c.position))
+  // shipLost captains are excluded — no hull to embark onto (see interpretTileClick).
+  const ownCaptainHere = view.captains.find(
+    (c) => c.ownerId === view.viewerId && !c.shipLost && here(c.position),
+  )
   if (ownCaptainHere) {
     return adjacent(ownCaptainHere.position)
       ? { kind: 'embark', captainId: ownCaptainHere.id }

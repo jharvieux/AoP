@@ -1119,6 +1119,19 @@ button.primary.secondary {
   }
 }
 
+/* A single checkbox + label row (#498's "land with captain" disembark toggle). */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  margin: 8px 0;
+}
+
+.checkbox-row input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
 /* Per-captain fleet rows and the attack-confirmation portraits (#114). */
 .captain-row {
   flex-direction: row;
