@@ -1,3 +1,35 @@
+## D-042 — 2026-07-14 — #498 captain expansion shipped: stats, garrison & port defense, items, captain-led parties (RULES_VERSION→8)
+
+**Decision.** Operator-commissioned epic, four product calls locked in session: (1) level-up
+grants a stat point (attack/defense/speed, 2%/2%/+1MP per point, content-tunable) IN
+ADDITION to the existing skill pick; (2) garrisoned captain AND in-port captains join city
+defense and are ALL captured if the city falls; (3) captains can lead landing parties
+(operator scope addition) — leader bonuses/XP in land combat, land item finds go to the
+leader; the anchored ship is orderless and can be lost WITHOUT capturing the ashore captain
+(`Captain.shipLost`); (4) items: 13 content-defined drops (sea encounters, land hauls, land
+encounters, seeded RNG), 8-per-captain cap, faction `itemStash` overflow, port transfer.
+
+**Shipped as** PR #501 (engine+content+MP+AI, RULES_VERSION 7→8 for the new drop draws) and
+PR #504 (UI both screens + playerViewBoard parity), both audited clean. Sim battery:
+captures 75→71 (−5%, cities tougher as intended, no counterweight); harbor-capture rarely
+fires AI-vs-AI because the AI never garrisons (deferred to #500).
+
+**Deferred (issues filed).** #499 stranded shipless-captain rescue path (+2 audit-suggested
+tests); #500 AI v2 (garrisoning, led parties, item management, port-defense threat calc);
+#502 MP submit-action has no encounterOutcome surface (item toasts SP-only); #503 land-haul
+drops have no ActionOutcome to toast.
+
+**Rejected.** Stats replacing skills (breaks shipped content/AI); uncapped inventories (cap
+keeps choices meaningful); auto-balance counterweight for port defense (−5% is acceptable).
+
+**Also this session:** synthetic monitor fixed after 95/95 lifetime failures — it asserted
+403 on a bearer-less probe the gateway 401s before function code runs; now probes with the
+anon key to the functions' real 403 boundary (PR #497, operator-approved workflow change).
+Sentry Seer's auto-PR #496 (neutral-city faction crash) was unsound as submitted (didn't
+compile, no tests); rebuilt via audit→fix→re-audit into strict/nullable helper split.
+
+---
+
 ## D-041 — 2026-07-13 — #444 art pipeline migrated A1111 → ComfyUI; checkpoint successor evaluated, adoption deferred
 
 **Decision.** Local art generation moves from AUTOMATIC1111 webui (v1.10.1, final/unmaintained
