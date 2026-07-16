@@ -7,6 +7,7 @@ import {
   probePartyAssault,
   probePartyBattle,
   probeTacticalBattle,
+  probeTwoSeatBattle,
   RULES_VERSION,
   seedRng,
   type BoardActivationView,
@@ -15,10 +16,12 @@ import {
   type GameConfig,
   type GameState,
   type LandingParty,
+  type PendingTactic,
   type TacticId,
   type Tile,
   type TileType,
   type TroopStack,
+  type TwoSeatProbeOutcome,
 } from '../src'
 import { BATTLE_TUNING, COMBAT_TUNING, GAME_SETUP, TACTICS_TUNING } from './fixtures'
 
@@ -364,5 +367,204 @@ describe('party land-battle probes (#482)', () => {
     expect(() => probePartyAssault(state, { partyId: 'lp1', targetCityId: 'p2-city' }, [])).toThrow(
       /board tuning/,
     )
+  })
+})
+
+/**
+ * Two-seat lockstep probe (#422, D-029 §10.2): both seats record live. The
+ * load-bearing properties pinned here are the multiplayer authority contract:
+ * a naval round advances only when BOTH seats have committed a pick; a pending
+ * seat's context is a pure projection of the round-start view (independent of
+ * whether the counterpart's current-round pick is already recorded — the §10.6
+ * no-leak/simultaneity property); the outcome depends only on the recorded
+ * lists, never on the order the seats submitted them; and a fully-driven
+ * two-seat battle replays bit-exactly through the reducer as the single logged
+ * `attackCaptain` carrying both seats' recorded orders.
+ */
+describe('two-seat lockstep probe (#422)', () => {
+  type Recording = { tacticOrders: TacticId[]; boardCommands: BoardCommand[] }
+  const emptyRec = (): Recording => ({ tacticOrders: [], boardCommands: [] })
+
+  /**
+   * Drive a two-seat battle to resolution, one order per probe. When both
+   * seats are pending, `firstSide` submits first — driving with each value
+   * must converge to identical recordings and an identical report.
+   */
+  function driveTwoSeat(
+    state: GameState,
+    action: { captainId: string; targetCaptainId: string },
+    pickFor: (p: PendingTactic) => TacticId,
+    firstSide: 'attacker' | 'defender',
+  ) {
+    const rec = { attacker: emptyRec(), defender: emptyRec() }
+    let outcome: TwoSeatProbeOutcome
+    let guard = 0
+    for (;;) {
+      if (++guard > 600) throw new Error('two-seat battle did not resolve')
+      outcome = probeTwoSeatBattle(state, action, rec.attacker, rec.defender)
+      if (outcome.kind === 'resolved') return { ...rec, report: outcome.report }
+      if (outcome.kind === 'awaitingTactics') {
+        const next = outcome.pending.find((p) => p.side === firstSide) ?? outcome.pending[0]!
+        rec[next.side].tacticOrders.push(pickFor(next))
+      } else {
+        // The seat tag must always name the owner of the acting stack (§10.4).
+        expect(outcome.side).toBe(outcome.view.stack.side)
+        rec[outcome.side].boardCommands.push(scriptedCommand(outcome.view))
+      }
+    }
+  }
+
+  it('collects both pending seats, and a pending context is independent of the counterpart pick', () => {
+    const state = adjacentBattleState(null)
+    const action = attackTargets(state)
+
+    // Neither seat has committed round 1: both pend, attacker first, round 1, no last tactic.
+    const fresh = probeTwoSeatBattle(state, action, emptyRec(), emptyRec())
+    expect(fresh.kind).toBe('awaitingTactics')
+    const freshPending = (fresh as { pending: PendingTactic[] }).pending
+    expect(freshPending.map((p) => p.side)).toEqual(['attacker', 'defender'])
+    for (const p of freshPending) {
+      expect(p.ctx.round).toBe(1)
+      expect(p.ctx.enemyLastTactic).toBeNull()
+    }
+
+    // Attacker commits round 1: only the defender pends, and its context is
+    // byte-identical to the one it saw before the attacker committed — the
+    // recorded-but-unresolved pick leaks nothing (§10.6).
+    const atkIn = probeTwoSeatBattle(
+      state,
+      action,
+      { tacticOrders: ['board'], boardCommands: [] },
+      emptyRec(),
+    )
+    expect(atkIn.kind).toBe('awaitingTactics')
+    const atkInPending = (atkIn as { pending: PendingTactic[] }).pending
+    expect(atkInPending.map((p) => p.side)).toEqual(['defender'])
+    expect(JSON.stringify(atkInPending[0])).toBe(JSON.stringify(freshPending[1]))
+
+    // And symmetrically for the attacker when only the defender has committed.
+    const defIn = probeTwoSeatBattle(state, action, emptyRec(), {
+      tacticOrders: ['broadside'],
+      boardCommands: [],
+    })
+    expect(defIn.kind).toBe('awaitingTactics')
+    const defInPending = (defIn as { pending: PendingTactic[] }).pending
+    expect(defInPending.map((p) => p.side)).toEqual(['attacker'])
+    expect(JSON.stringify(defInPending[0])).toBe(JSON.stringify(freshPending[0]))
+
+    // Both committed: round 1 resolves, round 2 pends for both, and only NOW
+    // does each context reveal the counterpart's round-1 pick as enemyLastTactic.
+    const bothIn = probeTwoSeatBattle(
+      state,
+      action,
+      { tacticOrders: ['board'], boardCommands: [] },
+      { tacticOrders: ['broadside'], boardCommands: [] },
+    )
+    expect(bothIn.kind).toBe('awaitingTactics')
+    const round2 = (bothIn as { pending: PendingTactic[] }).pending
+    expect(round2.map((p) => p.side)).toEqual(['attacker', 'defender'])
+    expect(round2[0]!.ctx.round).toBe(2)
+    expect(round2[0]!.ctx.enemyLastTactic).toBe('broadside')
+    expect(round2[1]!.ctx.round).toBe(2)
+    expect(round2[1]!.ctx.enemyLastTactic).toBe('board')
+  })
+
+  it('a seat running ahead cannot advance the round past its pending counterpart', () => {
+    const state = adjacentBattleState(null)
+    const action = attackTargets(state)
+    const outcome = probeTwoSeatBattle(
+      state,
+      action,
+      { tacticOrders: ['broadside', 'broadside', 'broadside'], boardCommands: [] },
+      { tacticOrders: ['broadside'], boardCommands: [] },
+    )
+    expect(outcome.kind).toBe('awaitingTactics')
+    const pending = (outcome as { pending: PendingTactic[] }).pending
+    expect(pending.map((p) => p.side)).toEqual(['defender'])
+    expect(pending[0]!.ctx.round).toBe(2)
+  })
+
+  it('gunnery duel: submission order never matters, prefixes replay bit-exact, and the reducer agrees', () => {
+    const state = adjacentBattleState(null)
+    const action = attackTargets(state)
+    const pick = (p: PendingTactic) => (p.ctx.available.includes('broadside') ? 'broadside' : p.ctx.available[0]!) // prettier-ignore
+
+    const attackerFirst = driveTwoSeat(state, action, pick, 'attacker')
+    const defenderFirst = driveTwoSeat(state, action, pick, 'defender')
+    expect(JSON.stringify(defenderFirst)).toBe(JSON.stringify(attackerFirst))
+
+    const { attacker, defender, report } = attackerFirst
+    const rounds = attacker.tacticOrders.length
+    expect(rounds).toBeGreaterThan(1)
+    // Lockstep: every fought round has exactly one pick from EACH seat.
+    expect(defender.tacticOrders.length).toBe(rounds)
+
+    // Every paired prefix replays its recorded pending contexts bit-exactly,
+    // in any evaluation order.
+    const canonical: TwoSeatProbeOutcome[] = []
+    for (let k = 0; k <= rounds; k++) {
+      canonical.push(
+        probeTwoSeatBattle(
+          state,
+          action,
+          { tacticOrders: attacker.tacticOrders.slice(0, k), boardCommands: [] },
+          { tacticOrders: defender.tacticOrders.slice(0, k), boardCommands: [] },
+        ),
+      )
+    }
+    expect(canonical[rounds]!.kind).toBe('resolved')
+    assertInterleavedPrefixes(rounds, canonical, (k) =>
+      probeTwoSeatBattle(
+        state,
+        action,
+        { tacticOrders: attacker.tacticOrders.slice(0, k), boardCommands: [] },
+        { tacticOrders: defender.tacticOrders.slice(0, k), boardCommands: [] },
+      ),
+    )
+
+    // The authority contract: the two-seat session resolves to ONE logged
+    // attackCaptain carrying both seats' recorded orders, and the reducer
+    // re-derives the identical battle from it.
+    const { battleReport } = applyActionWithOutcome(state, {
+      type: 'attackCaptain',
+      playerId: 'p1',
+      ...action,
+      attackerOrders: attacker.tacticOrders,
+      defenderOrders: defender.tacticOrders,
+    })
+    expect(JSON.stringify(battleReport)).toBe(JSON.stringify(report))
+  })
+
+  it('full two-seat battle through a boarding melee replays bit-exact through the reducer', () => {
+    const state = adjacentBattleState()
+    const action = attackTargets(state)
+    // The attacker grapples round 1 (board vs broadside lands), sending both
+    // live seats to the melee board.
+    const pick = (p: PendingTactic): TacticId =>
+      p.side === 'attacker' && p.ctx.available.includes('board') ? 'board' : 'broadside'
+
+    const attackerFirst = driveTwoSeat(state, action, pick, 'attacker')
+    const defenderFirst = driveTwoSeat(state, action, pick, 'defender')
+    expect(JSON.stringify(defenderFirst)).toBe(JSON.stringify(attackerFirst))
+
+    const { attacker, defender, report } = attackerFirst
+    // Both seats actually fought the melee interactively.
+    expect(attacker.boardCommands.length).toBeGreaterThan(0)
+    expect(defender.boardCommands.length).toBeGreaterThan(0)
+
+    const apply = () =>
+      applyActionWithOutcome(state, {
+        type: 'attackCaptain',
+        playerId: 'p1',
+        ...action,
+        attackerOrders: attacker.tacticOrders,
+        boardCommands: attacker.boardCommands,
+        defenderOrders: defender.tacticOrders,
+        defenderBoardCommands: defender.boardCommands,
+      })
+    const first = apply()
+    expect(JSON.stringify(first.battleReport)).toBe(JSON.stringify(report))
+    // And the logged action replays deterministically.
+    expect(JSON.stringify(apply().state)).toBe(JSON.stringify(first.state))
   })
 })
