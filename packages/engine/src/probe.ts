@@ -383,6 +383,130 @@ function recordingTacticDriver(commands: readonly TacticId[]): TacticDriver {
   }
 }
 
+/**
+ * One seat's recorded interactive picks for the two-seat probe (#422): the
+ * per-round naval tactics and per-activation melee commands that seat has
+ * committed so far. Both seats of {@link probeTwoSeatBattle} record in this
+ * shape — there is no fallback driver behind either list; an exhausted list
+ * means the seat is pending.
+ */
+export interface SeatRecording {
+  tacticOrders: readonly TacticId[]
+  boardCommands: readonly BoardCommand[]
+}
+
+/** One seat awaiting its round-N naval tactic, with the engine's own decision context. */
+export interface PendingTactic {
+  side: 'attacker' | 'defender'
+  ctx: TacticContext
+}
+
+/**
+ * Outcome of a two-seat probe (#422, D-029 §10.2). `awaitingTactics.pending`
+ * carries 1 or 2 seats — a naval round advances only when neither seat is
+ * pending (the lockstep collect-pass). `awaitingCommand` is tagged with the
+ * seat that owns the activation: the board phase is strictly sequential, so
+ * at most one seat ever awaits a melee command at a time (§10.4).
+ */
+export type TwoSeatProbeOutcome =
+  | { kind: 'resolved'; report: BattleReport }
+  | { kind: 'awaitingTactics'; pending: PendingTactic[] }
+  | { kind: 'awaitingCommand'; side: 'attacker' | 'defender'; view: BoardActivationView }
+
+/** Sentinel thrown from the collect-pass barrier once every pending seat is registered. */
+class AwaitingTactics {
+  constructor(readonly pending: PendingTactic[]) {}
+}
+
+/**
+ * Two-seat interactive naval probe (#422, D-029 §10.2): {@link
+ * probeTacticalBattle} with BOTH seats live. Each seat's recorded picks replay
+ * exactly like the reducer's recorded-prefix drivers (an unavailable pick
+ * degrades to broadside); a seat whose list is exhausted for the current round
+ * registers into a pending set instead of aborting immediately, and after both
+ * seats are consulted the probe halts with every pending seat's own correct
+ * `TacticContext`. Neither context ever reflects the counterpart's
+ * current-round pick — both are pure projections of the round-start view, so
+ * a submitted-but-unresolved round leaks nothing (§10.6 simultaneity).
+ *
+ * When the probe resolves, the recorded lists are submitted as the single
+ * logged `attackCaptain`'s `attackerOrders`/`boardCommands` plus the
+ * server-authored `defenderOrders`/`defenderBoardCommands`, and the reducer
+ * re-derives the identical fight: the probe guarantees every fought round and
+ * every melee activation has a recorded pick from its owning seat, so the
+ * reducer's fallback tails are never consulted and parity is bit-exact.
+ */
+export function probeTwoSeatBattle(
+  game: GameState,
+  action: Pick<AttackCaptainAction, 'captainId' | 'targetCaptainId'>,
+  attackerRecording: SeatRecording,
+  defenderRecording: SeatRecording,
+): TwoSeatProbeOutcome {
+  const attacker = game.captains.find((c) => c.id === action.captainId)
+  const target = game.captains.find((c) => c.id === action.targetCaptainId)
+  if (!attacker || !target) throw new Error('Attacker or target captain not found')
+  if (!game.config.combatStats) throw new Error('No combat stats configured for this match')
+
+  const stats = createCombatStats(game.config.combatStats)
+  const content = game.config.content
+
+  const pending: PendingTactic[] = []
+  const seatTacticRecorder = (
+    side: 'attacker' | 'defender',
+    orders: readonly TacticId[],
+  ): TacticDriver => ({
+    choose(ctx) {
+      if (ctx.round - 1 < orders.length) {
+        const pick = orders[ctx.round - 1]!
+        return ctx.available.includes(pick) ? pick : 'broadside'
+      }
+      pending.push({ side, ctx })
+      // Placeholder — the collect-pass barrier below aborts the round before
+      // any pick from a pending seat can be used.
+      return 'broadside'
+    },
+  })
+
+  const seatBoardRecorder = (commands: readonly BoardCommand[]): BoardDriver => {
+    let cursor = 0
+    return {
+      choose(view) {
+        if (cursor < commands.length) return commands[cursor++]!
+        throw new AwaitingCommand(view)
+      },
+    }
+  }
+
+  try {
+    const result = resolveTacticalCombat(
+      {
+        attacker: navalCombatant(game, attacker, content),
+        defender: navalCombatant(game, target, content),
+      },
+      stats,
+      game.rngState,
+      {
+        attacker: seatTacticRecorder('attacker', attackerRecording.tacticOrders),
+        defender: seatTacticRecorder('defender', defenderRecording.tacticOrders),
+        onTacticsCollected: () => {
+          if (pending.length) throw new AwaitingTactics(pending)
+        },
+        attackerBoard: seatBoardRecorder(attackerRecording.boardCommands),
+        defenderBoard: seatBoardRecorder(defenderRecording.boardCommands),
+      },
+    )
+    return { kind: 'resolved', report: withPrizeShip(result.report, game, attacker, target) }
+  } catch (err) {
+    if (err instanceof AwaitingTactics) return { kind: 'awaitingTactics', pending: err.pending }
+    if (err instanceof AwaitingCommand) {
+      // The board phase is sequential and turrets never consult a driver, so
+      // the acting stack's side IS the seat whose recorder ran dry (§10.4).
+      return { kind: 'awaitingCommand', side: err.view.stack.side, view: err.view }
+    }
+    throw err
+  }
+}
+
 export function probeTacticalBattle(
   game: GameState,
   action: Pick<AttackCaptainAction, 'captainId' | 'targetCaptainId'>,

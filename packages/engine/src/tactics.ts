@@ -347,6 +347,19 @@ export interface TacticalDrivers {
   attacker: TacticDriver
   defender: TacticDriver
   /**
+   * Two-seat collect-pass barrier (#422, D-029 §10.2): called every naval
+   * round after BOTH seats' drivers have been consulted, before the round
+   * resolves. The two-seat recording probe registers each exhausted seat into
+   * a pending set during the consults and throws its `AwaitingTactics`
+   * sentinel from here, so the sentinel always carries every pending seat no
+   * matter which driver the resolver happens to consult first. Both round-N
+   * `TacticContext`s are pure projections of the round-start view —
+   * independent of either current-round pick — so consulting a live driver
+   * whose counterpart is still pending discloses nothing. Absent (every
+   * non-probe caller), rounds resolve exactly as before.
+   */
+  onTacticsCollected?: () => void
+  /**
    * Who fights each side's crews when a boarding action sends the battle to
    * the hex board (#39). Defaults to the normal board AI — auto-resolve. An
    * interactive attacker passes a recorded-command plan driver; an offline
@@ -412,6 +425,7 @@ export function resolveTacticalCombat(
       enemyLastTactic: lastAttackerTactic,
       available: defAvailable,
     })
+    drivers.onTacticsCollected?.()
     lastAttackerTactic = attackerTactic
     lastDefenderTactic = defenderTactic
     return {
