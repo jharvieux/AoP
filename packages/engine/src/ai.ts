@@ -501,6 +501,16 @@ export function nextAiAction(state: GameState, playerId: string): Action {
       // band drained the attrition pipeline and capital captures fell on every
       // map size).
       const stalled = cityRatios.every((r) => r < attritionMinRatio)
+      // Inland-conquest gate (#526): the landing vector against landlocked
+      // cities opens ONLY when no coastal enemy city is within this captain's
+      // ordinary bands — conquering settlements is what a captain does when it
+      // has nothing else to conquer. An ungated vector was battery-measured
+      // (twice: ratio-scaled in #525, and here even score-bounded) to drain
+      // troops and captains into settlement trade loops — captures ballooned
+      // 2-3x while capital captures fell on every map size.
+      const noCoastalTarget = enemyCities.every(
+        (c, i) => cityRatios[i]! < attritionMinRatio || !cityHasCoastline(state, c),
+      )
       for (const [cityIndex, city] of enemyCities.entries()) {
         const cityFaction = state.players.find((p) => p.id === city.ownerId)?.faction
         const ratio = cityRatios[cityIndex]!
@@ -520,6 +530,14 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         // garrison that snowballed past `attritionMinRatio` instead of freezing
         // conquest scoring permanently.
         const landOnly = stalled && !winning && !attrition && ratio >= landAttritionMinRatio
+        // Inland conquest (#526): a landlocked city (#467) offers no sea verb at
+        // ANY ratio, so the winning band must use the landing vector too —
+        // without this, a captain strong enough to beat such a city generated no
+        // candidate for it at all and idled once inland settlements were its
+        // only targets. Gated (see noCoastalTarget above) and kept out of the
+        // coastal winning band on purpose: a winnable coastal city is taken
+        // faster and safer by sea.
+        const inland = winning && noCoastalTarget && !cityHasCoastline(state, city)
         if (!winning && !attrition && !landOnly) continue
         const combatMult = winning ? 1 : attritionScoreMult
         // Siege commitment (#471): a ratio-scaled bonus that lifts an *attrition*
@@ -537,13 +555,13 @@ export function nextAiAction(state: GameState, playerId: string): Action {
         // captain can put a party ashore within overland reach of the city,
         // prefer to — a repelled land assault costs only the party, a repelled
         // sea assault costs the captain. The party then marches and assaults
-        // over the next turns (scored in the landing-party loop below). Scoped
-        // to below the engage gate on purpose: a winnable coastal city is taken
-        // immediately and safely by sea, and scoring winnable-city landings was
-        // measured (like #471's winnable siege bonus) to send every strong
-        // captain beelining after soft settlements — capital sieges starved and
-        // captured cities churned in trade loops.
-        if (attrition || landOnly) {
+        // over the next turns (scored in the landing-party loop below). For a
+        // coastal city this stays scoped to below the engage gate on purpose:
+        // a winnable one is taken immediately and safely by sea, and scoring
+        // its landing was measured (like #471's winnable siege bonus) to send
+        // every strong captain beelining after soft settlements — capital
+        // sieges starved and captured cities churned in trade loops.
+        if (attrition || landOnly || inland) {
           const landing = disembarkTileToward(state, cap, city)
           if (landing) {
             // Captain-led party (#500): lead the column ashore when the leader's
@@ -554,6 +572,12 @@ export function nextAiAction(state: GameState, playerId: string): Action {
             const lead = ledRatio !== null && ledRatio > ratio && ledRatio >= engageMinRatio
             const landRatio = lead ? ledRatio : ratio
             const landWinning = landRatio >= engageMinRatio
+            // A winning-band landing scores as an APPROACH, never an assault
+            // (#526): ratio-scaled scores of 5-15 against soft settlements dwarf
+            // every capital-siege verb (the runaway that kept the naive fix out
+            // of #525), and battery runs showed even a ratio capped at the
+            // engage gate still outranks all capital pressure. In the advance
+            // band, real fights and economy always come first within the turn.
             consider({
               action: {
                 type: 'disembark',
@@ -563,11 +587,15 @@ export function nextAiAction(state: GameState, playerId: string): Action {
                 troops: cap.troops.map((t) => ({ ...t })),
                 ...(lead ? { withCaptain: true } : {}),
               },
-              score:
-                (attackScoreBase * landRatio * (landWinning ? 1 : attritionScoreMult) +
-                  (landWinning ? 0 : siegeBonus) +
-                  landAssaultBonus * landRatio) *
-                cityMult,
+              score: inland
+                ? (advanceScoreBase +
+                    (1 / (1 + mapDistance(state.map, cap.position, city.position))) *
+                      advanceDistanceBonus) *
+                  cityMult
+                : (attackScoreBase * landRatio * (landWinning ? 1 : attritionScoreMult) +
+                    (landWinning ? 0 : siegeBonus) +
+                    landAssaultBonus * landRatio) *
+                  cityMult,
             })
           }
         }
@@ -583,7 +611,12 @@ export function nextAiAction(state: GameState, playerId: string): Action {
           })
           continue
         }
-        const step = approachCity(state, cap, city, pathCache)
+        // A landlocked city has no shore of its own to approach — a winning
+        // captain sails for the coastline nearest it overland instead (#526),
+        // from which next turn's disembark stages the landing party.
+        const step = inland
+          ? approachLandingShore(state, cap, city, pathCache)
+          : approachCity(state, cap, city, pathCache)
         if (step) {
           const score =
             ((advanceScoreBase +
@@ -1334,9 +1367,84 @@ function approachCity(
   city: CityState,
   cache: Map<string, Coord[] | null>,
 ): Coord | null {
+  const shores = mapNeighbors(state.map, city.position).filter((n) =>
+    isWaterTile(tileAt(state.map, n)),
+  )
+  return approachViaShores(state, cap, shores, city.position, cache)
+}
+
+/** Whether any water tile borders the city — false for an inland settlement (#467). */
+function cityHasCoastline(state: GameState, city: CityState): boolean {
+  return mapNeighbors(state.map, city.position).some((n) => isWaterTile(tileAt(state.map, n)))
+}
+
+/** Bound on the A* queries one landlocked target may cost per candidate scan (#526). */
+const MAX_LANDING_SHORES = 6
+
+/**
+ * The farthest tile a captain can reach this turn sailing toward the coastline
+ * nearest a landlocked city overland (#526) — {@link approachCity}'s analog for
+ * a city with no water shore of its own. A breadth-first search out from the
+ * city's land ring finds the closest land tiles that border water; those water
+ * tiles are where a landing party's onward march is shortest. Deterministic:
+ * the BFS expands in {@link mapNeighbors}' fixed order.
+ */
+function approachLandingShore(
+  state: GameState,
+  cap: Captain,
+  city: CityState,
+  cache: Map<string, Coord[] | null>,
+): Coord | null {
+  const visited = new Set<number>()
+  let layer: Coord[] = []
+  for (const n of mapNeighbors(state.map, city.position)) {
+    if (tileAt(state.map, n)?.type !== 'land') continue
+    const idx = tileIndex(state.map, n.x, n.y)
+    if (!visited.has(idx)) {
+      visited.add(idx)
+      layer.push(n)
+    }
+  }
+  const shores: Coord[] = []
+  const shoreIdx = new Set<number>()
+  while (layer.length > 0 && shores.length === 0) {
+    const next: Coord[] = []
+    for (const tile of layer) {
+      for (const n of mapNeighbors(state.map, tile)) {
+        const idx = tileIndex(state.map, n.x, n.y)
+        if (isWaterTile(tileAt(state.map, n))) {
+          if (!shoreIdx.has(idx) && shores.length < MAX_LANDING_SHORES) {
+            shoreIdx.add(idx)
+            shores.push(n)
+          }
+          continue
+        }
+        if (visited.has(idx) || tileAt(state.map, n)?.type !== 'land') continue
+        visited.add(idx)
+        next.push(n)
+      }
+    }
+    layer = next
+  }
+  return approachViaShores(state, cap, shores, city.position, cache)
+}
+
+/**
+ * The farthest tile the captain can reach this turn along a sea route to any of
+ * `shores`, preferring the step that ends nearest `goal` — shared by the
+ * coastal-city and landing-shore (#526) approaches. Unlike {@link stepToward}
+ * (which stops a tile short, to end adjacent to a water target), this lands the
+ * captain on the shore tile itself.
+ */
+function approachViaShores(
+  state: GameState,
+  cap: Captain,
+  shores: readonly Coord[],
+  goal: Coord,
+  cache: Map<string, Coord[] | null>,
+): Coord | null {
   let best: { step: Coord; dist: number } | null = null
-  for (const shore of mapNeighbors(state.map, city.position)) {
-    if (!isWaterTile(tileAt(state.map, shore))) continue
+  for (const shore of shores) {
     if (mapDistance(state.map, cap.position, shore) === 0) continue
     const key = `${cap.position.x},${cap.position.y}:${shore.x},${shore.y}`
     let path = cache.get(key)
@@ -1348,7 +1456,7 @@ function approachCity(
     const idx = Math.min(cap.movementPoints, path.length - 1)
     if (idx < 1) continue
     const step = path[idx]!
-    const dist = mapDistance(state.map, step, city.position)
+    const dist = mapDistance(state.map, step, goal)
     if (!best || dist < best.dist) best = { step, dist }
   }
   return best?.step ?? null

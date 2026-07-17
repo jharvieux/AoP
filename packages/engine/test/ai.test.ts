@@ -1173,6 +1173,11 @@ describe('AI landing-party crash-safety & determinism (#475)', () => {
         captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 6 }])],
         cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 })],
       }),
+    'winning captain beside a landlocked settlement (#526)': () =>
+      landState({
+        captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+        cities: [p2CityAt({ x: 7, y: 5 }, { b1: 1 })],
+      }),
     'stranded party, no ship, no target': () =>
       landState({
         parties: [landParty('pa', 'p1', { x: 5, y: 5 }, [{ unitId: 'grunt', count: 3 }])],
@@ -1480,6 +1485,103 @@ describe('AI sub-floor land pressure (#510)', () => {
     const action = nextAiAction(state, 'p1')
     expect(action.type).toBe('moveParty')
     expect(() => applyAction(state, action)).not.toThrow()
+  })
+})
+
+describe('AI inland conquest (#526)', () => {
+  // (7,5) is an interior island tile: every neighbor is land, so no sea assault,
+  // sea approach, or attackCity can ever reach a city there (#467) — before
+  // #526 a winning-band captain generated NO candidate for it and idled.
+  const inlandCity = (garrison: Record<string, number>): CityState =>
+    p2CityAt({ x: 7, y: 5 }, garrison)
+
+  it('lands a winning party on a landlocked settlement it can beat (was: no candidate at all)', () => {
+    // 12 brutes (strength 240) against the settlement's militia + turrets
+    // (≈ 20): ratio ≫ the 0.99 engage gate. The only way in is overland, so the
+    // strong captain must now put a party ashore instead of idling.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [inlandCity({ b1: 1 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('sails toward the settlement’s nearest coastline when too far to land', () => {
+    // Open water at (14,9), not adjacent to the island: no disembark tile
+    // exists yet, and the landlocked city has no shore of its own to approach.
+    // The captain must sail for the coastline nearest the city overland.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 14, y: 9 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [inlandCity({ b1: 1 })],
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('moveCaptain')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('presses a winnable coastal city by sea instead of farming a softer inland one (the gate)', () => {
+    // Both cities are expected wins and the inland settlement is far softer —
+    // an ungated ratio-scaled landing would dwarf the sea assault and send the
+    // captain settlement-farming (the measured #525 runaway, reproduced on the
+    // battery even with a bounded score). With a coastal city inside the
+    // captain's ordinary bands, the inland vector must stay closed entirely.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 10 }), { ...inlandCity({}), id: 'p2-inland' }],
+    })
+    expect(nextAiAction(state, 'p1')).toEqual({
+      type: 'attackCity',
+      playerId: 'p1',
+      captainId: 'c1',
+      targetCityId: 'p2-city',
+    })
+  })
+
+  it('opens the inland vector once every coastal target has left its ordinary bands', () => {
+    // The coastal city's 160-b1 garrison (≈ 577) puts it under the 0.44
+    // attrition floor for 12 brutes (240, ratio ≈ 0.42) — no sea target left in
+    // band, so the winning-band landing toward the soft settlement now fires.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [p2CityAt({ x: 11, y: 5 }, { b1: 160 }), { ...inlandCity({ b1: 1 }), id: 'p2-inland' }], // prettier-ignore
+    })
+    const action = nextAiAction(state, 'p1')
+    expect(action.type).toBe('disembark')
+    expect(() => applyAction(state, action)).not.toThrow()
+  })
+
+  it('a captain below every floor still generates nothing for a landlocked city', () => {
+    // 1 grunt (6) vs a 30-b1 garrison (≈ 130): under the 0.22 land floor, so
+    // neither the winning band (#526) nor the sub-floor band (#510) opens.
+    const state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'grunt', count: 1 }])],
+      cities: [inlandCity({ b1: 30 })],
+    })
+    expect(nextAiAction(state, 'p1').type).toBe('endTurn')
+  })
+
+  it('executes the whole vector: lands, marches, and captures the settlement', () => {
+    let state = landState({
+      captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+      cities: [inlandCity({ b1: 1 })],
+    })
+    for (let guard = 0; guard < 40 && state.status === 'active'; guard++) {
+      if (state.cities[0]!.ownerId === 'p1') break
+      state = runAiTurn(state, currentPlayer(state).id)
+    }
+    expect(state.cities[0]!.ownerId).toBe('p1')
+  })
+
+  it('is a pure, replay-stable function of state', () => {
+    const build = (): GameState =>
+      landState({
+        captains: [landCaptain('c1', 'p1', { x: 12, y: 5 }, [{ unitId: 'brute', count: 12 }])],
+        cities: [inlandCity({ b1: 1 })],
+      })
+    expect(nextAiAction(build(), 'p1')).toEqual(nextAiAction(build(), 'p1'))
+    expect(JSON.stringify(runAiTurn(build(), 'p1'))).toBe(JSON.stringify(runAiTurn(build(), 'p1')))
   })
 })
 
