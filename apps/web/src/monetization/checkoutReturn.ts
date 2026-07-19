@@ -62,7 +62,7 @@ export function detectCheckoutReturn(): boolean {
 }
 
 /** Clear the pending flag once the poll resolved (granted or timed out). */
-export function clearCheckoutPending(): void {
+function clearCheckoutPending(): void {
   if (typeof window === 'undefined') return
   window.sessionStorage.removeItem(PENDING_KEY)
 }
