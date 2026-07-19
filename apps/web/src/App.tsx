@@ -187,7 +187,12 @@ export function App() {
     // a long game needs its autosave most. Failure now flips a persistent,
     // non-blocking indicator (cleared the moment autosave next succeeds).
     if (shouldAutosave(isTestPlay)) {
-      saveGame('autosave', config, nextLog, next.round)
+      // #539: persist next.config (stamped with the engine's current
+      // RULES_VERSION by createGame/reducers), not the outer `config` state
+      // var — that's the pre-createGame setup config and never carries a
+      // rulesVersion, which would make the load-time version gate below
+      // reject every save, not just stale ones.
+      saveGame('autosave', next.config, nextLog, next.round)
         .then(() => setAutosaveFailing(false))
         .catch((err: unknown) => {
           console.error('Autosave failed', err)
@@ -199,7 +204,9 @@ export function App() {
 
   async function handleSaveSlot(slotId: string): Promise<void> {
     if (!config || !game) return
-    await saveGame(slotId, config, actionLog, game.round)
+    // #539: game.config (stamped), not the outer `config` — see the autosave
+    // call above for why.
+    await saveGame(slotId, game.config, actionLog, game.round)
   }
 
   /**
