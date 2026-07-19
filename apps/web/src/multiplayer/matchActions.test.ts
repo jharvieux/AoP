@@ -17,6 +17,7 @@ import {
   interpretTileClick,
   matchAction,
   ownCaptains,
+  ownParties,
   partyFromView,
 } from './matchActions'
 import { boardFromPlayerView } from './playerViewBoard'
@@ -746,6 +747,18 @@ describe('interpretPartyTileClick (#482: the PlayerView analog of GameScreen par
 
   it('does nothing for a tile unreachable overland (water, or blocked by parties)', () => {
     expect(interpretPartyTileClick(v, mapOf(v), party(), 5, 0)).toBeNull()
+  })
+})
+
+describe('ownParties (#556: no direct coverage — used by MatchScreen)', () => {
+  it('returns only the viewer seat rows, excluding enemy sightings', () => {
+    const v = landView()
+    expect(ownParties(v).map((p) => p.id)).toEqual(['lp-own'])
+  })
+
+  it('returns an empty array when the viewer has no parties', () => {
+    const v = view() // top-level fixture: parties: []
+    expect(ownParties(v)).toEqual([])
   })
 })
 
