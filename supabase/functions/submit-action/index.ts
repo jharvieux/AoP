@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       seat,
       action,
     )
-    return jsonResponse({
+    return jsonResponse(req, {
       seq,
       view: playerView(state, seatPlayerId(seat)),
       ...(battleReport ? { battleReport } : {}),
@@ -69,6 +69,6 @@ Deno.serve(async (req) => {
       ...(siteItemGained ? { siteItemGained } : {}),
     })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

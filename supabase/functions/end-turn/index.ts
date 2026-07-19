@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       type: 'endTurn',
       playerId: seatPlayerId(seat),
     })
-    return jsonResponse({ seq, view: playerView(state, seatPlayerId(seat)) })
+    return jsonResponse(req, { seq, view: playerView(state, seatPlayerId(seat)) })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

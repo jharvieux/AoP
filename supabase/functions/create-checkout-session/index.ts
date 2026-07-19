@@ -68,8 +68,8 @@ Deno.serve(async (req) => {
       cancelUrl: body.cancelUrl,
       userId,
     })
-    return jsonResponse({ url: session.url })
+    return jsonResponse(req, { url: session.url })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

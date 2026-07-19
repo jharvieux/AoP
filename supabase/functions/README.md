@@ -169,6 +169,30 @@ fails closed if the var is unset. See `.env.example` at the repo root. Native IA
 it needs real store credentials to verify receipts against, which is an operator action —
 see the client-side hook in `apps/web/src/monetization/iap.ts`.
 
+### CORS (`ALLOWED_ORIGINS`, #541)
+
+Every function response validates the request `Origin` in `_shared/http.ts` and echoes only
+an allowed origin (with `Vary: Origin`) — never `*`. The allowlist is the union of:
+
+- `ALLOWED_ORIGINS` — an **optional**, comma-separated list of exact origins. When unset it
+  defaults to the production web origin (`https://age-of-plunder.vercel.app`).
+- this project's Vercel preview deploys (`https://age-of-plunder-*.vercel.app`),
+- localhost / loopback dev origins (any port, http or https), and
+- the iOS Capacitor WebView origin (`capacitor://localhost`; Android Capacitor's
+  `https://localhost` is covered by the localhost rule).
+
+Requests with no `Origin` header (server-to-server: `stripe-webhook`, the cron sweeps) are
+unaffected — they simply get no `Access-Control-Allow-Origin` header. No
+`Access-Control-Allow-Credentials` is set. This is distinct from `CHECKOUT_ALLOWED_ORIGINS`
+above, which guards Stripe redirect targets (#105), not CORS.
+
+**Operator action** — set the production allowlist as a secret before/at the next
+edge-function deploy (extra origins comma-separated, no spaces around commas):
+
+```bash
+supabase secrets set ALLOWED_ORIGINS='https://age-of-plunder.vercel.app'
+```
+
 ## Design invariants
 
 - **Seat identity, not user id, is the engine player id** (`seat-0`, `seat-1`, …; §13).

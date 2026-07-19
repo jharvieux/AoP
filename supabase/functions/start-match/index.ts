@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
     // activation holds a row absent from the frozen GameState — remove it.
     await sweepLateJoinSeats(db, matchId, seats.length)
 
-    return jsonResponse({ seq: 0 })
+    return jsonResponse(req, { seq: 0 })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

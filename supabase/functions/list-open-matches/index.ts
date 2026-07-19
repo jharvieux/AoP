@@ -82,9 +82,9 @@ Deno.serve(async (req) => {
         ? encodeOpenMatchCursor({ createdAt: last.createdAt, matchId: last.matchId })
         : null
 
-    return jsonResponse({ matches, nextBefore })
+    return jsonResponse(req, { matches, nextBefore })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
 
