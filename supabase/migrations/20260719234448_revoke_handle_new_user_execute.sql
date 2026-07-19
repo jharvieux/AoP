@@ -1,0 +1,23 @@
+-- Revoke EXECUTE on the handle_new_user() trigger function from client-facing roles (#542).
+--
+-- handle_new_user() (20260704000000_multiplayer_incremental.sql, last recreated in
+-- 20260707225444_fix_user_match_ids_idor.sql) is a SECURITY DEFINER function in the
+-- `public` schema. Newly created functions carry a default EXECUTE grant to PUBLIC, so
+-- PostgREST also exposes it as a callable RPC (/rest/v1/rpc/handle_new_user) to `anon`
+-- and `authenticated`. A trigger function needs no direct EXECUTE grant — the trigger
+-- fires as the table owner regardless — so this grant is pure attack surface.
+--
+-- It is structurally not exploitable today (a RETURNS trigger function raises when called
+-- outside a trigger, and the body does a single schema-qualified insert), so this is
+-- defense-in-depth, not an active vuln — but it removes the standing exception and matches
+-- the rest of the definer functions in the chain, which all revoke from public.
+--
+-- Audit of every other SECURITY DEFINER function in the migration chain (see PR body):
+-- match_seed(uuid) and user_match_ids() are intentionally granted to `authenticated`
+-- (match_seed is called via .rpc() by the web client and is status+seat guarded;
+-- user_match_ids runs inside RLS policies and reads auth.uid() with no spoofable arg).
+-- claim_matchmaking_group, finalize_match_with_ratings, append_match_action,
+-- append_battle_order, file_map_report, and increment_map_downloads all already
+-- `revoke all ... from public` and grant only to service_role. handle_new_user is the
+-- only definer function left exposed to anon/authenticated — this migration closes it.
+revoke execute on function public.handle_new_user() from anon, authenticated, public;
