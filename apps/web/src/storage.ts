@@ -1,4 +1,4 @@
-import type { Action, GameConfig } from '@aop/engine'
+import { RULES_VERSION, type Action, type GameConfig } from '@aop/engine'
 
 /**
  * Local save/load for guest play. Persists the action log (not raw state) —
@@ -86,13 +86,35 @@ export async function saveGame(
   await withStore('readwrite', (store) => store.put(record))
 }
 
-export async function loadGame(slotId: string): Promise<SaveRecord | undefined> {
-  const record = await withStore<SaveRecord | undefined>('readonly', (store) => store.get(slotId))
-  if (record && record.schemaVersion > SCHEMA_VERSION) {
+/**
+ * Guards against loading a save this build can't safely reconstruct (#539).
+ * `loadGame` runs this on every read; exported separately (and kept free of
+ * IndexedDB) so it's unit-testable with plain objects.
+ *
+ * The `RULES_VERSION` check must run here, before anything calls `createGame`
+ * — `createGame` unconditionally re-stamps `config.rulesVersion` to the
+ * current engine build's version (game.ts), so by the time `stateFromSave`
+ * replays the action log the mismatch is already invisible and replay can
+ * fail deep inside a reducer with a cryptic invariant error instead of this
+ * clear one.
+ */
+export function assertSaveIsLoadable(record: SaveRecord): void {
+  if (record.schemaVersion > SCHEMA_VERSION) {
     throw new Error(
-      `Save "${slotId}" was written by a newer client (schema v${record.schemaVersion}); this client understands up to v${SCHEMA_VERSION}.`,
+      `Save "${record.slotId}" was written by a newer client (schema v${record.schemaVersion}); this client understands up to v${SCHEMA_VERSION}.`,
     )
   }
+  if (record.config.rulesVersion !== RULES_VERSION) {
+    throw new Error(
+      `This save is from an earlier version of the game (rules v${record.config.rulesVersion ?? 'unset'}) ` +
+        `and can't be resumed on this build (rules v${RULES_VERSION}).`,
+    )
+  }
+}
+
+export async function loadGame(slotId: string): Promise<SaveRecord | undefined> {
+  const record = await withStore<SaveRecord | undefined>('readonly', (store) => store.get(slotId))
+  if (record) assertSaveIsLoadable(record)
   return record
 }
 
