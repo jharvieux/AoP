@@ -5,3 +5,18 @@ allowBuilds:
   esbuild: true
 overrides:
   'qs@>=6.11.1 <6.15.2': '^6.15.2'
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # Already in the lockfile as of this policy landing; younger than the new
+  # 7-day cutoff at merge time but pre-existing, vetted transitive deps.
+  - 'tsx@4.23.1'
+  - '@supabase/realtime-js@2.110.6'
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Documented pnpm false positive: pnpm compares trust evidence across ALL
+  # majors by publish date, not within the same major. semver@7.x gained
+  # provenance attestation and some 7.x releases predate this 6.3.1 release,
+  # so pnpm reports a "downgrade" vs. a different major line entirely.
+  # https://github.com/orgs/pnpm/discussions/11084
+  - 'semver@6.3.1'
