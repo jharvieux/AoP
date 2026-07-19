@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
     const { seq, view, battleReport } = await autoResolveBattleSession(db, body.matchId, seat)
-    return jsonResponse({ seq, view, battleReport })
+    return jsonResponse(req, { seq, view, battleReport })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

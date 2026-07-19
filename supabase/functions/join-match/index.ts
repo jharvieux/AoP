@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const rows = seats ?? []
 
     const mine = rows.find((r) => r.user_id === userId)
-    if (mine) return jsonResponse({ matchId: match.id, seat: mine.seat })
+    if (mine) return jsonResponse(req, { matchId: match.id, seat: mine.seat })
 
     const usedSeats = new Set(rows.map((r) => r.seat))
     let seat = -1
@@ -75,9 +75,9 @@ Deno.serve(async (req) => {
     }
 
     await assertSeatSurvivedStart(db, match.id, seat)
-    return jsonResponse({ matchId: match.id, seat })
+    return jsonResponse(req, { matchId: match.id, seat })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
 

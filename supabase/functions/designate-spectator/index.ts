@@ -76,8 +76,8 @@ Deno.serve(async (req) => {
       throw new AppError('INTERNAL', upsert.error.message)
     }
 
-    return jsonResponse({ matchId, userId, seat: viewingSeat })
+    return jsonResponse(req, { matchId, userId, seat: viewingSeat })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

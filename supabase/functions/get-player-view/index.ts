@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     if (match.status === 'lobby') throw new AppError('MATCH_STATE', 'Match has not started')
 
     const state = await reconstructState(db, matchId, match.action_count)
-    return jsonResponse({
+    return jsonResponse(req, {
       seq: match.action_count,
       seat,
       role,
@@ -58,6 +58,6 @@ Deno.serve(async (req) => {
       turnDeadline: match.turn_deadline,
     })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

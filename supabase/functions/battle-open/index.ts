@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       captainId: body.captainId,
       targetCaptainId: body.targetCaptainId,
     })
-    return jsonResponse(result)
+    return jsonResponse(req, result)
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

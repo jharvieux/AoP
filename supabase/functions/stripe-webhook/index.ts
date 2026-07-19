@@ -37,10 +37,10 @@ Deno.serve(async (req) => {
     })
 
     if (!outcome.ok)
-      return jsonResponse({ error: { code: 'FORBIDDEN', message: 'Invalid signature' } }, 400)
+      return jsonResponse(req, { error: { code: 'FORBIDDEN', message: 'Invalid signature' } }, 400)
 
-    return jsonResponse({ received: true })
+    return jsonResponse(req, { received: true })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
