@@ -26,13 +26,15 @@ jobs:
         with:
           fetch-depth: 0
       - id: detect
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # Fail safe: any git error defaults to code=true (run full CI)
           set +e
 
           # For PRs, diff against the base ref; for pushes to main, use HEAD^
-          if [ -n "${{ github.base_ref }}" ]; then
-            base="origin/${{ github.base_ref }}"
+          if [ -n "$BASE_REF" ]; then
+            base="origin/$BASE_REF"
           else
             base="HEAD^"
           fi
