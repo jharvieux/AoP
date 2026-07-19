@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
     // every invocation regardless of whether a single-match compaction was
     // requested.
     const chatPurge = await purgeExpiredChat(db, { retentionDays: chatRetentionDays })
-    return jsonResponse({ ...summary, chatPurge })
+    return jsonResponse(req, { ...summary, chatPurge })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

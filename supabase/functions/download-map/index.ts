@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .eq('id', row.author_id)
       .maybeSingle()
 
-    return jsonResponse({
+    return jsonResponse(req, {
       mapId: row.id,
       name: row.name,
       mapCode: row.map_code,
@@ -57,6 +57,6 @@ Deno.serve(async (req) => {
       playerCount: row.player_count,
     })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

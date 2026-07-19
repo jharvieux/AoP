@@ -19,8 +19,8 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
     const outcome = await battleContext(db, body.matchId, seat)
-    return jsonResponse({ outcome })
+    return jsonResponse(req, { outcome })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

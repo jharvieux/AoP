@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { isRemoveAdsSuccessReturn, removeAdsSuccessUrl } from './checkout'
-import { ENTITLEMENT_POLL_DELAYS_MS, pollForRemoveAds } from './checkoutReturn'
+import {
+  ENTITLEMENT_POLL_DELAYS_MS,
+  clearCheckoutPending,
+  detectCheckoutReturn,
+  pollForRemoveAds,
+  sharedRemoveAdsPoll,
+} from './checkoutReturn'
 
 /**
  * Checkout-return fulfillment (#244): the success-URL marker round-trip and
@@ -84,5 +90,117 @@ describe('pollForRemoveAds (#244)', () => {
     expect(granted).toBe(true)
     expect(attempts).toBe(2)
     expect(sleeps).toEqual([ENTITLEMENT_POLL_DELAYS_MS[0]])
+  })
+})
+
+/**
+ * `detectCheckoutReturn`/`clearCheckoutPending`/`sharedRemoveAdsPoll` (#556):
+ * these had no direct coverage at all — every existing test above exercises
+ * only `pollForRemoveAds` — so stubbing any of the three left this suite
+ * green. A minimal fake `window` (this project has no jsdom dependency; see
+ * audioManager.test.ts) stands in for `location`/`sessionStorage`/`history`.
+ */
+function fakeWindow(href: string) {
+  const location = new URL(href)
+  const store = new Map<string, string>()
+  return {
+    location,
+    sessionStorage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+    },
+    history: {
+      replaceState: (_state: unknown, _title: string, url: string) => {
+        location.href = url
+      },
+    },
+  }
+}
+
+describe('detectCheckoutReturn / clearCheckoutPending (#244)', () => {
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window
+  })
+
+  it('consumes the success marker: strips it from the URL and marks the return pending', () => {
+    const win = fakeWindow('https://app.example/?checkout=remove-ads-success&theme=dark')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+
+    expect(detectCheckoutReturn()).toBe(true)
+    expect(win.location.search).toBe('?theme=dark')
+
+    // Reload-safe: the marker is gone from the URL, but the pending state
+    // set by the first call must survive (that's the whole point of stashing
+    // it in sessionStorage rather than only reading the URL each time).
+    win.location.href = 'https://app.example/'
+    expect(detectCheckoutReturn()).toBe(true)
+  })
+
+  it('reports no pending return when there is no marker and nothing was previously stored', () => {
+    const win = fakeWindow('https://app.example/')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+
+    expect(detectCheckoutReturn()).toBe(false)
+  })
+
+  it('does not treat a cancel return (no marker) as pending', () => {
+    const win = fakeWindow('https://app.example/?theme=dark')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+
+    expect(detectCheckoutReturn()).toBe(false)
+    expect(win.location.search).toBe('?theme=dark')
+  })
+
+  it('clearCheckoutPending clears a pending return so a later check reports false', () => {
+    const win = fakeWindow('https://app.example/?checkout=remove-ads-success')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+
+    expect(detectCheckoutReturn()).toBe(true)
+    clearCheckoutPending()
+    expect(detectCheckoutReturn()).toBe(false)
+  })
+})
+
+describe('sharedRemoveAdsPoll (#244)', () => {
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window
+  })
+
+  it('memoizes concurrent callers onto the same poll and clears pending once it settles', async () => {
+    const win = fakeWindow('https://app.example/?checkout=remove-ads-success')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+    detectCheckoutReturn() // marks pending, same as boot would
+
+    let calls = 0
+    const fetchKeys = async () => {
+      calls++
+      return ['remove_ads']
+    }
+    const first = sharedRemoveAdsPoll(fetchKeys)
+    const second = sharedRemoveAdsPoll(async () => {
+      throw new Error('should never be called — a concurrent caller must reuse the first poll')
+    })
+
+    expect(second).toBe(first)
+    expect(await first).toBe(true)
+    expect(calls).toBe(1)
+    // The poll settling clears the pending flag left over from detectCheckoutReturn.
+    expect(detectCheckoutReturn()).toBe(false)
+  })
+
+  it('starts a fresh poll (and re-checks) once the previous one has settled', async () => {
+    const win = fakeWindow('https://app.example/')
+    ;(globalThis as unknown as { window: typeof win }).window = win
+
+    let calls = 0
+    const fetchKeys = async () => {
+      calls++
+      return ['remove_ads']
+    }
+    expect(await sharedRemoveAdsPoll(fetchKeys)).toBe(true)
+    expect(calls).toBe(1)
+    expect(await sharedRemoveAdsPoll(fetchKeys)).toBe(true)
+    expect(calls).toBe(2)
   })
 })

@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       .select('id')
     if (error) throw new AppError('INTERNAL', error.message)
 
-    return jsonResponse({ expired: (data ?? []).map((row) => row.id) })
+    return jsonResponse(req, { expired: (data ?? []).map((row) => row.id) })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
