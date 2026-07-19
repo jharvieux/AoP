@@ -1,11 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { subscribeChatSync } from './chatSync'
 import {
   createMatchRealtimeTransport,
+  supabaseRealtimeClient,
   type RealtimeChannelLike,
   type RealtimeClientLike,
 } from './realtimeTransport'
 import { subscribeTurnSync } from './turnSync'
+
+// supabaseRealtimeClient's whole job is deriving the right constructor args
+// for the real `RealtimeClient` (#556: it had no direct coverage — every
+// other test in this file injects a fake client and never calls it). Mock
+// the module (vi.mock calls are hoisted above the imports above by vitest,
+// so the mock factory must not close over a plain top-level const — use
+// vi.hoisted) so the assertions below can inspect those args without
+// opening a socket.
+const { RealtimeClientMock } = vi.hoisted(() => ({ RealtimeClientMock: vi.fn() }))
+vi.mock('@supabase/realtime-js', () => ({
+  RealtimeClient: RealtimeClientMock,
+}))
 
 /**
  * The Realtime adapter contract (#260), against a fake client so no socket
@@ -174,5 +187,25 @@ describe('createMatchRealtimeTransport', () => {
     const unsub = transport.subscribe('match:m1', () => {})
     expect(client.channels).toHaveLength(1)
     unsub()
+  })
+})
+
+describe('supabaseRealtimeClient (#260)', () => {
+  it('derives the websocket endpoint from an https project URL and forwards the anon key', () => {
+    RealtimeClientMock.mockClear()
+    supabaseRealtimeClient({ url: 'https://abcproj.supabase.co', anonKey: 'anon-key-1' })
+
+    expect(RealtimeClientMock).toHaveBeenCalledWith('wss://abcproj.supabase.co/realtime/v1', {
+      params: { apikey: 'anon-key-1' },
+    })
+  })
+
+  it('derives a ws:// endpoint from an http project URL (local dev)', () => {
+    RealtimeClientMock.mockClear()
+    supabaseRealtimeClient({ url: 'http://127.0.0.1:54321', anonKey: 'anon-key-2' })
+
+    expect(RealtimeClientMock).toHaveBeenCalledWith('ws://127.0.0.1:54321/realtime/v1', {
+      params: { apikey: 'anon-key-2' },
+    })
   })
 })
