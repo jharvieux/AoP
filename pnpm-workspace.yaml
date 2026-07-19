@@ -3,3 +3,5 @@ packages:
   - apps/*
 allowBuilds:
   esbuild: true
+overrides:
+  'qs@>=6.11.1 <6.15.2': '^6.15.2'
