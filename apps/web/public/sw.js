@@ -43,7 +43,13 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+  // registerServiceWorker.ts posts SKIP_WAITING directly to the installing worker
+  // instance, so the sender is always same-origin — reject anything else, plus
+  // any message that doesn't have the exact shape we expect (defense-in-depth
+  // against a confused-deputy postMessage from elsewhere in the page).
+  if (event.origin !== self.location.origin) return
+  if (event.data?.type !== 'SKIP_WAITING') return
+  self.skipWaiting()
 })
 
 self.addEventListener('fetch', (event) => {
