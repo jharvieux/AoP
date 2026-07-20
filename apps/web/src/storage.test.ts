@@ -1,4 +1,4 @@
-import { RULES_VERSION, type GameConfig } from '@aop/engine'
+import { createGame, RULES_VERSION, type GameConfig, type GameState } from '@aop/engine'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   assertSaveIsLoadable,
@@ -57,16 +57,33 @@ function record(overrides: Partial<SaveRecord> = {}): SaveRecord {
   }
 }
 
+function snapshot(): GameState {
+  return createGame(config({ rulesVersion: RULES_VERSION }))
+}
+
 describe('assertSaveIsLoadable (#539)', () => {
   it('accepts a save stamped with the current RULES_VERSION', () => {
     expect(() => assertSaveIsLoadable(record())).not.toThrow()
   })
 
-  it('rejects a save stamped with an older RULES_VERSION, with a friendly message', () => {
+  it('rejects an older-RULES_VERSION save with NO snapshot, with a friendly message', () => {
     const stale = record({ config: config({ rulesVersion: RULES_VERSION - 1 }) })
     expect(() => assertSaveIsLoadable(stale)).toThrow(
       /earlier version of the game.*can't be resumed/,
     )
+  })
+
+  it('accepts an older-RULES_VERSION save WHEN it carries a snapshot (#540)', () => {
+    const stale = record({
+      config: config({ rulesVersion: RULES_VERSION - 1 }),
+      snapshot: snapshot(),
+    })
+    expect(() => assertSaveIsLoadable(stale)).not.toThrow()
+  })
+
+  it('still rejects a newer-client-schema save even with a snapshot (#540)', () => {
+    const newer = record({ schemaVersion: SCHEMA_VERSION + 1, snapshot: snapshot() })
+    expect(() => assertSaveIsLoadable(newer)).toThrow(/newer client/)
   })
 
   it('rejects a pre-#213 save with no recorded rulesVersion at all', () => {
@@ -215,7 +232,13 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
   })
 
   it('round-trips a save through saveGame/loadGame with the actual data intact', async () => {
-    await saveGame('slot-1', roundTripConfig(), [{ type: 'endTurn', playerId: 'p1' }], 3)
+    await saveGame(
+      'slot-1',
+      roundTripConfig(),
+      [{ type: 'endTurn', playerId: 'p1' }],
+      3,
+      snapshot(),
+    )
     const loaded = await loadGame('slot-1')
 
     expect(loaded).toBeDefined()
@@ -231,7 +254,7 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
   })
 
   it('loadGame throws when the stored record is from a newer schema than this client understands', async () => {
-    await saveGame('slot-1', roundTripConfig(), [], 1)
+    await saveGame('slot-1', roundTripConfig(), [], 1, snapshot())
     const fake = (globalThis as unknown as { indexedDB: ReturnType<typeof createFakeIndexedDB> })
       .indexedDB
     const stored = fake.records.get('slot-1') as { schemaVersion: number }
@@ -241,8 +264,8 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
   })
 
   it('listSaves returns every save sorted newest-first by savedAt', async () => {
-    await saveGame('autosave', roundTripConfig(), [], 1)
-    await saveGame('slot-1', roundTripConfig(), [], 2)
+    await saveGame('autosave', roundTripConfig(), [], 1, snapshot())
+    await saveGame('slot-1', roundTripConfig(), [], 2, snapshot())
     const fake = (globalThis as unknown as { indexedDB: ReturnType<typeof createFakeIndexedDB> })
       .indexedDB
     // Force distinct savedAt timestamps deterministically rather than racing Date.now().
@@ -254,8 +277,8 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
   })
 
   it('deleteSave removes the record so a later loadGame/listSaves no longer sees it', async () => {
-    await saveGame('slot-1', roundTripConfig(), [], 1)
-    await saveGame('slot-2', roundTripConfig(), [], 1)
+    await saveGame('slot-1', roundTripConfig(), [], 1, snapshot())
+    await saveGame('slot-2', roundTripConfig(), [], 1, snapshot())
 
     await deleteSave('slot-1')
 

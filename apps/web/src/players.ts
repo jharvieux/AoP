@@ -11,9 +11,9 @@ import type { FactionId } from '@aop/shared'
 
 export const FACTIONS_ARRAY = Object.values(FACTIONS)
 
-export const DEFAULT_AI_PROFILE: AiProfile = { personality: 'opportunist', difficulty: 'normal' }
+const DEFAULT_AI_PROFILE: AiProfile = { personality: 'opportunist', difficulty: 'normal' }
 
-export function getDefaultFaction(index: number): FactionId {
+function getDefaultFaction(index: number): FactionId {
   const faction = FACTIONS_ARRAY[index % FACTIONS_ARRAY.length]
   if (!faction) throw new Error('No factions available')
   return faction.id

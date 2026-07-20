@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.mjs", ".claude/hooks/**/*.mjs"],
+      "ignore": ["supabase/functions/**", "scripts/generate-engine-version.d.mts"]
+    },
+    "apps/web": {
+      "entry": ["capacitor.config.ts", "vite-plugins/**/*.ts"],
+      "ignore": ["public/sw.js", "scripts/encode-music.mjs"]
+    },
+    "packages/shared": {
+      "entry": ["src/email.ts", "src/push.ts", "src/stripe.ts"]
+    },
+    "packages/tools": {
+      "entry": ["src/*.ts"]
+    }
+  }
+}
