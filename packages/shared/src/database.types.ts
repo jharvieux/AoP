@@ -643,6 +643,10 @@ export type Database = {
         Returns: undefined
       }
       match_seed: { Args: { p_match_id: string }; Returns: number }
+      purge_stale_push_tokens: {
+        Args: { retention_days?: number }
+        Returns: number
+      }
       user_match_ids: { Args: never; Returns: string[] }
     }
     Enums: {
