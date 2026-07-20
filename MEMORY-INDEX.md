@@ -10,6 +10,7 @@ One line per decision, newest first. Rebuild with:
 
 ## Entries
 
+- D-048 — 2026-07-19 — issue sweep: 23 issues closed / 14 PRs (harvey-audit burn-down); rulings: CORS env-var allowlist, snapshot saves (schema v3), 90-day push-token purge, indefinite entitlements retention; operator owes deploy.yml + ALLOWED_ORIGINS secret + cron #580
 - D-047 — 2026-07-14 — #517 map entity-count ceilings: maxEncounters/maxResourceNodes = 200 each (deferred from #516's byte-cap raise), validateMapDefinition rejects with specific errors before the byte gate; no RULES_VERSION bump (validation is publish/load-time only), no DB migration, ENGINE_VERSION regenerated
 - D-046 — 2026-07-14 — evening sweep: AI v2 live (garrison/led-parties/round-limit endgame, #510 stall 0→46 captures), #499 instant-pool rescue (RULES_VERSION→11), item toasts SP+MP, theme/zoom UI; #524 art awaiting operator; follow-ups #519 #522 #523 #526 #527
 - D-045 — 2026-07-14 — #508 configurable round limit (optional roundLimit in setup, additive no-bump; cap winner = cities→gold→draw, operator-vetoable; AI awareness deferred #509)

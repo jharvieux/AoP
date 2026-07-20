@@ -1,64 +1,57 @@
 # SESSION.md — resume state
 
 Transient whole-file-overwrite resume state. Update at session end.
-_Last updated: 2026-07-14 evening (captain rebalance + map quadrupling + round limit
-shipped as a three-PR merge train)._
+_Last updated: 2026-07-19 (issue sweep: 23 issues closed across 14 squash-merged PRs)._
 
 ## Just completed
 
-Three-PR merge train, each built by an isolated executor, audited, and squash-merged in
-sequence:
+Full /issue-sweep (D-048). 14 PRs merged in a strict merge train, every one audited by
+pre-pr-reviewer before merge (two WARNINGs fixed in-PR, one BLOCKER — stale generated
+types — fixed by hand-deriving the generator's output, byte-verified by CI):
 
-- **#506 — flat captain stats + items boost stats** (D-043, RULES_VERSION→9): attack/
-  defense stat points now add whole numbers to every unit's score before percent scaling
-  (max impact on low-tier units, operator intent); items re-modeled as stat boosters
-  (carried = equipped, stash inert, speed items apply from next refresh). Sim delta zero
-  — verified live-but-unexercised (v1 AI spends few points, never gets items → #500).
-- **#513 — map quadrupling + land-assault guarantee** (D-044, RULES_VERSION→10): all
-  presets doubled per side (small 48² … xlarge 96²), correlated generator params
-  rescaled, inland content at every size; structural guarantee that every capital/inland
-  settlement is overland-assaultable (deterministic RNG-free repair pass + property
-  battery across seeds/sizes/topologies/player counts). Authored starting map rebuilt at
-  48² with real land islands (naive scaling gave zero assaults; re-spaced version: 69
-  captures/96 in sim). Camera-opens-on-fleet fix. Land warfare now the dominant conquest
-  vector in sims.
-- **#511 — configurable round limit** (D-045, additive, no bump): optional
-  GameSetup.roundLimit via SP setup + MP private matches; cap winner = cities → gold →
-  draw (operator-vetoable pure function); "Round N / limit" in both headers.
+- **Security/supply-chain**: qs CVE patch + pnpm/Dependabot hardening (#558); CI
+  `${{ github.base_ref }}` injection fix + 18 action refs SHA-pinned (#562); CORS env-var
+  allowlist replacing wildcard on all 26 edge functions (#563); art-tool SSRF guard, part
+  of (#569); service-worker SKIP_WAITING origin guard (#576).
+- **Database**: definer-fn revoke + search_path pins + RLS initplan wrap (12 policies) +
+  permissive-SELECT consolidation (#567); GDPR chat erasure on account deletion via
+  BEFORE DELETE trigger on profiles (#577); 90-day push-token purge routine (#579).
+- **Saves**: RULES_VERSION load gate with friendly failure (#557); snapshot saves — old
+  saves survive engine version bumps, save schema v2→3 (#564, operator ruling Option A).
+- **Perf**: edge-function N+1 batching (#571); bounded-concurrency sweep/compaction +
+  client lookup maps + bit-identical engine AI refactor, ENGINE_VERSION bump (#578).
+- **Quality/docs**: 26 weak test suites strengthened for the high-value set (#560);
+  catalog de-triplicated into @aop/content + dead-export cleanup + deepEqual (#569);
+  data-classification inventory docs/DATA-CLASSIFICATION.md (#568); retention policies
+  documented (#579).
 
-Earlier today (see D-041/D-042 and the morning SESSION versions): #444 ComfyUI
-migration; city-scene playthrough fixes ×2 rounds; issue sweep (#486/#490); Sentry Seer
-PR #496 rebuilt and merged; synthetic monitor green for the first time ever (#497);
-**#498 captain expansion epic** (stats/garrison/port-defense/items/captain-led parties,
-PRs #501+#504).
+Close-set reconciled mechanically: all 23 expected issues verified CLOSED; split
+remainders #559/#565/#566 verified OPEN and cross-linked.
 
 ## In flight
 
-- **PR #524** (shipyard cutout, #493) — audit-clean, LEFT OPEN for operator style
-  approval (contact sheet + in-scene shot delivered). Merge on approval; regen on veto.
+Nothing. Sweep ledger deleted; no open auto-triaged PRs; all executor worktrees removed.
 
 ## Next step
 
-- **Operator playthrough** — captain stats/items on the new 4× maps with land warfare
-  everywhere; round-limit option; all balance dials are single content numbers.
-- **DEPLOY DISPATCH OVERDUE**: ENGINE_VERSION moved many times today (RULES_VERSION
-  7→10); edge functions must be redeployed via deploy.yml before production multiplayer
-  works. Blocked only on operator convenience (and VERCEL_TOKEN for the web tier).
-- Evening sweep DONE (D-046): AI v2 shipped (#500/#509/#510), rescue (#499,
-  RULES_VERSION→11), toasts (#502/#503), UI (#494/#512). New follow-ups: #519 #522
-  #523 #526 #527 (see D-046). Deploy dispatch needed again post-sweep (ENGINE_VERSION
-  - RULES_VERSION 11 moved).
+Optional follow-up sweep over the remaining tails: #559 (render-only test suites), #565
+(Watch Replay after cross-version snapshot resume — real feature), #566 (58
+unused-exported types). #535 (live-defender lockstep server side) still needs a human
+two-client session.
 
-## Blocked on user
+## Blocked on user (production actions, in order)
 
-- `VERCEL_TOKEN` repo secret (#425); optional `SUPABASE_DB_URL` (monitor heartbeat).
-- **#507** authored-map byte-budget raise — needs a companion DB migration (supervised).
-- Operator veto windows: winner-at-cap rule (D-045), carried=equipped item reading
-  (D-043), authored-map layout (D-044 preview delivered), DreamShaperXL adoption (D-041).
-- `needs-human-fix` backlog unchanged: Capacitor cluster, #4, #422.
+1. `supabase secrets set ALLOWED_ORIGINS=https://age-of-plunder.vercel.app` on the
+   production project (BEFORE deploying edge functions — #563's allowlist default covers
+   it, but the secret makes it explicit).
+2. Run `deploy.yml` (Actions tab) — edge functions changed substantially (#563/#571/#578)
+   and ENGINE_VERSION bumped (#578): version-skew risk until deployed. Migrations
+   (#567/#577/#579) ride the same deploy.
+3. `select cron.schedule('purge-stale-push-tokens-daily','30 4 * * *',$$select
+   public.purge_stale_push_tokens()$$);` on production (#580).
+4. Local env: colima Docker disk is FULL — `supabase start` cannot run until space is
+   freed (blocked two executors this sweep; both fell back to CI validation).
 
 ## Open questions
 
-- Balance after a real playthrough on 4× maps: stat/item magnitudes, port-defense
-  strength, fog radii (deliberately unscaled — single content numbers if wrong).
-- Whether 30-round sim-battery cap needs revisiting once AI v2 lands (#500/#510).
+None pending — all sweep rulings were collected and recorded in D-048.
