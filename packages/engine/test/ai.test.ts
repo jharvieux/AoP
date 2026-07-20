@@ -1251,6 +1251,41 @@ describe('AI captain-expansion verbs (#500)', () => {
     expect(() => applyAction(state, action)).not.toThrow()
   })
 
+  it('breaks a docked-captain troop tie toward the earliest captain in state order (#570)', () => {
+    // Two empty captains sit on DIFFERENT tiles adjacent to the threatened city
+    // (a troop tie). The garrison pick must stay the earliest captain in state
+    // order regardless of which tile the neighbour lookup visits first — the
+    // exact tie-break the prior `mobile.filter(...).reduce(...)` produced, and
+    // the one the tile-indexed rewrite (#570) must preserve.
+    const tie = landState({
+      captains: [
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+        landCaptain('c2', 'p1', { x: 4, y: 6 }, []),
+      ],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    expect(nextAiAction(tie, 'p1')).toMatchObject({
+      type: 'garrisonCaptain',
+      captainId: 'c1',
+      cityId: 'p1-city',
+    })
+    // Reversing state order flips the winner — proving the tie-break tracks the
+    // captain array, not tile-visit order.
+    const reversed = landState({
+      captains: [
+        landCaptain('c2', 'p1', { x: 4, y: 6 }, []),
+        landCaptain('c1', 'p1', { x: 3, y: 5 }, []),
+      ],
+      parties: [landParty('pe', 'p2', { x: 6, y: 5 }, [{ unitId: 'brute', count: 40 }])],
+      cities: [p1CityAt({ x: 4, y: 5 }, {})],
+    })
+    expect(nextAiAction(reversed, 'p1')).toMatchObject({
+      type: 'garrisonCaptain',
+      captainId: 'c2',
+    })
+  })
+
   it('never garrisons the seat’s last sea-capable captain', () => {
     // Identical threat, but c1 is the only captain: immobilizing it would trade
     // all mobility for one city's defence, so the seat holds instead.
