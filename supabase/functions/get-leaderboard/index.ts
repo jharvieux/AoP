@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
     const candidates = await topRatedCandidates(db, take)
     const entries = buildLeaderboard(candidates, limit)
 
-    return jsonResponse({ entries })
+    return jsonResponse(req, { entries })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
 

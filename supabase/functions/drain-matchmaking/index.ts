@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
     // fire-and-forget pg_net, and a non-2xx status is what marks this
     // invocation's row `error` in extensions.maintenance_heartbeats (#224), the
     // only failure signal an operator ever sees for cron-driven functions.
-    return jsonResponse(summary, summary.groupsFailed > 0 ? 500 : 200)
+    return jsonResponse(req, summary, summary.groupsFailed > 0 ? 500 : 200)
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       body.expectedOrders!,
       body.order,
     )
-    return jsonResponse({ outcome })
+    return jsonResponse(req, { outcome })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

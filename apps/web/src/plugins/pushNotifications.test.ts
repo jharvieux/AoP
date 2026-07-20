@@ -88,21 +88,70 @@ describe('pushNotifications', () => {
   })
 
   describe('onTurnNotification', () => {
-    it('registers a handler without crashing', () => {
-      const handler = vi.fn()
-      expect(() => {
-        onTurnNotification(handler)
-      }).not.toThrow()
-    })
+    // Builds a native-plugin mock that records its event listeners so a test
+    // can fire the push events the real Capacitor runtime would emit —
+    // mirrors nativePluginWithListeners() below (#556: the two tests this
+    // replaces admitted they couldn't trigger dispatch and asserted nothing
+    // that depends on it).
+    function nativePluginWithListeners() {
+      const listeners = new Map<string, (payload: unknown) => void>()
+      const plugin = {
+        requestPermissions: vi.fn().mockResolvedValue({ receive: 'granted' }),
+        register: vi.fn().mockResolvedValue(undefined),
+        addListener: vi.fn((...args: unknown[]) => {
+          listeners.set(args[0] as string, args[1] as (payload: unknown) => void)
+        }),
+      }
+      vi.mocked(nativeBridge.isNativePlatform).mockReturnValue(true)
+      vi.mocked(nativeBridge.getNativePlugin).mockReturnValue(plugin)
+      return { fire: (event: string, payload: unknown) => listeners.get(event)?.(payload) }
+    }
 
-    it('accepts a function that receives turn notification data', () => {
+    it('dispatches a received push notification carrying a matchId to the registered handler', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
       const handler = vi.fn()
       onTurnNotification(handler)
 
-      // The actual dispatch happens when the native runtime sends a notification,
-      // which we can't easily trigger in a test without actually mocking the full
-      // flow. Here we just verify the handler was registered without error.
-      expect(handler).not.toHaveBeenCalled() // Not called until notification arrives
+      fire('pushNotificationReceived', { data: { matchId: 'match-42' } })
+
+      expect(handler).toHaveBeenCalledWith({ matchId: 'match-42' })
+    })
+
+    it('dispatches with no matchId when the notification carries none', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
+      const handler = vi.fn()
+      onTurnNotification(handler)
+
+      fire('pushNotificationReceived', {})
+
+      expect(handler).toHaveBeenCalledWith({})
+    })
+
+    it('dispatches a tapped notification action the same way as a received push', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
+      const handler = vi.fn()
+      onTurnNotification(handler)
+
+      fire('pushNotificationActionPerformed', { notification: { data: { matchId: 'match-7' } } })
+
+      expect(handler).toHaveBeenCalledWith({ matchId: 'match-7' })
+    })
+
+    it('only the most recently registered handler receives the dispatch', async () => {
+      const { fire } = nativePluginWithListeners()
+      await registerForPushNotifications()
+      const first = vi.fn()
+      const second = vi.fn()
+      onTurnNotification(first)
+      onTurnNotification(second)
+
+      fire('pushNotificationReceived', { data: { matchId: 'match-1' } })
+
+      expect(first).not.toHaveBeenCalled()
+      expect(second).toHaveBeenCalledWith({ matchId: 'match-1' })
     })
   })
 

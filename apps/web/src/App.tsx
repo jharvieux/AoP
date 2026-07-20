@@ -1,5 +1,6 @@
 import {
   createGame,
+  RULES_VERSION,
   type Action,
   type BattleReport,
   type GameConfig,
@@ -187,7 +188,14 @@ export function App() {
     // a long game needs its autosave most. Failure now flips a persistent,
     // non-blocking indicator (cleared the moment autosave next succeeds).
     if (shouldAutosave(isTestPlay)) {
-      saveGame('autosave', config, nextLog, next.round)
+      // #539: persist next.config (stamped with the engine's current
+      // RULES_VERSION by createGame/reducers), not the outer `config` state
+      // var — that's the pre-createGame setup config and never carries a
+      // rulesVersion, which would make the load-time version gate below
+      // reject every save, not just stale ones.
+      // #540: persist `next` as the snapshot — the exact resume state, which
+      // survives a future RULES_VERSION bump that would strand the action log.
+      saveGame('autosave', next.config, nextLog, next.round, next)
         .then(() => setAutosaveFailing(false))
         .catch((err: unknown) => {
           console.error('Autosave failed', err)
@@ -199,7 +207,9 @@ export function App() {
 
   async function handleSaveSlot(slotId: string): Promise<void> {
     if (!config || !game) return
-    await saveGame(slotId, config, actionLog, game.round)
+    // #539: game.config (stamped), not the outer `config` — see the autosave
+    // call above for why. #540: `game` is the snapshot.
+    await saveGame(slotId, game.config, actionLog, game.round, game)
   }
 
   /**
@@ -214,8 +224,14 @@ export function App() {
     const record = await loadGame(slotId)
     if (!record) throw new Error(`No save found in slot "${slotId}"`)
     const state = stateFromSave(record)
-    setConfig(record.config)
-    setActionLog(record.actions)
+    // #540: a save resumed from its snapshot across a RULES_VERSION bump starts
+    // a fresh action log from the snapshot point — the pre-bump log describes a
+    // world this engine can't reconstruct from the seed, so it isn't carried
+    // forward (every subsequent save snapshots the live state regardless).
+    // Same-version loads keep the full log so Watch Replay still works.
+    const crossVersion = !!record.snapshot && record.config.rulesVersion !== RULES_VERSION
+    setConfig(state.config)
+    setActionLog(crossVersion ? [] : record.actions)
     setBattleReport(null)
     setGame(state)
     // #236: a loaded slot is always a real game — test-play never survives a

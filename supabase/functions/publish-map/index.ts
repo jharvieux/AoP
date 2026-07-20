@@ -127,8 +127,8 @@ Deno.serve(async (req) => {
       throw new AppError('INTERNAL', insertError?.message ?? 'Insert failed')
     }
 
-    return jsonResponse({ mapId: inserted.id })
+    return jsonResponse(req, { mapId: inserted.id })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

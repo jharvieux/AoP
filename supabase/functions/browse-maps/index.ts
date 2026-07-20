@@ -84,8 +84,8 @@ Deno.serve(async (req) => {
         ? encodeCommunityMapCursor({ createdAt: last.createdAt, mapId: last.mapId })
         : null
 
-    return jsonResponse({ maps, nextBefore })
+    return jsonResponse(req, { maps, nextBefore })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    return jsonResponse({ swept: results, battlesResolved })
+    return jsonResponse(req, { swept: results, battlesResolved })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

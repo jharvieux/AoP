@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     const db = serviceClient()
     const seat = await callerSeat(db, body.matchId, userId)
     const id = await sendChat(db, body.matchId, seat, body.channel, body.body)
-    return jsonResponse({ id })
+    return jsonResponse(req, { id })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
