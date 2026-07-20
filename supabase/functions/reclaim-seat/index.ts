@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
       .eq('seat', seat)
     if (error) throw new AppError('INTERNAL', error.message)
 
-    return jsonResponse({ seat })
+    return jsonResponse(req, { seat })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

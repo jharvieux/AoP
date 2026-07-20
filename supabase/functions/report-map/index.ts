@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
     const outcome = result?.[0]
     if (!outcome) throw new AppError('INTERNAL', 'Report was not recorded')
 
-    return jsonResponse({ status: outcome.status, reportCount: outcome.report_count })
+    return jsonResponse(req, { status: outcome.status, reportCount: outcome.report_count })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

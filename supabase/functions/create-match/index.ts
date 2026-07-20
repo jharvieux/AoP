@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
     const insertSeats = await db.from('match_players').insert(seatRows)
     if (insertSeats.error) throw new AppError('INTERNAL', insertSeats.error.message)
 
-    return jsonResponse({ matchId, inviteCode: code })
+    return jsonResponse(req, { matchId, inviteCode: code })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })

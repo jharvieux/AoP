@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
     if (error) throw new AppError('INTERNAL', error.message)
     if (!data || data.length === 0) throw new AppError('NOT_FOUND', 'Map not found')
 
-    return jsonResponse({ removed: true })
+    return jsonResponse(req, { removed: true })
   } catch (err) {
-    return errorResponse(err)
+    return errorResponse(req, err)
   }
 })
