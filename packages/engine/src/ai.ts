@@ -1269,15 +1269,42 @@ function planGarrisonCaptain(
       !garrisonCityOf(state, c.id),
   )
   if (mobile.length < 2) return null
+
+  // Index the mobile captains by tile so each city inspects only the captains
+  // docked at or adjacent to it, instead of rescanning every mobile captain per
+  // city (#570). `mapDistance(map, c, city) <= 1` is exactly "c sits on the city
+  // tile or one of its `mapNeighbors`" under both topologies (Chebyshev / hex),
+  // so this is behaviour-identical — and DETERMINISM-IDENTICAL: the pick below is
+  // argmin(troopsAboard, mobile-order index), the exact captain the prior
+  // `mobile.filter(...).reduce(...)` returned (filter kept mobile order; the
+  // strict-`<` reduce broke troop ties toward the earliest such captain).
+  const byTile = new Map<string, { cap: Captain; idx: number }[]>()
+  mobile.forEach((cap, idx) => {
+    const key = `${cap.position.x},${cap.position.y}`
+    const bucket = byTile.get(key)
+    if (bucket) bucket.push({ cap, idx })
+    else byTile.set(key, [{ cap, idx }])
+  })
+
   for (const city of state.cities) {
     if (!threatened.has(city.id) || city.garrisonCaptainId !== undefined) continue
-    const docked = mobile.filter((c) => mapDistance(state.map, c.position, city.position) <= 1)
-    if (docked.length === 0) continue
     // Prefer the emptiest hull: a loaded captain is the offense vector, and the
     // garrison duty needs the ship and its bonuses, not the cargo.
-    const pick = docked.reduce((a, b) => (troopsAboard(b) < troopsAboard(a) ? b : a))
+    let pick: { cap: Captain; idx: number } | undefined
+    for (const tile of [city.position, ...mapNeighbors(state.map, city.position)]) {
+      const bucket = byTile.get(`${tile.x},${tile.y}`)
+      if (!bucket) continue
+      for (const entry of bucket) {
+        const better =
+          pick === undefined ||
+          troopsAboard(entry.cap) < troopsAboard(pick.cap) ||
+          (troopsAboard(entry.cap) === troopsAboard(pick.cap) && entry.idx < pick.idx)
+        if (better) pick = entry
+      }
+    }
+    if (pick === undefined) continue
     return {
-      action: { type: 'garrisonCaptain', playerId, captainId: pick.id, cityId: city.id },
+      action: { type: 'garrisonCaptain', playerId, captainId: pick.cap.id, cityId: city.id },
       score,
     }
   }

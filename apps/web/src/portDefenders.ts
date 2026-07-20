@@ -24,12 +24,15 @@ export function portDefenderCount(
   map: GameMap,
   city: Pick<CityState, 'ownerId' | 'position'>,
 ): number {
+  // Precompute the ashore-captain set once instead of rescanning `parties` per
+  // captain (O(captains·parties) → O(captains + parties)); behavior-identical.
+  const ashoreCaptainIds = new Set(parties.map((p) => p.captainId))
   return captains.filter(
     (c) =>
       c.ownerId === city.ownerId &&
       !c.captured &&
       !c.shipLost &&
-      !parties.some((p) => p.captainId === c.id) &&
+      !ashoreCaptainIds.has(c.id) &&
       mapDistance(map, c.position, city.position) <= 1,
   ).length
 }

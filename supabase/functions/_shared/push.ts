@@ -113,19 +113,28 @@ export async function dispatchTurnPush(
     }
 
     const tokens = deliverableTokens((data ?? []) as StoredPushToken[])
-    for (const token of tokens) {
-      const result = await dispatchPush(
-        fetchImpl,
-        token,
-        { matchId, seat: currentSeat },
-        credentials,
-      )
-      if (!result.ok) {
-        console.error(
-          `Turn push failed for user ${recipient.userId} (${token.platform}): ${result.error ?? result.status}`,
+    // A user's registered devices are few and their FCM/APNs dispatches are
+    // independent, so fan them out concurrently instead of serializing one
+    // network round-trip per device (#551). `dispatchPush` never throws — it
+    // resolves `{ ok: false }` on every failure — so this is behavior-identical
+    // to the old sequential loop (every token still attempted, every failure
+    // still logged), only without the head-of-line latency. Bounded by the
+    // device count, so no unbounded-fan-out concern.
+    await Promise.all(
+      tokens.map(async (token) => {
+        const result = await dispatchPush(
+          fetchImpl,
+          token,
+          { matchId, seat: currentSeat },
+          credentials,
         )
-      }
-    }
+        if (!result.ok) {
+          console.error(
+            `Turn push failed for user ${recipient.userId} (${token.platform}): ${result.error ?? result.status}`,
+          )
+        }
+      }),
+    )
   } catch (err) {
     console.error(`Turn push dispatch threw for match ${matchId} seat ${currentSeat}:`, err)
   }

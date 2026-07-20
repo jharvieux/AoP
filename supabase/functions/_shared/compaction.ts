@@ -13,8 +13,17 @@ import {
   type SnapshotMeta,
   type SnapshotRetentionMode,
 } from '@aop/shared'
+import { mapWithConcurrency } from './concurrency.ts'
 import { AppError } from './http.ts'
 import type { Db } from './client.ts'
+
+// `compactSnapshots` runs over every active+finished match — an unbounded set —
+// and each `compactMatch` issues its own read+delete pipeline. Bound the fan-out
+// so we never open one transaction per match at once against the shared pgbouncer
+// pool (§10 cron runs on the multiplayer authority surface). Each match's seq
+// guard is per-match, so distinct matches are independent and safe to overlap;
+// this only caps how many run concurrently.
+const COMPACTION_CONCURRENCY = 6
 
 export interface CompactionOptions {
   /** History granularity for the "one per N rounds" rule (§10). */
@@ -125,10 +134,9 @@ export async function compactSnapshots(
     for (const row of data ?? []) matchIds.push(row.id)
   }
 
-  const results: MatchCompactionResult[] = []
-  for (const id of matchIds) {
-    results.push(await compactMatch(db, id, opts))
-  }
+  const results = await mapWithConcurrency(matchIds, COMPACTION_CONCURRENCY, (id) =>
+    compactMatch(db, id, opts),
+  )
   return {
     matchesProcessed: results.length,
     totalDeleted: results.reduce((sum, r) => sum + r.deleted, 0),

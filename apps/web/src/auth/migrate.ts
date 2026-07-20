@@ -21,15 +21,11 @@ export async function migrateGuestSaves(
   ownerId: string,
 ): Promise<SaveMigrationResult> {
   const saves = await store.list()
-  let migrated = 0
-  let skipped = 0
-  for (const save of saves) {
-    if (save.ownerId !== undefined) {
-      skipped++
-      continue
-    }
-    await store.put({ ...save, ownerId })
-    migrated++
-  }
-  return { migrated, skipped }
+  // Guest saves are independent records keyed by id; re-tagging one never depends
+  // on another, so issue the puts together instead of awaiting each in series.
+  // On failure this still rejects (a partial migration is retried next upgrade,
+  // idempotently) — same contract as the sequential loop.
+  const guestSaves = saves.filter((save) => save.ownerId === undefined)
+  await Promise.all(guestSaves.map((save) => store.put({ ...save, ownerId })))
+  return { migrated: guestSaves.length, skipped: saves.length - guestSaves.length }
 }

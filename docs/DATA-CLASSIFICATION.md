@@ -25,7 +25,7 @@
   - Updated: server-side timestamp on each re-registration
   - Cascade: deletes when `auth.users` is deleted ✓ (references `auth.users (id) on delete cascade`)
   - RLS: Correctly restricted to own-row-only (user can only see/manage their own tokens)
-  - Retention: Per discussion, **define pre-launch** (recommendation: tie to user consent + device re-registration cycle, or purge unregistered tokens after N days)
+  - Retention: **Defined (#574)** — auto-purge any token not re-registered for **90 days** (`updated_at` older than 90 days). `updated_at` is bumped on every registration and the client re-registers on each app start, so a stale row means the device has not opened the app in 90 days; the next launch re-registers it. Enforced by `public.purge_stale_push_tokens(retention_days integer default 90)` (`20260720004003_purge_stale_push_tokens.sql`); daily cron wiring is an operator follow-up (see that migration's scheduling note).
 
 ### Payment/Purchase Linkage
 
@@ -33,7 +33,7 @@
   Payment source identifier: `stripe`, `apple_iap`, `google_iap`, or `grant`. Reveals purchase origin and implies payment method.
   - Additional sensitive column: `entitlements.key` (e.g., `remove_ads`) indicates entitlement type.
   - Cascade: deletes when `profiles` is deleted (cascade from `auth.users`) ✓
-  - Retention: **Define pre-launch**; tie to entitlement expiry or user consent timeline.
+  - Retention: **Defined (#575)** — **retained indefinitely** by operator/finance ruling. Payment/entitlement history is business/financial record: it must survive well past entitlement expiry for chargeback disputes, refund/support investigations, IAP-receipt reconciliation, and tax/audit needs, none of which have a bounded window. Rows still cascade-delete with the account (see Deletion Cascade Summary), so an account deletion removes the user's entitlement rows; short of deletion, the history is kept.
 
 ### User-Generated Content
 
@@ -90,9 +90,9 @@ Game configuration container per `docs/MULTIPLAYER.md §3`. Stores:
 
 ### Medium
 
-- **Push-token retention policy:** No documented TTL or consent lifecycle. Device tokens can accumulate indefinitely, increasing the stored device-identifier footprint. **Action:** Define a retention policy (e.g., purge tokens not registered for >90 days, or tie to explicit user consent).
+- **Push-token retention policy — RESOLVED (#574):** Tokens are auto-purged when not re-registered for **90 days**. `push_tokens.updated_at` (bumped server-side on each registration; the client re-registers on every app start) is the freshness signal, so a stale row means the device has not opened the app in 90 days. Enforced by `public.purge_stale_push_tokens()` in `20260720004003_purge_stale_push_tokens.sql`; the daily cron wiring is an operator follow-up (see that migration's scheduling note). This bounds the stored device-identifier footprint to active devices.
 
-- **Entitlements retention policy:** No documented retention window. Payment history is retained indefinitely. **Action:** Define a retention policy (e.g., purge after 1 year, or after entitlement expiry + N days for audit/chargeback).
+- **Entitlements retention policy — RESOLVED (#575):** Payment/entitlement history is **retained indefinitely** by operator/finance ruling. Unlike device tokens, this is a financial record with no bounded lifetime: it must remain available for chargeback disputes, refund/support investigations, IAP-receipt reconciliation, and tax/audit obligations, all of which can reach back years. Deletion still occurs on account deletion (entitlement rows cascade from `profiles`/`auth.users`); absent deletion the history is kept. No TTL is imposed.
 
 ### Low
 
@@ -103,8 +103,8 @@ Game configuration container per `docs/MULTIPLAYER.md §3`. Stores:
 ## Recommendations Before Launch
 
 1. **Implement chat deletion on user deletion:** Add a migration to enforce `match_chat` rows deletion (or mark for anonymization) when the associated `match_players` row is deleted.
-2. **Define push-token retention:** Set a policy (e.g., auto-purge unregistered tokens after 90 days).
-3. **Define entitlements retention:** Set a policy (e.g., purge 1 year after grant or expiry).
+2. ~~**Define push-token retention:**~~ **Done (#574)** — auto-purge tokens not re-registered for 90 days (`purge_stale_push_tokens()`); operator to wire the daily cron.
+3. ~~**Define entitlements retention:**~~ **Done (#575)** — retained indefinitely as financial record (chargeback/support/audit); no code change.
 4. **Update DSAR (Data Subject Access Request) workflow:** Document which tables are included in export (confirm chat and push tokens are exported or excluded intentionally).
 5. **Document user-content moderation:** Clarify whether match chat is moderated, filtered, or stored as-is.
 
@@ -112,15 +112,15 @@ Game configuration container per `docs/MULTIPLAYER.md §3`. Stores:
 
 ## Compliance Checklist
 
-| Item                     | Status        | Notes                                                           |
-| ------------------------ | ------------- | --------------------------------------------------------------- |
-| No PHI stored            | ✓ Pass        | No health data.                                                 |
-| No PCI stored            | ✓ Pass        | Stripe holds cards; only source/entitlement ref here.           |
-| PII documented           | ✓ Pass        | All PII columns listed above.                                   |
-| Deletion cascade for PII | ⚠️ Partial    | profiles, push_tokens, entitlements OK; match_chat gap.         |
-| Retention policy         | ✗ Not defined | Push tokens, entitlements, chat need explicit TTL/policy.       |
-| RLS enforced             | ✓ Pass        | push_tokens RLS = own-row-only. Chat RLS per §11 (listen-only). |
-| Encryption at rest       | Assumed       | Supabase default. Verify with ops.                              |
+| Item                     | Status     | Notes                                                                                               |
+| ------------------------ | ---------- | --------------------------------------------------------------------------------------------------- |
+| No PHI stored            | ✓ Pass     | No health data.                                                                                     |
+| No PCI stored            | ✓ Pass     | Stripe holds cards; only source/entitlement ref here.                                               |
+| PII documented           | ✓ Pass     | All PII columns listed above.                                                                       |
+| Deletion cascade for PII | ⚠️ Partial | profiles, push_tokens, entitlements OK; match_chat gap.                                             |
+| Retention policy         | ⚠️ Partial | Push tokens = 90-day purge (#574); entitlements = indefinite by ruling (#575); chat TTL still open. |
+| RLS enforced             | ✓ Pass     | push_tokens RLS = own-row-only. Chat RLS per §11 (listen-only).                                     |
+| Encryption at rest       | Assumed    | Supabase default. Verify with ops.                                                                  |
 
 ---
 

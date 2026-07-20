@@ -1164,15 +1164,27 @@ async function mirrorAllianceIds(db: Db, matchId: string, state: GameState): Pro
     .eq('match_id', matchId)
   if (error) throw new AppError('INTERNAL', error.message)
 
-  for (const row of data ?? []) {
+  // Only the seats whose alliance_id actually changed get written — same rows,
+  // same values, same never-write-an-unchanged-row rule as before. The per-seat
+  // updates target disjoint rows and are bounded by the match's seat count
+  // (≤ the faction pool), so fan them out concurrently instead of serializing
+  // one round-trip per seat (#551).
+  const changed = (data ?? []).flatMap((row) => {
     const rep = components.get(seatPlayerId(row.seat))
     const allianceId = rep === undefined ? null : parseSeat(rep)
-    if (row.alliance_id === allianceId) continue
-    const update = await db
-      .from('match_players')
-      .update({ alliance_id: allianceId })
-      .eq('match_id', matchId)
-      .eq('seat', row.seat)
+    return row.alliance_id === allianceId ? [] : [{ seat: row.seat, allianceId }]
+  })
+
+  const updates = await Promise.all(
+    changed.map(({ seat, allianceId }) =>
+      db
+        .from('match_players')
+        .update({ alliance_id: allianceId })
+        .eq('match_id', matchId)
+        .eq('seat', seat),
+    ),
+  )
+  for (const update of updates) {
     if (update.error) throw new AppError('INTERNAL', update.error.message)
   }
 }
@@ -1373,20 +1385,26 @@ export interface Viewer {
  * this issue turns on), not a spectator-specific branch.
  */
 export async function viewerSeat(db: Db, matchId: string, userId: string): Promise<Viewer> {
-  const { data: player, error: playerErr } = await db
-    .from('match_players')
-    .select('seat')
-    .eq('match_id', matchId)
-    .eq('user_id', userId)
-    .maybeSingle()
+  // The seat and spectator lookups are independent reads on different tables, so
+  // issue them concurrently rather than in a waterfall (#551). Error precedence
+  // is unchanged: `playerErr` is still inspected before `specErr`, so an error on
+  // both surfaces the same INTERNAL the sequential version would have.
+  const [{ data: player, error: playerErr }, { data: spectator, error: specErr }] =
+    await Promise.all([
+      db
+        .from('match_players')
+        .select('seat')
+        .eq('match_id', matchId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+      db
+        .from('match_spectators')
+        .select('viewing_seat')
+        .eq('match_id', matchId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ])
   if (playerErr) throw new AppError('INTERNAL', playerErr.message)
-
-  const { data: spectator, error: specErr } = await db
-    .from('match_spectators')
-    .select('viewing_seat')
-    .eq('match_id', matchId)
-    .eq('user_id', userId)
-    .maybeSingle()
   if (specErr) throw new AppError('INTERNAL', specErr.message)
 
   const seat = resolveViewSeat(player?.seat ?? null, spectator?.viewing_seat ?? null)

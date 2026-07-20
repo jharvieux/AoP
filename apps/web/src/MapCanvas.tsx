@@ -1223,6 +1223,10 @@ export function MapCanvas(props: MapCanvasProps) {
       cityPool.end()
 
       shipPool.begin()
+      // Captains currently ashore leading a landing party — precomputed once so
+      // the per-ship anchored check is a Set lookup, not a rescan of `parties`
+      // for every captain (#570). Behavior-identical to `parties.some(...)`.
+      const anchoredCaptainIds = new Set(parties.map((p) => p.captainId))
       const liveCaptainIds = new Set<string>()
       for (const cap of captains) {
         liveCaptainIds.add(cap.id)
@@ -1281,7 +1285,7 @@ export function MapCanvas(props: MapCanvasProps) {
         // the ship sits here, orderless, until the captain re-embarks. Dimmed
         // plus a dark anchor ring under the hull so it reads as "not sailing"
         // at a glance, distinct from a normal docked/idle ship.
-        const anchored = parties.some((p) => p.captainId === cap.id)
+        const anchored = anchoredCaptainIds.has(cap.id)
         // Hull shadow on the water (#394); the ambient bob rides above it.
         entities.ellipse(cx, cy + TILE * 0.24, TILE * 0.28, TILE * 0.09).fill({
           color: 0x000000,
