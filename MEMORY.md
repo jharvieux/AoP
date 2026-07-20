@@ -1,3 +1,35 @@
+## D-048 — 2026-07-19 — Issue sweep: 23 closed across 14 PRs (harvey-audit burn-down + operator rulings)
+
+**Decision.** Full /issue-sweep over the 16 harvey-audit findings plus #539/#540/#535.
+Operator rulings recorded mid-sweep: (a) supabase/migrations/** and supabase/functions/**
+pre-approved for executors; (b) #541 CORS = env-var allowlist (`ALLOWED_ORIGINS`, default
+https://age-of-plunder.vercel.app), Vercel previews allowed, localhost included; (c) #540
+saves = Option A snapshot saves (GameState snapshot beside the replay; same-version keeps
+replay verification, cross-version resumes from snapshot, schemaVersion 2→3); (d) #574
+push tokens purged after 90 days un-refreshed (`purge_stale_push_tokens`, cron wiring =
+operator step, #580); (e) #575 payment/entitlement history retained indefinitely
+(documented in docs/DATA-CLASSIFICATION.md).
+
+**Why.** Harvey audit backlog was the bulk of open issues; sweep closed 23 (net −14 after
+9 filed, 5 of which the sweep itself closed). Notable landings: RLS initplan + policy
+consolidation and definer-fn hardening (#567), GDPR chat erasure via BEFORE DELETE
+trigger on profiles (#577), CI SHA-pinning + injection fix (#562), catalog de-triplication
+into @aop/content (#569), bounded-concurrency sweeps + bit-identical AI lookup refactor
+(#578, ENGINE_VERSION bump).
+
+**Rejected.** #535/#422 (live-defender lockstep server side) — needs live two-client
+verification, not sweep-landable. Retroactive match_chat orphan cleanup — post-deletion
+NULLs indistinguishable from seats vacated to AI; blanket sweep could erase live users'
+messages. Batching matchmaking drainQueue / checkout poll — sequential by design (claim
+atomicity / backoff), documented won't-fix in #578.
+
+**Artifacts.** PRs #557 #558 #560 #562 #563 #564 #567 #568 #569 #571 #576 #577 #578 #579;
+issues filed #559 #565 #566 #570 #572-#575 #580; docs/DATA-CLASSIFICATION.md. Operator
+still owes: deploy.yml run (edge functions + migrations + ENGINE_VERSION skew),
+`supabase secrets set ALLOWED_ORIGINS`, cron wiring #580, colima disk cleanup.
+
+---
+
 ## D-047 — 2026-07-14 — #517 map entity-count ceilings (maxEncounters/maxResourceNodes = 200 each)
 
 **Decision.** `MAP_VALIDATION_LIMITS` (@aop/content's `tuning.ts`, mirrored in the engine's
