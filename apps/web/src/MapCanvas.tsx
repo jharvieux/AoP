@@ -139,12 +139,12 @@ const ENCOUNTER_SPRITE_URL: Record<EncounterKind, string> = {
 }
 // Land content (#466): tokens over land tiles. Sprite URLs follow the #458
 // pattern — they 404-fall-back to the flat-color token until art ships.
-export const LAND_ENCOUNTER_COLOR = {
+const LAND_ENCOUNTER_COLOR = {
   nativeVillage: cssToken('--map-land-encounter-village', '#7fae5a'),
   hermit: cssToken('--map-land-encounter-hermit', '#8f7fd0'),
   banditCamp: cssToken('--map-land-encounter-bandit', '#c2603a'),
 } as const
-export const LAND_SITE_COLOR = {
+const LAND_SITE_COLOR = {
   mine: cssToken('--map-land-site-mine', '#d9b64a'),
   sawmill: cssToken('--map-land-site-sawmill', '#8a9b58'),
   lumberCamp: cssToken('--map-land-site-lumber', '#6f8f4a'),

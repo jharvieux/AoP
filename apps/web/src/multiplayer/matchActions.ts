@@ -33,7 +33,7 @@ import { partyBlockedSet } from '../partyMarch'
  * sail first (`null` if none needed, i.e. already adjacent) or `undefined`
  * if the target can't be reached and engaged this turn at all.
  */
-export function approachToEngage(
+function approachToEngage(
   map: GameMap,
   from: Coord,
   targetPos: Coord,

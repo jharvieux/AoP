@@ -29,6 +29,7 @@ import {
   parseSettings,
   sanitizeAction,
   submitAction,
+  viewerSeat,
   type MatchSettings,
   type StartMatchSeat,
 } from './match.ts'
@@ -546,6 +547,49 @@ Deno.test('isExpectedSweepRace: true for the three known races, false otherwise'
   assertEquals(isExpectedSweepRace(new AppError('INTERNAL', 'x')), false)
   assertEquals(isExpectedSweepRace(new Error('boom')), false)
   assertEquals(isExpectedSweepRace('not even an error'), false)
+})
+
+// --- viewerSeat (#148 / #551) ---
+// viewerSeat now issues its match_players and match_spectators lookups
+// concurrently (Promise.all) instead of as a waterfall. These lock in that the
+// concurrent reads still resolve the SAME seat + role a seat-holder or spectator
+// is entitled to, and that holding neither grant is still FORBIDDEN — the
+// entitlement contract must be byte-identical to the sequential version.
+
+Deno.test('viewerSeat: a seat-holder resolves to their own seat with role player', async () => {
+  const db = fakeDb({
+    match_players: [{ match_id: 'm1', user_id: 'user-a', seat: 2 }],
+    match_spectators: [],
+  })
+  assertEquals(await viewerSeat(db, 'm1', 'user-a'), { seat: 2, role: 'player' })
+})
+
+Deno.test(
+  'viewerSeat: a granted spectator resolves to the pinned seat with role spectator',
+  async () => {
+    const db = fakeDb({
+      match_players: [],
+      match_spectators: [{ match_id: 'm1', user_id: 'watcher', viewing_seat: 1 }],
+    })
+    assertEquals(await viewerSeat(db, 'm1', 'watcher'), { seat: 1, role: 'spectator' })
+  },
+)
+
+Deno.test(
+  'viewerSeat: a seat-holder who also has a spectator grant is still a player of their own seat',
+  async () => {
+    const db = fakeDb({
+      match_players: [{ match_id: 'm1', user_id: 'user-a', seat: 0 }],
+      match_spectators: [{ match_id: 'm1', user_id: 'user-a', viewing_seat: 3 }],
+    })
+    assertEquals(await viewerSeat(db, 'm1', 'user-a'), { seat: 0, role: 'player' })
+  },
+)
+
+Deno.test('viewerSeat: neither a seat nor a spectator grant is FORBIDDEN', async () => {
+  const db = fakeDb({ match_players: [], match_spectators: [] })
+  const err = await assertRejects(() => viewerSeat(db, 'm1', 'stranger'), AppError)
+  assertEquals(err.code, 'FORBIDDEN')
 })
 
 // --- sanitizeAction (#223) ---

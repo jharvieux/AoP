@@ -124,13 +124,21 @@ export function buildFcmRequest(
   }
 }
 
-function base64UrlFromBytes(bytes: Uint8Array): string {
+/**
+ * RFC 4648 §5 base64url, built on the Web-standard `btoa` (no Node `Buffer`,
+ * per the file-level doc comment) — `+`/`/` swapped for `-`/`_` and the `=`
+ * padding dropped, exactly as JWT compact serialization requires. Exported
+ * (but not re-exported from `@aop/shared`'s barrel, same as everything else
+ * here) so push.test.ts can exercise it directly (#554: this correctness-
+ * sensitive routine had no test coverage before).
+ */
+export function base64UrlFromBytes(bytes: Uint8Array): string {
   let binary = ''
   for (const b of bytes) binary += String.fromCharCode(b)
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function base64UrlFromString(s: string): string {
+export function base64UrlFromString(s: string): string {
   return base64UrlFromBytes(new TextEncoder().encode(s))
 }
 
