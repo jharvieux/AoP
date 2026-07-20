@@ -1,4 +1,5 @@
 export * from './buildings'
+export * from './catalog'
 export * from './combat'
 export * from './encounters'
 export * from './factions'

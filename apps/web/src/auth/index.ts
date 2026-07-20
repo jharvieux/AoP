@@ -1,22 +1,7 @@
+// #553: this barrel used to re-export the whole auth module's surface, but
+// every caller outside `auth/` already imports the other symbols (machine,
+// migrate, oauthCallback, supabaseAuth, upgrade, config, and most of types)
+// straight from their source files — knip found those re-exports genuinely
+// unused. Kept to only what's actually consumed through `../auth`.
 export { AuthProvider, useAuth } from './AuthContext'
-export { authReducer, type AuthEvent } from './machine'
-export { migrateGuestSaves, type SaveMigrationResult } from './migrate'
-export {
-  completeOAuthCallback,
-  parseOAuthCallbackError,
-  parseOAuthCallbackHash,
-} from './oauthCallback'
-export { SupabaseAuthBackend, type SupabaseConfig } from './supabaseAuth'
-export { upgradeGuestToAccount, type UpgradeParams, type UpgradeResult } from './upgrade'
-export { resolveSupabaseConfig } from './config'
-export {
-  AuthError,
-  OAUTH_PROVIDERS,
-  type AuthBackend,
-  type AuthSession,
-  type AuthState,
-  type AuthUser,
-  type OAuthCallbackTokens,
-  type OAuthProvider,
-  type Profile,
-} from './types'
+export { AuthError, OAUTH_PROVIDERS, type AuthSession, type OAuthProvider } from './types'

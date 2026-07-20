@@ -33,6 +33,7 @@ import { canAfford } from '@aop/shared'
 import { useState } from 'react'
 import { captainAshoreState } from './captainAshore'
 import { buildCatalog } from './catalog'
+import { deepEqual } from './deepEqual'
 import { tapFeedback } from './audio/feedback'
 import { buildUnavailableReason, buildingFacts, unitFacts } from './cityBuildingInfo'
 import { BottomSheet } from './components/BottomSheet'
@@ -177,7 +178,7 @@ const BOARD_ORDER_PLANS: { id: string; label: string; orders: BoardOrder[] }[] =
 ]
 
 function ordersMatch<T>(a: T[] | undefined, b: T[]): boolean {
-  return JSON.stringify(a ?? []) === JSON.stringify(b)
+  return deepEqual(a ?? [], b)
 }
 
 const UPGRADE_TRACK_LABELS: Record<string, string> = {

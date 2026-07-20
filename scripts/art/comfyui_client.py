@@ -31,6 +31,28 @@ from pathlib import Path
 
 API = "http://127.0.0.1:8188"
 
+# Restrict every urlopen() call to http(s) against the configured ComfyUI host.
+# urllib also honors file:// (and other) schemes, so a URL built from
+# server-supplied data (e.g. filenames from /history) is an LFI/SSRF surface
+# unless we pin scheme+host before opening it. See issue #548.
+_ALLOWED_SCHEMES = ("http", "https")
+_ALLOWED_NETLOC = urllib.parse.urlparse(API).netloc
+
+
+def _safe_urlopen(url_or_request, *args, **kwargs):
+    url = (
+        url_or_request.full_url
+        if isinstance(url_or_request, urllib.request.Request)
+        else url_or_request
+    )
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in _ALLOWED_SCHEMES or parsed.netloc != _ALLOWED_NETLOC:
+        raise ValueError(
+            f"refusing to open URL outside the configured ComfyUI host "
+            f"({_ALLOWED_NETLOC}): {url!r}"
+        )
+    return urllib.request.urlopen(url_or_request, *args, **kwargs)
+
 # Matches the shipped AoP art: DreamShaper 8 via the A1111 model dir mapping.
 DEFAULT_CHECKPOINT = "DreamShaper_8_pruned.safetensors"
 
@@ -52,7 +74,7 @@ def _api(path, payload=None, timeout=1800):
         data=json.dumps(payload).encode() if payload is not None else None,
         headers={"Content-Type": "application/json"} if payload is not None else {},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _safe_urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 
@@ -132,7 +154,7 @@ def run_graph(graph, poll_interval=1.0, timeout=1800):
                     qs = urllib.parse.urlencode(
                         {"filename": img["filename"], "subfolder": img["subfolder"], "type": img["type"]}
                     )
-                    with urllib.request.urlopen(f"{API}/view?{qs}", timeout=300) as r:
+                    with _safe_urlopen(f"{API}/view?{qs}", timeout=300) as r:
                         images.append(r.read())
             if not images:
                 # ComfyUI caches executions: resubmitting a byte-identical graph

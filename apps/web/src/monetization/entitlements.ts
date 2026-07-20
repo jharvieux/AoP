@@ -40,7 +40,7 @@ export class EntitlementsClient {
 }
 
 /** The entitlement key that suppresses `<AdSlot>` everywhere (docs/ARCHITECTURE.md §9). */
-export const REMOVE_ADS_KEY = 'remove_ads'
+const REMOVE_ADS_KEY = 'remove_ads'
 
 export function hasRemoveAds(keys: readonly string[]): boolean {
   return keys.includes(REMOVE_ADS_KEY)

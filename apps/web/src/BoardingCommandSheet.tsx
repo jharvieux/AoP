@@ -6,6 +6,7 @@ import {
   type HexCoord,
 } from '@aop/engine'
 import { useState } from 'react'
+import { deepEqual } from './deepEqual'
 import {
   BoardDefs,
   boardSvgSize,
@@ -103,7 +104,7 @@ export function BoardingCommandSheet({
     if (
       preview?.kind === 'attack' &&
       preview.targetId === targetId &&
-      JSON.stringify(preview.plan.command) === JSON.stringify(plan.command)
+      deepEqual(preview.plan.command, plan.command)
     ) {
       confirm(preview)
       return
