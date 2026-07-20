@@ -19,7 +19,7 @@ export interface CheckoutParams {
  * successful checkout return apart from any other visit to the origin — the
  * cancel URL carries no marker, so cancel and success are no longer identical. */
 export const CHECKOUT_RETURN_PARAM = 'checkout'
-export const REMOVE_ADS_SUCCESS_VALUE = 'remove-ads-success'
+const REMOVE_ADS_SUCCESS_VALUE = 'remove-ads-success'
 
 /** The `successUrl` for a remove-ads purchase: `origin` plus the success marker. */
 export function removeAdsSuccessUrl(origin: string): string {
