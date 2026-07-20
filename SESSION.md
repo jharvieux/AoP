@@ -47,10 +47,11 @@ two-client session.
 2. Run `deploy.yml` (Actions tab) — edge functions changed substantially (#563/#571/#578)
    and ENGINE_VERSION bumped (#578): version-skew risk until deployed. Migrations
    (#567/#577/#579) ride the same deploy.
-3. `select cron.schedule('purge-stale-push-tokens-daily','30 4 * * *',$$select
-public.purge_stale_push_tokens()$$);` on production (#580).
-4. Local env: colima Docker disk is FULL — `supabase start` cannot run until space is
-   freed (blocked two executors this sweep; both fell back to CI validation).
+   Done since the sweep close (operator delegated): the #580 cron is scheduled on
+   production (`cron.job` id 6, active — logs a failed run nightly until the deploy
+   above lands, then self-heals), and the colima Docker disk was pruned (unused
+   images only; data volumes kept; 19 GB free — next `supabase start` re-pulls
+   images, so first boot is slow).
 
 ## Open questions
 
