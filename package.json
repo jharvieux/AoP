@@ -19,7 +19,7 @@
     "supabase:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts && prettier --write packages/shared/src/database.types.ts"
   },
   "devDependencies": {
-    "prettier": "3.9.5",
+    "prettier": "3.9.6",
     "supabase": "2.109.1",
     "typescript": "^7.0.2"
   },
