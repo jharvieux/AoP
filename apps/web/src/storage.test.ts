@@ -247,7 +247,9 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
     expect(loaded?.round).toBe(3)
     expect(loaded?.actions).toEqual([{ type: 'endTurn', playerId: 'p1' }])
     expect(loaded?.config).toEqual(roundTripConfig())
-    expect(loaded?.schemaVersion).toBe(SCHEMA_VERSION)
+    // v4 (#565) adds replayOrigin. Pin the literal so reverting the production
+    // schema bump silently reopens old-client safety risk instead of passing.
+    expect(loaded?.schemaVersion).toBe(4)
   })
 
   it('persists snapshot replay lineage through a subsequent save (#565)', async () => {

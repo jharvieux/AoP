@@ -32,6 +32,7 @@ import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { SaveScreen } from './SaveScreen'
 import { loadGame, saveGame, type ReplayOrigin } from './storage'
+import { saveGameArguments } from './appSave'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
 import { Spinner } from './components/Spinner'
@@ -203,7 +204,7 @@ export function App() {
       // reject every save, not just stale ones.
       // #540: persist `next` as the snapshot — the exact resume state, which
       // survives a future RULES_VERSION bump that would strand the action log.
-      saveGame('autosave', next.config, nextLog, next.round, next, replayOrigin)
+      saveGame(...saveGameArguments('autosave', next, nextLog, replayOrigin))
         .then(() => setAutosaveFailing(false))
         .catch((err: unknown) => {
           console.error('Autosave failed', err)
@@ -217,7 +218,7 @@ export function App() {
     if (!config || !game) return
     // #539: game.config (stamped), not the outer `config` — see the autosave
     // call above for why. #540: `game` is the snapshot.
-    await saveGame(slotId, game.config, actionLog, game.round, game, replayOrigin)
+    await saveGame(...saveGameArguments(slotId, game, actionLog, replayOrigin))
   }
 
   /**
