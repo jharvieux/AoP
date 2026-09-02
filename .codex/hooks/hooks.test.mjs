@@ -51,6 +51,18 @@ test('MEMORY guard rejects insertion before a historical entry', () => {
   assert.match(result.stderr, /not anchored at the first existing line/)
 })
 
+test('MEMORY guard recognizes case variants on case-insensitive filesystems', () => {
+  const result = runHook(memoryHook, {
+    cwd: repoRoot,
+    tool_name: 'apply_patch',
+    tool_input: {
+      command: `*** Begin Patch\n*** Update File: memory.md\n@@\n+unsafe\n old text\n*** End Patch`,
+    },
+  })
+
+  assert.equal(result.status, 2)
+})
+
 test('MEMORY guard rejects historical trailing-whitespace changes', () => {
   const firstLine = readFileSync(join(repoRoot, 'MEMORY.md'), 'utf8').split('\n')[0]
   const result = runHook(memoryHook, {
@@ -93,9 +105,23 @@ test('MEMORY guard blocks shell writes and permits simple read-only inspection',
   })
   assert.equal(scriptedWrite.status, 2)
 
+  const lowercaseWrite = runHook(memoryHook, {
+    tool_name: 'Bash',
+    tool_input: { command: "printf 'replacement' > 'memory.md'" },
+  })
+  assert.equal(lowercaseWrite.status, 2)
+
+  for (const command of ["sed -ni '1p' MEMORY.md", "rg --pre 'sh -c touch' pattern MEMORY.md"]) {
+    const ambiguousRead = runHook(memoryHook, {
+      tool_name: 'Bash',
+      tool_input: { command },
+    })
+    assert.equal(ambiguousRead.status, 2)
+  }
+
   const read = runHook(memoryHook, {
     tool_name: 'Bash',
-    tool_input: { command: "rg '^## D-001' 'MEMORY.md'" },
+    tool_input: { command: "grep '^## D-001' 'MEMORY.md'" },
   })
   assert.equal(read.status, 0, read.stderr)
 })

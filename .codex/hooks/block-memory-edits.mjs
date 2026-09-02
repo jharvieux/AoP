@@ -31,7 +31,7 @@ function unquotePath(value) {
 function isRootMemoryPath(value, cwd, root) {
   const path = unquotePath(value)
   const absolute = normalize(isAbsolute(path) ? path : resolve(cwd, path))
-  return absolute === normalize(join(root, 'MEMORY.md'))
+  return absolute.toLowerCase() === normalize(join(root, 'MEMORY.md')).toLowerCase()
 }
 
 function splitPatchSections(command) {
@@ -137,13 +137,7 @@ function isClearlyReadOnlyMemoryCommand(command) {
   if (!tokens?.length) return false
 
   const executable = basename(tokens[0])
-  if (['cat', 'grep', 'head', 'nl', 'rg', 'tail', 'wc'].includes(executable)) return true
-  if (executable === 'sed') {
-    return (
-      tokens.some((token) => /^-[A-Za-z]*n[A-Za-z]*$/.test(token)) &&
-      !tokens.some((token) => token === '-i' || token.startsWith('--in-place'))
-    )
-  }
+  if (['cat', 'grep', 'head', 'nl', 'tail', 'wc'].includes(executable)) return true
   if (executable !== 'git') return false
 
   const subcommand = tokens.slice(1).find((token) => !token.startsWith('-'))
@@ -151,7 +145,7 @@ function isClearlyReadOnlyMemoryCommand(command) {
 }
 
 function commandReferencesMemory(command) {
-  return /(?:^|[\s'"=/:])MEMORY\.md(?:$|[\s'"<>|;&])/.test(command)
+  return /(?:^|[\s'"=/:])memory\.md(?:$|[\s'"<>|;&])/i.test(command)
 }
 
 export function checkHookInput(input) {
