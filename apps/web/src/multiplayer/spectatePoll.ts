@@ -24,7 +24,7 @@ const globalTimer: PollTimer = {
   clearInterval: (id) => clearInterval(id),
 }
 
-export interface SpectatePollOptions {
+interface SpectatePollOptions {
   intervalMs: number
   /** Refetch `get-player-view` and apply the result. Errors are the caller's concern. */
   onTick: () => void | Promise<void>

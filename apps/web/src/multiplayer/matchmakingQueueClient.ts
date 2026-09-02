@@ -35,14 +35,14 @@ export function isPermanentQueueError(error: unknown): boolean {
 /** What a quick-match search asks for: desired human player count and map
  * size (the `matchmaking_queue` bucket key, see the migration), plus an
  * optional faction preference honored on seating when free. */
-export interface QuickMatchRequest {
+interface QuickMatchRequest {
   matchSize: number
   mapSize: MapSize
   faction?: string | null
 }
 
 /** The caller's own `matchmaking_queue` row, or `null` when not queued. */
-export interface QueueEntryStatus {
+interface QueueEntryStatus {
   matchSize: number
   mapSize: MapSize
   faction: string | null

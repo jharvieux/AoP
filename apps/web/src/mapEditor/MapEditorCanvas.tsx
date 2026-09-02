@@ -25,7 +25,7 @@ const RESOURCE_COLOR = {
 const RESOURCE_LABEL = { gold: 'G', timber: 'T', iron: 'I', rum: 'R' } as const
 const MARKER_TEXT_COLOR = cssToken('--color-text-on-gold', '#1a1408')
 
-export interface MapEditorCanvasProps {
+interface MapEditorCanvasProps {
   draft: EditorDraft
   /** Fired once per distinct tile the pointer touches while down. `isDown`
    * is true only for the initial press, so callers can gate one-shot tools

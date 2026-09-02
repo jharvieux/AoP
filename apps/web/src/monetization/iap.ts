@@ -40,7 +40,7 @@ export function isNativePlatform(win: WindowLike | undefined = defaultWindow()):
   return win?.Capacitor?.isNativePlatform?.() === true
 }
 
-export type NativePlatformName = 'ios' | 'android' | 'web'
+type NativePlatformName = 'ios' | 'android' | 'web'
 
 /** 'ios' | 'android' | 'web' — mirrors Capacitor's own Platform values. */
 export function nativePlatformName(
@@ -58,7 +58,7 @@ export function nativePlatformName(
 const IAP_PLUGIN_NAME = 'Purchases'
 const REMOVE_ADS_PRODUCT_ID = 'remove_ads'
 
-export type NativePurchaseResult = 'purchased' | 'cancelled' | 'unavailable' | 'error'
+type NativePurchaseResult = 'purchased' | 'cancelled' | 'unavailable' | 'error'
 
 /**
  * Attempts the native remove-ads purchase. Resolves `'unavailable'` (never

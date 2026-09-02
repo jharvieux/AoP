@@ -3,7 +3,7 @@ import { MAX_CHAT_LENGTH, normalizeChatBody, type ChatChannel } from '@aop/share
 import { BottomSheet } from './BottomSheet'
 import type { ChatMessage } from '../multiplayer/chatClient'
 
-export interface ChatPanelProps {
+interface ChatPanelProps {
   channel: ChatChannel
   onChannelChange: (channel: ChatChannel) => void
   /** Gates the `alliance` tab (#140) — only visible/usable while the viewer holds an alliance. */

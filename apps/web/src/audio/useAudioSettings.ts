@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { audioManager, type AudioSettings } from './audioManager'
 
-export interface UseAudioSettings extends AudioSettings {
+interface UseAudioSettings extends AudioSettings {
   setMuted: (muted: boolean) => void
   setVolume: (volume: number) => void
   setMusicVolume: (volume: number) => void

@@ -1,6 +1,6 @@
 /** Which volume slider a clip is governed by. Defaults to `'dialogue'` for
  * backward compatibility with call sites that predate music/sfx (#75/#28). */
-export type AudioCategory = 'dialogue' | 'music' | 'sfx'
+type AudioCategory = 'dialogue' | 'music' | 'sfx'
 
 export interface AudioSettings {
   muted: boolean

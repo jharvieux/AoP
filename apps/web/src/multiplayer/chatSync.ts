@@ -21,7 +21,7 @@ export interface ChatPokeTransport {
   subscribe(channel: string, onPoke: (payload: unknown) => void): () => void
 }
 
-export interface ChatSyncOptions {
+interface ChatSyncOptions {
   matchId: string
   transport: ChatPokeTransport
   /**

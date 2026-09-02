@@ -11,7 +11,7 @@ export function shouldDismissSheet(dragDistance: number, velocityPxPerMs: number
   return dragDistance > DISMISS_DISTANCE || (dragDistance > 0 && velocityPxPerMs > DISMISS_VELOCITY)
 }
 
-export interface BottomSheetProps {
+interface BottomSheetProps {
   title: ReactNode
   onClose: () => void
   children: ReactNode

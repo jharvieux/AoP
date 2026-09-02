@@ -1,4 +1,4 @@
-export interface AdNetworkConfig {
+interface AdNetworkConfig {
   /** Ad network's loader script `src`. */
   scriptUrl: string
   /** Ad unit / slot id passed through to that script. */

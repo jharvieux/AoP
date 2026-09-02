@@ -224,7 +224,7 @@ export function factionOfOwner(
 }
 
 /** The decision {@link classifySelectedPartyTileTap} returns for GameScreen to dispatch. */
-export type SelectedPartyTileTap =
+type SelectedPartyTileTap =
   | { action: 'captureSite'; siteId: string }
   | { action: 'resolveEncounter'; encounterId: string }
   | { action: 'reselect' }

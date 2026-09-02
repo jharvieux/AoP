@@ -7,7 +7,7 @@ import {
   type GameState,
 } from '@aop/engine'
 
-export type ActionDispatchResult =
+type ActionDispatchResult =
   | { kind: 'applied'; appliedAction: Action; outcome: ActionOutcome }
   | { kind: 'rejected'; message: string }
   | { kind: 'unrecoverable' }

@@ -5,7 +5,7 @@ import type { AuthSession } from '../auth/types'
 import { ChatClient, type ChatMessage } from './chatClient'
 import { subscribeChatSync, type ChatPokeTransport } from './chatSync'
 
-export interface UseMatchChatOptions {
+interface UseMatchChatOptions {
   config: SupabaseConfig
   session: AuthSession
   matchId: string
@@ -15,7 +15,7 @@ export interface UseMatchChatOptions {
   hasAlliance: boolean
 }
 
-export interface UseMatchChatResult {
+interface UseMatchChatResult {
   channel: ChatChannel
   setChannel: (channel: ChatChannel) => void
   messages: ChatMessage[]

@@ -5,7 +5,7 @@ import { GUEST_STATE, type AuthSession, type AuthState } from './types'
  * React provider and the network backend so the transition rules are testable
  * in isolation and can never diverge from what the UI renders.
  */
-export type AuthEvent =
+type AuthEvent =
   | { type: 'authenticated'; session: AuthSession }
   | { type: 'session_refreshed'; session: AuthSession }
   | { type: 'signed_out' }

@@ -19,13 +19,13 @@ const globalTimer: DebounceTimer = {
   clearTimeout: (id) => clearTimeout(id),
 }
 
-export interface AutosaveSchedulerOptions<T> {
+interface AutosaveSchedulerOptions<T> {
   delayMs: number
   save: (value: T) => void | Promise<void>
   timer?: DebounceTimer
 }
 
-export interface AutosaveScheduler<T> {
+interface AutosaveScheduler<T> {
   /** Call on every change; (re)starts the debounce window from now. */
   schedule(value: T): void
   /** Cancels a pending save with nothing scheduled in its place — call this on

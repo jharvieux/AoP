@@ -149,7 +149,7 @@ export function cityFromView(city: ViewCity): CityState | null {
  * preview: an enemy manifest is exactly what fog hides, so there is nothing
  * honest to estimate odds from).
  */
-export type TileIntent =
+type TileIntent =
   | { kind: 'selectCaptain'; captainId: string }
   /** An own landing party tapped (#482): select it — party verbs then flow through {@link interpretPartyTileClick}. */
   | { kind: 'selectParty'; partyId: string }
@@ -300,7 +300,7 @@ export function interpretTileClick(
  * encounters only exist in it while visible, so no extra visibility filtering
  * is needed here. Everything is a proposal the server re-validates.
  */
-export type PartyTileIntent =
+type PartyTileIntent =
   | { kind: 'selectCaptain'; captainId: string }
   | { kind: 'selectParty'; partyId: string }
   /** An adjacent own ship tapped: re-board the party (partial if the hold is short). */

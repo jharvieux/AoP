@@ -4,7 +4,7 @@ import { useAuth } from '../auth'
 import { detectCheckoutReturn, sharedRemoveAdsPoll } from './checkoutReturn'
 import { EntitlementsClient, hasRemoveAds } from './entitlements'
 
-export interface RemoveAdsStatus {
+interface RemoveAdsStatus {
   /** Whether the signed-in viewer holds the `remove_ads` entitlement. */
   removeAds: boolean
   /**

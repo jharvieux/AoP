@@ -16,7 +16,7 @@ import type { Coord } from '@aop/shared'
  */
 
 /** One dot along the previewed route, at `path[index]`. */
-export interface DotSegment {
+interface DotSegment {
   /** Index into the previewed `path` (1..path.length-1 — index 0 is the
    * captain's current tile, which never gets a dot of its own). */
   index: number

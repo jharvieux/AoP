@@ -18,9 +18,9 @@ export interface DiplomacyPlayerInfo {
   eliminated: boolean
 }
 
-export type DiplomacyRelation = 'ally' | 'incomingProposal' | 'outgoingProposal' | 'none'
+type DiplomacyRelation = 'ally' | 'incomingProposal' | 'outgoingProposal' | 'none'
 
-export interface DiplomacyRosterEntry {
+interface DiplomacyRosterEntry {
   player: DiplomacyPlayerInfo
   relation: DiplomacyRelation
   /**

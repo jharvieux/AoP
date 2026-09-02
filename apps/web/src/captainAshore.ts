@@ -20,7 +20,7 @@ import type { Captain, LandingParty } from '@aop/engine'
  * trip / a confusing tap), and the tavern modal (disable garrison/item
  * ship-actions for a docked-but-ashore captain).
  */
-export type CaptainAshoreState = 'anchored' | 'shipLost' | null
+type CaptainAshoreState = 'anchored' | 'shipLost' | null
 
 export function captainAshoreState(
   captain: Pick<Captain, 'id' | 'shipLost'>,

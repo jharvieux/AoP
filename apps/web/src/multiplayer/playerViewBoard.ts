@@ -16,7 +16,7 @@ import type { FactionId } from '@aop/shared'
  * (i.e. everything except `viewerId`/`selectedCaptainId`/`onTileClick`, which
  * the read-only spectate/live screens supply themselves).
  */
-export interface BoardFromView {
+interface BoardFromView {
   map: GameMap
   captains: Captain[]
   cities: CityState[]

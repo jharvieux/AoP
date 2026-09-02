@@ -18,7 +18,7 @@ import {
  * (CLAUDE.md's engine-purity invariant).
  */
 
-export interface ReplayCheckpoint {
+interface ReplayCheckpoint {
   /** Number of actions applied to reach this checkpoint (0 = the initial state). */
   actionIndex: number
   round: number
