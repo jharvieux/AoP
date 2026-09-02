@@ -3,28 +3,49 @@
 // The engine's determinism/replay tests are the repo's core contract and run in <1s,
 // so any change under packages/{engine,shared,content} triggers the full suite.
 // Exit 2 (with stderr) blocks the stop and feeds failures back to the agent.
-import { execSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { listChangedPaths } from './git-changes.mjs'
 
-try {
-  const input = JSON.parse(readFileSync(0, 'utf8'))
-  if (input.stop_hook_active) process.exit(0) // prevent feedback loops
-} catch {
-  /* no stdin — run anyway */
+function finish() {
+  process.stdout.write('{}')
+  process.exit(0)
 }
 
-const changed = execSync('git status --porcelain && git diff --name-only HEAD', {
-  encoding: 'utf8',
-})
+function main() {
+  let input = {}
+  try {
+    const text = readFileSync(0, 'utf8')
+    if (text) input = JSON.parse(text)
+  } catch {
+    // A manually invoked hook may not have stdin; verification still runs.
+  }
+  if (input.stop_hook_active) finish()
 
-if (!/packages\/(engine|shared|content)\/.*\.tsx?/.test(changed)) process.exit(0)
+  try {
+    const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd()
+    const changed = listChangedPaths(cwd)
+    if (!changed.some((path) => /^packages\/(engine|shared|content)\/.*\.tsx?$/.test(path))) {
+      finish()
+    }
 
-try {
-  execSync('pnpm --filter @aop/engine test', { encoding: 'utf8', stdio: 'pipe' })
-} catch (err) {
-  process.stderr.write(
-    `Engine tests failed after engine-affecting changes:\n${err.stdout ?? ''}${err.stderr ?? ''}`,
-  )
+    const result = spawnSync('pnpm', ['--filter', '@aop/engine', 'test'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    if (!result.error && result.status === 0) finish()
+    process.stderr.write(
+      `Engine tests failed after engine-affecting changes:\n${result.stdout ?? ''}${result.stderr ?? ''}${result.error?.message ?? ''}`,
+    )
+  } catch (error) {
+    process.stderr.write(`Affected-test hook failed: ${error?.message ?? error}`)
+  }
   process.exit(2)
 }
-process.exit(0)
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main()
+}

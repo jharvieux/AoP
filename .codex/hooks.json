@@ -1,12 +1,13 @@
 {
+  "description": "Repository guardrails and focused verification for Codex.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "^(Bash|apply_patch)$",
         "hooks": [
           {
             "type": "command",
-            "command": "node '.codex/hooks/block-memory-edits.mjs'"
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/block-memory-edits.mjs\""
           }
         ]
       }
@@ -16,11 +17,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '.codex/hooks/typecheck-changed-workspaces.mjs'"
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/typecheck-changed-workspaces.mjs\""
           },
           {
             "type": "command",
-            "command": "node '.codex/hooks/run-affected-tests.mjs'"
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/run-affected-tests.mjs\""
           }
         ]
       }

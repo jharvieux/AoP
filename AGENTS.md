@@ -1,8 +1,9 @@
 # AGENTS.md — Age of Plunder
 
-> **Branch policy**: `main` is protected (required check: `ci`, strict). All changes land
-> via PR into `main` — including docs, MEMORY, and workflow YAML. Branch as `feature/<name>`
-> or `docs/<name>`, run `pnpm verify`, push, open PR, squash-merge when CI passes.
+> **Branch policy**: `main` is protected (required checks: `ci` and `format-check-only`,
+> strict/up-to-date). All changes land via PR into `main` — including docs, MEMORY, and
+> workflow YAML. Branch as `feature/<name>` or `docs/<name>`, run `pnpm verify`, push, open
+> PR, squash-merge when both required checks pass.
 
 ## Session start
 
@@ -31,7 +32,7 @@ issues under four phase epics (#2–#5).
 
 - `pnpm verify` — full gate: format check, typecheck, tests, build. Run before every push.
 - `pnpm verify:fast` — format check + typecheck only (mid-session sanity).
-- Base branch for PRs: `main`. CI check name: `ci`.
+- Base branch for PRs: `main`. Required checks: `ci` and `format-check-only` (strict).
 
 ## The user
 
@@ -44,8 +45,12 @@ trade-offs, scope, model selection, MEMORY changes.
 - `/MEMORY.md` is append-only, newest entries on top. Header format:
   `## D-<NNN> — <YYYY-MM-DD> — <title>`, body covers decision, why, what was rejected,
   related artifacts. Entries end with `---`.
-- You add entries; never edit prior ones without explicit permission. A PreToolUse hook
-  enforces this and fails closed (see `docs/runbooks/Codex-setup.md`).
+- You add entries; never edit prior ones without explicit permission. Prepend with
+  `apply_patch`; never write `MEMORY.md` through Bash, redirection, a script, or a full-file
+  overwrite. The repo-local PreToolUse hook blocks unsafe `apply_patch` calls and shell
+  commands it cannot prove are read-only. Codex hooks are a guardrail, not a complete
+  enforcement boundary, so this policy applies even if a tool path is not intercepted.
+  Setup and regression-test instructions live in `.codex/README.md`.
 - When prepending an entry, also prepend its one-liner to `/MEMORY-INDEX.md`.
 - `/SESSION.md` is transient whole-file-overwrite resume state. Update it at session end:
   Just completed / In flight / Next step / Blocked on user / Open questions.
@@ -59,9 +64,9 @@ trade-offs, scope, model selection, MEMORY changes.
 - Fail loud. Report failures plainly; never claim unverified success.
 - End-of-session slop sweep: re-read your own diff; delete comments that restate code,
   single-use helpers, pointless try/catch, orphan TODOs (use `TODO(#123)` form).
-- Stop-hook feedback is background telemetry from an automated code-health review — NEVER
-  reply to it with a chat message. Do not acknowledge it, summarize it, or emit filler like
-  "(waiting)". If it surfaces a genuine bug, fix it or open an issue silently.
+- Stop-hook feedback is automated validation — NEVER reply to it with a chat message. Do
+  not acknowledge it, summarize it, or emit filler like "(waiting)". If it surfaces a
+  genuine bug, fix it or open an issue silently.
 
 ## Issue triage & sweep support
 
