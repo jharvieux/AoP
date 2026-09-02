@@ -10,6 +10,7 @@ import {
   SCHEMA_VERSION,
   type SaveRecord,
 } from './storage'
+import { replayOriginFromSave } from './loadSave'
 
 function config(overrides: Partial<GameConfig> = {}): GameConfig {
   return {
@@ -247,6 +248,24 @@ describe('storage.ts (#556: save/load persistence layer)', () => {
     expect(loaded?.actions).toEqual([{ type: 'endTurn', playerId: 'p1' }])
     expect(loaded?.config).toEqual(roundTripConfig())
     expect(loaded?.schemaVersion).toBe(SCHEMA_VERSION)
+  })
+
+  it('persists snapshot replay lineage through a subsequent save (#565)', async () => {
+    const currentSnapshot = snapshot()
+    const oldSnapshot = {
+      ...currentSnapshot,
+      config: { ...currentSnapshot.config, rulesVersion: RULES_VERSION - 1 },
+    }
+    const resumed = record({
+      schemaVersion: SCHEMA_VERSION - 1,
+      config: config({ rulesVersion: RULES_VERSION - 1 }),
+      snapshot: oldSnapshot,
+    })
+
+    await saveGame('slot-1', roundTripConfig(), [], 3, snapshot(), replayOriginFromSave(resumed))
+
+    const loaded = await loadGame('slot-1')
+    expect(loaded?.replayOrigin).toBe('snapshot')
   })
 
   it('loadGame returns undefined for a slot that was never saved', async () => {

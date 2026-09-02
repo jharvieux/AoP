@@ -3,6 +3,7 @@ import { listSaves, type SaveRecord } from './storage'
 import { BottomSheet } from './components/BottomSheet'
 import { tapFeedback } from './audio/feedback'
 import { describeError } from './errors'
+import { REPLAY_UNAVAILABLE_MESSAGE, replayDataFromSave } from './loadSave'
 
 const MANUAL_SLOTS = ['slot-1', 'slot-2', 'slot-3']
 
@@ -16,7 +17,7 @@ interface SaveScreenProps {
   /** Opens the #146 replay viewer over a saved slot's action log, without
    * disturbing the game currently in progress. Omitted from the main-menu
    * load flow the same way as `onSave`. */
-  onWatch?: (slotId: string) => void
+  onWatch?: (slotId: string) => void | Promise<void>
 }
 
 function formatSlot(record: SaveRecord | undefined): string {
@@ -65,14 +66,21 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
     }
   }
 
-  function handleWatch(slotId: string) {
+  async function handleWatch(slotId: string) {
     if (!onWatch) return
     tapFeedback()
-    onWatch(slotId)
+    setStatus(null)
+    try {
+      await onWatch(slotId)
+    } catch (err) {
+      console.error(`Replay from "${slotId}" failed`, err)
+      setStatus(`Replay unavailable: ${describeError(err)}`)
+    }
   }
 
   function slotRow(slotId: string, title: string, saveable: boolean) {
     const record = records[slotId]
+    const replayAvailable = !!record && !!replayDataFromSave(record)
     return (
       <li key={slotId} className="garrison-row">
         <span className="garrison-row__name">{title}</span>
@@ -83,7 +91,11 @@ export function SaveScreen({ onClose, onSave, onLoad, onWatch }: SaveScreenProps
             Load
           </button>
           {onWatch && (
-            <button disabled={!record} onClick={() => handleWatch(slotId)}>
+            <button
+              disabled={!replayAvailable}
+              title={record && !replayAvailable ? REPLAY_UNAVAILABLE_MESSAGE : undefined}
+              onClick={() => handleWatch(slotId)}
+            >
               Watch
             </button>
           )}

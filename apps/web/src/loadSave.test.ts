@@ -6,7 +6,12 @@ import {
   type GameState,
 } from '@aop/engine'
 import { describe, expect, it } from 'vitest'
-import { stateFromSave } from './loadSave'
+import {
+  replayDataFromSave,
+  replayDataFromSession,
+  replayOriginFromSave,
+  stateFromSave,
+} from './loadSave'
 import { SCHEMA_VERSION, type SaveRecord } from './storage'
 
 function config(): GameConfig {
@@ -107,6 +112,50 @@ describe('stateFromSave', () => {
       const persisted = JSON.parse(JSON.stringify(record({ snapshot: snap }))) as SaveRecord
       const state = stateFromSave(persisted)
       expect(JSON.stringify(state)).toBe(JSON.stringify(snap))
+    })
+  })
+})
+
+describe('replay lineage (#565)', () => {
+  it('makes a legacy cross-version snapshot save unavailable for seed replay', () => {
+    const stale = record({
+      schemaVersion: SCHEMA_VERSION - 1,
+      config: { ...config(), rulesVersion: RULES_VERSION - 1 },
+      snapshot: snapshot(RULES_VERSION - 1),
+      actions: [{ type: 'endTurn', playerId: 'p1' }],
+    })
+
+    expect(replayOriginFromSave(stale)).toBe('snapshot')
+    expect(replayDataFromSave(stale)).toBeNull()
+  })
+
+  it('keeps a resaved snapshot-lineage game unavailable after its version is current', () => {
+    const resaved = record({
+      config: { ...config(), rulesVersion: RULES_VERSION },
+      snapshot: snapshot(),
+      replayOrigin: 'snapshot',
+      actions: [{ type: 'endTurn', playerId: 'p1' }],
+    })
+
+    expect(replayOriginFromSave(resaved)).toBe('snapshot')
+    expect(replayDataFromSave(resaved)).toBeNull()
+    expect(replayDataFromSession(resaved.config, resaved.actions, 'snapshot')).toBeNull()
+  })
+
+  it('retains seed replay for same-version saves', () => {
+    const actions = [{ type: 'endTurn' as const, playerId: 'p1' }]
+    const current = record({
+      schemaVersion: SCHEMA_VERSION - 1,
+      config: { ...config(), rulesVersion: RULES_VERSION },
+      snapshot: snapshot(),
+      actions,
+    })
+
+    expect(replayOriginFromSave(current)).toBe('seed')
+    expect(replayDataFromSave(current)).toEqual({ config: current.config, actions })
+    expect(replayDataFromSession(current.config, actions, 'seed')).toEqual({
+      config: current.config,
+      actions,
     })
   })
 })

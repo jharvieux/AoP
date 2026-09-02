@@ -1,5 +1,48 @@
-import { createGame, replay, RULES_VERSION, type GameState } from '@aop/engine'
-import type { SaveRecord } from './storage'
+import {
+  createGame,
+  replay,
+  RULES_VERSION,
+  type Action,
+  type GameConfig,
+  type GameState,
+} from '@aop/engine'
+import { SCHEMA_VERSION, type ReplayOrigin, type SaveRecord } from './storage'
+
+export const REPLAY_UNAVAILABLE_MESSAGE =
+  'Replay is unavailable because this game was resumed after a game update.'
+
+export interface SeedReplayData {
+  config: GameConfig
+  actions: Action[]
+}
+
+/**
+ * Resolves legacy records and preserves the one-way transition from a seeded
+ * replay to snapshot-only lineage. A rules mismatch always wins over a stored
+ * `seed`: the current engine cannot reconstruct that older history.
+ */
+export function replayOriginFromSave(record: SaveRecord): ReplayOrigin {
+  if (record.replayOrigin === 'snapshot') return 'snapshot'
+  if (record.config.rulesVersion !== RULES_VERSION) return 'snapshot'
+  return 'seed'
+}
+
+/** The only local-save path allowed to construct seed-based replay input. */
+export function replayDataFromSave(record: SaveRecord): SeedReplayData | null {
+  if (record.schemaVersion > SCHEMA_VERSION || replayOriginFromSave(record) !== 'seed') {
+    return null
+  }
+  return { config: record.config, actions: record.actions }
+}
+
+/** The only active-game path allowed to construct seed-based replay input. */
+export function replayDataFromSession(
+  config: GameConfig,
+  actions: Action[],
+  replayOrigin: ReplayOrigin,
+): SeedReplayData | null {
+  return replayOrigin === 'seed' ? { config, actions } : null
+}
 
 /**
  * Reconstructs the resumable `GameState` from a save record (#237, #540).
