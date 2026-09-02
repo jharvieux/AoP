@@ -1,6 +1,5 @@
 import {
   createGame,
-  RULES_VERSION,
   type Action,
   type BattleReport,
   type GameConfig,
@@ -9,7 +8,13 @@ import {
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { dispatchAction } from './actionDispatch'
 import { reportError } from './reporting'
-import { stateFromSave } from './loadSave'
+import {
+  REPLAY_UNAVAILABLE_MESSAGE,
+  replayDataFromSave,
+  replayDataFromSession,
+  replayOriginFromSave,
+  stateFromSave,
+} from './loadSave'
 import { MainMenu } from './screens/MainMenu'
 import { TitleScreen } from './screens/TitleScreen'
 import { NewGameSetup } from './screens/NewGameSetup'
@@ -26,7 +31,8 @@ import { MatchScreen } from './screens/MatchScreen'
 import { QuickMatchScreen } from './screens/QuickMatchScreen'
 import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { SaveScreen } from './SaveScreen'
-import { loadGame, saveGame } from './storage'
+import { loadGame, saveGame, type ReplayOrigin } from './storage'
+import { saveGameArguments } from './appSave'
 import { CheckoutPendingBanner } from './monetization/CheckoutPendingBanner'
 import { UpdateBanner } from './UpdateBanner'
 import { Spinner } from './components/Spinner'
@@ -85,6 +91,7 @@ export function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [config, setConfig] = useState<GameSetupConfig | null>(null)
   const [actionLog, setActionLog] = useState<Action[]>([])
+  const [replayOrigin, setReplayOrigin] = useState<ReplayOrigin>('seed')
   // Mirrors `game`/`actionLog` synchronously (see handleAction below) so a
   // second handleAction call in the same tick — e.g. naval targeting's
   // approach-then-attack (#376), which dispatches `moveCaptain` immediately
@@ -131,6 +138,7 @@ export function App() {
     // from @aop/content (see NewGameSetup); the engine itself holds no balance data.
     setConfig(setupConfig)
     setActionLog([])
+    setReplayOrigin('seed')
     setBattleReport(null)
     setGame(createGame(setupConfig))
     setIsTestPlay(false)
@@ -141,6 +149,7 @@ export function App() {
   function handleTestPlay(setupConfig: GameSetupConfig) {
     setConfig(setupConfig)
     setActionLog([])
+    setReplayOrigin('seed')
     setGame(createGame(setupConfig))
     setIsTestPlay(true)
     setScreen('game')
@@ -195,7 +204,7 @@ export function App() {
       // reject every save, not just stale ones.
       // #540: persist `next` as the snapshot — the exact resume state, which
       // survives a future RULES_VERSION bump that would strand the action log.
-      saveGame('autosave', next.config, nextLog, next.round, next)
+      saveGame(...saveGameArguments('autosave', next, nextLog, replayOrigin))
         .then(() => setAutosaveFailing(false))
         .catch((err: unknown) => {
           console.error('Autosave failed', err)
@@ -209,7 +218,7 @@ export function App() {
     if (!config || !game) return
     // #539: game.config (stamped), not the outer `config` — see the autosave
     // call above for why. #540: `game` is the snapshot.
-    await saveGame(slotId, game.config, actionLog, game.round, game)
+    await saveGame(...saveGameArguments(slotId, game, actionLog, replayOrigin))
   }
 
   /**
@@ -229,9 +238,10 @@ export function App() {
     // world this engine can't reconstruct from the seed, so it isn't carried
     // forward (every subsequent save snapshots the live state regardless).
     // Same-version loads keep the full log so Watch Replay still works.
-    const crossVersion = !!record.snapshot && record.config.rulesVersion !== RULES_VERSION
+    const loadedReplayOrigin = replayOriginFromSave(record)
     setConfig(state.config)
-    setActionLog(crossVersion ? [] : record.actions)
+    setActionLog(loadedReplayOrigin === 'snapshot' ? [] : record.actions)
+    setReplayOrigin(loadedReplayOrigin)
     setBattleReport(null)
     setGame(state)
     // #236: a loaded slot is always a real game — test-play never survives a
@@ -270,15 +280,27 @@ export function App() {
   /** From GameOverScreen: replay the match that just ended. */
   function handleWatchReplay() {
     if (!config) return
-    openReplay({ config, actions: actionLog }, 'game-over')
+    const data = replayDataFromSession(config, actionLog, replayOrigin)
+    if (!data) {
+      setActionError(REPLAY_UNAVAILABLE_MESSAGE)
+      return
+    }
+    openReplay(data, 'game-over')
   }
 
   /** From SaveScreen (opened from within an active game): replay a saved slot
    * without touching the game currently in progress. */
   async function handleWatchSlot(slotId: string) {
-    const record = await loadGame(slotId)
-    if (!record) return
-    openReplay({ config: record.config, actions: record.actions }, 'game')
+    try {
+      const record = await loadGame(slotId)
+      if (!record) throw new Error(`No save found in slot "${slotId}"`)
+      const data = replayDataFromSave(record)
+      if (!data) throw new Error(REPLAY_UNAVAILABLE_MESSAGE)
+      openReplay(data, 'game')
+    } catch (err) {
+      console.error(`Replay from "${slotId}" failed`, err)
+      setActionError(err instanceof Error ? err.message : 'Replay is unavailable.')
+    }
   }
 
   function handleCloseReplay() {

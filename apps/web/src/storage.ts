@@ -16,12 +16,15 @@ const STORE_NAME = 'saves'
 
 /**
  * Bump this whenever the SaveRecord shape changes; loadGame() checks it.
- * v3 (#540) adds the optional `snapshot`. The bump stays backward-compatible:
- * a v2 save simply has no snapshot and loads via the replay path exactly as
- * before, and `assertSaveIsLoadable` only accepts a mismatched-version save
- * when a snapshot is present.
+ * v3 (#540) added the optional `snapshot`. v4 (#565) adds `replayOrigin`,
+ * which prevents an older client from silently ignoring a safety-critical
+ * snapshot-lineage marker. Current clients still read v1-v3 records because
+ * both additions are optional on input. DB_VERSION stays at 1 because neither
+ * change alters the IndexedDB store or its indexes.
  */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
+
+export type ReplayOrigin = 'seed' | 'snapshot'
 
 export interface SaveRecord {
   slotId: string
@@ -39,6 +42,13 @@ export interface SaveRecord {
    * snapshot-resume contract, packages/engine/test/snapshotResume.test.ts).
    */
   snapshot?: GameState
+  /**
+   * Whether the saved action log starts at the original seeded game or after
+   * a snapshot resume. Missing on schema v1-v3 records and interpreted by the
+   * loader from their rules version. Once set to `snapshot`, every later save
+   * must preserve it: that tail log cannot reconstruct the game from its seed.
+   */
+  replayOrigin?: ReplayOrigin
   /**
    * Owning account id, or undefined for a guest-owned save (v1 saves predate
    * this field and load as guest-owned). Set when a guest upgrades to an
@@ -94,6 +104,7 @@ export async function saveGame(
   actions: Action[],
   round: number,
   snapshot: GameState,
+  replayOrigin: ReplayOrigin = 'seed',
 ): Promise<void> {
   const record: SaveRecord = {
     slotId,
@@ -103,6 +114,7 @@ export async function saveGame(
     round,
     savedAt: Date.now(),
     snapshot,
+    replayOrigin,
   }
   await withStore('readwrite', (store) => store.put(record))
 }
