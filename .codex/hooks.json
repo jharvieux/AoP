@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '.codex/hooks/block-memory-edits.mjs'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '.codex/hooks/typecheck-changed-workspaces.mjs'"
+          },
+          {
+            "type": "command",
+            "command": "node '.codex/hooks/run-affected-tests.mjs'"
+          }
+        ]
+      }
+    ]
+  }
+}
