@@ -8,7 +8,7 @@ import {
 import { isNativePlatform } from './monetization/iap'
 import { useRemoveAds } from './monetization/useRemoveAds'
 
-export type AdPlacement = 'between-turns' | 'match-end'
+type AdPlacement = 'between-turns' | 'match-end'
 
 interface AdSlotProps {
   /**

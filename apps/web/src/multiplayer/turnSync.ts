@@ -21,7 +21,7 @@ export interface TurnPokeTransport {
   subscribe(channel: string, onPoke: (payload: unknown) => void): () => void
 }
 
-export interface TurnSyncOptions {
+interface TurnSyncOptions {
   matchId: string
   transport: TurnPokeTransport
   /**

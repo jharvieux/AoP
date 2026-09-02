@@ -77,7 +77,7 @@ const NOT_CONFIGURED = new AuthError(
 
 const NOT_AUTHENTICATED = new AuthError('NOT_AUTHENTICATED', 'No signed-in session to refresh.')
 
-export interface AuthProviderProps {
+interface AuthProviderProps {
   children: ReactNode
   /** Injectable for tests/storybook; defaults to the real Supabase backend. */
   backend?: AuthBackend | null

@@ -18,7 +18,7 @@ import { cellCenter, cellPolygon, pixelToCell } from './mapLayout'
 
 /** A traced boundary: flat [x0,y0,x1,y1,…] points, and whether it encloses a
  * hole (water inside a landmass) rather than an outer region outline. */
-export interface RegionLoop {
+interface RegionLoop {
   points: number[]
   hole: boolean
 }

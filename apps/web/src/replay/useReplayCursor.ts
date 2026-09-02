@@ -10,7 +10,7 @@ import {
 /** Base tick at 1x speed; `speed` divides this, so 2x plays twice as fast. */
 const BASE_TICK_MS = 350
 
-export interface ReplayControls {
+interface ReplayControls {
   state: GameState
   actionIndex: number
   totalActions: number

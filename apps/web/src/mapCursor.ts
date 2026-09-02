@@ -69,7 +69,7 @@ interface ActiveEncounterLike {
   active: boolean
 }
 
-export interface DescribeTileParams {
+interface DescribeTileParams {
   tile: Coord
   terrain: TileType
   captains: readonly PositionedOwned[]

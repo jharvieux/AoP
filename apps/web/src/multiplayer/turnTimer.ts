@@ -12,7 +12,7 @@
 /** Seconds-left threshold below which the UI styles the countdown as urgent. */
 export const URGENT_COUNTDOWN_SECONDS = 60
 
-export interface TurnCountdown {
+interface TurnCountdown {
   /** Whole seconds until the server's auto-skip deadline, clamped at 0. */
   remainingSeconds: number
   /** Deadline passed: the sweep may skip this turn at any moment. */
@@ -64,7 +64,7 @@ export function isViewerTurn(view: TurnViewLike): boolean {
   return view.status === 'active' && view.players[view.currentPlayerIndex]?.id === view.viewerId
 }
 
-export type TurnTransition = 'your-turn' | 'turn-passed' | null
+type TurnTransition = 'your-turn' | 'turn-passed' | null
 
 /**
  * Classify a view refetch for notification purposes: `'your-turn'` when the

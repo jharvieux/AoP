@@ -21,7 +21,7 @@ import type { Coord } from '@aop/shared'
  * Arrays, not `Set`s, for the same reasons as the ship overlay: JSON-comparable
  * in tests, stable as a prop, each sorted for deterministic output.
  */
-export interface PartyRangeOverlay {
+interface PartyRangeOverlay {
   green: string[]
   red: string[]
   yellow: string[]

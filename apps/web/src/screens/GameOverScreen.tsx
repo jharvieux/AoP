@@ -29,7 +29,7 @@ interface GameOverScreenProps {
  * Extracted as a pure predicate so the branching is unit-testable without
  * rendering the screen (matching the #385 `findViewerCaptainAtCity` pattern).
  */
-export type GameOverKind = 'victory' | 'defeat' | 'draw' | 'defeat-abandoned'
+type GameOverKind = 'victory' | 'defeat' | 'draw' | 'defeat-abandoned'
 
 export function classifyGameOver(
   winnerId: string | null,

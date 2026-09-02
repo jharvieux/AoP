@@ -20,14 +20,14 @@ export class OpenMatchesError extends Error {
 }
 
 /** One page of the public match browser (#150), as `list-open-matches` returns it. */
-export interface OpenMatchPage {
+interface OpenMatchPage {
   matches: OpenMatchSummary[]
   /** Keyset cursor for the next page, or `null` when this page was short (end of the list). */
   nextBefore: string | null
 }
 
 /** The seat a `join-match` call landed the caller in. */
-export interface JoinedMatch {
+interface JoinedMatch {
   matchId: string
   seat: number
 }

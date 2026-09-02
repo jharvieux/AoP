@@ -4,7 +4,7 @@ import type { ChatPokeTransport } from '../multiplayer/chatSync'
 import { useMatchChat } from '../multiplayer/useMatchChat'
 import { ChatPanel } from './ChatPanel'
 
-export interface MatchChatPanelProps {
+interface MatchChatPanelProps {
   config: SupabaseConfig
   session: AuthSession
   matchId: string

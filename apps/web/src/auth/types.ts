@@ -54,7 +54,7 @@ export type AuthState =
 export const GUEST_STATE: AuthState = { status: 'guest' }
 
 /** Stable error codes so the UI can branch without string-matching messages. */
-export type AuthErrorCode =
+type AuthErrorCode =
   | 'INVALID_CREDENTIALS'
   | 'EMAIL_TAKEN'
   | 'EMAIL_CONFIRMATION_REQUIRED'

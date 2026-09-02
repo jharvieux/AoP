@@ -7,7 +7,7 @@ import type { Coord } from '@aop/shared'
  * drives it from the render ticker's per-frame delta.
  */
 
-export interface TilePoint {
+interface TilePoint {
   x: number
   y: number
 }

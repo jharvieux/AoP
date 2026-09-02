@@ -8,7 +8,7 @@ export class CheckoutError extends Error {
   }
 }
 
-export interface CheckoutParams {
+interface CheckoutParams {
   /** Where Stripe redirects after a successful payment. */
   successUrl: string
   /** Where Stripe redirects if the customer cancels. */

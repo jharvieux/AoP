@@ -2,8 +2,6 @@ import type { CommunityMapSummary } from '@aop/shared'
 import type { SupabaseConfig } from '../auth/supabaseAuth'
 import type { AuthSession } from '../auth/types'
 
-export type { CommunityMapSummary }
-
 /**
  * A failure surfaced by the community-library Edge Functions. `code` mirrors
  * the server's `ErrorCode` (`supabase/functions/_shared/http.ts`) when the
@@ -23,7 +21,7 @@ export class CommunityLibraryError extends Error {
 }
 
 /** One page of the library browser, as `browse-maps` returns it. */
-export interface CommunityMapPage {
+interface CommunityMapPage {
   maps: CommunityMapSummary[]
   /** Keyset cursor for the next page, or `null` when this page was short (end of the list). */
   nextBefore: string | null
@@ -31,7 +29,7 @@ export interface CommunityMapPage {
 
 /** A downloaded map, as `download-map` returns it — `mapCode` feeds the same
  * decode + engine-validate import path as a hand-pasted Tier-1 code. */
-export interface DownloadedCommunityMap {
+interface DownloadedCommunityMap {
   mapId: string
   name: string
   mapCode: string

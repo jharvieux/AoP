@@ -385,7 +385,7 @@ export interface MapControls {
   fitToMap: () => void
 }
 
-export interface MapCanvasProps {
+interface MapCanvasProps {
   map: GameMap
   captains: Captain[]
   cities: CityState[]

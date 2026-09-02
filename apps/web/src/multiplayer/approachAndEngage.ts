@@ -23,7 +23,7 @@ import {
  * returning `null` to abort it. An illegal follow-up is never submitted —
  * the move still lands (or fails) entirely on its own.
  */
-export interface ApproachAndEngageDeps<View> extends SubmitRetryDeps<View> {
+interface ApproachAndEngageDeps<View> extends SubmitRetryDeps<View> {
   /**
    * Given the fresh post-move view — always the concrete `SubmitActionResult.view`
    * a real `submit-action` response carries, independent of `refetch`'s
@@ -33,7 +33,7 @@ export interface ApproachAndEngageDeps<View> extends SubmitRetryDeps<View> {
   buildFollowUp: (freshView: PlayerView) => Action | null
 }
 
-export type ApproachAndEngageOutcome<View> =
+type ApproachAndEngageOutcome<View> =
   | { kind: 'ok'; move: SubmitActionResult; followUp: SubmitActionResult }
   /** The approach move itself didn't land — see `outcome` for why (stale/error). */
   | { kind: 'moveFailed'; outcome: SubmitRetryOutcome<View> }

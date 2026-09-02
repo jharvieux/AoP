@@ -22,7 +22,7 @@ export class SpectateError extends Error {
 
 /** One `get-player-view` response — the live, fog-locked read a granted
  * spectator (or a real seat-holder) polls (docs/MULTIPLAYER.md §12). */
-export interface SpectateView {
+interface SpectateView {
   seq: number
   seat: number
   role: 'player' | 'spectator'

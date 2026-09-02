@@ -18,10 +18,10 @@ import { getNativePlugin, isNativePlatform } from './nativeBridge'
  * need to change for callers.
  */
 
-export type TurnNotificationHandler = (payload: { matchId?: string }) => void
+type TurnNotificationHandler = (payload: { matchId?: string }) => void
 
 /** Invoked with the device's push token once native registration succeeds. */
-export type PushTokenHandler = (token: string) => void
+type PushTokenHandler = (token: string) => void
 
 const PLUGIN_NAME = 'PushNotifications'
 

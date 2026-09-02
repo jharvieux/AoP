@@ -32,7 +32,7 @@ export interface SeatConfig {
  * match created before these became configurable rebuilds identically. Twin of
  * `MatchSetupOverrides` in `supabase/functions/_shared/catalog.ts`.
  */
-export interface MatchSetupOverrides {
+interface MatchSetupOverrides {
   betrayalReputationPenalty?: number | undefined
   betrayalTruceRounds?: number | undefined
   /** Host-chosen captivity window in rounds (#309); overrides `GAME_SETUP.captainCaptivityRounds`. */

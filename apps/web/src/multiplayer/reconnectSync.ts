@@ -50,7 +50,7 @@ export interface ResyncTransport {
   onVisibilityReturn(handler: () => void): () => void
 }
 
-export interface ReconnectSyncOptions {
+interface ReconnectSyncOptions {
   transport: ResyncTransport
   /** Discard optimistic state and refetch the whole `PlayerView` (§13: replacement, never a diff patch). */
   onResync: () => void | Promise<void>

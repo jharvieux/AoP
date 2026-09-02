@@ -4,7 +4,7 @@ import { useTheme } from '../theme/ThemeContext'
 import { BottomSheet } from './BottomSheet'
 import { buildDiplomacyRoster, type DiplomacyPlayerInfo, type ViewAlliancesLike } from './diplomacy'
 
-export interface DiplomacyPanelProps {
+interface DiplomacyPanelProps {
   viewerId: string
   viewerReputation: number
   /** Every other living seat (see `buildDiplomacyRoster` — the viewer and eliminated seats are dropped). */

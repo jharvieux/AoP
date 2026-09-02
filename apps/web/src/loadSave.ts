@@ -11,7 +11,7 @@ import { SCHEMA_VERSION, type ReplayOrigin, type SaveRecord } from './storage'
 export const REPLAY_UNAVAILABLE_MESSAGE =
   'Replay is unavailable because this game was resumed after a game update.'
 
-export interface SeedReplayData {
+interface SeedReplayData {
   config: GameConfig
   actions: Action[]
 }

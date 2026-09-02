@@ -10,11 +10,11 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 // rather than per-texture at each call site.
 TextureSource.defaultOptions.scaleMode = 'linear'
 
-export interface UsePixiAppOptions {
+interface UsePixiAppOptions {
   background?: string
 }
 
-export interface UsePixiApp {
+interface UsePixiApp {
   /** Attach to the wrapping <div> — the canvas is appended into it once ready. */
   containerRef: RefObject<HTMLDivElement | null>
   /** undefined until Pixi's async init resolves, and again once torn down. */
