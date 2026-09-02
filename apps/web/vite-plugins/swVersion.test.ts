@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -7,6 +7,7 @@ import {
   injectBuildHash,
   listFilesRecursive,
   SW_VERSION_PLACEHOLDER,
+  swVersionPlugin,
 } from './swVersion'
 
 describe('computeBuildHash', () => {
@@ -58,5 +59,28 @@ describe('listFilesRecursive', () => {
     writeFileSync(join(dir, 'assets', 'index-abc.js'), '')
 
     expect(listFilesRecursive(dir)).toEqual(['assets/index-abc.js', 'index.html', 'sw.js'])
+  })
+})
+
+describe('swVersionPlugin', () => {
+  let dir: string
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('stamps the emitted service worker with the hash of its actual build output', () => {
+    dir = mkdtempSync(join(tmpdir(), 'sw-version-plugin-test-'))
+    mkdirSync(join(dir, 'assets'))
+    writeFileSync(join(dir, 'assets', 'index-abc.js'), 'console.log("ahoy")')
+    writeFileSync(join(dir, 'index.html'), '<main>Age of Plunder</main>')
+    writeFileSync(dir + '/sw.js', `const CACHE_VERSION = '${SW_VERSION_PLACEHOLDER}'`)
+    const plugin = swVersionPlugin()
+
+    plugin.configResolved!({ build: { outDir: dir } } as never)
+    plugin.closeBundle!()
+
+    const expected = computeBuildHash(['assets/index-abc.js', 'index.html'])
+    expect(readFileSync(join(dir, 'sw.js'), 'utf-8')).toBe(`const CACHE_VERSION = '${expected}'`)
   })
 })

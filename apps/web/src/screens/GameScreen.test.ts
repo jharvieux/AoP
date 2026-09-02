@@ -1,11 +1,37 @@
-import { describe, expect, it } from 'vitest'
-import { hexDistance, type Captain, type GameMap } from '@aop/engine'
+// @vitest-environment jsdom
+import { fireEvent, render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { GAME_SETUP } from '@aop/content'
+import { createGame, hexDistance, type Captain, type GameConfig, type GameMap } from '@aop/engine'
 import type { Coord } from '@aop/shared'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('../MapCanvas', () => ({
+  MapCanvas: () => null,
+}))
+vi.mock('../theme/ThemeContext', () => ({
+  useTheme: () => ({
+    factionName: (_id: string, fallback: string) => fallback,
+    unitName: (_id: string, fallback: string) => fallback,
+  }),
+}))
+vi.mock('../audio/useBackgroundMusic', () => ({ useBackgroundMusic: () => undefined }))
+vi.mock('../audio/useEncounterAudio', () => ({ useEncounterAudio: () => undefined }))
+vi.mock('../audio/feedback', () => ({
+  coinFeedback: vi.fn(),
+  combatFeedback: vi.fn(),
+  impactFeedback: vi.fn(),
+  shipMoveFeedback: vi.fn(),
+  tapFeedback: vi.fn(),
+}))
+vi.mock('../audio/audioManager', () => ({ audioManager: { play: vi.fn(), stop: vi.fn() } }))
+
 import {
   classifySelectedPartyTileTap,
   factionOfOwner,
   factionOfPlayer,
   findViewerCaptainAtCity,
+  GameScreen,
 } from './GameScreen'
 
 /**
@@ -191,5 +217,39 @@ describe('factionOfPlayer / factionOfOwner (#AOP-CLIENT-1: neutral-owned cities)
 
   it('factionOfOwner still throws for a genuinely unmatched, non-neutral id', () => {
     expect(() => factionOfOwner(players, 'nobody')).toThrow(/no player/i)
+  })
+})
+
+describe('GameScreen', () => {
+  it('renders the live game HUD and dispatches its End Turn control', () => {
+    const config: GameConfig = {
+      seed: 7,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      players: [
+        { id: 'player-0', name: 'Anne', faction: 'pirates', isAI: false },
+        { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+      ],
+    }
+    const onAction = vi.fn()
+    render(
+      createElement(GameScreen, {
+        game: createGame(config),
+        battleReport: null,
+        onDismissBattleReport: vi.fn(),
+        itemFound: null,
+        onAction,
+        onSaveSlot: async () => undefined,
+        onLoadSlot: async () => undefined,
+        onWatchSlot: vi.fn(),
+        autosaveFailing: true,
+      }),
+    )
+
+    expect(screen.getByRole('heading', { name: 'Age of Plunder' })).not.toBeNull()
+    expect(screen.getByText(/Round 1.*Anne.*Pirates/)).not.toBeNull()
+    expect(screen.getByRole('status').textContent).toMatch(/Autosave failing/)
+    fireEvent.click(screen.getByRole('button', { name: 'End Turn' }))
+    expect(onAction).toHaveBeenCalledWith({ type: 'endTurn', playerId: 'player-0' })
   })
 })
