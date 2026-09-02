@@ -6,6 +6,7 @@ import {
   classifyAsset,
   evaluateAssetBudgets,
   listFilesRecursive,
+  assetBudgetPlugin,
   type AssetBudgets,
 } from './assetBudget'
 
@@ -100,5 +101,22 @@ describe('listFilesRecursive', () => {
     writeFileSync(join(dir, 'audio', 'menu_theme.ogg'), '')
 
     expect(listFilesRecursive(dir)).toEqual(['audio/menu_theme.ogg', 'index.html', 'sw.js'])
+  })
+})
+
+describe('assetBudgetPlugin', () => {
+  let dir: string
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('inspects actual emitted files and fails the build when a bundle exceeds its budget', () => {
+    dir = mkdtempSync(join(tmpdir(), 'asset-budget-plugin-test-'))
+    writeFileSync(join(dir, 'oversized.js'), 'x'.repeat(801))
+    const plugin = assetBudgetPlugin(budgets)
+
+    plugin.configResolved!({ build: { outDir: dir } } as never)
+    expect(() => plugin.closeBundle!()).toThrow(/oversized\.js.*raw exceeds/)
   })
 })

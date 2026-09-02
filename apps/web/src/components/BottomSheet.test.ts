@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { shouldDismissSheet } from './BottomSheet'
+// @vitest-environment jsdom
+import { fireEvent, render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import { BottomSheet, shouldDismissSheet } from './BottomSheet'
 
 describe('shouldDismissSheet', () => {
   it('does not dismiss on a tiny accidental nudge', () => {
@@ -20,5 +23,27 @@ describe('shouldDismissSheet', () => {
 
   it('never dismisses a drag back upward (negative distance)', () => {
     expect(shouldDismissSheet(-50, 5)).toBe(false)
+  })
+})
+
+describe('BottomSheet', () => {
+  it('renders its content, closes from its button/backdrop, and keeps sheet clicks inside', () => {
+    const onClose = vi.fn()
+    const { container } = render(
+      createElement(BottomSheet, {
+        title: 'Harbor',
+        onClose,
+        children: createElement('p', undefined, 'Dockyard options'),
+      }),
+    )
+
+    expect(screen.getByRole('heading', { name: 'Harbor' })).not.toBeNull()
+    expect(screen.getByText('Dockyard options')).not.toBeNull()
+    fireEvent.click(container.querySelector('.sheet')!)
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledOnce()
+    fireEvent.click(container.querySelector('.sheet-backdrop')!)
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })
