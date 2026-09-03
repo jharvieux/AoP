@@ -16,18 +16,38 @@ Open each at 100%. The approved Direction B map/city review sources are embedded
 
 The runtime implementation retains `:root` in `apps/web/src/styles.css` as the single source of truth. The checkpoint proposes one semantic surface and emphasis vocabulary:
 
-| Intent                               | Proposed token                          | Value / rule                                                                      |
-| ------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
-| canvas / deepest inset               | `--surface-canvas` / `--surface-inset`  | `#21150d`; gameplay sits over art without opaque covering                         |
-| panel / raised panel                 | `--surface-panel` / `--surface-raised`  | `#2d1b10` / `#3a2416`, 92–96% opacity, low-frequency wood grain only              |
-| readable warm surface                | `--surface-parchment`                   | `#f3e5c2`, reserved for labels, sheets, and light panels                          |
-| primary action **and gameplay gold** | `--color-action`                        | `#c8962c`; resolves the `--accent` / `--color-gold` split into one action meaning |
-| selection / status brass             | `--color-brass`                         | `#c9a227`; thin keyline and two-ring selection, never another filled action color |
-| focus                                | `--stroke-focus`                        | `#f6db83`, external static 2 px outline                                           |
-| danger / success                     | `--color-danger` / `--color-success`    | `#a6402f` / `#477447`, always paired with icon/shape/text                         |
-| disabled                             | `--text-disabled` / `--stroke-disabled` | reduced contrast plus a visible slash or label, not opacity alone                 |
+| Intent                   | Proposed token                          | Value / rule                                                                      |
+| ------------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
+| canvas / deepest inset   | `--surface-canvas` / `--surface-inset`  | `#21150d`; gameplay sits over art without opaque covering                         |
+| panel / raised panel     | `--surface-panel` / `--surface-raised`  | `#2d1b10` / `#3a2416`, 92–96% opacity, low-frequency wood grain only              |
+| readable warm surface    | `--surface-parchment`                   | `#f3e5c2`, reserved for labels, sheets, and light panels                          |
+| primary action           | `--color-action`                        | `#c8962c`; fills End turn / Commission and is the focus accent                    |
+| selection / status brass | `--color-brass`                         | `#c9a227`; thin keyline and two-ring selection, never another filled action color |
+| focus                    | `--stroke-focus`                        | `#c8962c`, external static 2 px outline                                           |
+| danger / success         | `--color-danger` / `--color-success`    | `#a6402f` / `#477447`, always paired with icon/shape/text                         |
+| disabled                 | `--text-disabled` / `--stroke-disabled` | reduced contrast plus a visible slash or label, not opacity alone                 |
 
-Parchment communicates material and readability, not a competing brand color. Gold remains under the visual-system ceiling: it identifies the one primary action and small selected/status details; it does not become panel fill or decorative clutter. Direction B water, limestone, and timber retain the largest visual area and highest detail density.
+Parchment communicates material and readability, not a competing brand color. Action gold identifies the primary commitment/focus. Status brass is reserved for small selected/status details and thin keylines; neither becomes panel fill or decorative clutter. Direction B water, limestone, and timber retain the largest visual area and highest detail density.
+
+### Literal color census and proof parity
+
+`compose.mjs` holds every literal color in the semantic `C` vocabulary; no UI drawing string carries an unclassified hex literal. The validator checks every row below against the source and each generated proof, so README, compositor, and output cannot silently drift.
+
+| Source semantic name                                        | Value                             | Rendered consumer(s)                                                                         |
+| ----------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `C.surfaceCanvas`                                           | `#17100a`                         | token-sheet outer canvas                                                                     |
+| `C.ink`                                                     | `#21150d`                         | insets, dark panel interior, primary-action text                                             |
+| `C.wood` / `C.woodRaised` / `C.woodHover`                   | `#2d1b10` / `#3a2416` / `#51331d` | information panels; default and hover controls                                               |
+| `C.surfaceDisabled`                                         | `#33291f`                         | disabled control sample                                                                      |
+| `C.parchment` / `C.parchmentHighlight` / `C.parchmentMuted` | `#f3e5c2` / `#fff1ca` / `#cbb17a` | readable copy, hover copy, quiet dividers/material edges                                     |
+| `C.textMuted` / `C.textDisabled`                            | `#b9a47b` / `#b4aa9a`             | captions/status copy; disabled label and slash                                               |
+| `C.action` / `C.focus`                                      | `#c8962c`                         | filled End turn and Commission; course-confirmation edge; focus outline                      |
+| `C.brass` / `C.brassHighlight`                              | `#c9a227` / `#f0cb66`             | thin panel/icon keylines, selection/status ring and resource/cost emphasis; highlight glints |
+| `C.fog` / `C.artScrim`                                      | `#0b1a26` / `#07121a`             | map/city backing and restrained art scrim                                                    |
+| `C.sea` / `C.land`                                          | `#1b4a6b` / `#4a7c3f`             | minimap illustration only                                                                    |
+| `C.danger` / `C.success`                                    | `#a6402f` / `#477447`             | token-sheet semantic samples                                                                 |
+| `C.strokeDisabled`                                          | `#796f61`                         | disabled-control border                                                                      |
+| `C.courseSurface` / `C.costStroke`                          | `#172939` / `#725838`             | course confirmation surface; quiet cost-card border                                          |
 
 ### Type, numbers, and icon language
 
@@ -77,4 +97,4 @@ Run `node compose.mjs && node validate.mjs` from this directory to recreate and 
 
 ## Operator decision requested
 
-Approve this chrome system for implementation: one shared parchment/action-gold token, near-black wood surfaces with thin brass punctuation, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
+Approve this chrome system for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
