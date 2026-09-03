@@ -1,6 +1,6 @@
 # Runtime asset and export specification
 
-This is the production handoff for issues downstream of #607. It specifies deliverables and validation; it does not authorize runtime implementation and does not change the stored `ThemePack` shape.
+This is the Direction B production handoff for issues downstream of #607. It specifies deliverables and validation; it does not itself authorize runtime implementation beyond each approved child issue and does not change the stored `ThemePack` shape. City assets must preserve the approved depth and material language while reducing fortress dominance and giving the tavern, economy, recruitment, and shipyard clear independent silhouettes.
 
 ## 1. Coordinate systems
 

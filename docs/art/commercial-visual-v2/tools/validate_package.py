@@ -86,8 +86,15 @@ def main() -> None:
             if not (document.parent / relative).is_file():
                 raise AssertionError(f"broken link in {filename}: {target}")
     manifest = (ROOT / "MANIFEST.md").read_text()
-    if "NOT OPERATOR-APPROVED" not in manifest or "Current record: NOT APPROVED" not in manifest:
-        raise AssertionError("manifest must keep the approval gate fail-loud")
+    approval_markers = (
+        "APPROVED — DIRECTION B / GILDED HARBOR DIORAMA",
+        "Current record: APPROVED on 2026-09-03",
+        "City composition: approve with amendment",
+        "https://github.com/jharvieux/AoP/issues/607#issuecomment-5532926456",
+    )
+    missing_approval_markers = [marker for marker in approval_markers if marker not in manifest]
+    if missing_approval_markers:
+        raise AssertionError(f"manifest is missing approval evidence: {missing_approval_markers}")
     compositor = (ROOT / "tools" / "compose_styleframes.py").read_text()
     forbidden_glyphs = {
         "anchor": chr(0x2693),
@@ -105,7 +112,7 @@ def main() -> None:
     compositor_api = runpy.run_path(str(ROOT / "tools" / "compose_styleframes.py"), run_name="aop_styleframe_validator")
     compositor_api["validate_map_world_states"]()
     print(f"validated {checked} WebP files: 17 sources + 22 review outputs")
-    print("validated 5 required documents, local icon family, and unapproved operator gate")
+    print("validated 5 required documents, local icon family, and Direction B operator approval")
     print("validated source-world anchors, route samples, label attachment, fog, and terrain eligibility")
 
 

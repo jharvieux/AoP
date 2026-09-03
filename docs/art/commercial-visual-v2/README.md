@@ -1,21 +1,25 @@
 # Commercial visual direction v2
 
-Status: **candidate package — operator selection is not yet recorded**.
+Status: **approved — Direction B, Gilded Harbor Diorama**.
 
 This package is the issue #607 art-direction deliverable. It compares two complete visual directions for the world map and city screen, locks the rules shared by either direction, and defines the production contract for the dependent art and UI issues. Nothing here is a runtime asset and no gameplay or theme schema changed.
 
 ![Direction comparison](candidates/comparison-contact-sheet-1600x1160.webp)
 
-## The decision
+## Approved decision
 
-The operator must choose exactly one rendering direction before #608–#613 produce assets or broadly restyle components:
+The operator approved **Direction B — Gilded Harbor Diorama** on 2026-09-03. The durable approval is recorded in [issue #607](https://github.com/jharvieux/AoP/issues/607#issuecomment-5532926456) and [MANIFEST.md](MANIFEST.md#operator-approval-record).
+
+The approved production direction uses layered terrain depth, luminous water, modeled limestone and timber, selective brass detail, and near-blackened wood chrome. Production must apply this city-composition amendment:
+
+- reduce the full-city reference's fortress dominance;
+- give the tavern, economy, recruitment, and shipyard districts clearer individual silhouettes;
+- build the city from an empty terrain/coast/road/foundation backdrop plus separable building, shadow, flag, selection, label, value, and UI layers.
+
+The full-city image remains a finish target, never a runtime backdrop export. Direction A remains in the package as rejected comparison evidence:
 
 - **Direction A — Chartmaker's Gouache:** flat matte atlas shapes, restrained ink contours, low texture density, and continuity with the established DreamShaper 8 cutout library. It is the clearer and lower-risk production path, but has less depth and material richness.
-- **Direction B — Gilded Harbor Diorama:** layered terrain depth, luminous water, modeled limestone and timber, and selective brass detail from DreamShaperXL Turbo. It best answers the commercial-product-quality goal, but every city building must be rebuilt as a separable cutout; the full-city image is a target, never a backdrop export.
-
-The recommendation is **Direction B** if the priority is the strongest visible quality step. Direction A remains viable if continuity, scope, and small-screen simplicity matter more than dimensional richness. This recommendation is not approval.
-
-The operator's reply must identify **A or B** and explicitly accept or amend these nine axes: camera, lighting, palette, city composition, map readability, faction treatment, typography, icon style, and ornament level. The approval record template is in [MANIFEST.md](MANIFEST.md#operator-approval-record).
+- **Direction B — Gilded Harbor Diorama:** the approved rendering character and authoritative production target for #608–#613.
 
 ## Direction A — Chartmaker's Gouache
 
@@ -82,4 +86,4 @@ The full city images are **styleframes only**. A shippable city backdrop may con
 2. Confirm all map semantics remain discoverable in color and in the grayscale proof without exposing fog-hidden information.
 3. Compare starting, midgame, and full cities for a stable camera, ground plane, and intentional empty space.
 4. Confirm the full city feels like one harbor while accepting that production exports remain modular.
-5. Choose A or B and record the nine-axis approval. Production work remains blocked until that record exists.
+5. Confirm production work follows the recorded Direction B approval and city-composition amendment.

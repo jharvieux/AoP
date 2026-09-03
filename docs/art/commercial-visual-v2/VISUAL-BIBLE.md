@@ -1,6 +1,8 @@
 # Visual bible
 
-This document is the shared visual contract for either issue #607 candidate. Direction-specific rendering deltas are called out explicitly; everything else is fixed. It refines Weathered Parchment & Rope without replacing D-023.
+This document is the approved visual contract for **Direction B — Gilded Harbor Diorama**. Direction A remains only as comparison evidence. Direction-specific rendering deltas are retained for traceability; downstream production follows the B column plus the recorded city-composition amendment. This refines Weathered Parchment & Rope without replacing D-023.
+
+Direction B's city production must preserve its layered depth and harbor material quality while reducing fortress dominance, clarifying the tavern, economy, recruitment, and shipyard silhouettes, and keeping every constructed element separable from the empty backdrop.
 
 ## 1. Camera and composition
 

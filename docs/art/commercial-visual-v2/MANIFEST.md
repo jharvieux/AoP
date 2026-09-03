@@ -1,12 +1,12 @@
 # Commercial visual v2 — manifest and provenance
 
-Status: **CANDIDATE / NOT OPERATOR-APPROVED**
+Status: **APPROVED — DIRECTION B / GILDED HARBOR DIORAMA**
 
 Issue: #607, child of #606
 
 Generated and reviewed: 2026-09-03
 
-This directory is a design and art-direction package. Its images are review proofs, not runtime assets. Production issues must treat the selected direction plus [VISUAL-BIBLE.md](VISUAL-BIBLE.md) and [RUNTIME-SPEC.md](RUNTIME-SPEC.md) as authoritative only after the operator approval record at the end of this file is completed.
+This directory is a design and art-direction package. Its images are review proofs, not runtime assets. Production issues must treat Direction B plus [VISUAL-BIBLE.md](VISUAL-BIBLE.md), [RUNTIME-SPEC.md](RUNTIME-SPEC.md), and the city-composition amendment in the operator approval record as authoritative.
 
 ## Package inventory
 
@@ -89,7 +89,7 @@ The original ComfyUI PNG metadata was checked against every retained source's re
 
 ## Source disposition
 
-All retained model sources are 1024×704 RGB WebP. “Selected” means selected as an ingredient in a candidate styleframe, **not operator-approved for production**.
+All retained model sources are 1024×704 RGB WebP. “Selected” means selected as a visual ingredient in the approved Direction B style target, not approved as a runtime export. The baked map and city paintings remain non-shippable references.
 
 | Source                                  |   Bytes | Disposition                     | Inspection and reason                                                                                                                                                                   |
 | --------------------------------------- | ------: | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -203,24 +203,22 @@ Focused repository command results are recorded in the delivering commit/PR evid
 
 ## Operator approval record
 
-**Current record: NOT APPROVED. Do not start production art or broad component restyling.**
-
-Complete this block verbatim in the approving issue comment and copy the final values here in the production PR:
+**Current record: APPROVED on 2026-09-03.**
 
 ```text
-Commercial visual direction: [A — Chartmaker's Gouache | B — Gilded Harbor Diorama]
-Camera: [approve | amendment]
-Lighting: [approve | amendment]
-Palette: [approve | amendment]
-City composition: [approve | amendment]
-Map readability: [approve | amendment]
-Faction treatment: [approve | amendment]
-Typography: [approve | amendment]
-Icon style: [approve | amendment]
-Ornament level: [approve | amendment]
-Decision: [approved for #608–#613 production | revisions requested]
-Approval issue/comment URL: [required]
-Operator/date: [required]
+Commercial visual direction: B — Gilded Harbor Diorama
+Camera: approve
+Lighting: approve
+Palette: approve
+City composition: approve with amendment — preserve Direction B's layered depth, coherent harbor materials, and shoreline plan; reduce fortress dominance; give the tavern, economy, recruitment, and shipyard districts clearer individual silhouettes; and implement the city as an empty terrain/coast/road/foundation backdrop plus separable building, shadow, flag, selection, label, value, and UI layers.
+Map readability: approve
+Faction treatment: approve
+Typography: approve
+Icon style: approve
+Ornament level: approve — retain restrained near-blackened wood and thin brass so gameplay art remains the visual hero.
+Decision: approved for #608–#613 production, subject to each child issue's dependency and evidence gates; baked concept paintings are not approved runtime assets.
+Approval issue/comment URL: https://github.com/jharvieux/AoP/issues/607#issuecomment-5532926456
+Operator/date: repository operator, 2026-09-03
 ```
 
-Choosing a model is not required separately: choosing A selects the DreamShaper 8 continuity rendering character; choosing B selects the DreamShaperXL Turbo rendering character. Any amendment that mixes their rendering characters requires a revised paired styleframe before production.
+The operator declined a separate OpenAI bake-off and authorized selective use of subscription-included OpenAI image generation in later approved art batches when it offers a clear quality or editing advantage. Deterministic local compositing, optimization, provenance, and runtime budget controls remain mandatory. This does not convert generated scene paintings into runtime assets or waive any child issue's proof gate.
