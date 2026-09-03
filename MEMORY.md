@@ -1,3 +1,39 @@
+## D-049 — 2026-09-03 — Commercial visual v2: Gilded Harbor Diorama approved
+
+**Decision.** For #607 and the commercial-quality world-map/city overhaul (#606), the
+operator selected Direction B — Gilded Harbor Diorama. Camera, northwest lighting,
+palette, map readability, faction treatment, typography, icon language, and restrained
+near-blackened-wood/thin-brass ornament are approved. City composition is approved with
+an amendment: preserve B's layered harbor depth and limestone/timber material quality,
+reduce the fortress-dominant read, and give the tavern, economy, recruitment, and
+shoreline shipyard clearer individual silhouettes. Runtime cities remain an empty
+terrain/coast/road/foundation backdrop plus separable buildings, shadows, flags,
+selection, labels, values, and UI; the baked concept painting is never a runtime asset.
+
+**Why.** Direction B makes the strongest visible step toward commercial product quality
+while retaining the Weathered Parchment & Rope application theme (D-023). Its richer
+geography, water, material depth, and quiet chrome read as one authored game. Separating
+the final art into deterministic layers preserves arbitrary constructed-building subsets,
+theme overrides, responsive composition, accessibility overlays, and asset budgets.
+
+**Pipeline.** A separate OpenAI bake-off was declined. Selective use of the
+subscription-included OpenAI image generator is authorized for later approved art batches
+when it provides a clear quality or editing advantage. Deterministic local compositing,
+optimization, provenance, source hashes/request parameters, and runtime budget checks
+remain required; no paid API use is implied by this decision.
+
+**Rejected.** Direction A — Chartmaker's Gouache as the production north star: lower risk
+and clearer at small scale, but too close to the existing presentation for the requested
+quality leap. Also rejected: shipping either generated full-scene painting as a dynamic
+backdrop; prompt-only construction-state control; retaining B's fortress-heavy district
+hierarchy without correction; and making a separate image-model bake-off a prerequisite.
+
+**Artifacts.** Issue #607 approval comment
+https://github.com/jharvieux/AoP/issues/607#issuecomment-5532926456;
+`docs/art/commercial-visual-v2/`; production issues #608–#613.
+
+---
+
 ## D-048 — 2026-07-19 — Issue sweep: 23 closed across 14 PRs (harvey-audit burn-down + operator rulings)
 
 **Decision.** Full /issue-sweep over the 16 harvey-audit findings plus #539/#540/#535.
