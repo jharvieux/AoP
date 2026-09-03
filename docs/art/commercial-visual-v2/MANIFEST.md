@@ -141,6 +141,24 @@ The compositor:
 - exports optimized review WebPs only under this directory;
 - does not write runtime assets, source manifests, app code, or theme data.
 
+## Responsive map semantic provenance
+
+The paired maps use one canonical 1024×704 source-world state per direction. Coordinates below are `(x, y)` source pixels and are projected through the same rounded cover transform as the terrain.
+
+| Semantic       | Required terrain | Direction A | Direction B |
+| -------------- | ---------------- | ----------- | ----------- |
+| Own city       | land/coast       | `(315,170)` | `(500,345)` |
+| Enemy city     | land/coast       | `(620,180)` | `(600,240)` |
+| Neutral city   | land/coast       | `(570,520)` | `(650,520)` |
+| Own fleet      | water            | `(410,460)` | `(390,520)` |
+| Enemy fleet    | water            | `(400,300)` | `(350,220)` |
+| Sea encounter  | water            | `(520,370)` | `(500,200)` |
+| Land encounter | land/coast       | `(540,210)` | `(540,330)` |
+| Land site      | land/coast       | `(660,500)` | `(660,440)` |
+| Route target   | water            | `(510,410)` | `(485,455)` |
+
+The validator checks declared land masks and the actual source pixel beneath every anchor, verifies no proof marker is inside fog, then project/unprojects every anchor through desktop, tablet, and phone crops with at most one source-pixel rounding error. Range offsets and the route originate from the canonical own-fleet coordinate; the selected-fleet label derives from that same projected anchor.
+
 ## Validation record
 
 Completed:
@@ -153,6 +171,8 @@ Completed:
 - phone, tablet, desktop, starting/mid/full, strategic/normal/close, selected-building, panel, chrome, and grayscale proofs were checked;
 - desktop header collision and selected-panel/object mismatch found during QA were corrected and the full set re-rendered/re-inspected;
 - native-size acceptance inspection found unsupported font glyphs in the command dock and map controls; fleet, city, course, end-turn, zoom-in, zoom-out, and overview controls were replaced with locally drawn geometry, added to the visual-system sheet at 20 px, and all dependent proofs were re-rendered;
+- responsive acceptance inspection found viewport-relative semantic overlays drifting against separately cropped terrain; all map semantics and fog were moved to canonical source-world coordinates, projected with the terrain crop, and checked against land/water eligibility in both directions;
+- the related defect-class sweep found the semantic-zoom diagram's example fleet and route over land; both were moved to the navigable-water side of the shared island;
 - all review WebPs are below the runtime 300 KiB comparison ceiling; the largest review image is the 228 KiB comparison sheet, although these files are not proposed runtime exports;
 - local checkpoint byte size and SHA-256 matched publisher-hosted files;
 - prompt text hashes were checked against original ComfyUI PNG metadata;

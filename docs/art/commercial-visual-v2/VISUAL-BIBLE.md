@@ -174,6 +174,8 @@ The [map LOD diagram](contracts/map-token-lod-1600x930.webp) is authoritative. C
 
 Across all sizes, safe-area insets apply to top HUD, navigation, command dock, and modal actions. Ornament yields before content or touch-target size.
 
+Map entities, encounters, sites, route/range feedback, and fog are authored once in the 1024×704 source-world coordinate system. Desktop, tablet, and phone project those same coordinates through the terrain's cover crop; they may not recompute positions as viewport percentages. Cities and land encounters/sites require a land/coast anchor, while fleets, sea encounters, and route nodes require navigable water.
+
 ## 12. Dynamic city states
 
 - Starting state: town hall plus barracks; empty prepared plots and road network make growth legible.

@@ -79,6 +79,78 @@ DIRECTIONS = {
 }
 
 
+MAP_SOURCE_SIZE = (1024, 704)
+MAP_VIEWPORTS = {
+    "desktop": ((1440, 760), (0.50, 0.48)),
+    "tablet": ((768, 878), (0.46, 0.48)),
+    "phone": ((375, 628), (0.45, 0.48)),
+}
+
+DS8_MAP_ISLANDS = [
+    [(65, 106), (152, 60), (274, 79), (351, 139), (335, 220), (250, 259), (143, 240), (71, 188)],
+    [(469, 86), (581, 43), (728, 62), (832, 117), (923, 191), (902, 295), (814, 351), (695, 332), (624, 276), (512, 250), (446, 174)],
+    [(105, 421), (206, 370), (311, 397), (349, 474), (290, 554), (171, 568), (84, 512)],
+    [(509, 477), (602, 424), (714, 452), (762, 532), (705, 605), (602, 620), (519, 573)],
+    [(849, 474), (924, 444), (991, 486), (987, 558), (916, 592), (850, 551)],
+]
+
+# Every gameplay semantic below is anchored once in the 1024x704 map source. Responsive
+# screens project this state through the same cover transform as the terrain; they never
+# place entities as fractions of the post-crop viewport.
+MAP_WORLD_STATES = {
+    "a": {
+        "own_city": (315, 170),
+        "enemy_city": (620, 180),
+        "neutral_city": (570, 520),
+        "own_ship": (410, 460),
+        "enemy_ship": (400, 300),
+        "sea_encounter": (520, 370),
+        "land_encounter": (540, 210),
+        "land_site": (660, 500),
+        "route_target": (510, 410),
+    },
+    "b": {
+        "own_city": (500, 345),
+        "enemy_city": (600, 240),
+        "neutral_city": (650, 520),
+        "own_ship": (390, 520),
+        "enemy_ship": (350, 220),
+        "sea_encounter": (500, 200),
+        "land_encounter": (540, 330),
+        "land_site": (660, 440),
+        "route_target": (485, 455),
+    },
+}
+
+MAP_LAND_REGIONS = {
+    "a": DS8_MAP_ISLANDS,
+    "b": [
+        [(395, 285), (470, 250), (560, 255), (635, 300), (650, 365), (600, 410), (535, 445), (445, 425), (382, 370)],
+        [(570, 170), (680, 170), (705, 300), (630, 310), (575, 255)],
+        [(625, 365), (800, 330), (850, 600), (650, 600), (600, 520)],
+    ],
+}
+
+MAP_FOG_REGIONS = {
+    "a": [(650, 0), (1024, 0), (1024, 704), (650, 704), (680, 560), (690, 420), (675, 260), (660, 120)],
+    "b": [(650, 0), (1024, 0), (1024, 704), (650, 704), (675, 560), (680, 420), (680, 260), (660, 120)],
+}
+
+MAP_TERRAIN_REQUIREMENTS = {
+    "own_city": "land",
+    "enemy_city": "land",
+    "neutral_city": "land",
+    "own_ship": "water",
+    "enemy_ship": "water",
+    "sea_encounter": "water",
+    "land_encounter": "land",
+    "land_site": "land",
+    "route_target": "water",
+}
+
+RANGE_OFFSETS = [(-48, -20), (-12, -48), (34, -24), (62, 16), (18, 52)]
+
+
 def font(size: int, bold: bool = False, display: bool = False) -> ImageFont.FreeTypeFont:
     path = DISPLAY_FONT if display else BODY_BOLD_FONT if bold else BODY_FONT
     return ImageFont.truetype(str(path), size)
@@ -139,14 +211,7 @@ def ds8_map_base() -> Image.Image:
         offset = (row * 17) % 61
         for x in range(-30 + offset, 1024, 92):
             draw.arc((x, row, x + 50, row + 16), 196, 344, fill=rgba((211, 235, 222), 66), width=2)
-    islands = [
-        [(65, 106), (152, 60), (274, 79), (351, 139), (335, 220), (250, 259), (143, 240), (71, 188)],
-        [(469, 86), (581, 43), (728, 62), (832, 117), (923, 191), (902, 295), (814, 351), (695, 332), (624, 276), (512, 250), (446, 174)],
-        [(105, 421), (206, 370), (311, 397), (349, 474), (290, 554), (171, 568), (84, 512)],
-        [(509, 477), (602, 424), (714, 452), (762, 532), (705, 605), (602, 620), (519, 573)],
-        [(849, 474), (924, 444), (991, 486), (987, 558), (916, 592), (850, 551)],
-    ]
-    for index, poly in enumerate(islands):
+    for index, poly in enumerate(DS8_MAP_ISLANDS):
         # Sand and surf are wider silhouettes beneath the land.
         draw.polygon(poly, fill=rgba((221, 202, 150), 255), outline=rgba((227, 239, 220), 210))
         cx = sum(p[0] for p in poly) // len(poly)
@@ -308,13 +373,58 @@ def proof_source(direction: Direction, asset: str) -> Image.Image:
     return backdrop.convert("RGB")
 
 
+@dataclass(frozen=True)
+class CoverTransform:
+    source_size: tuple[int, int]
+    target_size: tuple[int, int]
+    resized_size: tuple[int, int]
+    crop_offset: tuple[int, int]
+
+    def project(self, point: tuple[int, int]) -> tuple[int, int]:
+        scale_x = self.resized_size[0] / self.source_size[0]
+        scale_y = self.resized_size[1] / self.source_size[1]
+        return (
+            round(point[0] * scale_x - self.crop_offset[0]),
+            round(point[1] * scale_y - self.crop_offset[1]),
+        )
+
+    def unproject(self, point: tuple[int, int]) -> tuple[float, float]:
+        scale_x = self.resized_size[0] / self.source_size[0]
+        scale_y = self.resized_size[1] / self.source_size[1]
+        return (
+            (point[0] + self.crop_offset[0]) / scale_x,
+            (point[1] + self.crop_offset[1]) / scale_y,
+        )
+
+
+def cover_transform(
+    source_size: tuple[int, int],
+    target_size: tuple[int, int],
+    focus: tuple[float, float] = (0.5, 0.5),
+) -> CoverTransform:
+    target_w, target_h = target_size
+    scale = max(target_w / source_size[0], target_h / source_size[1])
+    resized_size = (round(source_size[0] * scale), round(source_size[1] * scale))
+    crop_offset = (
+        round((resized_size[0] - target_w) * focus[0]),
+        round((resized_size[1] - target_h) * focus[1]),
+    )
+    return CoverTransform(source_size, target_size, resized_size, crop_offset)
+
+
+def cover_with_transform(
+    image: Image.Image,
+    size: tuple[int, int],
+    focus: tuple[float, float] = (0.5, 0.5),
+) -> tuple[Image.Image, CoverTransform]:
+    transform = cover_transform(image.size, size, focus)
+    resized = image.resize(transform.resized_size, Image.Resampling.LANCZOS)
+    x, y = transform.crop_offset
+    return resized.crop((x, y, x + size[0], y + size[1])), transform
+
+
 def cover(image: Image.Image, size: tuple[int, int], focus: tuple[float, float] = (0.5, 0.5)) -> Image.Image:
-    target_w, target_h = size
-    scale = max(target_w / image.width, target_h / image.height)
-    resized = image.resize((round(image.width * scale), round(image.height * scale)), Image.Resampling.LANCZOS)
-    x = round((resized.width - target_w) * focus[0])
-    y = round((resized.height - target_h) * focus[1])
-    return resized.crop((x, y, x + target_w, y + target_h))
+    return cover_with_transform(image, size, focus)[0]
 
 
 def contain(image: Image.Image, size: tuple[int, int], color: tuple[int, int, int] = INK) -> Image.Image:
@@ -555,60 +665,130 @@ def dotted_route(draw: ImageDraw.ImageDraw, start: tuple[int, int], end: tuple[i
             draw.ellipse((x - r * 2, y - r * 2, x + r * 2, y + r * 2), outline=rgba(color, 240), width=max(1, round(2 * scale)))
 
 
-def annotate_map(image: Image.Image, box: tuple[int, int, int, int], direction: Direction, phone: bool = False) -> None:
-    x0, y0, x1, y1 = box
-    w, h = x1 - x0, y1 - y0
+def point_in_polygon(point: tuple[int, int], polygon: list[tuple[int, int]]) -> bool:
+    x, y = point
+    inside = False
+    previous = polygon[-1]
+    for current in polygon:
+        x1, y1 = previous
+        x2, y2 = current
+        crosses = (y1 > y) != (y2 > y)
+        if crosses and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            inside = not inside
+        previous = current
+    return inside
+
+
+def map_terrain(direction_id: str, point: tuple[int, int]) -> str:
+    return "land" if any(point_in_polygon(point, polygon) for polygon in MAP_LAND_REGIONS[direction_id]) else "water"
+
+
+def pixel_terrain(color: tuple[int, int, int]) -> str:
+    red, green, blue = color
+    return "land" if red >= 0.65 * green and blue < 0.90 * green else "water"
+
+
+def map_coordinate_evidence() -> dict[str, dict[str, dict[str, tuple[int, int]]]]:
+    evidence: dict[str, dict[str, dict[str, tuple[int, int]]]] = {}
+    for direction_id, state in MAP_WORLD_STATES.items():
+        evidence[direction_id] = {}
+        for viewport, (size, focus) in MAP_VIEWPORTS.items():
+            transform = cover_transform(MAP_SOURCE_SIZE, size, focus)
+            evidence[direction_id][viewport] = {name: transform.project(point) for name, point in state.items()}
+    return evidence
+
+
+def validate_map_world_states() -> None:
+    expected_names = set(MAP_TERRAIN_REQUIREMENTS)
+    evidence = map_coordinate_evidence()
+    for direction_id, state in MAP_WORLD_STATES.items():
+        if set(state) != expected_names:
+            raise AssertionError(f"map semantic set mismatch for direction {direction_id}")
+        fog = MAP_FOG_REGIONS[direction_id]
+        source = load_source(DIRECTIONS[direction_id], "map").convert("RGB")
+        for name, point in state.items():
+            observed = map_terrain(direction_id, point)
+            expected = MAP_TERRAIN_REQUIREMENTS[name]
+            if observed != expected:
+                raise AssertionError(
+                    f"{direction_id} {name} must be on {expected}, got {observed} at source {point}"
+                )
+            pixel_observed = pixel_terrain(source.getpixel(point))
+            if pixel_observed != expected:
+                raise AssertionError(
+                    f"{direction_id} {name} source pixel must be {expected}, got {pixel_observed} at {point}"
+                )
+            if point_in_polygon(point, fog):
+                raise AssertionError(f"{direction_id} {name} is hidden by the proof fog at source {point}")
+            for viewport in MAP_VIEWPORTS:
+                screen_point = evidence[direction_id][viewport][name]
+                size, focus = MAP_VIEWPORTS[viewport]
+                transform = cover_transform(MAP_SOURCE_SIZE, size, focus)
+                source_point = transform.unproject(screen_point)
+                if max(abs(source_point[0] - point[0]), abs(source_point[1] - point[1])) > 1.0:
+                    raise AssertionError(f"{direction_id} {name} loses source correspondence in {viewport}")
+                if not (10 <= screen_point[0] <= size[0] - 10 and 10 <= screen_point[1] <= size[1] - 10):
+                    raise AssertionError(f"{direction_id} {name} is cropped in {viewport}: {screen_point}")
+        for point in fog:
+            if not (0 <= point[0] <= MAP_SOURCE_SIZE[0] and 0 <= point[1] <= MAP_SOURCE_SIZE[1]):
+                raise AssertionError(f"{direction_id} fog point outside source: {point}")
+        frontier = [fog[0], fog[7], fog[6], fog[5], fog[4], fog[3]]
+        for viewport, (size, focus) in MAP_VIEWPORTS.items():
+            transform = cover_transform(MAP_SOURCE_SIZE, size, focus)
+            projected_frontier = [transform.project(point) for point in frontier]
+            visible_frontier = [point for point in projected_frontier if -1 <= point[1] <= size[1] + 1]
+            if not visible_frontier or size[0] - min(point[0] for point in visible_frontier) < 12:
+                raise AssertionError(f"{direction_id} fog is not visibly represented in {viewport}")
+
+
+def annotate_map_world(image: Image.Image, direction: Direction) -> None:
+    if image.size != MAP_SOURCE_SIZE:
+        raise AssertionError(f"map source must be {MAP_SOURCE_SIZE}, got {image.size}")
+    state = MAP_WORLD_STATES[direction.id]
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer, "RGBA")
-    # Feathered-looking exploration frontier: three nested translucent shapes.
-    fog_shape = [
-        (x0 + int(w * 0.77), y0),
-        (x1, y0),
-        (x1, y1),
-        (x0 + int(w * 0.86), y1),
-        (x0 + int(w * 0.82), y0 + int(h * 0.70)),
-        (x0 + int(w * 0.88), y0 + int(h * 0.48)),
-        (x0 + int(w * 0.79), y0 + int(h * 0.27)),
-    ]
-    draw.polygon(fog_shape, fill=rgba(FOG, 205))
-    draw.line(fog_shape[-4:] + [fog_shape[0]], fill=rgba((90, 126, 142), 65), width=max(6, w // 90), joint="curve")
+    fog = MAP_FOG_REGIONS[direction.id]
+    draw.polygon(fog, fill=rgba(FOG, 205))
+    draw.line([fog[3], fog[4], fog[5], fog[6], fog[7], fog[0]], fill=rgba((90, 126, 142), 65), width=7, joint="curve")
 
-    scale = w / 1180
-    own_city = (x0 + int(w * 0.25), y0 + int(h * 0.43))
-    enemy_city = (x0 + int(w * 0.65), y0 + int(h * 0.33))
-    neutral_city = (x0 + int(w * 0.58), y0 + int(h * 0.71))
-    own_ship = (x0 + int(w * 0.36), y0 + int(h * 0.64))
-    enemy_ship = (x0 + int(w * 0.63), y0 + int(h * 0.50))
-    target = (x0 + int(w * 0.57), y0 + int(h * 0.42))
-
-    for ox, oy, color in [(-55, -22, SUCCESS), (-10, -48, SUCCESS), (42, -15, SUCCESS), (74, 29, ENEMY), (13, 54, GOLD)]:
-        rr = max(12, round(27 * scale))
-        cx, cy = own_ship[0] + round(ox * scale), own_ship[1] + round(oy * scale)
-        draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=rgba(color, 45), outline=rgba(color, 110), width=max(1, round(2 * scale)))
-    dotted_route(draw, own_ship, target, max(0.62, scale))
-    marker_size = max(10 if phone else 16, round(19 * scale))
-    draw_city_marker(draw, own_city, "own", marker_size)
-    draw_city_marker(draw, enemy_city, "enemy", marker_size)
-    draw_city_marker(draw, neutral_city, "neutral", marker_size)
-    draw_ship(draw, own_ship, "own", max(9, round(15 * scale)), selected=True)
-    draw_ship(draw, enemy_ship, "enemy", max(8, round(13 * scale)))
+    own_ship = state["own_ship"]
+    for (ox, oy), color in zip(RANGE_OFFSETS, [SUCCESS, SUCCESS, SUCCESS, ENEMY, GOLD], strict=True):
+        rr = 24
+        cx, cy = own_ship[0] + ox, own_ship[1] + oy
+        draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=rgba(color, 45), outline=rgba(color, 110), width=2)
+    dotted_route(draw, own_ship, state["route_target"], 1.0)
+    draw_city_marker(draw, state["own_city"], "own", 17)
+    draw_city_marker(draw, state["enemy_city"], "enemy", 17)
+    draw_city_marker(draw, state["neutral_city"], "neutral", 17)
+    draw_ship(draw, own_ship, "own", 13, selected=True)
+    draw_ship(draw, state["enemy_ship"], "enemy", 12)
 
     # Sea encounter, land encounter, and site use distinct silhouettes as well as color.
-    sea = (x0 + int(w * 0.47), y0 + int(h * 0.24))
-    sr = max(8, round(13 * scale))
+    sea = state["sea_encounter"]
+    sr = 11
     draw.regular_polygon((sea[0], sea[1], sr), n_sides=4, rotation=45, fill=rgba(GOLD, 245), outline=rgba(INK, 255), width=2)
     draw.line((sea[0] - sr // 2, sea[1], sea[0] + sr // 2, sea[1]), fill=rgba(INK, 255), width=2)
-    land_enc = (x0 + int(w * 0.31), y0 + int(h * 0.28))
-    lr = max(8, round(12 * scale))
+    land_enc = state["land_encounter"]
+    lr = 10
     draw.regular_polygon((land_enc[0], land_enc[1], lr), n_sides=3, rotation=0, fill=rgba(RUST, 245), outline=rgba(PARCHMENT_LIGHT, 255), width=2)
-    site = (x0 + int(w * 0.72), y0 + int(h * 0.61))
-    rr = max(8, round(12 * scale))
+    site = state["land_site"]
+    rr = 10
     draw.rounded_rectangle((site[0] - rr, site[1] - rr, site[0] + rr, site[1] + rr), radius=3, fill=rgba((138, 155, 88), 245), outline=rgba(INK, 255), width=2)
     draw.line((site[0] - rr // 2, site[1] + rr // 2, site[0] + rr // 2, site[1] - rr // 2), fill=rgba(PARCHMENT_LIGHT, 255), width=2)
     image.alpha_composite(layer)
 
+
+def annotate_map_ui(
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    direction: Direction,
+    transform: CoverTransform,
+    phone: bool = False,
+) -> None:
+    x0, y0, _, _ = box
+    own_ship = transform.project(MAP_WORLD_STATES[direction.id]["own_ship"])
     if not phone:
-        chip(image, (own_ship[0] - 46, own_ship[1] + 34), "Venture · 5/8", direction, color=GOLD, size=13)
+        chip(image, (x0 + own_ship[0] - 46, y0 + own_ship[1] + 28), "Venture · 5/8", direction, color=GOLD, size=13)
         chip(image, (x0 + 18, y0 + 18), "NORMAL ZOOM · FOG SAFE", direction, color=SUCCESS, size=12)
 
 
@@ -679,13 +859,22 @@ def command_dock(image: Image.Image, direction: Direction, phone: bool = False) 
     return y
 
 
+def responsive_map_art(direction: Direction, viewport: str) -> tuple[Image.Image, CoverTransform]:
+    size, focus = MAP_VIEWPORTS[viewport]
+    source = load_source(direction, "map").convert("RGBA")
+    annotate_map_world(source, direction)
+    return cover_with_transform(source, size, focus)
+
+
 def compose_map_desktop(direction: Direction) -> Image.Image:
     image = Image.new("RGBA", (1440, 900), rgba(INK, 255))
     top = header(image, direction)
     bottom = command_dock(image, direction)
-    art = cover(load_source(direction, "map"), (1440, bottom - top), focus=(0.5, 0.48))
+    art, transform = responsive_map_art(direction, "desktop")
+    if art.size != (1440, bottom - top):
+        raise AssertionError(f"desktop map viewport drifted: {art.size}")
     image.paste(art, (0, top))
-    annotate_map(image, (0, top, 1440, bottom), direction)
+    annotate_map_ui(image, (0, top, 1440, bottom), direction, transform)
     draw = ImageDraw.Draw(image, "RGBA")
     for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (1378, top + 18 + i * 48, 1424, top + 60 + i * 48)
@@ -702,9 +891,11 @@ def compose_map_phone(direction: Direction) -> Image.Image:
     image = Image.new("RGBA", (375, 812), rgba(INK, 255))
     top = header(image, direction, phone=True)
     bottom = command_dock(image, direction, phone=True)
-    art = cover(load_source(direction, "map"), (375, bottom - top), focus=(0.45, 0.48))
+    art, transform = responsive_map_art(direction, "phone")
+    if art.size != (375, bottom - top):
+        raise AssertionError(f"phone map viewport drifted: {art.size}")
     image.paste(art, (0, top))
-    annotate_map(image, (0, top, 375, bottom), direction, phone=True)
+    annotate_map_ui(image, (0, top, 375, bottom), direction, transform, phone=True)
     draw = ImageDraw.Draw(image, "RGBA")
     panel(image, (12, top + 12, 210, top + 50), direction, radius=19, fill_alpha=220)
     text(draw, (26, top + 31), "VENTURE · TAP AGAIN TO SAIL", 11, bold=True, anchor="lm")
@@ -724,9 +915,11 @@ def compose_map_tablet(direction: Direction) -> Image.Image:
     text(draw, (258, 25), "ROUND 12 · YOUR TURN", 12, fill=GOLD, bold=True)
     draw_resources(draw, 456, 23, compact=True)
     bottom = command_dock(image, direction)
-    art = cover(load_source(direction, "map"), (768, bottom - 74), focus=(0.46, 0.48))
+    art, transform = responsive_map_art(direction, "tablet")
+    if art.size != (768, bottom - 74):
+        raise AssertionError(f"tablet map viewport drifted: {art.size}")
     image.paste(art, (0, 74))
-    annotate_map(image, (0, 74, 768, bottom), direction)
+    annotate_map_ui(image, (0, 74, 768, bottom), direction, transform)
     draw = ImageDraw.Draw(image, "RGBA")
     for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (710, 92 + i * 48, 754, 134 + i * 48)
@@ -967,9 +1160,10 @@ def map_lod_contract() -> Image.Image:
                 draw.ellipse((x + ox - r, oy - r // 2, x + ox + r, oy + r // 2), fill=rgba((47, 84, 38), 140))
         marker_size = 9 if i == 0 else 16 if i == 1 else 24
         draw_city_marker(draw, (x + 178, 348), "own", marker_size)
-        draw_ship(draw, (x + 335, 505), "enemy", max(7, marker_size - 2), selected=i > 0)
+        ship_point = (x + 410, 535)
+        draw_ship(draw, ship_point, "enemy", max(7, marker_size - 2), selected=i > 0)
         if i > 0:
-            dotted_route(draw, (x + 335, 505), (x + 255, 390), 0.75 if i == 1 else 1.0)
+            dotted_route(draw, ship_point, (x + 440, 365), 0.75 if i == 1 else 1.0)
         text(draw, (x + 22, 170), label, 16, fill=PARCHMENT_LIGHT, bold=True)
         text(draw, (x + 22, 198), scale_note, 13, fill=GOLD, bold=True)
         y = 590
@@ -983,6 +1177,7 @@ def map_lod_contract() -> Image.Image:
         "Optical padding: 12.5% transparent safety; subject fills 70–78%; bottom-center visual anchor.",
         "Terrain: 256×256 base/decal masters → 128×128 runtime; variants keyed by deterministic coordinate hash.",
         "Decorative variants change texture and silhouette only; never imply movement, income or combat modifiers.",
+        "Responsive views project one source-world semantic state through the terrain crop; viewport-relative placement is forbidden.",
     ]
     y = 796
     for row in rows:
@@ -1124,6 +1319,7 @@ def grayscale_readability_sheet() -> Image.Image:
 
 
 def compose_all() -> None:
+    validate_map_world_states()
     for direction in DIRECTIONS.values():
         out = CANDIDATES / f"direction-{direction.id}"
         save(compose_map_desktop(direction), out / "world-map-desktop-1440x900.webp")

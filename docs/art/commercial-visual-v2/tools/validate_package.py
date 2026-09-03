@@ -2,6 +2,7 @@
 """Fail-loud structural checks for the issue #607 visual-direction package."""
 
 import re
+import runpy
 from pathlib import Path
 
 from PIL import Image
@@ -101,8 +102,11 @@ def main() -> None:
     missing = [name for name in sorted(required_icons) if f'"{name}"' not in compositor]
     if missing:
         raise AssertionError(f"core maritime icon definitions missing: {', '.join(missing)}")
+    compositor_api = runpy.run_path(str(ROOT / "tools" / "compose_styleframes.py"), run_name="aop_styleframe_validator")
+    compositor_api["validate_map_world_states"]()
     print(f"validated {checked} WebP files: 17 sources + 22 review outputs")
     print("validated 5 required documents, local icon family, and unapproved operator gate")
+    print("validated canonical source-world map correspondence and terrain eligibility")
 
 
 if __name__ == "__main__":
