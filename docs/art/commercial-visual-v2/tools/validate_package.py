@@ -96,6 +96,7 @@ def main() -> None:
     if missing_approval_markers:
         raise AssertionError(f"manifest is missing approval evidence: {missing_approval_markers}")
     compositor = (ROOT / "tools" / "compose_styleframes.py").read_text()
+    readme = (ROOT / "README.md").read_text()
     forbidden_glyphs = {
         "anchor": chr(0x2693),
         "house": chr(0x2302),
@@ -105,17 +106,40 @@ def main() -> None:
     present = [name for name, glyph in forbidden_glyphs.items() if glyph in compositor]
     if present:
         raise AssertionError(f"font-dependent chrome glyphs remain: {', '.join(present)}")
-    stale_decision_copy = " ".join(("Neither", "direction", "is", "approved"))
-    if stale_decision_copy in compositor:
-        raise AssertionError("comparison proof still contains the pre-approval decision state")
-    approval_copy = (
-        "Direction B is approved for #608–#613 production.",
-        "NOT SELECTED · REJECTED DIRECTION",
-        "APPROVED · PRODUCTION TARGET",
+    stale_approval_copy = (
+        " ".join(("Neither", "direction", "is", "approved")),
+        " ".join(("Candidate-independent", "rules;", "the", "operator", "chooses")),
+        " ".join(("The", "operator", "is", "choosing")),
     )
-    missing_copy = [marker for marker in approval_copy if marker not in compositor]
-    if missing_copy:
-        raise AssertionError(f"comparison proof is missing approved-state copy: {missing_copy}")
+    approval_surfaces = compositor + "\n" + readme
+    present_stale_copy = [marker for marker in stale_approval_copy if marker in approval_surfaces]
+    if present_stale_copy:
+        raise AssertionError(f"package still contains pre-approval decision copy: {present_stale_copy}")
+    required_approval_copy = {
+        "comparison proof": (
+            compositor,
+            (
+                "Direction B is approved for #608–#613 production.",
+                "NOT SELECTED · REJECTED DIRECTION",
+                "APPROVED · PRODUCTION TARGET",
+            ),
+        ),
+        "visual-system proof": (
+            compositor,
+            ("Direction B approved · Direction A retained as comparison evidence",),
+        ),
+        "README": (
+            readme,
+            (
+                "Direction B is approved; Direction A is retained only as rejected comparison evidence.",
+                "approved Direction B full-city styleframe is the finish authority",
+            ),
+        ),
+    }
+    for surface, (content, markers) in required_approval_copy.items():
+        missing_copy = [marker for marker in markers if marker not in content]
+        if missing_copy:
+            raise AssertionError(f"{surface} is missing approved-state copy: {missing_copy}")
     required_icons = {"fleet", "city", "course", "zoom_in", "zoom_out", "overview", "end_turn"}
     missing = [name for name in sorted(required_icons) if f'"{name}"' not in compositor]
     if missing:

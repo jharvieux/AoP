@@ -85,6 +85,9 @@ COMPARISON_DIRECTION_STATUS = {
     "a": "NOT SELECTED · REJECTED DIRECTION",
     "b": "APPROVED · PRODUCTION TARGET",
 }
+VISUAL_SYSTEM_DECISION_LINE = (
+    "Direction B approved · Direction A retained as comparison evidence · shared palette stays fixed"
+)
 
 
 MAP_SOURCE_SIZE = (1024, 704)
@@ -1303,7 +1306,7 @@ def visual_system_contract() -> Image.Image:
     image = paper_texture((1600, 1040), light=True).convert("RGBA")
     draw = ImageDraw.Draw(image, "RGBA")
     text(draw, (52, 40), "Shared visual system · Weathered Parchment & Rope", 38, fill=INK, display=True)
-    text(draw, (54, 91), "Candidate-independent rules; the operator chooses rendering character, not a new app palette", 17, fill=RUST, bold=True)
+    text(draw, (54, 91), VISUAL_SYSTEM_DECISION_LINE, 17, fill=RUST, bold=True)
     swatches = [
         ("Parchment", PARCHMENT, "#cbb17a family"), ("Ink", INK, "#2c1810"), ("Gold", GOLD, "#c9a227"),
         ("Rust", RUST, "#7a2e1a"), ("Deep sea", DEEP, "#1b4a6b"), ("Shallows", SHALLOWS, "#2a6a8f"),

@@ -57,7 +57,7 @@ Native review files:
 
 ## Shared north star
 
-Both candidates remain inside **Weathered Parchment & Rope** (D-023). The operator is choosing rendering character, not a new application theme. Both use the same representative world state and interface:
+Both directions were developed inside **Weathered Parchment & Rope** (D-023). Direction B is approved; Direction A is retained only as rejected comparison evidence. The decision selects rendering character, not a new application theme. Both proofs use the same representative world state and interface:
 
 - normal-zoom coastline and fog frontier;
 - own, enemy, and neutral cities distinguished by crest silhouette, flag pattern, and ring as well as hue;
@@ -67,7 +67,7 @@ Both candidates remain inside **Weathered Parchment & Rope** (D-023). The operat
 - HUD, resources, command dock, minimap, and navigation controls;
 - phone layouts without tiny permanent labels.
 
-The full city images are **styleframes only**. A shippable city backdrop may contain terrain, coast, roads, and empty foundations, but no constructed building, flag, name, value, selection ring, or UI. The [city state proofs](candidates/direction-b/city-start-mid-full-1440x560.webp) are the structural authority; the selected direction's full-city styleframe is the finish authority.
+The full city images are **styleframes only**. A shippable city backdrop may contain terrain, coast, roads, and empty foundations, but no constructed building, flag, name, value, selection ring, or UI. The [city state proofs](candidates/direction-b/city-start-mid-full-1440x560.webp) are the structural authority; the approved Direction B full-city styleframe is the finish authority.
 
 ## Production references
 
