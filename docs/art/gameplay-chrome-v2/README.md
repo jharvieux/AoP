@@ -1,0 +1,70 @@
+# Gameplay chrome v2 — operator checkpoint
+
+This is the visual approval package for [issue #610](https://github.com/jharvieux/AoP/issues/610). It is a deterministic review artifact, not runtime CSS, a component rewrite, or a production asset bundle. It applies the approved **Direction B — Gilded Harbor Diorama** mood as the dominant illustrated layer while keeping D-023's Weathered Parchment & Rope recognizable as quiet gameplay chrome.
+
+## Review at native size
+
+- [Phone world map — 375 × 812](mockups/phone-world-map-375x812.svg)
+- [City inspector — 1440 × 900](mockups/city-inspector-desktop-1440x900.svg)
+- [Token, type, icon, and state sheet — 1440 × 960](mockups/token-type-icon-sheet-1440x960.svg)
+
+Open each at 100%. The approved Direction B map/city review sources are embedded only as non-runtime backdrop evidence. All chrome, labels, selection rings, icon marks, numeric values, and panels are locally authored deterministic SVG geometry/text; there are no platform glyph controls, third-party logos, signatures, watermarks, or generated UI art.
+
+## Proposed contract
+
+### Semantic vocabulary
+
+The runtime implementation retains `:root` in `apps/web/src/styles.css` as the single source of truth. The checkpoint proposes one semantic surface and emphasis vocabulary:
+
+| Intent                               | Proposed token                          | Value / rule                                                                      |
+| ------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
+| canvas / deepest inset               | `--surface-canvas` / `--surface-inset`  | `#21150d`; gameplay sits over art without opaque covering                         |
+| panel / raised panel                 | `--surface-panel` / `--surface-raised`  | `#2d1b10` / `#3a2416`, 92–96% opacity, low-frequency wood grain only              |
+| readable warm surface                | `--surface-parchment`                   | `#f3e5c2`, reserved for labels, sheets, and light panels                          |
+| primary action **and gameplay gold** | `--color-action`                        | `#c8962c`; resolves the `--accent` / `--color-gold` split into one action meaning |
+| selection / status brass             | `--color-brass`                         | `#c9a227`; thin keyline and two-ring selection, never another filled action color |
+| focus                                | `--stroke-focus`                        | `#f6db83`, external static 2 px outline                                           |
+| danger / success                     | `--color-danger` / `--color-success`    | `#a6402f` / `#477447`, always paired with icon/shape/text                         |
+| disabled                             | `--text-disabled` / `--stroke-disabled` | reduced contrast plus a visible slash or label, not opacity alone                 |
+
+Parchment communicates material and readability, not a competing brand color. Gold remains under the visual-system ceiling: it identifies the one primary action and small selected/status details; it does not become panel fill or decorative clutter. Direction B water, limestone, and timber retain the largest visual area and highest detail density.
+
+### Type, numbers, and icon language
+
+- **Pirata One** is limited to short branded display headings, city names, and major section headings. It never carries a long instruction or critical numeric value.
+- **Cabin** handles body copy, labels, buttons, notices, and all numbers. Resources, movement, counts, turns, and timers use `font-variant-numeric: tabular-nums`.
+- Default UI text is 14–16 px; the approved caption floor is 12 px at 1×. No actionable label drops below it.
+- The icon family is authored SVG geometry in a shared 20 px optical box (filled subject plus 2 px round structural stroke). It includes ship/fleet, city, route, zoom in/out, fit, back/next, close, and confirm. Controls keep accessible text names; icons do not replace unambiguous multiword actions.
+
+### Controls, state, and safe areas
+
+Every direct control uses a minimum **44 × 44 CSS px** hit area.
+
+- Default: one restrained brass keyline.
+- Hover: brightness/keyline lift, 150–180 ms, no layout movement.
+- Pressed: darker inset surface, still legible.
+- Selected: persistent brass two-ring treatment plus the selected icon/label; it is non-color-only.
+- Disabled: lower contrast plus a slash or explicit unavailable wording.
+- Focus: external, static 2 px high-contrast outline; hover never substitutes for focus.
+
+HUD, navigation, dock, and sheet actions reserve safe-area inset plus 12 px. Ornament yields before content, text, map/city area, or touch-target size. Reduced-motion mode removes pulse/sweep/parallax while preserving every static state cue.
+
+### GameScreen / MatchScreen parity
+
+The implementation must keep all existing actions and action gating. `GameScreen` and `MatchScreen` consume the same semantic token values, resource order, notice treatment, command-dock hierarchy, map-navigation button component, icon language, focus style, safe-area spacing, and accessible labels. The screens may retain different multiplayer status information, but that information fits the same chrome contract rather than inventing a second visual system.
+
+City uses the same HUD/dock type and panel grammar as map. Its selected-building inspector is a persistent right rail at desktop width; its building art/selection remain distinct runtime layers, consistent with D-049's city amendment. This checkpoint does not propose a baked city scene or a behavior change.
+
+## Files and reproducibility
+
+- `compose.mjs` embeds the approved Direction B source backdrop hashes by local path and writes deterministic self-contained SVG mockups.
+- `validate.mjs` checks dimensions, embedded backdrop evidence, geometry markers, asset size, and required design-contract language; it exits nonzero on failure.
+- The final review files are self-contained SVG. They are intentionally not copied into `apps/web/public` and must not be treated as shippable runtime assets.
+
+Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only; #608 must deliver the approved city amendment before any runtime art ships.
+
+Run `node compose.mjs && node validate.mjs` from this directory to recreate and validate the package.
+
+## Operator decision requested
+
+Approve this chrome system for implementation: one shared parchment/action-gold token, near-black wood surfaces with thin brass punctuation, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
