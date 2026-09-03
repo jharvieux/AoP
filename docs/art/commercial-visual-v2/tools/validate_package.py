@@ -105,6 +105,17 @@ def main() -> None:
     present = [name for name, glyph in forbidden_glyphs.items() if glyph in compositor]
     if present:
         raise AssertionError(f"font-dependent chrome glyphs remain: {', '.join(present)}")
+    stale_decision_copy = " ".join(("Neither", "direction", "is", "approved"))
+    if stale_decision_copy in compositor:
+        raise AssertionError("comparison proof still contains the pre-approval decision state")
+    approval_copy = (
+        "Direction B is approved for #608–#613 production.",
+        "NOT SELECTED · REJECTED DIRECTION",
+        "APPROVED · PRODUCTION TARGET",
+    )
+    missing_copy = [marker for marker in approval_copy if marker not in compositor]
+    if missing_copy:
+        raise AssertionError(f"comparison proof is missing approved-state copy: {missing_copy}")
     required_icons = {"fleet", "city", "course", "zoom_in", "zoom_out", "overview", "end_turn"}
     missing = [name for name in sorted(required_icons) if f'"{name}"' not in compositor]
     if missing:

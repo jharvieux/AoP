@@ -77,6 +77,15 @@ DIRECTIONS = {
     ),
 }
 
+COMPARISON_DECISION_LINE = (
+    "Direction B is approved for #608–#613 production. "
+    "Direction A was not selected and remains comparison evidence."
+)
+COMPARISON_DIRECTION_STATUS = {
+    "a": "NOT SELECTED · REJECTED DIRECTION",
+    "b": "APPROVED · PRODUCTION TARGET",
+}
+
 
 MAP_SOURCE_SIZE = (1024, 704)
 MAP_VIEWPORTS = {
@@ -1363,11 +1372,19 @@ def comparison_sheet() -> Image.Image:
     image = paper_texture((1600, 1160), light=True).convert("RGBA")
     draw = ImageDraw.Draw(image, "RGBA")
     text(draw, (52, 38), "Commercial visual direction · operator decision sheet", 38, fill=INK, display=True)
-    text(draw, (54, 88), "Neither direction is approved. Compare at these reduced gameplay scales, then inspect full-size files.", 17, fill=RUST, bold=True)
+    text(draw, (54, 88), COMPARISON_DECISION_LINE, 17, fill=RUST, bold=True)
     for i, direction in enumerate(DIRECTIONS.values()):
         x = 52 + i * 766
         text(draw, (x, 138), direction.short_name, 25, fill=INK, display=True)
-        text(draw, (x, 172), direction.subtitle, 13, fill=INK_SOFT)
+        status_color = RUST if direction.id == "a" else SUCCESS
+        text(
+            draw,
+            (x, 172),
+            f"{COMPARISON_DIRECTION_STATUS[direction.id]} · {direction.subtitle}",
+            13,
+            fill=status_color,
+            bold=True,
+        )
         map_frame = compose_map_desktop(direction).resize((734, 459), Image.Resampling.LANCZOS)
         city_frame = compose_city_desktop(direction).resize((734, 459), Image.Resampling.LANCZOS)
         image.paste(map_frame.convert("RGB"), (x, 210))
