@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "checkpoint": "issue-608-city-art-checkpoint-1",
+  "date": "2026-09-03",
+  "service": "OpenAI built-in image generator",
+  "access_basis": "Subscription-included built-in tool authorized by D-049; no API key or separately billed API path used",
+  "license_usage_basis": "Project-directed generated source using only project-generated references; no stock image, external logo, or copied game screenshot. Service terms and applicable law govern use; this record is provenance, not legal advice.",
+  "interface_fields_not_exposed": [
+    "model identifier",
+    "model version",
+    "sampler",
+    "seed",
+    "quality control",
+    "size control"
+  ],
+  "references": [
+    {
+      "id": "direction-b-r3",
+      "path": "../commercial-visual-v2/sources/b-gilded-harbor-diorama-full-r3.webp",
+      "role": "style, material, camera, and lighting reference only; not an edit target",
+      "sha256": "eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d"
+    },
+    {
+      "id": "empty-harbor-lossless-output",
+      "path": "sources/empty-harbor-source-r1.webp",
+      "role": "spatial reference for P2-P7; not an edit target; retained as an optimized WebP",
+      "original_png_sha256": "67ad1ce86995f1b6dd9737aa6f25a0065de9a58163dfb8c229ced339fb476154",
+      "retained_sha256": "cfea5e996e61cbeb84cd7b9a309b1517f9e0bfa357a24515cccbdf753b4305e5"
+    }
+  ],
+  "generation": [
+    {
+      "asset": "empty harbor",
+      "prompt_id": "P1",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3"],
+      "original_dimensions": [1567, 1004],
+      "original_mode": "RGB",
+      "original_png_sha256": "67ad1ce86995f1b6dd9737aa6f25a0065de9a58163dfb8c229ced339fb476154",
+      "retained_path": "sources/empty-harbor-source-r1.webp",
+      "retained_sha256": "cfea5e996e61cbeb84cd7b9a309b1517f9e0bfa357a24515cccbdf753b4305e5",
+      "transparent_requested": false,
+      "service_alpha_delivered": false
+    },
+    {
+      "asset": "townhall",
+      "prompt_id": "P2",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "7a32bb45868f7d77e49ab4af19ea044c8a206fd51895e6dc3f524d92a625bc58",
+      "retained_path": "sources/townhall-source-r1.webp",
+      "retained_sha256": "a4a66aad11387afbe919661993f06f01436189d00fda9be1394395b2b49f40b4",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    },
+    {
+      "asset": "tavern",
+      "prompt_id": "P3",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "9411cb893e211a78b51aea7738ceaf618cfface6d35da3624ab0ac36f61c6801",
+      "retained_path": "sources/tavern-source-r1.webp",
+      "retained_sha256": "bf87156203270b169eb15ec6c156735e8222b4afe3ff886a7d324c8ebf5120c6",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    },
+    {
+      "asset": "tradehouse",
+      "prompt_id": "P4",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "4942a6d9a4941ec58be691a75db0fe6653716d6281182bc34589e8387a6a7726",
+      "retained_path": "sources/tradehouse-source-r1.webp",
+      "retained_sha256": "6561ce57f80bab15a50b5c82fe4189026e3da10c5e360f171798f2c9d6b92eb5",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    },
+    {
+      "asset": "barracks",
+      "prompt_id": "P5",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "6c1c08c1567d0252043d3157499f29e40883adaa8b774b7cc4d65329ea0f368f",
+      "retained_path": "sources/barracks-source-r1.webp",
+      "retained_sha256": "059720e79f8f48a2bc88d056bd07d9b7b6c50c2c995b63c59ca0eef2ceb9301d",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    },
+    {
+      "asset": "stonewall",
+      "prompt_id": "P6",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "dd5f741cb033c77fdfba4141bafd7874341d68084d0e9ee1d9f2f227c6f79252",
+      "retained_path": "sources/stonewall-source-r1.webp",
+      "retained_sha256": "51f140a4b3cf3aa1882af39126c9511428f95d6e8062b2c4c19f27a3a31c74b6",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    },
+    {
+      "asset": "shipyard",
+      "prompt_id": "P7",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "empty-harbor-lossless-output"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "ebbbf9129ec6d6fccc6390bca08d4e5cea42cf50fa1cc40890bd0fe2235e3355",
+      "retained_path": "sources/shipyard-source-r1.webp",
+      "retained_sha256": "e190306b2a2ee3d03f2489244fedc5a10ea383e1c8b727f8f3110ed22d97fec9",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+    }
+  ],
+  "rejected_transparency_retries": [
+    {
+      "asset": "townhall",
+      "reason": "Background-extraction edit again rendered the checker into RGB",
+      "original_png_sha256": "fcd205ea3b35ceea284a4154551e29eda69dd85561612d26d6d3fd6cb1e1e485"
+    },
+    {
+      "asset": "tavern",
+      "reason": "Background-extraction edit again rendered the checker into RGB",
+      "original_png_sha256": "71d820e8386eb3972da6d7fb20c22a91e69bb10be6c40f314b4288d7d7cfe8db"
+    },
+    {
+      "asset": "tradehouse",
+      "reason": "Background-extraction edit again rendered the checker into RGB",
+      "original_png_sha256": "8144c21e816344afbb3cdb104e4e3fe93b875075011d6dc2b47c13bbc7180575"
+    }
+  ]
+}
