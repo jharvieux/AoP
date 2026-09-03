@@ -52,5 +52,16 @@ for (const marker of [
     failures++
   }
 }
+const sheet = readFileSync(join(root, 'mockups/token-type-icon-sheet-1440x960.svg'), 'utf8')
+for (const [label, marker] of [
+  ['type section label separated from display sample', 'x="607" y="136"'],
+  ['display sample below type section label', 'x="607" y="180"'],
+  ['disabled slash inside the disabled control', 'M1136 480l100 24'],
+]) {
+  if (!sheet.includes(marker)) {
+    console.error(`FAIL token sheet: missing ${label}`)
+    failures++
+  }
+}
 if (failures) process.exit(1)
 console.log('PASS #610 design-checkpoint package')

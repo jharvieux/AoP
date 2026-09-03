@@ -121,7 +121,11 @@ function button(x, y, w, label, iconName, state = 'default') {
     state === 'focus'
       ? `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="52" rx="12" fill="none" stroke="${C.focus}" stroke-width="2"/>`
       : ''
-  return `${outer}${focus}<rect x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"/>${icon(iconName, x + 12, y + 12, 20, style.fg)}${text(x + 40, y + 28, label, 13, { fill: style.fg, weight: 700 })}${state === 'disabled' ? '<path d="M9 9l26 26" stroke="#b4aa9a" stroke-opacity=".45" stroke-width="1.5"/>' : ''}`
+  const disabledMark =
+    state === 'disabled'
+      ? `<path d="M${x + 10} ${y + 10}l${w - 20} 24" stroke="#b4aa9a" stroke-opacity=".65" stroke-width="2" stroke-linecap="round"/>`
+      : ''
+  return `${outer}${focus}<rect x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"/>${icon(iconName, x + 12, y + 12, 20, style.fg)}${text(x + 40, y + 28, label, 13, { fill: style.fg, weight: 700 })}${disabledMark}`
 }
 function svg(w, h, body) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Age of Plunder gameplay chrome design checkpoint">\n<style>text { dominant-baseline: alphabetic; } .label { font-variant-numeric: tabular-nums; }</style>${body}</svg>\n`
@@ -191,7 +195,7 @@ function sheet() {
       return `<rect x="${x}" y="${y}" width="148" height="56" rx="8" fill="${t[1]}" stroke="#f3e5c2" stroke-opacity=".25"/>${text(x, y + 75, t[0], 12, { fill: C.muted })}`
     })
     .join('')
-  const types = `${title(607, 155, 'Harbor Authority', 30)}${text(607, 187, 'Pirata One · display / city / section title', 13, { fill: C.muted })}${text(607, 234, 'Resource labels, instructions and actions', 16, { weight: 400 })}${text(607, 258, 'Cabin · body / label / button', 13, { fill: C.muted })}${text(607, 306, '2,480   14 / 20   01:43', 23, { weight: 700, tabular: true, fill: C.brassHi })}${text(607, 330, 'Cabin tabular numerals · resources / movement / timers', 13, { fill: C.muted })}`
+  const types = `${title(607, 180, 'Harbor Authority', 30)}${text(607, 212, 'Pirata One · display / city / section title', 13, { fill: C.muted })}${text(607, 259, 'Resource labels, instructions and actions', 16, { weight: 400 })}${text(607, 283, 'Cabin · body / label / button', 13, { fill: C.muted })}${text(607, 331, '2,480   14 / 20   01:43', 23, { weight: 700, tabular: true, fill: C.brassHi })}${text(607, 355, 'Cabin tabular numerals · resources / movement / timers', 13, { fill: C.muted })}`
   const icons = [
     'ship',
     'city',
@@ -246,7 +250,7 @@ function sheet() {
   return svg(
     W,
     H,
-    `<rect width="1440" height="960" fill="#17100a"/><rect x="18" y="18" width="1404" height="924" rx="16" fill="#2d1b10" stroke="${C.brass}" stroke-width="2"/>${grain(18, 18, 1404, 924, 0.08)}${title(48, 79, 'Gameplay chrome v2', 38)}${text(50, 106, 'ISSUE #610 · OPERATOR DESIGN CHECKPOINT · DIRECTION B COMPANION', 13, { fill: C.brassHi, caps: true, weight: 700 })}<path d="M48 126h1342" stroke="#cbb17a" stroke-opacity=".35"/>${text(48, 140, 'Semantic color vocabulary', 14, { fill: C.parchment2, weight: 700 })}${tokens}${text(607, 140, 'Type hierarchy & numerical rhythm', 14, { fill: C.parchment2, weight: 700 })}${types}${text(48, 445, 'Authored vector icon family · 20 px optical box', 14, { fill: C.parchment2, weight: 700 })}${icons}${text(598, 445, 'Interaction states · every button is 44 px tall', 14, { fill: C.parchment2, weight: 700 })}${states}${rules}`,
+    `<rect width="1440" height="960" fill="#17100a"/><rect x="18" y="18" width="1404" height="924" rx="16" fill="#2d1b10" stroke="${C.brass}" stroke-width="2"/>${grain(18, 18, 1404, 924, 0.08)}${title(48, 79, 'Gameplay chrome v2', 38)}${text(50, 106, 'ISSUE #610 · OPERATOR DESIGN CHECKPOINT · DIRECTION B COMPANION', 13, { fill: C.brassHi, caps: true, weight: 700 })}<path d="M48 126h1342" stroke="#cbb17a" stroke-opacity=".35"/>${text(48, 140, 'Semantic color vocabulary', 14, { fill: C.parchment2, weight: 700 })}${tokens}${text(607, 136, 'Type hierarchy & numerical rhythm', 14, { fill: C.parchment2, weight: 700 })}${types}${text(48, 445, 'Authored vector icon family · 20 px optical box', 14, { fill: C.parchment2, weight: 700 })}${icons}${text(598, 445, 'Interaction states · every button is 44 px tall', 14, { fill: C.parchment2, weight: 700 })}${states}${rules}`,
   )
 }
 
