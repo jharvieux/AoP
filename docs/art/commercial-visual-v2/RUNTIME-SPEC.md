@@ -115,6 +115,7 @@ Format policy:
 - Opaque painted backdrops/terrain: lossy WebP, quality 82–88, sRGB.
 - Transparent painted cutouts: WebP with alpha at quality 88–92 when edge inspection passes; otherwise optimized PNG.
 - Small hard-edge flags/icons: SVG or optimized PNG according to the existing consumer. SVG must have a fixed view box and no external references.
+- Core chrome icons—fleet, city, course, zoom in/out, fit/overview, and end turn—must use authored geometry rather than Unicode or icon-font characters, with text labels retained for primary commands.
 - Strip prompt, workflow, EXIF, thumbnail, and editor metadata from shipped assets. Keep provenance in the repository manifest, not inside runtime images.
 - Do not add a runtime dependency to encode, decode, select, or animate art.
 

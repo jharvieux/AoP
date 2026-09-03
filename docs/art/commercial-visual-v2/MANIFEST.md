@@ -152,6 +152,7 @@ Completed:
 - XL r1 architecture/state failures triggered a colonial/camera correction; XL r2 state control still failed and was replaced by deterministic modular proof; XL r3 corrected the full-city citadel/drydock anchors;
 - phone, tablet, desktop, starting/mid/full, strategic/normal/close, selected-building, panel, chrome, and grayscale proofs were checked;
 - desktop header collision and selected-panel/object mismatch found during QA were corrected and the full set re-rendered/re-inspected;
+- native-size acceptance inspection found unsupported font glyphs in the command dock and map controls; fleet, city, course, end-turn, zoom-in, zoom-out, and overview controls were replaced with locally drawn geometry, added to the visual-system sheet at 20 px, and all dependent proofs were re-rendered;
 - all review WebPs are below the runtime 300 KiB comparison ceiling; the largest review image is the 228 KiB comparison sheet, although these files are not proposed runtime exports;
 - local checkpoint byte size and SHA-256 matched publisher-hosted files;
 - prompt text hashes were checked against original ComfyUI PNG metadata;

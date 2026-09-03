@@ -139,6 +139,8 @@ The [map LOD diagram](contracts/map-token-lod-1600x930.webp) is authoritative. C
 ## 10. Icon and interaction grammar
 
 - Core icons are filled silhouettes at 16–24 px with at most one interior cut. Fine line art is reserved for 32 px and above.
+- The core chrome family is fleet/ship, city/harbor, course/route, zoom in, zoom out, fit/overview, and end turn. The [visual-system sheet](contracts/visual-system-1600x1040.webp) shows every mark drawn at an actual 20 px reference size.
+- Build these icons from authored SVG geometry or equivalent local drawing primitives, never Unicode or icon-font glyphs. Use a shared optical box, rounded joins, and a 2 px structural stroke at 20 px; the filled subject should occupy roughly 70–78% of the box.
 - Default state: normal value and one structural border.
 - Hover: brighten the subject or border by approximately 8% over 150–180 ms; do not move layout.
 - Selected: persistent two-ring brass treatment plus a subtle subject lift. One ring is solid and one diffuse; it cannot depend on animation.

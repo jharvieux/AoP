@@ -87,8 +87,22 @@ def main() -> None:
     manifest = (ROOT / "MANIFEST.md").read_text()
     if "NOT OPERATOR-APPROVED" not in manifest or "Current record: NOT APPROVED" not in manifest:
         raise AssertionError("manifest must keep the approval gate fail-loud")
+    compositor = (ROOT / "tools" / "compose_styleframes.py").read_text()
+    forbidden_glyphs = {
+        "anchor": chr(0x2693),
+        "house": chr(0x2302),
+        "fit": chr(0x25CE),
+        "check": chr(0x2713),
+    }
+    present = [name for name, glyph in forbidden_glyphs.items() if glyph in compositor]
+    if present:
+        raise AssertionError(f"font-dependent chrome glyphs remain: {', '.join(present)}")
+    required_icons = {"fleet", "city", "course", "zoom_in", "zoom_out", "overview", "end_turn"}
+    missing = [name for name in sorted(required_icons) if f'"{name}"' not in compositor]
+    if missing:
+        raise AssertionError(f"core maritime icon definitions missing: {', '.join(missing)}")
     print(f"validated {checked} WebP files: 17 sources + 22 review outputs")
-    print("validated 5 required documents and unapproved operator gate")
+    print("validated 5 required documents, local icon family, and unapproved operator gate")
 
 
 if __name__ == "__main__":

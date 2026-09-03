@@ -390,6 +390,101 @@ def wrapped_text(
     )
 
 
+def draw_maritime_icon(
+    draw: ImageDraw.ImageDraw,
+    center: tuple[int, int],
+    kind: str,
+    size: int,
+    *,
+    color: tuple[int, int, int] = TEXT,
+) -> None:
+    """Draw the shared navigation icon family without relying on font glyphs."""
+    cx, cy = center
+    radius = max(7, size // 2)
+    stroke = max(2, round(size / 10))
+    fill = rgba(color, 255)
+
+    if kind == "fleet":
+        draw.polygon(
+            [
+                (cx - radius + 1, cy + 3),
+                (cx + radius - 1, cy + 3),
+                (cx + radius - 5, cy + radius - 3),
+                (cx - radius + 5, cy + radius - 3),
+            ],
+            fill=fill,
+        )
+        draw.line((cx, cy - radius + 1, cx, cy + 3), fill=fill, width=stroke)
+        draw.polygon([(cx - 2, cy - radius + 2), (cx - radius + 3, cy + 1), (cx - 2, cy + 1)], fill=fill)
+        draw.polygon([(cx + 2, cy - radius + 5), (cx + radius - 3, cy + 1), (cx + 2, cy + 1)], fill=fill)
+    elif kind == "city":
+        draw.polygon(
+            [
+                (cx - radius + 2, cy + radius - 2),
+                (cx - radius + 2, cy - 1),
+                (cx - radius // 2, cy - 1),
+                (cx - radius // 2, cy - radius + 3),
+                (cx, cy - radius),
+                (cx + radius // 2, cy - radius + 3),
+                (cx + radius // 2, cy - 3),
+                (cx + radius - 2, cy - 3),
+                (cx + radius - 2, cy + radius - 2),
+            ],
+            fill=fill,
+        )
+    elif kind == "course":
+        points = [(cx - radius + 2, cy + radius // 2), (cx - 2, cy), (cx + radius // 2, cy - radius // 2)]
+        for px, py in points:
+            dot = max(2, stroke)
+            draw.ellipse((px - dot, py - dot, px + dot, py + dot), fill=fill)
+        draw.line(points, fill=fill, width=stroke, joint="curve")
+        draw.polygon(
+            [
+                (cx + radius - 1, cy - radius + 2),
+                (cx + radius // 2 - 2, cy - radius + 3),
+                (cx + radius - 2, cy - radius // 2 + 4),
+            ],
+            fill=fill,
+        )
+    elif kind == "end_turn":
+        draw.line(
+            [
+                (cx - radius + 2, cy),
+                (cx - radius // 4, cy + radius - 3),
+                (cx + radius - 1, cy - radius + 2),
+            ],
+            fill=fill,
+            width=stroke + 1,
+            joint="curve",
+        )
+    elif kind in {"zoom_in", "zoom_out"}:
+        glass = (cx - radius + 1, cy - radius + 1, cx + radius // 2, cy + radius // 2)
+        draw.ellipse(glass, outline=fill, width=stroke)
+        draw.line((cx + radius // 3, cy + radius // 3, cx + radius - 1, cy + radius - 1), fill=fill, width=stroke + 1)
+        lens_cx = (glass[0] + glass[2]) // 2
+        lens_cy = (glass[1] + glass[3]) // 2
+        half = max(3, radius // 3)
+        draw.line((lens_cx - half, lens_cy, lens_cx + half, lens_cy), fill=fill, width=stroke)
+        if kind == "zoom_in":
+            draw.line((lens_cx, lens_cy - half, lens_cx, lens_cy + half), fill=fill, width=stroke)
+    elif kind == "overview":
+        arm = max(4, radius // 2)
+        left, top, right, bottom = cx - radius, cy - radius, cx + radius, cy + radius
+        for points in [
+            [(left, top + arm), (left, top), (left + arm, top)],
+            [(right - arm, top), (right, top), (right, top + arm)],
+            [(left, bottom - arm), (left, bottom), (left + arm, bottom)],
+            [(right - arm, bottom), (right, bottom), (right, bottom - arm)],
+        ]:
+            draw.line(points, fill=fill, width=stroke, joint="curve")
+        draw.polygon(
+            [(cx, cy - radius // 2), (cx + radius // 2, cy), (cx, cy + radius // 2), (cx - radius // 2, cy)],
+            fill=fill,
+        )
+    else:
+        raise ValueError(f"unknown maritime icon: {kind}")
+
+
 def chip(
     image: Image.Image,
     xy: tuple[int, int],
@@ -563,17 +658,23 @@ def command_dock(image: Image.Image, direction: Direction, phone: bool = False) 
     y = image.height - h
     panel(image, (0, y, image.width - 1, image.height - 1), direction, radius=0, fill_alpha=252)
     draw = ImageDraw.Draw(image, "RGBA")
-    commands = [("Fleet", "⚓"), ("City", "⌂"), ("Course", "···"), ("End turn", "✓")]
+    commands = [("Fleet", "fleet"), ("City", "city"), ("Course", "course"), ("End turn", "end_turn")]
     margin = 8 if phone else image.width // 2 - 250
     gap = 6 if phone else 12
     total_w = image.width - margin * 2
     button_w = (total_w - gap * 3) // 4
-    for i, (label, symbol) in enumerate(commands):
+    for i, (label, icon) in enumerate(commands):
         x = margin + i * (button_w + gap)
         fill = GOLD if label == "End turn" else PANEL_ALT
         outline = INK if label == "End turn" else (107, 74, 42)
         draw.rounded_rectangle((x, y + 12, x + button_w, y + h - 12), radius=8, fill=rgba(fill, 255), outline=rgba(outline, 255), width=2)
-        text(draw, (x + button_w // 2, y + 30), symbol, 18 if phone else 20, fill=INK if label == "End turn" else TEXT, bold=True, anchor="mm")
+        draw_maritime_icon(
+            draw,
+            (x + button_w // 2, y + 30),
+            icon,
+            18 if phone else 20,
+            color=INK if label == "End turn" else TEXT,
+        )
         text(draw, (x + button_w // 2, y + 57 if phone else y + 51), label, 11 if phone else 13, fill=INK if label == "End turn" else TEXT, bold=True, anchor="mm")
     return y
 
@@ -586,10 +687,10 @@ def compose_map_desktop(direction: Direction) -> Image.Image:
     image.paste(art, (0, top))
     annotate_map(image, (0, top, 1440, bottom), direction)
     draw = ImageDraw.Draw(image, "RGBA")
-    for i, symbol in enumerate(("+", "−", "◎")):
+    for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (1378, top + 18 + i * 48, 1424, top + 60 + i * 48)
         panel(image, box, direction, radius=8, fill_alpha=225)
-        text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), symbol, 20, bold=True, anchor="mm")
+        draw_maritime_icon(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), icon, 20)
     draw_minimap(image, (1256, bottom - 142, 1424, bottom - 18), direction)
     panel(image, (18, top + 60, 286, top + 132), direction, radius=9, fill_alpha=218)
     text(draw, (32, top + 74), "FLEET SIGHTING", 12, fill=GOLD, bold=True)
@@ -607,10 +708,10 @@ def compose_map_phone(direction: Direction) -> Image.Image:
     draw = ImageDraw.Draw(image, "RGBA")
     panel(image, (12, top + 12, 210, top + 50), direction, radius=19, fill_alpha=220)
     text(draw, (26, top + 31), "VENTURE · TAP AGAIN TO SAIL", 11, bold=True, anchor="lm")
-    for i, symbol in enumerate(("+", "−", "◎")):
+    for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (327, top + 12 + i * 44, 365, top + 50 + i * 44)
         panel(image, box, direction, radius=7, fill_alpha=225)
-        text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), symbol, 18, bold=True, anchor="mm")
+        draw_maritime_icon(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), icon, 18)
     draw_minimap(image, (266, bottom - 92, 365, bottom - 12), direction)
     return image
 
@@ -627,10 +728,10 @@ def compose_map_tablet(direction: Direction) -> Image.Image:
     image.paste(art, (0, 74))
     annotate_map(image, (0, 74, 768, bottom), direction)
     draw = ImageDraw.Draw(image, "RGBA")
-    for i, symbol in enumerate(("+", "−", "◎")):
+    for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (710, 92 + i * 48, 754, 134 + i * 48)
         panel(image, box, direction, radius=8, fill_alpha=225)
-        text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), symbol, 19, bold=True, anchor="mm")
+        draw_maritime_icon(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), icon, 19)
     draw_minimap(image, (622, bottom - 126, 754, bottom - 14), direction)
     return image
 
@@ -930,7 +1031,21 @@ def visual_system_contract() -> Image.Image:
         y = 630 + (i // 3) * 92
         draw.rounded_rectangle((x, y, x + 178, y + 54), radius=9, fill=rgba(PANEL, 255), outline=rgba(color, 255), width=4 if name in {"selected", "focus"} else 2)
         text(draw, (x + 89, y + 27), name.upper(), 13, fill=color if name != "focus" else TEXT, bold=True, anchor="mm")
-    text(draw, (52, 740), "ICON GRAMMAR", 18, fill=INK, bold=True)
+    text(draw, (52, 740), "ICON GRAMMAR · 20 PX REFERENCE FAMILY", 18, fill=INK, bold=True)
+    icon_examples = [
+        ("fleet", "FLEET"),
+        ("city", "CITY"),
+        ("course", "COURSE"),
+        ("zoom_in", "ZOOM +"),
+        ("zoom_out", "ZOOM -"),
+        ("overview", "OVERVIEW"),
+        ("end_turn", "END TURN"),
+    ]
+    for i, (icon, label) in enumerate(icon_examples):
+        x = 52 + i * 108
+        draw.rounded_rectangle((x, 778, x + 96, 834), radius=8, fill=rgba(PANEL, 255), outline=rgba((107, 74, 42), 255), width=2)
+        draw_maritime_icon(draw, (x + 48, 794), icon, 20)
+        text(draw, (x + 48, 820), label, 10, fill=TEXT_DIM, bold=True, anchor="mm")
     icon_notes = [
         "Filled silhouettes at 16–24 px; one interior cut only.",
         "Map ownership pairs flag pattern + silhouette + ring; never red/green alone.",
@@ -938,11 +1053,11 @@ def visual_system_contract() -> Image.Image:
         "Labels appear on selection/hover/focus or in the inspector—never permanent black pills over every building.",
         "Motion: 150–220 ms; reduced-motion removes bob, pulse and parallax while retaining static state cues.",
     ]
-    y = 782
+    y = 858
     for note in icon_notes:
-        text(draw, (72, y), "•", 15, fill=RUST, bold=True)
+        draw.ellipse((68, y + 4, 78, y + 14), fill=rgba(RUST, 255))
         text(draw, (94, y), note, 14, fill=INK_SOFT)
-        y += 38
+        y += 30
     return image
 
 
