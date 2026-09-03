@@ -63,5 +63,22 @@ for (const [label, marker] of [
     failures++
   }
 }
+for (const [rel] of required) {
+  const source = readFileSync(join(root, rel), 'utf8')
+  const controls = [
+    ...source.matchAll(
+      /<rect data-control="([^"]+)" x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)" height="([0-9.]+)"/g,
+    ),
+  ]
+  if (!controls.length) {
+    console.error(`FAIL ${rel}: no declared control geometry`)
+    failures++
+  }
+  for (const [, name, x, y, width, height] of controls) {
+    const pass = Number(width) >= 44 && Number(height) >= 44
+    console.log(`${pass ? 'PASS' : 'FAIL'} ${rel}: ${name} at ${x},${y} is ${width}×${height}`)
+    if (!pass) failures++
+  }
+}
 if (failures) process.exit(1)
 console.log('PASS #610 design-checkpoint package')

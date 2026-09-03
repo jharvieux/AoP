@@ -71,8 +71,9 @@ function panel(x, y, w, h, opts = {}) {
     stroke = C.brass,
     strokeOpacity = 0.86,
     inset = true,
+    control = null,
   } = opts
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${radius}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-opacity="${strokeOpacity}" stroke-width="1.5"/>${inset ? `<rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="${Math.max(3, radius - 4)}" fill="none" stroke="#f3e5c2" stroke-opacity=".13"/>` : ''}`
+  return `<rect${control ? ` data-control="${control}"` : ''} x="${x}" y="${y}" width="${w}" height="${h}" rx="${radius}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-opacity="${strokeOpacity}" stroke-width="1.5"/>${inset ? `<rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="${Math.max(3, radius - 4)}" fill="none" stroke="#f3e5c2" stroke-opacity=".13"/>` : ''}`
 }
 function grain(x, y, w, h, opacity = 0.08) {
   return `<path d="M ${x + 12} ${y + 12} C ${x + w * 0.26} ${y + 8}, ${x + w * 0.55} ${y + 17}, ${x + w - 12} ${y + 10} M ${x + 12} ${y + h - 12} C ${x + w * 0.3} ${y + h - 18}, ${x + w * 0.7} ${y + h - 7}, ${x + w - 12} ${y + h - 14}" fill="none" stroke="#f3e5c2" stroke-opacity="${opacity}" stroke-width="1"/>`
@@ -125,7 +126,7 @@ function button(x, y, w, label, iconName, state = 'default') {
     state === 'disabled'
       ? `<path d="M${x + 10} ${y + 10}l${w - 20} 24" stroke="#b4aa9a" stroke-opacity=".65" stroke-width="2" stroke-linecap="round"/>`
       : ''
-  return `${outer}${focus}<rect x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"/>${icon(iconName, x + 12, y + 12, 20, style.fg)}${text(x + 40, y + 28, label, 13, { fill: style.fg, weight: 700 })}${disabledMark}`
+  return `${outer}${focus}<rect data-control="button" x="${x}" y="${y}" width="${w}" height="44" rx="8" fill="${style.fill}" stroke="${style.stroke}" stroke-width="1.5"/>${icon(iconName, x + 12, y + 12, 20, style.fg)}${text(x + 40, y + 28, label, 13, { fill: style.fg, weight: 700 })}${disabledMark}`
 }
 function svg(w, h, body) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Age of Plunder gameplay chrome design checkpoint">\n<style>text { dominant-baseline: alphabetic; } .label { font-variant-numeric: tabular-nums; }</style>${body}</svg>\n`
@@ -146,7 +147,7 @@ function phone() {
         `${icon(r[0], 218 + i * 50, 23, 18, i === 0 ? C.brassHi : C.parchment2)}${text(242 + i * 50, 38, r[1], 12, { tabular: true, weight: 700 })}`,
     )
     .join('')
-  const course = `${panel(22, 104, 331, 42, { fill: '#172939', opacity: 0.92, stroke: C.brass, radius: 21 })}${icon('route', 36, 115, 18, C.brassHi)}${text(61, 130, 'Course ready · Tap to sail', 13, { weight: 700 })}`
+  const course = `${panel(22, 104, 331, 48, { fill: '#172939', opacity: 0.92, stroke: C.brass, radius: 21, control: 'course-confirmation' })}${icon('route', 36, 119, 18, C.brassHi)}${text(61, 135, 'Course ready · Tap to sail', 13, { weight: 700 })}`
   const fleet = `<circle cx="190" cy="415" r="30" fill="none" stroke="${C.brassHi}" stroke-width="2"/><circle cx="190" cy="415" r="37" fill="none" stroke="${C.brass}" stroke-opacity=".5" stroke-width="1.5"/>${icon('ship', 180, 405, 20, C.brassHi)}${panel(130, 452, 121, 30, { fill: C.ink, opacity: 0.92, radius: 15 })}${text(190, 472, 'Venture · 5 / 8', 12, { anchor: 'middle', tabular: true })}`
   const nav = `${panel(316, 162, 46, 148, { radius: 12 })}${button(317, 164, 44, '', 'zoomIn')}${button(317, 215, 44, '', 'zoomOut')}${button(317, 266, 44, '', 'fit')}`
   const mini = `${panel(248, 560, 111, 102, { radius: 12 })}<rect x="260" y="574" width="86" height="74" rx="4" fill="#1b4a6b" stroke="#cbb17a" stroke-opacity=".45"/><path d="M267 622l23-31 31 9 17 31-44 8z" fill="#4a7c3f" stroke="#f3e5c2" stroke-opacity=".7"/><rect x="283" y="603" width="42" height="26" fill="none" stroke="${C.parchment}" stroke-width="1.5"/>${text(303, 681, 'MINIMAP', 9, { anchor: 'middle', caps: true, fill: C.muted })}`

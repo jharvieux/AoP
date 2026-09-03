@@ -38,7 +38,7 @@ Parchment communicates material and readability, not a competing brand color. Go
 
 ### Controls, state, and safe areas
 
-Every direct control uses a minimum **44 × 44 CSS px** hit area.
+Every direct control uses a minimum **44 × 44 CSS px** hit area. The phone's route-confirmation action is deliberately **331 × 48 px**, so it remains comfortable without stealing meaningful map area.
 
 - Default: one restrained brass keyline.
 - Hover: brightness/keyline lift, 150–180 ms, no layout movement.
@@ -48,6 +48,16 @@ Every direct control uses a minimum **44 × 44 CSS px** hit area.
 - Focus: external, static 2 px high-contrast outline; hover never substitutes for focus.
 
 HUD, navigation, dock, and sheet actions reserve safe-area inset plus 12 px. Ornament yields before content, text, map/city area, or touch-target size. Reduced-motion mode removes pulse/sweep/parallax while preserving every static state cue.
+
+### Checkpoint control census
+
+The compositor annotates every depicted rectangle that represents a direct control with `data-control`; the validator rejects any width or height below 44 px and logs each geometry. The rendered checkpoint contains:
+
+- phone: 331 × 48 course confirmation, three 44 × 44 map-navigation controls, and four 44 × 44 command-dock controls;
+- desktop city: the 44 px End turn, Commission, Previous, and Next city controls;
+- state sheet: six 44 px-high reference button states (each 120 px wide).
+
+The following surfaces are intentionally non-interactive review content, not exceptions to the runtime target: resource/HUD readouts, map art, selected-fleet ring/chip, minimap illustration, city art frame, selected-building ring/chip, panel copy, color swatches, and icon specimens. Runtime entity/map hit areas remain governed by the existing interaction implementation and are not represented by static rectangle geometry in this checkpoint.
 
 ### GameScreen / MatchScreen parity
 
