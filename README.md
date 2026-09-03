@@ -23,3 +23,11 @@ pnpm build        # build all packages
 | `packages/content` | Data-driven game content: factions, units, ships |
 | `packages/shared`  | Shared types and utilities                       |
 | `apps/web`         | React + Vite + PixiJS client                     |
+
+## License
+
+Copyright (c) 2026 John Harvieux. This project is proprietary and all rights
+are reserved. Public availability does not make it open source or grant
+permission to use, copy, modify, distribute, deploy, host, or commercialize it,
+except for the limited license required by the GitHub Terms of Service for
+content in a public repository. See [LICENSE](LICENSE) for the full notice.
