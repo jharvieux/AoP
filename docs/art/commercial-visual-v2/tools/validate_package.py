@@ -106,7 +106,7 @@ def main() -> None:
     compositor_api["validate_map_world_states"]()
     print(f"validated {checked} WebP files: 17 sources + 22 review outputs")
     print("validated 5 required documents, local icon family, and unapproved operator gate")
-    print("validated canonical source-world map correspondence and terrain eligibility")
+    print("validated source-world anchors, route samples, label attachment, fog, and terrain eligibility")
 
 
 if __name__ == "__main__":

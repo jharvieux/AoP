@@ -165,6 +165,7 @@ The [map LOD diagram](contracts/map-token-lod-1600x930.webp) is authoritative. C
 ### Portrait phone: below 600 px
 
 - Map: use the selected fleet as the crop focus, keep resources in two compact rows, and remove permanent entity labels. Four primary commands remain reachable at the bottom.
+- The selected fleet may keep one short, directly anchored identity/strength chip. The separate top “Course ready” banner is route-confirmation chrome, not the fleet label, and carries no world-position claim.
 - City: show a 258 px-deep scene preview, then a full-width inspector sheet. The selected ring remains visible in the preview; management actions stay at the sheet bottom.
 
 ### Narrow landscape
@@ -174,7 +175,7 @@ The [map LOD diagram](contracts/map-token-lod-1600x930.webp) is authoritative. C
 
 Across all sizes, safe-area insets apply to top HUD, navigation, command dock, and modal actions. Ornament yields before content or touch-target size.
 
-Map entities, encounters, sites, route/range feedback, and fog are authored once in the 1024×704 source-world coordinate system. Desktop, tablet, and phone project those same coordinates through the terrain's cover crop; they may not recompute positions as viewport percentages. Cities and land encounters/sites require a land/coast anchor, while fleets, sea encounters, and route nodes require navigable water.
+Map entities, encounters, sites, route/range feedback, and fog are authored once in the 1024×704 source-world coordinate system. Desktop, tablet, and phone project those same coordinates through the terrain's cover crop; they may not recompute positions as viewport percentages. Cities and land encounters/sites require a land/coast anchor, while fleets, sea encounters, every route sample, and route turn markers require navigable water. A selected-fleet label derives from the transformed fleet anchor plus a documented collision offset in every viewport.
 
 ## 12. Dynamic city states
 

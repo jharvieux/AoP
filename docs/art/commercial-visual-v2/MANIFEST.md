@@ -157,7 +157,16 @@ The paired maps use one canonical 1024×704 source-world state per direction. Co
 | Land site      | land/coast       | `(660,500)` | `(660,440)` |
 | Route target   | water            | `(510,410)` | `(485,455)` |
 
-The validator checks declared land masks and the actual source pixel beneath every anchor, verifies no proof marker is inside fog, then project/unprojects every anchor through desktop, tablet, and phone crops with at most one source-pixel rounding error. Range offsets and the route originate from the canonical own-fleet coordinate; the selected-fleet label derives from that same projected anchor.
+Canonical drawn route paths, including the selected fleet as their first point, are:
+
+- Direction A: `(410,460) → (430,450) → (450,442) → (470,435) → (490,423) → (510,410)`;
+- Direction B: `(390,520) → (410,510) → (430,500) → (450,488) → (468,472) → (485,455)`.
+
+The third point after the fleet is the outlined current-turn break. The validator checks every drawn dot plus every source pixel traversed by each segment against declared land masks and the actual source painting—not only the endpoints.
+
+The “Venture · 5/8” chip is attached to the projected own-fleet anchor with deterministic art-canvas offsets: desktop/tablet `(-46,+28)` at 13 px and phone `(-42,+24)` at 11 px. The phone's separate top “Course ready · Tap to sail” banner is route-confirmation chrome, not a fleet label.
+
+The validator also verifies no proof marker or route enters fog, then project/unprojects every anchor, route dot, and label attachment through desktop, tablet, and phone crops with at most one source-pixel rounding error. Range offsets originate from the canonical own-fleet coordinate.
 
 ## Validation record
 
@@ -173,6 +182,7 @@ Completed:
 - native-size acceptance inspection found unsupported font glyphs in the command dock and map controls; fleet, city, course, end-turn, zoom-in, zoom-out, and overview controls were replaced with locally drawn geometry, added to the visual-system sheet at 20 px, and all dependent proofs were re-rendered;
 - responsive acceptance inspection found viewport-relative semantic overlays drifting against separately cropped terrain; all map semantics and fog were moved to canonical source-world coordinates, projected with the terrain crop, and checked against land/water eligibility in both directions;
 - the related defect-class sweep found the semantic-zoom diagram's example fleet and route over land; both were moved to the navigable-water side of the shared island;
+- route-sample acceptance inspection found Direction B's curved intermediate dots crossing sand despite valid endpoints; both directions now use explicit source-water route paths, every drawn and traversed sample is validated, and phone receives a directly fleet-anchored chip distinct from its route-confirmation banner;
 - all review WebPs are below the runtime 300 KiB comparison ceiling; the largest review image is the 228 KiB comparison sheet, although these files are not proposed runtime exports;
 - local checkpoint byte size and SHA-256 matched publisher-hosted files;
 - prompt text hashes were checked against original ComfyUI PNG metadata;

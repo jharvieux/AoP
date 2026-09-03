@@ -140,7 +140,7 @@ Payload budgets are compressed transfer totals, not per-file substitutions:
 
 Validate at native size after optimization. Reject an export if alpha fringe, roof rigging, flag shape, token class, or selected outline materially changes even when the byte target is met.
 
-Responsive map composition uses one source-to-screen transform for terrain and every semantic overlay. Store semantic anchors in source/world coordinates, apply the exact rounded cover scale and crop offset used by the terrain, and derive contextual labels from the transformed anchor. Viewport-relative entity placement is invalid even when one screenshot looks correct.
+Responsive map composition uses one source-to-screen transform for terrain and every semantic overlay. Store semantic anchors and route samples in source/world coordinates, apply the exact rounded cover scale and crop offset used by the terrain, and derive contextual labels from the transformed anchor plus a deterministic viewport collision offset. Validate every route sample and turn marker against navigable terrain rather than checking endpoints alone. Viewport-relative entity or label placement is invalid even when one screenshot looks correct.
 
 The current theme-upload limits (`maxImageBytes: 500_000`, `maxImageDimension: 256`) are a separate existing user-content contract and remain unchanged. They do not relax the stricter default-art targets above.
 

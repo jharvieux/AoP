@@ -8,7 +8,6 @@ Run with the ComfyUI venv (Pillow is already installed there).
 
 from __future__ import annotations
 
-import math
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -149,6 +148,20 @@ MAP_TERRAIN_REQUIREMENTS = {
 }
 
 RANGE_OFFSETS = [(-48, -20), (-12, -48), (34, -24), (62, 16), (18, 52)]
+
+MAP_ROUTE_PATHS = {
+    "a": [(410, 460), (430, 450), (450, 442), (470, 435), (490, 423), (510, 410)],
+    "b": [(390, 520), (410, 510), (430, 500), (450, 488), (468, 472), (485, 455)],
+}
+MAP_ROUTE_TURN_INDEX = 3
+
+SELECTED_FLEET_LABEL = "Venture · 5/8"
+SELECTED_FLEET_LABEL_OFFSETS = {
+    "desktop": (-46, 28),
+    "tablet": (-46, 28),
+    "phone": (-42, 24),
+}
+SELECTED_FLEET_LABEL_SIZES = {"desktop": 13, "tablet": 13, "phone": 11}
 
 
 def font(size: int, bold: bool = False, display: bool = False) -> ImageFont.FreeTypeFont:
@@ -595,6 +608,14 @@ def draw_maritime_icon(
         raise ValueError(f"unknown maritime icon: {kind}")
 
 
+def chip_dimensions(label: str, size: int) -> tuple[int, int]:
+    f = font(size, bold=True)
+    bbox = f.getbbox(label)
+    w = bbox[2] - bbox[0] + 20
+    h = bbox[3] - bbox[1] + 14
+    return w, h
+
+
 def chip(
     image: Image.Image,
     xy: tuple[int, int],
@@ -605,10 +626,7 @@ def chip(
     size: int = 14,
 ) -> tuple[int, int, int, int]:
     f = font(size, bold=True)
-    probe = ImageDraw.Draw(image)
-    bbox = probe.textbbox((0, 0), label, font=f)
-    w = bbox[2] - bbox[0] + 20
-    h = bbox[3] - bbox[1] + 14
+    w, h = chip_dimensions(label, size)
     box = (xy[0], xy[1], xy[0] + w, xy[1] + h)
     panel(image, box, direction, radius=h // 2, fill_alpha=224)
     draw = ImageDraw.Draw(image)
@@ -649,19 +667,30 @@ def draw_ship(draw: ImageDraw.ImageDraw, center: tuple[int, int], kind: str, siz
     draw.polygon([(cx + 2, cy - size + 3), (cx + size // 2, cy + size // 8), (cx + 2, cy + size // 8)], fill=rgba(color, 230), outline=rgba(INK, 220))
 
 
-def dotted_route(draw: ImageDraw.ImageDraw, start: tuple[int, int], end: tuple[int, int], scale: float) -> None:
-    dx = end[0] - start[0]
-    dy = end[1] - start[1]
-    distance = max(1.0, math.hypot(dx, dy))
-    steps = max(3, int(distance / (20 * scale)))
-    for i in range(1, steps):
-        t = i / steps
-        x = round(start[0] + dx * t)
-        y = round(start[1] + dy * t - math.sin(t * math.pi) * 34 * scale)
-        color = ROUTE if t < 0.58 else LATER
+def route_segment_samples(start: tuple[int, int], end: tuple[int, int]) -> list[tuple[int, int]]:
+    steps = max(abs(end[0] - start[0]), abs(end[1] - start[1]), 1)
+    return [
+        (
+            round(start[0] + (end[0] - start[0]) * index / steps),
+            round(start[1] + (end[1] - start[1]) * index / steps),
+        )
+        for index in range(steps + 1)
+    ]
+
+
+def draw_route_markers(
+    draw: ImageDraw.ImageDraw,
+    route: list[tuple[int, int]],
+    turn_index: int,
+    scale: float = 1.0,
+) -> None:
+    if not 1 <= turn_index < len(route):
+        raise AssertionError(f"route turn index outside path: {turn_index}")
+    for index, (x, y) in enumerate(route[1:], start=1):
+        color = ROUTE if index <= turn_index else LATER
         r = max(2, round(3.5 * scale))
         draw.ellipse((x - r, y - r, x + r, y + r), fill=rgba(color, 240))
-        if abs(t - 0.58) < 0.06:
+        if index == turn_index:
             draw.ellipse((x - r * 2, y - r * 2, x + r * 2, y + r * 2), outline=rgba(color, 240), width=max(1, round(2 * scale)))
 
 
@@ -698,6 +727,16 @@ def map_coordinate_evidence() -> dict[str, dict[str, dict[str, tuple[int, int]]]
     return evidence
 
 
+def selected_fleet_label_origin(
+    direction_id: str,
+    viewport: str,
+    transform: CoverTransform,
+) -> tuple[int, int]:
+    anchor = transform.project(MAP_WORLD_STATES[direction_id]["own_ship"])
+    offset = SELECTED_FLEET_LABEL_OFFSETS[viewport]
+    return anchor[0] + offset[0], anchor[1] + offset[1]
+
+
 def validate_map_world_states() -> None:
     expected_names = set(MAP_TERRAIN_REQUIREMENTS)
     evidence = map_coordinate_evidence()
@@ -729,6 +768,49 @@ def validate_map_world_states() -> None:
                     raise AssertionError(f"{direction_id} {name} loses source correspondence in {viewport}")
                 if not (10 <= screen_point[0] <= size[0] - 10 and 10 <= screen_point[1] <= size[1] - 10):
                     raise AssertionError(f"{direction_id} {name} is cropped in {viewport}: {screen_point}")
+        route = MAP_ROUTE_PATHS[direction_id]
+        if route[0] != state["own_ship"] or route[-1] != state["route_target"]:
+            raise AssertionError(f"{direction_id} route is detached from its canonical endpoints")
+        dense_route = {
+            point
+            for start, end in zip(route[:-1], route[1:], strict=True)
+            for point in route_segment_samples(start, end)
+        }
+        for point in dense_route:
+            if map_terrain(direction_id, point) != "water" or pixel_terrain(source.getpixel(point)) != "water":
+                raise AssertionError(f"{direction_id} route crosses non-navigable terrain at source {point}")
+            if point_in_polygon(point, fog):
+                raise AssertionError(f"{direction_id} route enters fog at source {point}")
+        for point in route[1:]:
+            for viewport, (size, focus) in MAP_VIEWPORTS.items():
+                transform = cover_transform(MAP_SOURCE_SIZE, size, focus)
+                screen_point = transform.project(point)
+                source_point = transform.unproject(screen_point)
+                if max(abs(source_point[0] - point[0]), abs(source_point[1] - point[1])) > 1.0:
+                    raise AssertionError(f"{direction_id} route marker loses correspondence in {viewport}")
+                if not (5 <= screen_point[0] <= size[0] - 5 and 5 <= screen_point[1] <= size[1] - 5):
+                    raise AssertionError(f"{direction_id} route marker is cropped in {viewport}: {screen_point}")
+        for viewport, (size, focus) in MAP_VIEWPORTS.items():
+            transform = cover_transform(MAP_SOURCE_SIZE, size, focus)
+            ship_anchor = transform.project(state["own_ship"])
+            label_origin = selected_fleet_label_origin(direction_id, viewport, transform)
+            offset = SELECTED_FLEET_LABEL_OFFSETS[viewport]
+            if (label_origin[0] - offset[0], label_origin[1] - offset[1]) != ship_anchor:
+                raise AssertionError(f"{direction_id} fleet label detached in {viewport}")
+            source_anchor = transform.unproject(ship_anchor)
+            if max(abs(source_anchor[0] - state["own_ship"][0]), abs(source_anchor[1] - state["own_ship"][1])) > 1.0:
+                raise AssertionError(f"{direction_id} fleet label anchor loses correspondence in {viewport}")
+            label_width, label_height = chip_dimensions(
+                SELECTED_FLEET_LABEL,
+                SELECTED_FLEET_LABEL_SIZES[viewport],
+            )
+            if not (
+                4 <= label_origin[0]
+                and label_origin[0] + label_width <= size[0] - 4
+                and 4 <= label_origin[1]
+                and label_origin[1] + label_height <= size[1] - 4
+            ):
+                raise AssertionError(f"{direction_id} fleet label is cropped in {viewport}")
         for point in fog:
             if not (0 <= point[0] <= MAP_SOURCE_SIZE[0] and 0 <= point[1] <= MAP_SOURCE_SIZE[1]):
                 raise AssertionError(f"{direction_id} fog point outside source: {point}")
@@ -756,7 +838,7 @@ def annotate_map_world(image: Image.Image, direction: Direction) -> None:
         rr = 24
         cx, cy = own_ship[0] + ox, own_ship[1] + oy
         draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=rgba(color, 45), outline=rgba(color, 110), width=2)
-    dotted_route(draw, own_ship, state["route_target"], 1.0)
+    draw_route_markers(draw, MAP_ROUTE_PATHS[direction.id], MAP_ROUTE_TURN_INDEX)
     draw_city_marker(draw, state["own_city"], "own", 17)
     draw_city_marker(draw, state["enemy_city"], "enemy", 17)
     draw_city_marker(draw, state["neutral_city"], "neutral", 17)
@@ -783,12 +865,19 @@ def annotate_map_ui(
     box: tuple[int, int, int, int],
     direction: Direction,
     transform: CoverTransform,
-    phone: bool = False,
+    viewport: str,
 ) -> None:
     x0, y0, _, _ = box
-    own_ship = transform.project(MAP_WORLD_STATES[direction.id]["own_ship"])
-    if not phone:
-        chip(image, (x0 + own_ship[0] - 46, y0 + own_ship[1] + 28), "Venture · 5/8", direction, color=GOLD, size=13)
+    label_origin = selected_fleet_label_origin(direction.id, viewport, transform)
+    chip(
+        image,
+        (x0 + label_origin[0], y0 + label_origin[1]),
+        SELECTED_FLEET_LABEL,
+        direction,
+        color=GOLD,
+        size=SELECTED_FLEET_LABEL_SIZES[viewport],
+    )
+    if viewport != "phone":
         chip(image, (x0 + 18, y0 + 18), "NORMAL ZOOM · FOG SAFE", direction, color=SUCCESS, size=12)
 
 
@@ -874,7 +963,7 @@ def compose_map_desktop(direction: Direction) -> Image.Image:
     if art.size != (1440, bottom - top):
         raise AssertionError(f"desktop map viewport drifted: {art.size}")
     image.paste(art, (0, top))
-    annotate_map_ui(image, (0, top, 1440, bottom), direction, transform)
+    annotate_map_ui(image, (0, top, 1440, bottom), direction, transform, "desktop")
     draw = ImageDraw.Draw(image, "RGBA")
     for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (1378, top + 18 + i * 48, 1424, top + 60 + i * 48)
@@ -895,10 +984,10 @@ def compose_map_phone(direction: Direction) -> Image.Image:
     if art.size != (375, bottom - top):
         raise AssertionError(f"phone map viewport drifted: {art.size}")
     image.paste(art, (0, top))
-    annotate_map_ui(image, (0, top, 375, bottom), direction, transform, phone=True)
+    annotate_map_ui(image, (0, top, 375, bottom), direction, transform, "phone")
     draw = ImageDraw.Draw(image, "RGBA")
     panel(image, (12, top + 12, 210, top + 50), direction, radius=19, fill_alpha=220)
-    text(draw, (26, top + 31), "VENTURE · TAP AGAIN TO SAIL", 11, bold=True, anchor="lm")
+    text(draw, (26, top + 31), "COURSE READY · TAP TO SAIL", 11, bold=True, anchor="lm")
     for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (327, top + 12 + i * 44, 365, top + 50 + i * 44)
         panel(image, box, direction, radius=7, fill_alpha=225)
@@ -919,7 +1008,7 @@ def compose_map_tablet(direction: Direction) -> Image.Image:
     if art.size != (768, bottom - 74):
         raise AssertionError(f"tablet map viewport drifted: {art.size}")
     image.paste(art, (0, 74))
-    annotate_map_ui(image, (0, 74, 768, bottom), direction, transform)
+    annotate_map_ui(image, (0, 74, 768, bottom), direction, transform, "tablet")
     draw = ImageDraw.Draw(image, "RGBA")
     for i, icon in enumerate(("zoom_in", "zoom_out", "overview")):
         box = (710, 92 + i * 48, 754, 134 + i * 48)
@@ -1163,7 +1252,21 @@ def map_lod_contract() -> Image.Image:
         ship_point = (x + 410, 535)
         draw_ship(draw, ship_point, "enemy", max(7, marker_size - 2), selected=i > 0)
         if i > 0:
-            dotted_route(draw, ship_point, (x + 440, 365), 0.75 if i == 1 else 1.0)
+            route = [
+                ship_point,
+                (x + 430, 505),
+                (x + 445, 475),
+                (x + 450, 440),
+                (x + 448, 402),
+                (x + 445, 365),
+            ]
+            if any(
+                point_in_polygon(point, island)
+                for start, end in zip(route[:-1], route[1:], strict=True)
+                for point in route_segment_samples(start, end)
+            ):
+                raise AssertionError("LOD route must remain on water between every marker")
+            draw_route_markers(draw, route, 3, 0.75 if i == 1 else 1.0)
         text(draw, (x + 22, 170), label, 16, fill=PARCHMENT_LIGHT, bold=True)
         text(draw, (x + 22, 198), scale_note, 13, fill=GOLD, bold=True)
         y = 590
