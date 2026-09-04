@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build reviewed subject masks for the issue #608 checkpoint sources.
+"""Build reviewed subject masks for the issue #608 production sources.
 
 Run with the repository's separate rembg authoring environment:
 
@@ -27,8 +27,17 @@ SOURCE_NAMES = {
     "townhall": "townhall-source-r1.webp",
     "tavern": "tavern-source-r1.webp",
     "tradehouse": "tradehouse-source-r1.webp",
-    "barracks": "barracks-source-r1.webp",
+    "sawmill": "sawmill-source-r1.webp",
+    "ironmine": "ironmine-source-r1.webp",
+    "distillery": "distillery-source-r1.webp",
+    "barracks": "barracks-source-r2.webp",
+    "garrisonHall": "garrisonhall-source-r1.webp",
+    "fortressArmory": "fortress-armory-source-r1.webp",
+    "grandArsenal": "grand-arsenal-source-r1.webp",
+    "palisade": "palisade-source-r1.webp",
     "stonewall": "stonewall-source-r1.webp",
+    "citadel": "citadel-source-r1.webp",
+    "citadel-tower": "citadel-tower-source-r1.webp",
     "shipyard": "shipyard-source-r2.webp",
 }
 

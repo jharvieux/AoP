@@ -253,6 +253,13 @@ def validate_determinism() -> None:
 
 
 def main() -> None:
+    # Checkpoint one is retained as history, but this package now ships the
+    # complete production candidate. Keep the old entry point useful instead
+    # of validating superseded dimensions and inventories.
+    production_validator = PACKAGE / "tools" / "validate_production.py"
+    if production_validator.exists():
+        subprocess.run([sys.executable, str(production_validator)], check=True)
+        return
     validate_inventory()
     print("PASS: 30-file WebP inventory, dimensions, modes, metadata, and 300 KiB ceiling")
     validate_provenance()

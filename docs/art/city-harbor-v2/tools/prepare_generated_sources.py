@@ -3,7 +3,7 @@
 
 The service exports lossless PNGs. This authoring utility retains a visually
 equivalent, metadata-free WebP source and prints both hashes. Original service
-hashes remain the provenance identity recorded in PROVENANCE.json.
+hashes remain the provenance identity recorded in the package's provenance files.
 """
 
 from __future__ import annotations
@@ -18,14 +18,32 @@ from PIL import Image
 NAMES = (
     "empty-harbor-source-r1",
     "empty-harbor-source-r2",
+    "empty-harbor-source-r3",
     "townhall-source-r1",
     "tavern-source-r1",
     "tradehouse-source-r1",
     "barracks-source-r1",
+    "barracks-source-r2",
+    "sawmill-source-r1",
+    "ironmine-source-r1",
+    "distillery-source-r1",
+    "garrisonhall-source-r1",
+    "fortress-armory-source-r1",
+    "grand-arsenal-source-r1",
+    "palisade-source-r1",
     "stonewall-source-r1",
+    "citadel-source-r1",
+    "citadel-tower-source-r1",
     "shipyard-source-r1",
     "shipyard-source-r2",
 )
+
+QUALITY = {
+    "empty-harbor-source-r1": 80,
+    "empty-harbor-source-r2": 76,
+    "empty-harbor-source-r3": 72,
+    "shipyard-source-r2": 86,
+}
 
 
 def digest(path: Path) -> str:
@@ -45,14 +63,7 @@ def main() -> None:
         if not source.exists():
             continue
         image = Image.open(source).convert("RGB")
-        if stem == "empty-harbor-source-r2":
-            quality = 76
-        elif stem.startswith("empty-harbor-source-"):
-            quality = 80
-        elif stem == "shipyard-source-r2":
-            quality = 86
-        else:
-            quality = 88
+        quality = QUALITY.get(stem, 82)
         image.save(target, "WEBP", quality=quality, method=6, exact=True)
         print(f"{stem}: png={digest(source)} webp={digest(target)} bytes={target.stat().st_size}")
 

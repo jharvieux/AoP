@@ -1,28 +1,43 @@
-# Gilded Harbor city art — checkpoint 1
+# Gilded Harbor city art — production candidate
 
-**Status:** operator checkpoint 1 for issue #608; not runtime art and not yet approved for
-the full production batch.
+**Status:** checkpoint 1 and Direction B refinement approved; full issue #608 runtime/capture
+candidate complete and awaiting operator checkpoint 2 approval.
 
-![Checkpoint contact sheet](proofs/checkpoint-contact-sheet-1600x1120.webp)
+![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
-This package answers the first art gate in #608 with one representative Direction B city.
-It contains the town hall, tavern, shoreline shipyard, trade-house economy building,
-barracks recruitment building, and a low stone-wall element. The proof applies D-049's
-amendment: it keeps the layered harbor depth, limestone/timber material language, and
-luminous water while reducing fortress dominance and giving the working districts
-different silhouettes.
+This package now contains the shipping Direction B city: an empty fourteen-foundation
+harbor backdrop, all fourteen constructed buildings, a separate citadel tower, reviewed
+alpha masks, runtime WebPs, responsive/full-state/faction/zoom evidence, and executable
+asset/theme-fallback tests. D-049's amendment remains the visual rule: layered harbor
+depth, warm limestone and timber, luminous water, reduced fortress dominance, and clear
+working-district silhouettes.
 
 ## Approval question
 
-**Does this feel like the right city-art direction to carry through the complete building
-set—specifically the open harbor composition, reduced fortress mass, and clearer tavern,
-economy, recruitment, and shoreline-shipyard silhouettes?**
+**Does the complete starting-to-full city feel ready to ship—especially the smaller phone
+read, recruitment progression, low fortification perimeter, and connected shoreline
+shipyard?**
 
-Approval advances #608 to the complete runtime-asset batch and its second integrated
-starting/midgame/full-city checkpoint. Requested changes should name the visual role or
-overall balance that feels wrong; no code review is needed.
+This is the checkpoint-2 approval question, not a claim that checkpoint 2 is already
+approved. Requested changes should name the visual role or overall balance that feels
+wrong; no code review is needed. See [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for
+the complete contract, inventory, evidence, budgets, and known boundary.
 
-## Native review files
+## Production review files
+
+- [Starting / midgame / full contact, 1600×620](proofs/production-state-contact-1600x620.webp)
+- [Five-faction contact, 1600×748](proofs/faction-contact-1600x748.webp)
+- [Phone scene, 375×258](proofs/phone-scene-375x258.webp)
+- [1× / current max-zoom evidence, 1600×1040](proofs/zoom-2x-evidence-1600x1040.webp)
+- [All production layers, 1800×1180](proofs/production-layer-contact-1800x1180.webp)
+- [Pre-replacement behavior, 1600×620](proofs/baseline-current-states-1600x620.webp)
+- Fifteen native 1024×1024 alpha stress proofs under `proofs/stress/`
+
+The additional framed review files below preserve the familiar checkpoint-one paths while
+showing the complete production candidate. The production files above are the primary
+approval set.
+
+### Additional framed review files
 
 - [Desktop composite, 1440×900](proofs/desktop-1440x900.webp)
 - [Phone composite, 375×812](proofs/phone-375x812.webp) — includes the actual 375×258 city
@@ -42,7 +57,7 @@ overall balance that feels wrong; no code review is needed.
 Open these at 100%. The contact sheet is a summary, not a substitute for native-size
 inspection.
 
-## What this checkpoint proves
+## What checkpoint one proved
 
 - The harbor is an opaque, building-free 16:11 terrain/coast/road/foundation layer.
 - All six constructed subjects are genuine-alpha WebP cutouts with safe transparent
@@ -59,13 +74,12 @@ inspection.
   it.
 - Rebuilding the retained proof files from the retained sources is byte-identical.
 
-## Deliberate boundary
+## Historical checkpoint-one boundary (superseded)
 
-This checkpoint changes only `docs/art/city-harbor-v2/`. It does not replace anything in
+At checkpoint one, this package changed only `docs/art/city-harbor-v2/`. It did not replace anything in
 `apps/web/public/art/city/`, change `CityScene.tsx`, add a content ID, alter gameplay, or
-claim that the remaining buildings and all five faction treatments are finished. Those
-remain in #608 after checkpoint approval. This approves visual direction and modular
-construction, not final full-batch source sharpness.
+claim that the remaining buildings and all five faction treatments were finished. The
+production batch documented above now completes that previously deferred scope.
 
 The built-in OpenAI image generator supplied source art under the operator's D-049
 authorization. It returned a painted checker preview rather than an alpha channel for the
@@ -88,5 +102,5 @@ NUMBA_DISABLE_JIT=1 ~/aop-ai-tools/venv/bin/python3 \
 ~/aop-ai-tools/ComfyUI/venv/bin/python \
   docs/art/city-harbor-v2/tools/compose_checkpoint.py
 ~/aop-ai-tools/ComfyUI/venv/bin/python \
-  docs/art/city-harbor-v2/tools/validate_checkpoint.py
+  docs/art/city-harbor-v2/tools/validate_production.py
 ```

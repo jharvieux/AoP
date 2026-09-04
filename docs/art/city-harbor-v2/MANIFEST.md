@@ -1,5 +1,12 @@
 # City Harbor v2 — checkpoint-one manifest
 
+> Historical record: checkpoint one is approved and superseded by the complete
+> [production candidate manifest](PRODUCTION-MANIFEST.md). Run
+> `tools/validate_production.py` for the current package contract. The hashes
+> below bind immutable checkpoint-one commit
+> `4dcbd44d08ca558fffb558a96916acb193e4eb33`, not the production files now at
+> the same working paths.
+
 ## Status and authority
 
 This is the first operator checkpoint required by issue #608. Direction B — Gilded Harbor

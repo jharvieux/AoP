@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "batch": "issue-608-city-art-production-candidate",
+  "date": "2026-09-03",
+  "service": "OpenAI built-in image generator",
+  "tool_mode": "subscription-included built-in image_gen tool; no CLI, API key, paid API path, or ComfyUI generation",
+  "license_usage_basis": "Project-directed generated source using only project-generated references; no stock image, external logo, or copied game screenshot. Service terms and applicable law govern use; this record is provenance, not legal advice.",
+  "interface_fields_not_exposed": [
+    "model identifier",
+    "model version",
+    "sampler",
+    "seed",
+    "quality control",
+    "size control"
+  ],
+  "references": {
+    "direction-b-r3": {
+      "path": "../commercial-visual-v2/sources/b-gilded-harbor-diorama-full-r3.webp",
+      "role": "style, material, camera, and lighting reference only",
+      "sha256": "eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d"
+    },
+    "empty-harbor-r2": {
+      "path": "sources/empty-harbor-source-r2.webp",
+      "role": "P10 edit target; corrected-shore spatial reference for later cutouts",
+      "sha256": "39f3e74076db87b37aab8c8588278baa7c6a750af5984d4e8760e0a6e39fc463"
+    },
+    "barracks-r1": {
+      "path": "sources/barracks-source-r1.webp",
+      "role": "P11 edit target",
+      "sha256": "059720e79f8f48a2bc88d056bd07d9b7b6c50c2c995b63c59ca0eef2ceb9301d"
+    },
+    "stonewall-r1": {
+      "path": "sources/stonewall-source-r1.webp",
+      "role": "P15/P16 fortification lineage reference only",
+      "sha256": "51f140a4b3cf3aa1882af39126c9511428f95d6e8062b2c4c19f27a3a31c74b6"
+    }
+  },
+  "generation": [
+    {
+      "prompt_id": "P10",
+      "asset": "fourteen-foundation empty harbor",
+      "use_case": "precise-object-edit",
+      "input_references": ["empty-harbor-r2", "direction-b-r3"],
+      "edit_target": "empty-harbor-r2",
+      "original_dimensions": [1567, 1004],
+      "original_mode": "RGB",
+      "original_png_sha256": "f6da166f84a5a0e0a38d71cbc11abb156165d33abcaee2d77a6de3eb932848b4",
+      "retained_path": "sources/empty-harbor-source-r3.webp",
+      "retained_sha256": "8e80cccbb5cfb1e6e1be7a513816add6cb0a4f3eef9b9a3a1195f0a95ffbef26",
+      "transparent_requested": false,
+      "service_alpha_delivered": false,
+      "disposition": "active foundation source; production backdrop deterministically feathers its terrain with P8's corrected shore inside the immutable shipyard region"
+    },
+    {
+      "prompt_id": "P11",
+      "asset": "cleaned barracks",
+      "use_case": "precise-object-edit",
+      "input_references": ["barracks-r1", "direction-b-r3"],
+      "edit_target": "barracks-r1",
+      "original_dimensions": [1536, 1024],
+      "original_mode": "RGBA",
+      "original_png_sha256": "37b2a44b428b00e3cde09d73e6cca99a99b3a29974c3536abced31e4ca8f45e0",
+      "retained_path": "sources/barracks-source-r2.webp",
+      "retained_sha256": "51fd499dd7f8887ad9ab4533b24f3cb02cc8aa96eb297d6bc0b66a13f1c360fb",
+      "transparent_requested": true,
+      "service_alpha_delivered": "RGBA container present but not trusted; semantic mask pipeline applied",
+      "disposition": "active barracks; both human-shaped dummies replaced by inanimate shield/stave storage"
+    },
+    {
+      "prompt_id": "P12",
+      "asset": "sawmill",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P10 output as spatial reference"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "82d699ed460ba822c94029d250063b08bbbbb3b380c5797ace8e9c7250669404",
+      "retained_path": "sources/sawmill-source-r1.webp",
+      "retained_sha256": "7fb01058d6c59694abacc1e4e4b78c4a44db1e90d76fecee086f79e4b3f6e7e6",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P13",
+      "asset": "iron mine",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P10 output as spatial reference"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "eea458f73b25a1e140d3c75ba05d49ee1628eb8f3323eb6df3e80b1edf436eb3",
+      "retained_path": "sources/ironmine-source-r1.webp",
+      "retained_sha256": "077f904e834ff3b6be04dcfd8ced7d4346457435c5de1d1c2c715efed76731ca",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P14",
+      "asset": "distillery",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P10 output as spatial reference"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "51043bbd7659792b0c0ae64bfc670089241a8a096b56a3043848c1cb46b084bf",
+      "retained_path": "sources/distillery-source-r1.webp",
+      "retained_sha256": "4ef24ab6208b1bbf0cb4106e18f886e2a16f4fa2613d46b2f77276396a7f40b5",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P15",
+      "asset": "palisade",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P10 output as spatial reference", "stonewall-r1"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "4091f17789f1ea0f7df1f3a8fb50f5330bc965d35d4d32c00bf80c1c602f4b09",
+      "retained_path": "sources/palisade-source-r1.webp",
+      "retained_sha256": "cdbb596f46b21fca959ece8b94375fe360895cd766d331dc80a695ef5818cd0d",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P16",
+      "asset": "compact citadel",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P10 output as spatial reference", "stonewall-r1"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "d136e89097a96f5603612929fe83489cb8c83a42e5e81ba9128deb9268e44e84",
+      "retained_path": "sources/citadel-source-r1.webp",
+      "retained_sha256": "39a883706e933c5daf18bd877691f061ab7ed4292c39a1fae6f774ea0be2a2e7",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P17",
+      "asset": "garrison hall",
+      "use_case": "stylized-concept",
+      "input_references": [
+        "direction-b-r3",
+        "P10 output as spatial reference",
+        "P11 output as recruitment lineage"
+      ],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "48ee25befd90fc1613b87d7edf1445577b7f09dba6dcff42067272fb10d449ca",
+      "retained_path": "sources/garrisonhall-source-r1.webp",
+      "retained_sha256": "767fc1d691911edca04e235129fe1cd75b07e997e200da1b7cf095f17270e33f",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P18",
+      "asset": "fortress armory",
+      "use_case": "stylized-concept",
+      "input_references": [
+        "direction-b-r3",
+        "P10 output as spatial reference",
+        "P17 output as recruitment lineage"
+      ],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGBA",
+      "original_png_sha256": "508059923f46419f6f1690c03727d79c8c0dcb29abcd319d4e71e3eb154625ec",
+      "retained_path": "sources/fortress-armory-source-r1.webp",
+      "retained_sha256": "5ba206aca91bd9b163acf1ad944fe93fbe5f77f03e984739a21a6669a3b253bf",
+      "transparent_requested": true,
+      "service_alpha_delivered": "RGBA container present but not trusted; semantic mask pipeline applied"
+    },
+    {
+      "prompt_id": "P19",
+      "asset": "grand arsenal",
+      "use_case": "stylized-concept",
+      "input_references": [
+        "direction-b-r3",
+        "P10 output as spatial reference",
+        "P18 output as recruitment lineage"
+      ],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "797a66b199cdf58d24cb611cf42d3f917889cab33bcc504e5506beb305f749dc",
+      "retained_path": "sources/grand-arsenal-source-r1.webp",
+      "retained_sha256": "68bdff3e7dc43b61a33e248e28be144d805f4b7472a5738afcd2f02d81b5cdf1",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    },
+    {
+      "prompt_id": "P20",
+      "asset": "citadel corner tower",
+      "use_case": "stylized-concept",
+      "input_references": ["direction-b-r3", "P16 output as fortification lineage"],
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "08cbfe8c7bd9cf1915b8d9b99b3833755bf56127b8e67ce3de9da383d0883f80",
+      "retained_path": "sources/citadel-tower-source-r1.webp",
+      "retained_sha256": "a507c37682cc8fcf9a37b50674a2e7b1ecdabd6c64de1bbef0a97deb1ad3191b",
+      "transparent_requested": true,
+      "service_alpha_delivered": false
+    }
+  ],
+  "alpha_recovery": {
+    "tool": "rembg isnet-general-use followed by reviewed-mask hardening",
+    "model_sha256": "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+    "applies_to": "all fifteen constructed sources, including the two sources delivered in RGBA containers",
+    "recipe": "alpha-128 core; largest connected subject without filling holes; sigma-0.65 anti-aliased edge; alpha-240 interior color extension; 26-source-pixel trim; 850–900 px maximum retained edge",
+    "mask_directory": "masks/",
+    "stress_directory": "proofs/stress/"
+  },
+  "rejected_outputs": [],
+  "prior_checkpoint_rejections": "Three P2-P4 background-extraction retries remain recorded in PROVENANCE.json; no P10-P20 production generation was rejected."
+}
