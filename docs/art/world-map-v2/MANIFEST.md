@@ -118,3 +118,12 @@ captures in `RUNTIME-CAPTURES.md` were renewed from exact runtime head
 They visibly and perceptually bind the generated Pirate sloop but still require renewed
 checkpoint-2 operator approval for those exact pixels. This manifest does not claim that
 approval or that the pre-PR audit is resolved.
+
+## Issue #611 terrain and semantic-zoom addendum
+
+The deterministic terrain bases, transparent decals, coast-oriented port overlays, semantic
+zoom thresholds, generation provenance, source/runtime hashes, processing receipt, asset
+budgets, and 5×5 seam proof are documented under [`terrain/`](terrain/README.md). This addendum
+does not alter any checkpoint-1 or runtime-candidate provenance above. Issue #611 contributes
+nine separately generated terrain concepts and one corrective background-extraction edit; its
+interface-exposed model and seed are both unavailable and recorded as `null`.

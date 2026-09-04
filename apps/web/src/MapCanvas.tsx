@@ -27,6 +27,19 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import {
+  PRESENTATION_LAYERS,
+  TERRAIN_ART,
+  markerEligible,
+  overviewMarkerWorldDiameter,
+  presentationBand,
+  resolveTerrainSprite,
+  terrainArtPreloadUrls,
+  terrainDecalUrl,
+  terrainPresentationAt,
+  topologyNeighbors,
+  type StrategicMarkerFamily,
+} from './mapPresentation'
+import {
   cellCenter,
   cellPolygon,
   fitScale,
@@ -52,7 +65,6 @@ import {
   fitSpriteDimensions,
   landSiteContentId,
   resolveSpriteUrl,
-  tileContentId,
 } from './mapSprites'
 import { partyBlockedSet } from './partyMarch'
 import { arrowheadAngle, pathToDotSegments, turnBoundaryIndices } from './pathPreview'
@@ -124,7 +136,6 @@ export const ENCOUNTER_COLOR = {
 } as const
 
 // Static URLs live in the pure registry so completeness can be verified without Pixi.
-const TILE_SPRITE_URL = mapArtRegistry.tiles
 const CITY_SPRITE_URL = mapArtRegistry.cities
 const ENCOUNTER_SPRITE_URL = mapArtRegistry.seaEncounters
 // Land content (#466): tokens over land tiles. Graphics colors remain the
@@ -548,11 +559,15 @@ export function MapCanvas(props: MapCanvasProps) {
     const caustics = new Container()
     caustics.blendMode = 'soft-light'
     caustics.filters = [new BlurFilter({ strength: 10, quality: 2 })]
+    // Overview replaces thousands of per-cell textures/decals with one traced
+    // land silhouette. It is rebuilt only on the existing dirty draw path.
+    const overviewLand = new Graphics()
     const landGroup = new Container()
     const landMask = new Graphics()
     const tileSprites = new Container() // land/port tile art, clipped by landMask
-    const landDetail = new Graphics() // flat fallback + terrain speckles, clipped too
-    landGroup.addChild(tileSprites, landDetail)
+    const terrainDecalSprites = new Container()
+    const landDetail = new Graphics() // Decode-failure terrain fallback, clipped too
+    landGroup.addChild(tileSprites, terrainDecalSprites, landDetail)
     landGroup.mask = landMask
     // Shallows wash: soft overlapping discs over shallow-water cells, drawn
     // above the land group so the wash laps a few pixels onto the traced
@@ -560,6 +575,9 @@ export function MapCanvas(props: MapCanvasProps) {
     const wash = new Graphics()
     const glintSprites = new Container() // drifting sun glints on open water (#392)
     const coast = new Graphics() // sand rim + shoreline + foam along the traced loops (#393)
+    // Default docks extend from their land cell toward classified adjacent
+    // water, so they sit outside the coastline mask but beneath entities/fog.
+    const portOverlaySprites = new Container()
     // Movement-range shading (#371): reachable water + engageable targets, under
     // the entity sprites so a shaded ship/city still reads clearly on top.
     const range = new Graphics()
@@ -585,11 +603,13 @@ export function MapCanvas(props: MapCanvasProps) {
     world.addChild(
       knownSea,
       caustics,
+      overviewLand,
       landMask,
       landGroup,
       wash,
       glintSprites,
       coast,
+      portOverlaySprites,
       range,
       entities,
       citySprites,
@@ -679,6 +699,8 @@ export function MapCanvas(props: MapCanvasProps) {
     textureLoaderRef.current = textureLoader
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
+    const terrainDecalPool = new SpritePool(terrainDecalSprites)
+    const portOverlayPool = new SpritePool(portOverlaySprites)
     const glintPool = new SpritePool(glintSprites)
     const causticPool = new SpritePool(caustics)
     const cityPool = new SpritePool(citySprites)
@@ -719,6 +741,9 @@ export function MapCanvas(props: MapCanvasProps) {
           ((ownerId) => (ownerId === 'neutral' ? undefined : current.factionOf(ownerId))),
         spriteUrl: themeSpriteUrlRef.current,
       })
+      for (const url of terrainArtPreloadUrls(themeSpriteUrlRef.current)) {
+        requests.push({ contentId: 'terrain:presentation', url })
+      }
       const unsettled = unsettledMapArtUrls(requests, textureLoader.getStatus)
 
       if (unsettled.length === 0) {
@@ -834,6 +859,8 @@ export function MapCanvas(props: MapCanvasProps) {
     // captainless viewer (spectators keep the default overview origin).
     controlsRef.current.centerOnFleet()
 
+    let activePresentationBand: ReturnType<typeof presentationBand> | undefined
+
     function draw(deltaMs: number) {
       // Advance in-flight sail animations before this frame's ship loop reads them, so a
       // freshly created one below (from a position change detected this same frame) starts
@@ -871,6 +898,9 @@ export function MapCanvas(props: MapCanvasProps) {
       // `rect`), so square rendering is byte-identical; for a hex map they place
       // and outline pointy-top hexes via mapLayout.
       const topology = mapTopology(map)
+      const band = presentationBand(TILE * view.scale, activePresentationBand)
+      activePresentationBand = band
+      const layers = PRESENTATION_LAYERS[band]
       const centerOf = (x: number, y: number) => cellCenter(topology, x, y, TILE)
       const fillCell = (g: Graphics, x: number, y: number, style: FillInput) => {
         if (topology === 'hex') g.poly(cellPolygon('hex', x, y, TILE)).fill(style)
@@ -900,12 +930,15 @@ export function MapCanvas(props: MapCanvasProps) {
       const geom = paintedGeometry(map, exploredKeys)
 
       knownSea.clear()
+      overviewLand.clear()
       landMask.clear()
       landDetail.clear()
       wash.clear()
       coast.clear()
       fog.clear()
       tilePool.begin()
+      terrainDecalPool.begin()
+      portOverlayPool.begin()
       glintPool.begin()
       causticPool.begin()
 
@@ -925,10 +958,22 @@ export function MapCanvas(props: MapCanvasProps) {
       }
 
       // Landmass silhouette + coastline (#393): the traced, smoothed loops.
-      // Holes (water enclosed by land) are skipped from the mask so lake cells
-      // simply stay ocean-colored; their shoreline still gets stroked below.
-      for (const loop of geom.coastLoops) {
-        if (!loop.hole) landMask.poly(loop.points).fill(0xffffff)
+      // Overview paints these loops directly instead of visiting all 9,216
+      // cells on a fitted 96x96 board. Tactical/detail keep the coastline mask
+      // around the authored bases and decals.
+      if (layers.terrainTiles) {
+        for (const loop of geom.coastLoops) {
+          if (!loop.hole) landMask.poly(loop.points).fill(0xffffff)
+        }
+      } else {
+        for (const loop of geom.coastLoops) {
+          if (!loop.hole) {
+            overviewLand.poly(loop.points).fill(parseHexColor(TILE_COLOR.land) ?? 0x4a7c3f)
+          }
+        }
+        for (const loop of geom.coastLoops) {
+          if (loop.hole) overviewLand.poly(loop.points).fill(deepPacked)
+        }
       }
       for (const loop of geom.coastLoops) {
         // Water side first: a wide translucent foam band, then a tighter sand
@@ -939,134 +984,193 @@ export function MapCanvas(props: MapCanvasProps) {
         // breathes unevenly along the shore instead of reading as one uniform
         // outline. The shore hairline stays a single uniform loop so the
         // silhouette stays crisp.
-        for (const run of loopStrokeRuns(loop.points, 6)) {
-          const jitter = 0.7 + tileHash(Math.round(run[0]!), Math.round(run[1]!)) * 0.6
-          coast
-            .poly(run, false)
-            .stroke({ width: TILE * 0.5, color: SURF_COLOR, alpha: 0.16 * jitter })
-          coast
-            .poly(run, false)
-            .stroke({ width: TILE * 0.24, color: SAND_COLOR, alpha: 0.55 * jitter })
+        if (layers.layeredSurf) {
+          for (const run of loopStrokeRuns(loop.points, 6)) {
+            const jitter = 0.7 + tileHash(Math.round(run[0]!), Math.round(run[1]!)) * 0.6
+            coast
+              .poly(run, false)
+              .stroke({ width: TILE * 0.5, color: SURF_COLOR, alpha: 0.16 * jitter })
+            coast
+              .poly(run, false)
+              .stroke({ width: TILE * 0.24, color: SAND_COLOR, alpha: 0.55 * jitter })
+          }
         }
-        coast.poly(loop.points).stroke({ width: 1.5, color: SHORE_COLOR, alpha: 0.6 })
+        coast.poly(loop.points).stroke({
+          width: layers.layeredSurf ? 1.5 : 1.25 / view.scale,
+          color: SHORE_COLOR,
+          alpha: layers.layeredSurf ? 0.6 : 0.78,
+        })
       }
 
-      for (let y = minY; y <= maxY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-          const key = `${x},${y}`
-          if (!exploredKeys.has(key)) continue
-          const tile = map.tiles[tileIndex(map, x, y)]!
+      if (layers.terrainTiles) {
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            const key = `${x},${y}`
+            if (!exploredKeys.has(key)) continue
+            const tile = map.tiles[tileIndex(map, x, y)]!
 
-          if (WATER_TYPES.has(tile.type)) {
-            // Shallows wash (#392): soft overlapping discs merge into one
-            // organic shoal region — no cell seams. Two radii layer a brighter
-            // core inside a wider fade.
-            if (tile.type === 'shallows') {
-              const c = centerOf(x, y)
-              const washColor = parseHexColor(TILE_COLOR.shallows) ?? 0x2a6a8f
-              wash.circle(c.x, c.y, TILE * 0.92).fill({ color: washColor, alpha: 0.28 })
-              wash.circle(c.x, c.y, TILE * 0.6).fill({ color: washColor, alpha: 0.3 })
+            if (WATER_TYPES.has(tile.type)) {
+              // Shallows wash (#392): soft overlapping discs merge into one
+              // organic shoal region — no cell seams. Two radii layer a brighter
+              // core inside a wider fade.
+              if (tile.type === 'shallows') {
+                const c = centerOf(x, y)
+                const washColor = parseHexColor(TILE_COLOR.shallows) ?? 0x2a6a8f
+                wash.circle(c.x, c.y, TILE * 0.92).fill({ color: washColor, alpha: 0.28 })
+                wash.circle(c.x, c.y, TILE * 0.6).fill({ color: washColor, alpha: 0.3 })
+              }
+              // Sun glints (#392): a sparse deterministic subset of water cells
+              // carries a small light streak whose alpha the ambient tick
+              // oscillates — the ocean moves without any per-frame Graphics work.
+              if (layers.waterGlints && tileHash(x, y) < GLINT_DENSITY) {
+                const sprite = glintPool.get(key)
+                sprite.texture = Texture.WHITE
+                sprite.width = TILE * (0.18 + tileHash(y, x) * 0.2)
+                sprite.height = 1.6
+                sprite.rotation = -0.35 + tileHash(x + 1, y) * 0.7
+                const c = centerOf(x, y)
+                sprite.position.set(
+                  c.x + (tileHash(x, y + 1) - 0.5) * TILE * 0.8,
+                  c.y + (tileHash(x + 2, y) - 0.5) * TILE * 0.8,
+                )
+                sprite.tint = 0xdff1fa
+                ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
+              }
+              // Slow caustics (#405): a sparser subset than the glints (disjoint
+              // by hash range) carries a big soft blob the ambient tick drifts and
+              // fades on a long period — the ocean's large-scale "light under the
+              // surface". The container's blur + soft-light do the rest.
+              if (layers.waterCaustics && tileHash(x, y) > CAUSTIC_MIN_HASH) {
+                const sprite = causticPool.get(key)
+                sprite.texture = Texture.WHITE
+                sprite.width = TILE * 2.5
+                sprite.height = TILE * 2.5
+                sprite.tint = 0xeaf4fb
+                const c = centerOf(x, y)
+                sprite.position.set(c.x, c.y)
+                causticSpritesRef.current.set(key, { sprite, baseX: c.x, baseY: c.y })
+              }
+              continue
             }
-            // Sun glints (#392): a sparse deterministic subset of water cells
-            // carries a small light streak whose alpha the ambient tick
-            // oscillates — the ocean moves without any per-frame Graphics work.
-            if (tileHash(x, y) < GLINT_DENSITY) {
-              const sprite = glintPool.get(key)
-              sprite.texture = Texture.WHITE
-              sprite.width = TILE * (0.18 + tileHash(y, x) * 0.2)
-              sprite.height = 1.6
-              sprite.rotation = -0.35 + tileHash(x + 1, y) * 0.7
+
+            const terrain = terrainPresentationAt(map, x, y, {
+              isKnown: (neighborX, neighborY) => exploredKeys.has(`${neighborX},${neighborY}`),
+            })
+            const portTheme =
+              tile.type === 'port'
+                ? resolveTerrainSprite(
+                    themeSpriteUrlRef.current,
+                    'port',
+                    (terrain.portFacing?.index ?? -1) + 1,
+                    undefined,
+                  )
+                : null
+            const base = portTheme?.url
+              ? portTheme
+              : resolveTerrainSprite(
+                  themeSpriteUrlRef.current,
+                  'land',
+                  terrain.baseVariant,
+                  TERRAIN_ART.landBases[terrain.baseVariant],
+                )
+            const texture = base.url ? getTexture(base.url) : undefined
+            if (texture) {
+              const sprite = tilePool.get(key)
+              sprite.texture = texture
+              // The shared edge field needs only a subpixel square overlap;
+              // offset hex rows retain the wider cover required by their pitch.
+              const tileCover = topology === 'hex' ? 1.16 : 1.02
+              sprite.width = TILE * tileCover
+              sprite.height = TILE * tileCover
+              const tc = centerOf(x, y)
+              sprite.position.set(tc.x, tc.y)
+              sprite.alpha = 1
+              const shoreTint = terrain.shoreAdjacent ? 0xfff6e0 : 0xffffff
+              sprite.tint = shadeColor(shoreTint, tileBrightness(x, y, 0.045))
+              if (tile.type === 'port') {
+                ambientTileSpritesRef.current.set(key, { sprite, kind: 'port' })
+              }
+            } else {
+              const fallback = parseHexColor(TILE_COLOR[tile.type])
+              const color =
+                fallback !== null
+                  ? shadeColor(fallback, tileBrightness(x, y, 0.1))
+                  : TILE_COLOR[tile.type]
+              fillCell(landDetail, x, y, { color, alpha: 1 })
+            }
+
+            const showDecal =
+              terrain.decal &&
+              (layers.terrainDecals === 'rich' ||
+                (layers.terrainDecals === 'sparse' && terrain.tacticalDecal))
+            if (showDecal && terrain.decal) {
+              const decalTexture = getTexture(terrainDecalUrl(terrain.decal))
               const c = centerOf(x, y)
-              sprite.position.set(
-                c.x + (tileHash(x, y + 1) - 0.5) * TILE * 0.8,
-                c.y + (tileHash(x + 2, y) - 0.5) * TILE * 0.8,
+              if (decalTexture) {
+                const sprite = terrainDecalPool.get(key)
+                const size =
+                  terrain.decal.kind === 'clearing'
+                    ? TILE * 1.12
+                    : terrain.decal.kind === 'forest'
+                      ? TILE * 0.92
+                      : TILE * 0.84
+                sprite.texture = decalTexture
+                fitTexture(sprite, decalTexture, size, size)
+                sprite.position.set(c.x, c.y)
+                sprite.alpha = layers.terrainDecals === 'rich' ? 0.94 : 0.72
+              } else if (terrain.decal.kind === 'forest') {
+                landDetail.circle(c.x, c.y, TILE * 0.27).fill({
+                  color: FOREST_WASH_COLOR,
+                  alpha: 0.48,
+                })
+              } else if (terrain.decal.kind === 'clearing') {
+                landDetail.circle(c.x, c.y, TILE * 0.36).fill({
+                  color: CLEARING_WASH_COLOR,
+                  alpha: 0.35,
+                })
+              } else {
+                landDetail
+                  .poly([
+                    c.x - TILE * 0.22,
+                    c.y + TILE * 0.16,
+                    c.x,
+                    c.y - TILE * 0.2,
+                    c.x + TILE * 0.24,
+                    c.y + TILE * 0.16,
+                  ])
+                  .fill({ color: 0x625f55, alpha: 0.58 })
+              }
+            }
+
+            if (
+              tile.type === 'port' &&
+              !portTheme?.url &&
+              terrain.portOverlayVariant !== null &&
+              terrain.portFacing
+            ) {
+              const overlayTexture = getTexture(
+                TERRAIN_ART.portOverlays[terrain.portOverlayVariant],
               )
-              sprite.tint = 0xdff1fa
-              ambientTileSpritesRef.current.set(key, { sprite, kind: 'water' })
+              if (overlayTexture) {
+                const c = centerOf(x, y)
+                const water = centerOf(terrain.portFacing.x, terrain.portFacing.y)
+                const angle = Math.atan2(water.y - c.y, water.x - c.x)
+                const sprite = portOverlayPool.get(key)
+                sprite.texture = overlayTexture
+                fitTexture(sprite, overlayTexture, TILE * 1.55, TILE * 1.05)
+                sprite.position.set(
+                  c.x + Math.cos(angle) * TILE * 0.34,
+                  c.y + Math.sin(angle) * TILE * 0.34,
+                )
+                sprite.rotation = angle
+              }
             }
-            // Slow caustics (#405): a sparser subset than the glints (disjoint
-            // by hash range) carries a big soft blob the ambient tick drifts and
-            // fades on a long period — the ocean's large-scale "light under the
-            // surface". The container's blur + soft-light do the rest.
-            if (tileHash(x, y) > CAUSTIC_MIN_HASH) {
-              const sprite = causticPool.get(key)
-              sprite.texture = Texture.WHITE
-              sprite.width = TILE * 2.5
-              sprite.height = TILE * 2.5
-              sprite.tint = 0xeaf4fb
-              const c = centerOf(x, y)
-              sprite.position.set(c.x, c.y)
-              causticSpritesRef.current.set(key, { sprite, baseX: c.x, baseY: c.y })
-            }
-            continue
-          }
-
-          // Land/port tile art, clipped to the traced coastline by landGroup's
-          // mask — the art supplies interior texture, the mask the silhouette.
-          const spriteUrl = resolveSpriteUrl(
-            themeSpriteUrlRef.current,
-            tileContentId(tile.type),
-            TILE_SPRITE_URL[tile.type],
-          )
-          const texture = spriteUrl ? getTexture(spriteUrl) : undefined
-          if (texture) {
-            const sprite = tilePool.get(key)
-            sprite.texture = texture
-            // Slightly oversized so hex packing (row pitch 0.87×TILE) leaves no
-            // gaps between the square art tiles inside the mask.
-            sprite.width = TILE * 1.16
-            sprite.height = TILE * 1.16
-            const tc = centerOf(x, y)
-            sprite.position.set(tc.x, tc.y)
-            sprite.alpha = 1 // Fog layer handles dimming (#299)
-            // Per-tile brightness variety (#347) so repeated art doesn't read
-            // as identical squares; kept subtle to avoid seams at overlaps.
-            sprite.tint = shadeColor(0xffffff, tileBrightness(x, y, 0.06))
-            if (tile.type === 'port') {
-              ambientTileSpritesRef.current.set(key, { sprite, kind: 'port' })
-            }
-          } else {
-            // Flat-color fallback, same silhouette via the mask.
-            const base = parseHexColor(TILE_COLOR[tile.type])
-            const color =
-              base !== null ? shadeColor(base, tileBrightness(x, y, 0.1)) : TILE_COLOR[tile.type]
-            fillCell(landDetail, x, y, { color, alpha: 1 })
-          }
-          // Terrain washes (#404): the same soft-disc trick the shallows wash
-          // uses, over land and clipped by landGroup's coastline mask, so large
-          // islands break into organic forest/clearing patches instead of one
-          // uniform green. Adjacent same-hash cells overlap (radius > cell
-          // pitch) and merge with no visible cell boundary. Drawn before the
-          // speckles so the flecks sit on top of the forest wash.
-          if (tile.type === 'land') {
-            const c = centerOf(x, y)
-            const hash = tileHash(x, y)
-            if (hash > 0.55) {
-              landDetail
-                .circle(c.x, c.y, TILE * 0.9)
-                .fill({ color: FOREST_WASH_COLOR, alpha: 0.25 })
-              landDetail
-                .circle(c.x, c.y, TILE * 0.55)
-                .fill({ color: FOREST_WASH_COLOR, alpha: 0.25 })
-            } else if (hash < 0.2) {
-              landDetail
-                .circle(c.x, c.y, TILE * 0.85)
-                .fill({ color: CLEARING_WASH_COLOR, alpha: 0.14 })
-            }
-          }
-          // Terrain speckles (#393): sparse darker flecks so large landmasses
-          // read as vegetated ground, not a repeated texture.
-          if (tile.type === 'land' && tileHash(x, y) > 0.55) {
-            const c = centerOf(x, y)
-            const dx = (tileHash(x + 3, y) - 0.5) * TILE * 0.7
-            const dy = (tileHash(x, y + 3) - 0.5) * TILE * 0.7
-            landDetail
-              .circle(c.x + dx, c.y + dy, 1.2 + tileHash(y, x + 1) * 1.4)
-              .fill({ color: 0x2f5426, alpha: 0.5 })
           }
         }
       }
       tilePool.end()
+      terrainDecalPool.end()
+      portOverlayPool.end()
       glintPool.end()
       causticPool.end()
 
@@ -1074,7 +1178,7 @@ export function MapCanvas(props: MapCanvasProps) {
       // each of the three overlay sets. Rebuilt every draw, but the draw only
       // runs on a dirty tick (selection/state change), never per idle frame.
       range.clear()
-      if (rangeOverlay) {
+      if (layers.rangeAndRoutes && rangeOverlay) {
         const paintRange = (keys: string[], color: string) => {
           for (const k of keys) {
             const [rx, ry] = k.split(',').map(Number) as [number, number]
@@ -1094,62 +1198,27 @@ export function MapCanvas(props: MapCanvasProps) {
           const key = `${x},${y}`
           if (!exploredKeys.has(key)) continue
           if (visibleKeys.has(key)) continue
-          // Explored-but-fogged: dim it. Grade the alpha by how many of the 8
-          // neighbours are currently visible (#347/#299), so the fog fades in
-          // smoothly toward the sighted region instead of stepping in two hard
-          // bands that only reinforced the grid.
+          // Explored-but-fogged: dim it. Grade the alpha by the current
+          // topology's neighboring visible cells so square and hex fog feather
+          // toward sight without changing any visibility truth.
           let visibleNeighbors = 0
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              if (dx === 0 && dy === 0) continue
-              if (visibleKeys.has(`${x + dx},${y + dy}`)) visibleNeighbors++
-            }
+          for (const neighbor of topologyNeighbors(topology, x, y)) {
+            if (visibleKeys.has(`${neighbor.x},${neighbor.y}`)) visibleNeighbors++
           }
-          const edgeAlpha = Math.max(0.14, 0.45 - visibleNeighbors * 0.045)
+          const neighborStep = topology === 'hex' ? 0.06 : 0.045
+          const edgeAlpha = Math.max(0.14, 0.45 - visibleNeighbors * neighborStep)
           fillCell(fog, x, y, { color: FOG_COLOR, alpha: edgeAlpha })
         }
       }
 
       entities.clear()
       factionMarkerPool.begin()
-      const drawFactionMarker = (key: string, c: Point, factionId: FactionId) => {
-        const faction = FACTIONS[factionId]
-        // 24 px at the authored 1x map scale. The ring sits outside the token
-        // source and keeps ownership legible in grayscale via the flag's
-        // authored geometry (not color alone).
-        const ringRadius = 12
-        entities.circle(c.x, c.y, ringRadius).stroke({
-          width: 3,
-          color: 0x14100d,
-          alpha: 0.72,
-        })
-        entities.circle(c.x, c.y, ringRadius).stroke({
-          width: 1.5,
-          color: faction.primaryColor,
+      const drawFactionPattern = (marker: Point, radius: number, factionId: FactionId) => {
+        const stroke = {
+          width: layers.fullEntityArt ? 1.5 : 1 / view.scale,
+          color: 0xffffff,
           alpha: 0.95,
-        })
-
-        const marker = { x: c.x + TILE * 0.3, y: c.y - TILE * 0.3 }
-        const flagUrl = resolveSpriteUrl(
-          themeSpriteUrlRef.current,
-          factionFlagContentId(factionId),
-          faction.flagSpriteUrl,
-        )
-        const flagTexture = flagUrl ? getTexture(flagUrl) : undefined
-        if (flagTexture) {
-          const sprite = factionMarkerPool.get(key)
-          sprite.texture = flagTexture
-          fitTexture(sprite, flagTexture, TILE * 0.34, TILE * 0.34)
-          sprite.position.set(marker.x, marker.y)
-          return
         }
-
-        // Decode-failure fallback still has a non-color cue. In particular,
-        // British uses a plus while Spanish uses a saltire, so those two never
-        // collapse to the same gray ring.
-        const radius = TILE * 0.12
-        entities.circle(marker.x, marker.y, radius).fill(0x18130f)
-        const stroke = { width: 1.5, color: 0xffffff, alpha: 0.95 }
         const pattern = factionMarkerPattern(factionId)
         if (pattern === 'cross') {
           entities
@@ -1202,16 +1271,123 @@ export function MapCanvas(props: MapCanvasProps) {
             .stroke(stroke)
         }
       }
+      const drawOverviewMarker = (
+        c: Point,
+        family: StrategicMarkerFamily,
+        color: number | string,
+        own = false,
+      ) => {
+        const diameter = overviewMarkerWorldDiameter(family, TILE, view.scale)
+        const radius = diameter / 2
+        const outline = { width: 1.5 / view.scale, color: 0x14100d, alpha: 0.86 }
+        if (family === 'city' || family === 'site') {
+          entities.rect(c.x - radius, c.y - radius, diameter, diameter).fill({ color, alpha: 0.95 })
+          entities.rect(c.x - radius, c.y - radius, diameter, diameter).stroke(outline)
+        } else if (family === 'fleet') {
+          const points = [
+            c.x,
+            c.y - radius,
+            c.x + radius,
+            c.y + radius * 0.75,
+            c.x - radius,
+            c.y + radius * 0.75,
+          ]
+          entities.poly(points).fill({ color, alpha: 0.95 })
+          entities.poly(points).stroke(outline)
+        } else {
+          const points = [
+            c.x,
+            c.y - radius,
+            c.x + radius,
+            c.y,
+            c.x,
+            c.y + radius,
+            c.x - radius,
+            c.y,
+          ]
+          entities.poly(points).fill({ color, alpha: 0.95 })
+          entities.poly(points).stroke(outline)
+        }
+        if (own) {
+          entities.circle(c.x, c.y, radius * 1.22).stroke({
+            width: 1 / view.scale,
+            color: HIGHLIGHT_COLOR,
+            alpha: 0.9,
+          })
+        }
+        return radius
+      }
+      const drawFactionMarker = (
+        key: string,
+        c: Point,
+        factionId: FactionId,
+        family: StrategicMarkerFamily,
+        own = false,
+      ) => {
+        const faction = FACTIONS[factionId]
+        if (!layers.fullEntityArt) {
+          const radius = drawOverviewMarker(c, family, faction.primaryColor, own)
+          drawFactionPattern(c, radius * 0.42, factionId)
+          return
+        }
+
+        // 24 px at the authored 1x map scale. The ring sits outside the token
+        // source and keeps ownership legible in grayscale via the flag's
+        // authored geometry (not color alone).
+        const ringRadius = 12
+        entities.circle(c.x, c.y, ringRadius).stroke({
+          width: 3,
+          color: 0x14100d,
+          alpha: 0.72,
+        })
+        entities.circle(c.x, c.y, ringRadius).stroke({
+          width: 1.5,
+          color: faction.primaryColor,
+          alpha: 0.95,
+        })
+
+        const marker = { x: c.x + TILE * 0.3, y: c.y - TILE * 0.3 }
+        const flagUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          factionFlagContentId(factionId),
+          faction.flagSpriteUrl,
+        )
+        const flagTexture = flagUrl ? getTexture(flagUrl) : undefined
+        if (flagTexture) {
+          const sprite = factionMarkerPool.get(key)
+          sprite.texture = flagTexture
+          fitTexture(sprite, flagTexture, TILE * 0.34, TILE * 0.34)
+          sprite.position.set(marker.x, marker.y)
+          return
+        }
+
+        // Decode-failure fallback still has a non-color cue. In particular,
+        // British uses a plus while Spanish uses a saltire.
+        const radius = TILE * 0.12
+        entities.circle(marker.x, marker.y, radius).fill(0x18130f)
+        drawFactionPattern(marker, radius, factionId)
+      }
       encounterPool.begin()
       // Encounters (#23): art sprite when available, a flat diamond otherwise —
       // only where currently in view, so fog hides them.
       for (const enc of encounters) {
-        if (!enc.active) continue
         const key = `${enc.position.x},${enc.position.y}`
-        if (!visibleKeys.has(key)) continue
+        if (
+          !markerEligible({
+            family: 'encounter',
+            active: enc.active,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+          })
+        )
+          continue
         const ec = centerOf(enc.position.x, enc.position.y)
         const cx = ec.x
         const cy = ec.y
+        if (!layers.fullEntityArt) {
+          drawOverviewMarker(ec, 'encounter', ENCOUNTER_COLOR[enc.kind])
+          continue
+        }
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           encounterContentId(enc.kind),
@@ -1242,19 +1418,34 @@ export function MapCanvas(props: MapCanvasProps) {
       // theme/default art resolves (404-falls-back to the token), like encounters.
       landSitePool.begin()
       for (const s of landSites) {
-        if (!s.active) continue
         const key = `${s.position.x},${s.position.y}`
-        if (!visibleKeys.has(key)) continue
+        if (
+          !markerEligible({
+            family: 'site',
+            active: s.active,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+          })
+        )
+          continue
         const c = centerOf(s.position.x, s.position.y)
+        // A site's claimant is always a real player (reducer.ts only ever sets
+        // `claimedBy: action.playerId`) — never the city-only neutral sentinel.
+        const claimantFactionId = s.claimedBy ? factionOf(s.claimedBy) : undefined
+        if (!layers.fullEntityArt) {
+          if (claimantFactionId) {
+            drawFactionMarker(`site:${s.id}`, c, claimantFactionId, 'site')
+          } else {
+            drawOverviewMarker(c, 'site', LAND_SITE_COLOR[s.kind])
+          }
+          continue
+        }
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           landSiteContentId(s.kind),
           LAND_SITE_SPRITE_URL[s.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
-        // A site's claimant is always a real player (reducer.ts only ever sets
-        // `claimedBy: action.playerId`) — never the city-only neutral sentinel.
-        const claimantFactionId = s.claimedBy ? factionOf(s.claimedBy) : undefined
         if (texture) {
           const sprite = landSitePool.get(s.id)
           sprite.texture = texture
@@ -1264,7 +1455,7 @@ export function MapCanvas(props: MapCanvasProps) {
           const r = TILE / 3.2
           entities.rect(c.x - r, c.y - r, r * 2, r * 2).fill(LAND_SITE_COLOR[s.kind])
         }
-        if (claimantFactionId) drawFactionMarker(`site:${s.id}`, c, claimantFactionId)
+        if (claimantFactionId) drawFactionMarker(`site:${s.id}`, c, claimantFactionId, 'site')
       }
       landSitePool.end()
 
@@ -1272,10 +1463,21 @@ export function MapCanvas(props: MapCanvasProps) {
       // overland twin of the sea-encounter token.
       landEncounterPool.begin()
       for (const enc of landEncounters) {
-        if (!enc.active) continue
         const key = `${enc.position.x},${enc.position.y}`
-        if (!visibleKeys.has(key)) continue
+        if (
+          !markerEligible({
+            family: 'encounter',
+            active: enc.active,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+          })
+        )
+          continue
         const c = centerOf(enc.position.x, enc.position.y)
+        if (!layers.fullEntityArt) {
+          drawOverviewMarker(c, 'encounter', LAND_ENCOUNTER_COLOR[enc.kind])
+          continue
+        }
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           encounterContentId(enc.kind),
@@ -1299,11 +1501,27 @@ export function MapCanvas(props: MapCanvasProps) {
       for (const city of cities) {
         const key = `${city.position.x},${city.position.y}`
         const own = city.ownerId === viewerId
-        if (!own && !exploredKeys.has(key)) continue
+        if (
+          !markerEligible({
+            family: 'city',
+            own,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+          })
+        )
+          continue
         const cc = centerOf(city.position.x, city.position.y)
         const cx = cc.x
         const cy = cc.y
         const cityFactionId = cityFactionOf(city.ownerId)
+        if (!layers.fullEntityArt) {
+          if (cityFactionId) {
+            drawFactionMarker(`city:${city.id}`, cc, cityFactionId, 'city', own)
+          } else {
+            drawOverviewMarker(cc, 'city', own ? OWN_CITY : ENEMY_CITY, own)
+          }
+          continue
+        }
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           cityContentId(own),
@@ -1315,7 +1533,7 @@ export function MapCanvas(props: MapCanvasProps) {
           color: 0x000000,
           alpha: 0.28,
         })
-        if (cityFactionId) drawFactionMarker(`city:${city.id}`, cc, cityFactionId)
+        if (cityFactionId) drawFactionMarker(`city:${city.id}`, cc, cityFactionId, 'city', own)
         if (texture) {
           const sprite = cityPool.get(city.id)
           sprite.texture = texture
@@ -1350,11 +1568,16 @@ export function MapCanvas(props: MapCanvasProps) {
         liveCaptainIds.add(cap.id)
         const key = `${cap.position.x},${cap.position.y}`
         const own = cap.ownerId === viewerId
-        if (!own && !visibleKeys.has(key)) continue
-        // A shipLost captain (#498) has no hull left — the anchored ship was
-        // taken as a prize when its ashore captain was defeated. Nothing to
-        // draw here; the landing party sprite carries the captain instead.
-        if (cap.shipLost) continue
+        if (
+          !markerEligible({
+            family: 'fleet',
+            own,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+            unavailable: cap.shipLost,
+          })
+        )
+          continue
 
         // Detect a move since the last draw (#297): reconstruct the sea path just
         // travelled and animate along it instead of snapping straight to the new tile.
@@ -1389,6 +1612,19 @@ export function MapCanvas(props: MapCanvasProps) {
         const cy = center.y
         const faction = FACTIONS[factionOf(cap.ownerId)]
         const factionId = faction.id
+        const anchored = anchoredCaptainIds.has(cap.id)
+        if (!layers.fullEntityArt) {
+          drawFactionMarker(`ship:${cap.id}`, center, factionId, 'fleet', own)
+          if (anchored) {
+            const diameter = overviewMarkerWorldDiameter('fleet', TILE, view.scale)
+            entities.circle(cx, cy, diameter * 0.66).stroke({
+              width: 1 / view.scale,
+              color: 0x1a1a1a,
+              alpha: 0.7,
+            })
+          }
+          continue
+        }
         // Ship overrides are keyed by ship class id, same content id the Theme
         // Packs editor already uses for ship name/sprite overrides — not
         // faction-specific, since ThemePack has no per-faction ship art slot.
@@ -1402,13 +1638,12 @@ export function MapCanvas(props: MapCanvasProps) {
         // the ship sits here, orderless, until the captain re-embarks. Dimmed
         // plus a dark anchor ring under the hull so it reads as "not sailing"
         // at a glance, distinct from a normal docked/idle ship.
-        const anchored = anchoredCaptainIds.has(cap.id)
         // Hull shadow on the water (#394); the ambient bob rides above it.
         entities.ellipse(cx, cy + TILE * 0.24, TILE * 0.28, TILE * 0.09).fill({
           color: 0x000000,
           alpha: 0.25,
         })
-        drawFactionMarker(`ship:${cap.id}`, center, factionId)
+        drawFactionMarker(`ship:${cap.id}`, center, factionId, 'fleet', own)
         if (anchored) {
           entities
             .ellipse(cx, cy + TILE * 0.24, TILE * 0.36, TILE * 0.13)
@@ -1456,17 +1691,29 @@ export function MapCanvas(props: MapCanvasProps) {
       for (const party of parties) {
         const key = `${party.position.x},${party.position.y}`
         const own = party.ownerId === viewerId
-        if (!own && !visibleKeys.has(key)) continue
+        if (
+          !markerEligible({
+            family: 'party',
+            own,
+            explored: exploredKeys.has(key),
+            visible: visibleKeys.has(key),
+          })
+        )
+          continue
         const pc = centerOf(party.position.x, party.position.y)
-        entities.ellipse(pc.x, pc.y + TILE * 0.22, TILE * 0.24, TILE * 0.08).fill({
-          color: 0x000000,
-          alpha: 0.25,
-        })
         // A party's owner is always a real player (reducer.ts only ever creates
         // parties from action.playerId) — never the city-only neutral sentinel.
         const partyFactionId = factionOf(party.ownerId)
         const partyFaction = FACTIONS[partyFactionId]
-        drawFactionMarker(`party:${party.id}`, pc, partyFactionId)
+        if (!layers.fullEntityArt) {
+          drawFactionMarker(`party:${party.id}`, pc, partyFactionId, 'party', own)
+          continue
+        }
+        entities.ellipse(pc.x, pc.y + TILE * 0.22, TILE * 0.24, TILE * 0.08).fill({
+          color: 0x000000,
+          alpha: 0.25,
+        })
+        drawFactionMarker(`party:${party.id}`, pc, partyFactionId, 'party', own)
         const partySpriteUrl = resolveMapPartyUrl(themeSpriteUrlRef.current, partyFactionId)
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
         if (texture) {
@@ -1500,127 +1747,133 @@ export function MapCanvas(props: MapCanvasProps) {
         : undefined
       hasSelectionRef.current = !!selected || !!selectedParty
 
-      // Route breadcrumbs shared by the hover/touch preview and the standing
-      // march-route preview (#375/#482): one dot per step, this-turn gold vs.
-      // later-turn muted, a ring at each turn boundary. Returns the segments so
-      // the preview can color its arrowhead by the final leg.
-      const drawRouteDots = (path: Coord[], movementPoints: number, maxMovementPoints: number) => {
-        const segments = pathToDotSegments(path, movementPoints, maxMovementPoints)
-        const boundaries = new Set(
-          turnBoundaryIndices(path.length, movementPoints, maxMovementPoints),
-        )
-        for (const seg of segments) {
-          const tile = path[seg.index]!
-          const c = centerOf(tile.x, tile.y)
-          const color = seg.thisTurn ? COURSE_NOW_COLOR : COURSE_LATER_COLOR
-          pathPreview.circle(c.x, c.y, TILE * 0.09).fill({ color, alpha: 0.9 })
-          if (boundaries.has(seg.index)) {
-            pathPreview.circle(c.x, c.y, TILE * 0.18).stroke({ width: 1.5, color, alpha: 0.9 })
+      if (layers.rangeAndRoutes) {
+        // Route breadcrumbs shared by the hover/touch preview and the standing
+        // march-route preview (#375/#482): one dot per step, this-turn gold vs.
+        // later-turn muted, a ring at each turn boundary. Returns the segments so
+        // the preview can color its arrowhead by the final leg.
+        const drawRouteDots = (
+          path: Coord[],
+          movementPoints: number,
+          maxMovementPoints: number,
+        ) => {
+          const segments = pathToDotSegments(path, movementPoints, maxMovementPoints)
+          const boundaries = new Set(
+            turnBoundaryIndices(path.length, movementPoints, maxMovementPoints),
+          )
+          for (const seg of segments) {
+            const tile = path[seg.index]!
+            const c = centerOf(tile.x, tile.y)
+            const color = seg.thisTurn ? COURSE_NOW_COLOR : COURSE_LATER_COLOR
+            pathPreview.circle(c.x, c.y, TILE * 0.09).fill({ color, alpha: 0.9 })
+            if (boundaries.has(seg.index)) {
+              pathPreview.circle(c.x, c.y, TILE * 0.18).stroke({ width: 1.5, color, alpha: 0.9 })
+            }
+          }
+          return segments
+        }
+
+        // Dotted course preview (#375, land twin #482): mouse hover wins live,
+        // else the keyboard cursor while the map has focus, else a sticky touch
+        // tap — see the hoverCellRef/touchPreviewRef doc comment above for why
+        // there are three. A selected ship previews the sea route; a selected
+        // party previews the overland route around every other party — the same
+        // `findLandPath` inputs the engine's `moveParty`/`setMarchOrder` validate.
+        const previewMover = selected ?? selectedParty
+        const previewTarget =
+          hoverCellRef.current ??
+          (hasFocusRef.current ? cursorRef.current : null) ??
+          touchPreviewRef.current
+        if (
+          previewMover &&
+          previewTarget &&
+          !coordsEqual(previewTarget, previewMover.position) &&
+          previewTarget.x >= 0 &&
+          previewTarget.x < map.width &&
+          previewTarget.y >= 0 &&
+          previewTarget.y < map.height
+        ) {
+          const path = selected
+            ? findPath(map, selected.position, previewTarget)
+            : findLandPath(
+                map,
+                previewMover.position,
+                previewTarget,
+                partyBlockedSet(map, parties, previewMover.id),
+              )
+          if (path && path.length >= 2) {
+            const segments = drawRouteDots(
+              path,
+              previewMover.movementPoints,
+              previewMover.maxMovementPoints,
+            )
+            // Arrowhead (#375): a filled triangle at the destination, pointing
+            // along the final leg's direction.
+            const lastTile = path[path.length - 1]!
+            const prevTile = path[path.length - 2]!
+            const tip = centerOf(lastTile.x, lastTile.y)
+            const tail = centerOf(prevTile.x, prevTile.y)
+            const angle = arrowheadAngle(tail, tip)
+            const arrowLen = TILE * 0.4
+            const arrowWidth = TILE * 0.28
+            const baseX = tip.x - Math.cos(angle) * arrowLen
+            const baseY = tip.y - Math.sin(angle) * arrowLen
+            const perpX = -Math.sin(angle) * (arrowWidth / 2)
+            const perpY = Math.cos(angle) * (arrowWidth / 2)
+            const arrowColor = segments[segments.length - 1]!.thisTurn
+              ? COURSE_NOW_COLOR
+              : COURSE_LATER_COLOR
+            pathPreview
+              .poly([tip.x, tip.y, baseX + perpX, baseY + perpY, baseX - perpX, baseY - perpY])
+              .fill({ color: arrowColor, alpha: 0.95 })
           }
         }
-        return segments
-      }
 
-      // Dotted course preview (#375, land twin #482): mouse hover wins live,
-      // else the keyboard cursor while the map has focus, else a sticky touch
-      // tap — see the hoverCellRef/touchPreviewRef doc comment above for why
-      // there are three. A selected ship previews the sea route; a selected
-      // party previews the overland route around every other party — the same
-      // `findLandPath` inputs the engine's `moveParty`/`setMarchOrder` validate.
-      const previewMover = selected ?? selectedParty
-      const previewTarget =
-        hoverCellRef.current ??
-        (hasFocusRef.current ? cursorRef.current : null) ??
-        touchPreviewRef.current
-      if (
-        previewMover &&
-        previewTarget &&
-        !coordsEqual(previewTarget, previewMover.position) &&
-        previewTarget.x >= 0 &&
-        previewTarget.x < map.width &&
-        previewTarget.y >= 0 &&
-        previewTarget.y < map.height
-      ) {
-        const path = selected
-          ? findPath(map, selected.position, previewTarget)
-          : findLandPath(
-              map,
-              previewMover.position,
-              previewTarget,
-              partyBlockedSet(map, parties, previewMover.id),
-            )
-        if (path && path.length >= 2) {
-          const segments = drawRouteDots(
-            path,
-            previewMover.movementPoints,
-            previewMover.maxMovementPoints,
-          )
-          // Arrowhead (#375): a filled triangle at the destination, pointing
-          // along the final leg's direction.
-          const lastTile = path[path.length - 1]!
-          const prevTile = path[path.length - 2]!
-          const tip = centerOf(lastTile.x, lastTile.y)
-          const tail = centerOf(prevTile.x, prevTile.y)
-          const angle = arrowheadAngle(tail, tip)
-          const arrowLen = TILE * 0.4
-          const arrowWidth = TILE * 0.28
-          const baseX = tip.x - Math.cos(angle) * arrowLen
-          const baseY = tip.y - Math.sin(angle) * arrowLen
-          const perpX = -Math.sin(angle) * (arrowWidth / 2)
-          const perpY = Math.cos(angle) * (arrowWidth / 2)
-          const arrowColor = segments[segments.length - 1]!.thisTurn
-            ? COURSE_NOW_COLOR
-            : COURSE_LATER_COLOR
+        // Destination flags (#372/#482): every own ship steering a standing sail
+        // order — and every own party under a standing march order — flies a
+        // small pennant on the tile it's making for; a paused (interrupted)
+        // order flies it in the alert color so a halted voyage stands out at a
+        // glance. Drawn in the preview layer so it stays legible over fog.
+        const drawDestinationFlag = (dest: Coord, interrupted: boolean | undefined) => {
+          const fc = centerOf(dest.x, dest.y)
+          const flagColor = interrupted ? ENEMY_SHIP : COURSE_NOW_COLOR
+          const poleTop = fc.y - TILE * 0.42
           pathPreview
-            .poly([tip.x, tip.y, baseX + perpX, baseY + perpY, baseX - perpX, baseY - perpY])
-            .fill({ color: arrowColor, alpha: 0.95 })
+            .moveTo(fc.x, fc.y)
+            .lineTo(fc.x, poleTop)
+            .stroke({ width: 2, color: flagColor, alpha: 0.95 })
+          pathPreview
+            .poly([
+              fc.x,
+              poleTop,
+              fc.x + TILE * 0.26,
+              poleTop + TILE * 0.09,
+              fc.x,
+              poleTop + TILE * 0.18,
+            ])
+            .fill({ color: flagColor, alpha: 0.95 })
         }
-      }
-
-      // Destination flags (#372/#482): every own ship steering a standing sail
-      // order — and every own party under a standing march order — flies a
-      // small pennant on the tile it's making for; a paused (interrupted)
-      // order flies it in the alert color so a halted voyage stands out at a
-      // glance. Drawn in the preview layer so it stays legible over fog.
-      const drawDestinationFlag = (dest: Coord, interrupted: boolean | undefined) => {
-        const fc = centerOf(dest.x, dest.y)
-        const flagColor = interrupted ? ENEMY_SHIP : COURSE_NOW_COLOR
-        const poleTop = fc.y - TILE * 0.42
-        pathPreview
-          .moveTo(fc.x, fc.y)
-          .lineTo(fc.x, poleTop)
-          .stroke({ width: 2, color: flagColor, alpha: 0.95 })
-        pathPreview
-          .poly([
-            fc.x,
-            poleTop,
-            fc.x + TILE * 0.26,
-            poleTop + TILE * 0.09,
-            fc.x,
-            poleTop + TILE * 0.18,
-          ])
-          .fill({ color: flagColor, alpha: 0.95 })
-      }
-      for (const cap of captains) {
-        if (cap.ownerId !== viewerId || !cap.sailOrder) continue
-        drawDestinationFlag(cap.sailOrder.destination, cap.sailOrder.interrupted)
-      }
-      for (const p of parties) {
-        if (p.ownerId !== viewerId || !p.marchOrder) continue
-        drawDestinationFlag(p.marchOrder.destination, p.marchOrder.interrupted)
-        // The SELECTED party's queued route (#482) shows as dotted breadcrumbs
-        // to its flag, so a standing order reads as a planned course, not a
-        // mystery pennant. Derived from the same engine path the auto-march
-        // will walk; a currently-impassable route simply draws no dots.
-        if (p.id === selectedPartyId) {
-          const route = findLandPath(
-            map,
-            p.position,
-            p.marchOrder.destination,
-            partyBlockedSet(map, parties, p.id),
-          )
-          if (route && route.length >= 2) {
-            drawRouteDots(route, p.movementPoints, p.maxMovementPoints)
+        for (const cap of captains) {
+          if (cap.ownerId !== viewerId || !cap.sailOrder) continue
+          drawDestinationFlag(cap.sailOrder.destination, cap.sailOrder.interrupted)
+        }
+        for (const p of parties) {
+          if (p.ownerId !== viewerId || !p.marchOrder) continue
+          drawDestinationFlag(p.marchOrder.destination, p.marchOrder.interrupted)
+          // The SELECTED party's queued route (#482) shows as dotted breadcrumbs
+          // to its flag, so a standing order reads as a planned course, not a
+          // mystery pennant. Derived from the same engine path the auto-march
+          // will walk; a currently-impassable route simply draws no dots.
+          if (p.id === selectedPartyId) {
+            const route = findLandPath(
+              map,
+              p.position,
+              p.marchOrder.destination,
+              partyBlockedSet(map, parties, p.id),
+            )
+            if (route && route.length >= 2) {
+              drawRouteDots(route, p.movementPoints, p.maxMovementPoints)
+            }
           }
         }
       }
@@ -1629,13 +1882,13 @@ export function MapCanvas(props: MapCanvasProps) {
         // Geometry only — the ambient tick below animates this layer's alpha
         // into a pulse (#298) every frame, not just on a dirty redraw.
         strokeCell(selectionPulse, selected.position.x, selected.position.y, {
-          width: 3,
+          width: layers.fullEntityArt ? 3 : 1.5 / view.scale,
           color: HIGHLIGHT_COLOR,
         })
       }
       if (selectedParty) {
         strokeCell(selectionPulse, selectedParty.position.x, selectedParty.position.y, {
-          width: 3,
+          width: layers.fullEntityArt ? 3 : 1.5 / view.scale,
           color: HIGHLIGHT_COLOR,
         })
       }
