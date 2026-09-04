@@ -9,6 +9,9 @@ This report binds the #610 runtime implementation to the approved Direction B ch
 | Primary action and focus   | `--color-action`, `--stroke-focus`                       | `#c8962c`                       | filled primary commitments, focus-visible outline, checkbox accent    |
 | Selection and status brass | `--color-brass`, `--stroke-selected`                     | `#c9a227`                       | selected rings, resource/cost emphasis, map port and own-city markers |
 | Highlight                  | `--color-highlight`                                      | `#f0cb66`                       | hover lift, viewport indicator, urgent text                           |
+| Semantic success           | `--color-success`                                        | `#477447`                       | approved success-state shape/fill role                                |
+| Success text               | `--text-success`                                         | `#b8dab2`                       | map-editor valid/status copy                                          |
+| Own-unit map visibility    | `--map-own-unit`                                         | `#3be2a1`                       | own ships and the map-editor start marker only                        |
 | Timber surfaces            | `--surface-panel`, `--surface-raised`, `--surface-inset` | `#2d1b10`, `#3a2416`, `#21150d` | HUD, dock, sheets, buttons and compact overlays                       |
 | Parchment text             | `--text-primary`, `--text-secondary`, `--text-muted`     | `#f3e5c2`, `#e7d4ac`, `#b9a47b` | labels, body copy and quiet status                                    |
 
@@ -23,7 +26,7 @@ Cabin remains the functional body/button/numeric face, with tabular numerals on 
 - Map navigation, resource chips, course/status overlays, minimap frame, event feed, interruption prompt, city roster, command dock, alerts and bottom-sheet chrome use the same restrained parchment/timber family.
 - Bottom sheets expose dialog semantics, a labelled title, initial/restored focus, Escape dismissal and a project-owned close vector without changing drag/backdrop dismissal.
 - Map zoom, recenter and fit; sheet close; disembark count; constructed/idle state; End Turn and Attack now use the same deterministic 20 px `currentColor` icon language.
-- `MapCanvas`, `Minimap` and `MapEditorCanvas` use `--color-brass` with the exact `#c9a227` non-DOM fallback. No camera, render-loop, terrain, LOD, fog, gesture, action or minimap behavior changed.
+- `MapCanvas`, `Minimap` and `MapEditorCanvas` use `--color-brass` with the exact `#c9a227` non-DOM fallback and `--map-own-unit` with the exact `#3be2a1` visibility fallback. No camera, render-loop, terrain, LOD, fog, gesture, action or minimap behavior changed.
 
 ## Fail-loud census
 
@@ -32,6 +35,8 @@ Cabin remains the functional body/button/numeric face, with tabular numerals on 
 - Every replaced control is vector geometry using `currentColor`; the containing button retains its accessible name. The #610-owned source set has no raw `+`, `−`, `×`, `✓`, `•`, `⌖` or `⛶` control node.
 - `CityScene.tsx` is intentionally unchanged. Its existing previous/next/zoom glyph consumers are a #612 city-interaction follow-up; the shared vector family already exports `previous`, `next`, `zoomIn` and `zoomOut` for that migration.
 - Minimap keyboard/pointer behavior remains a #613 follow-up. This change only aligns its visual frame and semantic brass fallback.
+
+The bounded shipping-state census found one persistent DOM selection family: the multi-city roster. Exactly its current city now exposes `aria-current="true"`, while every other roster entry omits the attribute; the GameScreen test changes current city and proves both directions. Map fleet/party selection is a canvas state, not a DOM button state. The reusable city `InfoToggle` already exposes its real boolean `aria-expanded` state. The touched gameplay/city consumers contain **37** native `disabled` bindings (GameScreen 7, MatchScreen 14, CityScene 2, city modals 14); none substitutes a visual class or `aria-disabled` for the native button state, and all receive the shared non-color disabled slash. The missing roster `aria-current` was the only semantic-state defect in this bounded set.
 
 ## Control geometry and states
 
@@ -53,8 +58,8 @@ Production build output from this worktree:
 
 | Chunk                       |        Raw |       Gzip |         Limit |
 | --------------------------- | ---------: | ---------: | ------------: |
-| CSS                         |  47.27 KiB |   9.33 KiB | 850 / 260 KiB |
-| App entry                   | 641.74 KiB | 187.04 KiB | 850 / 260 KiB |
+| CSS                         |  47.29 KiB |   9.35 KiB | 850 / 260 KiB |
+| App entry                   | 641.78 KiB | 187.06 KiB | 850 / 260 KiB |
 | Pixi vendor                 | 537.84 KiB | 155.60 KiB | 850 / 260 KiB |
 | Largest remaining app chunk | 447.01 KiB | 146.56 KiB | 850 / 260 KiB |
 
@@ -62,10 +67,10 @@ No static asset was added. Existing `apps/web/public/art/ui` totals **161,783 by
 
 ## Verification run
 
-- Web focused chrome tests: 6 files, 32 tests passed.
+- Web focused chrome tests: 6 files, 33 tests passed.
 - Shared tests: 5 files, 57 tests passed.
 - Engine tests: 37 files, 765 tests passed.
-- Web tests: 98 files, 827 tests passed.
+- Web tests: 98 files, 828 tests passed.
 - All package and web TypeScript projects passed.
 - Web production build passed and emitted the budget values above.
 - `node compose.mjs` followed by `node validate.mjs` validates deterministic proof regeneration, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.

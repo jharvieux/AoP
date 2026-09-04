@@ -51,12 +51,17 @@ describe('CSS-to-canvas color contract', () => {
     )
   })
 
-  it('locks the approved action/brass/highlight distinction and removes ambiguous names', () => {
+  it('locks the approved action, brass, highlight, and semantic-success roles', () => {
     expect(rootValue('--color-action')).toBe('#c8962c')
     expect(rootValue('--stroke-focus')).toBe('#c8962c')
     expect(rootValue('--color-brass')).toBe('#c9a227')
     expect(rootValue('--stroke-selected')).toBe('#c9a227')
     expect(rootValue('--color-highlight')).toBe('#f0cb66')
+    expect(rootValue('--color-success')).toBe('#477447')
+    expect(rootValue('--text-success')).toBe('#b8dab2')
+    expect(rootValue('--map-own-unit')).toBe('#3be2a1')
+    expect(CSS_TOKEN_FALLBACKS['--map-own-unit']).toBe('#3be2a1')
+    expect(Object.hasOwn(CSS_TOKEN_FALLBACKS, '--color-success')).toBe(false)
     expect(rootValue('--accent')).toBeUndefined()
     expect(rootValue('--color-gold')).toBeUndefined()
   })

@@ -16,9 +16,9 @@ Open each at 100%. The approved Direction B map/city review sources are embedded
 
 The runtime implementation retains `:root` in `apps/web/src/styles.css` as the single source of truth and uses one semantic surface and emphasis vocabulary:
 
-| Intent                   | Proposed token                          | Value / rule                                                                      |
+| Intent                   | Runtime token                           | Value / rule                                                                      |
 | ------------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
-| canvas / deepest inset   | `--surface-canvas` / `--surface-inset`  | `#21150d`; gameplay sits over art without opaque covering                         |
+| canvas / deepest inset   | `--surface-canvas` / `--surface-inset`  | `#17100a` / `#21150d`; gameplay sits over art without opaque covering             |
 | panel / raised panel     | `--surface-panel` / `--surface-raised`  | `#2d1b10` / `#3a2416`, 92–96% opacity, low-frequency wood grain only              |
 | readable warm surface    | `--surface-parchment`                   | `#f3e5c2`, reserved for labels, sheets, and light panels                          |
 | primary action           | `--color-action`                        | `#c8962c`; fills End turn / Commission and is the focus accent                    |
@@ -28,6 +28,8 @@ The runtime implementation retains `:root` in `apps/web/src/styles.css` as the s
 | disabled                 | `--text-disabled` / `--stroke-disabled` | reduced contrast plus a visible slash or label, not opacity alone                 |
 
 Parchment communicates material and readability, not a competing brand color. Action gold identifies the primary commitment/focus. Status brass is reserved for small selected/status details and thin keylines; neither becomes panel fill or decorative clutter. Direction B water, limestone, and timber retain the largest visual area and highest detail density.
+
+Semantic success is `--color-success: #477447`, matching `C.success` in the proof. The brighter `--map-own-unit: #3be2a1` is reserved for own-ship and map-editor start-marker visibility; it is not a success-status color. Success copy uses `--text-success: #b8dab2`.
 
 ### Literal color census and proof parity
 

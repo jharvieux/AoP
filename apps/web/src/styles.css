@@ -99,6 +99,7 @@
   --color-brass: #c9a227;
   --color-highlight: #f0cb66;
   --color-danger: #a6402f;
+  --color-success: #477447;
   --color-faction-emphasis: var(--color-brass);
 
   --elevation-1: 0 2px 8px rgb(0 0 0 / 32%);
@@ -146,7 +147,6 @@
   --color-danger-text: var(--text-danger);
   --color-defeat: #d9604a;
   --color-warn: #dd8355;
-  --color-success: #3be2a1;
   --color-alert-bg: #4a1810;
   --color-alert-border: #e23b3b;
   --color-fog: #0b1a26;
@@ -186,9 +186,9 @@
   --color-terrain-blocked: #3a3f45;
   --color-terrain-blocked-accent: #767c85;
 
-  /* World map (Pixi canvas + map editor). Port/own-city, own-ship, enemy-ship,
-     fog and the merchant encounter reuse the app-chrome tokens above — they
-     were literally the same hex values duplicated across files. */
+  /* World map (Pixi canvas + map editor). Port/own-city, enemy-ship, fog and
+     the merchant encounter reuse shared tokens. The brighter own-unit/start
+     marker remains map-specific so it cannot drift into semantic success UI. */
   --map-shallows: #2a6a8f;
   --map-land: #4a7c3f;
   /* Coastline surf/foam band where water meets land (#347). */
@@ -211,6 +211,7 @@
   --map-hex-grid: #0b1a26;
   --map-resource-timber: #8a5a2b;
   --map-resource-rum: #b23bd8;
+  --map-own-unit: #3be2a1;
   --map-sand: #cdb87e;
   --map-shore: #2c4a33;
   --map-land-encounter-village: #7fae5a;
@@ -2473,12 +2474,12 @@ button.primary.secondary {
 }
 
 .map-editor-status {
-  color: var(--color-success);
+  color: var(--text-success);
   font-size: 0.8rem;
 }
 
 .map-editor-valid {
-  color: var(--color-success);
+  color: var(--text-success);
   font-size: 0.85rem;
 }
 

@@ -158,6 +158,8 @@ const runtimeFiles = {
   map: readFileSync(join(repoRoot, 'apps/web/src/MapCanvas.tsx'), 'utf8'),
   minimap: readFileSync(join(repoRoot, 'apps/web/src/Minimap.tsx'), 'utf8'),
   editor: readFileSync(join(repoRoot, 'apps/web/src/mapEditor/MapEditorCanvas.tsx'), 'utf8'),
+  cityScene: readFileSync(join(repoRoot, 'apps/web/src/CityScene.tsx'), 'utf8'),
+  cityModals: readFileSync(join(repoRoot, 'apps/web/src/cityModals.tsx'), 'utf8'),
   sheet: readFileSync(join(repoRoot, 'apps/web/src/components/BottomSheet.tsx'), 'utf8'),
   game: readFileSync(join(repoRoot, 'apps/web/src/screens/GameScreen.tsx'), 'utf8'),
   match: readFileSync(join(repoRoot, 'apps/web/src/screens/MatchScreen.tsx'), 'utf8'),
@@ -202,16 +204,39 @@ console.log(
 )
 
 for (const [name, value] of [
+  ['--surface-canvas', '#17100a'],
+  ['--surface-inset', '#21150d'],
   ['--color-action', '#c8962c'],
   ['--stroke-focus', '#c8962c'],
   ['--color-brass', '#c9a227'],
   ['--stroke-selected', '#c9a227'],
   ['--color-highlight', '#f0cb66'],
+  ['--color-success', '#477447'],
+  ['--text-success', '#b8dab2'],
+  ['--map-own-unit', '#3be2a1'],
 ]) {
   if (rootTokens.get(name) !== value) {
     console.error(`FAIL runtime semantic token ${name}: expected ${value}`)
     failures++
   }
+}
+if (
+  !spec.includes('`#17100a` / `#21150d`') ||
+  !spec.includes('`--map-own-unit: #3be2a1`') ||
+  !spec.includes('`--color-success: #477447`')
+) {
+  console.error('FAIL README runtime surface/success values do not match the approved proof')
+  failures++
+}
+if (
+  fallbackTokens.has('--color-success') ||
+  fallbackTokens.get('--map-own-unit') !== '#3be2a1' ||
+  canvasSources.some((source) => source.includes("cssToken('--color-success'")) ||
+  !runtimeFiles.styles.includes('.map-editor-status {\n  color: var(--text-success);') ||
+  !runtimeFiles.styles.includes('.map-editor-valid {\n  color: var(--text-success);')
+) {
+  console.error('FAIL semantic success is conflated with the bright own-unit map marker')
+  failures++
 }
 for (const stale of ['--accent:', '--accent-2:', '--accent-glow:', '--color-gold:']) {
   if (runtimeFiles.styles.includes(stale)) {
@@ -257,6 +282,24 @@ for (const source of [runtimeFiles.game, runtimeFiles.match]) {
       failures++
     }
   }
+}
+const disabledBindings = [
+  runtimeFiles.game,
+  runtimeFiles.match,
+  runtimeFiles.cityScene,
+  runtimeFiles.cityModals,
+].flatMap((source) => [...source.matchAll(/\bdisabled=/g)]).length
+if (
+  !runtimeFiles.game.includes("aria-current={c.id === viewerCity?.id ? 'true' : undefined}") ||
+  !runtimeFiles.cityModals.includes('aria-expanded={expanded}') ||
+  disabledBindings !== 37
+) {
+  console.error(
+    `FAIL shipping state census: expected roster aria-current, info aria-expanded, and 37 disabled bindings; found ${disabledBindings}`,
+  )
+  failures++
+} else {
+  console.log('PASS shipping state census: current, expanded, and 37 disabled bindings')
 }
 for (const marker of [
   'button:disabled::after',

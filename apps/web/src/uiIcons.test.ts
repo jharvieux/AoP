@@ -18,7 +18,7 @@ describe('UiIcon', () => {
     }
   })
 
-  it('leaves accessible names and state semantics on the containing buttons', () => {
+  it('leaves accessible names plus disabled and expanded semantics on containing buttons', () => {
     render(
       createElement(
         'div',
@@ -27,11 +27,6 @@ describe('UiIcon', () => {
           'button',
           { 'aria-label': 'Zoom in', disabled: true },
           createElement(UiIcon, { name: 'zoomIn' }),
-        ),
-        createElement(
-          'button',
-          { 'aria-label': 'Harbor selected', 'aria-pressed': true },
-          createElement(UiIcon, { name: 'selected' }),
         ),
         createElement(
           'button',
@@ -44,9 +39,6 @@ describe('UiIcon', () => {
     expect((screen.getByRole('button', { name: 'Zoom in' }) as HTMLButtonElement).disabled).toBe(
       true,
     )
-    expect(
-      screen.getByRole('button', { name: 'Harbor selected' }).getAttribute('aria-pressed'),
-    ).toBe('true')
     expect(screen.getByRole('button', { name: 'More actions' }).getAttribute('aria-expanded')).toBe(
       'true',
     )

@@ -97,7 +97,7 @@ export const TILE_COLOR = {
 } as const
 
 const FOG_COLOR = cssToken('--color-fog', '#0b1a26')
-const OWN_SHIP = cssToken('--color-success', '#3be2a1')
+const OWN_SHIP = cssToken('--map-own-unit', '#3be2a1')
 const ENEMY_SHIP = cssToken('--color-alert-border', '#e23b3b')
 const OWN_CITY = cssToken('--color-brass', '#c9a227')
 const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')

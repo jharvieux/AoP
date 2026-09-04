@@ -1791,6 +1791,7 @@ export function GameScreen({
                   className={
                     c.id === viewerCity?.id ? 'city-roster-entry selected' : 'city-roster-entry'
                   }
+                  aria-current={c.id === viewerCity?.id ? 'true' : undefined}
                   onClick={() => openCity(c.id)}
                 >
                   <span className="city-roster-name">{c.name}</span>
