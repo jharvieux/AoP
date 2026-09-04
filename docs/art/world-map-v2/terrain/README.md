@@ -21,6 +21,11 @@ at 51.2 px and detail exits downward at 44.8 px. Direct jumps across both bands 
 Marker diameters are clamped by family in screen pixels; interaction remains on the existing
 topology-aware tile coordinates.
 
+Full entity art retains its authored family/class proportions inside an authoritative screen-space
+band: 24–40 px in tactical and 40–64 px in detail. Ownership rings use the same bounds, including
+the 0.45× and 3× camera extrema and both hysteresis transition edges. The bounds are presentation
+only; tile-coordinate hit testing and camera behavior are unchanged.
+
 ## Determinism, topology, and privacy
 
 - Terrain selection uses a fixed FNV-1a/integer-avalanche hash of integer coordinates, visible
@@ -32,8 +37,10 @@ topology-aware tile coordinates.
   neighbors stay `unknown`, so a dock cannot point at or reveal unseen water.
 - City eligibility remains own-or-explored. Fleet and party eligibility remains own-or-visible.
   Encounter and site eligibility remains visible. Inactive/unavailable markers remain absent.
-- A theme's directed variant wins, then its base tile, then the shipped default. The finite
-  terrain preload list is independent of map contents and hidden coordinates.
+- A theme's directed variant wins only if it decodes, followed by its decoded base, the decoded
+  shipped default, and finally procedural art. The same runtime chain covers bases, decals, and
+  ports. Its finite preload list contains every rung, is independent of map contents and hidden
+  coordinates, and replaces the unused 37,086-byte legacy land/port preload.
 
 ## Asset contract and preparation
 
@@ -57,15 +64,25 @@ runtime WebP files, composes the 5×5/contact proofs, and records hashes and bud
   docs/art/world-map-v2/terrain/tools/prepare_terrain.py --check
 ```
 
+`--publish` deterministically rebuilds runtime/proof outputs from the committed normalized sources;
+`--check` rebuilds in a temporary directory, byte-compares the trees and receipt, and verifies the
+runtime-capture binding.
+
 Observed delivery: nine runtime images total 148,968 bytes; the largest committed terrain image
-is the 94,200-byte 5×5 proof, below the 300 KiB ceiling. The selected 5×5 coordinate crop has
-zero orthogonally adjacent base repeats and eight distinct 2×2 motifs. Decoded runtime edges
-differ by at most one 8-bit channel step across any variant pairing.
+is the 99,544-byte hex 5×5 proof, below the 300 KiB ceiling. Both selected 5×5 coordinate crops
+have five unique rows and columns, balanced use of all three bases, no axis run longer than three,
+14 (square) or 16 (hex) distinct 2×2 motifs, no parity holding more than 55% of one base, and no
+tested translation with more than 50% matching ids. The pixel validator additionally requires every
+base-interior pair to differ by a mean of at least six channel steps and every one/two-cell proof
+translation to differ by at least 3.5 channel steps. Decoded runtime edges differ by at most one
+channel step across any variant pairing.
 
 ## Proofs and review notes
 
 - `proofs/seam-no-repeat-5x5.webp` is the exact square-topology coordinate selection for x/y
   0–4. It demonstrates the shared edges and selection motif.
+- `proofs/seam-no-repeat-5x5-hex.webp` applies the exact same native-resolution proof to odd-r hex
+  selection, without inventing or reading neighboring map content.
 - `proofs/terrain-contact-sheet.webp` shows every shipped base/decal/port candidate. Slots are
   ordered land A/B/C, forest A/B/clearing, then highland/straight port/L-port.
 - `RUNTIME-CAPTURES.md` shows overview, tactical, and detail from the same 96×96 session at

@@ -293,14 +293,10 @@ export function terrainPresentationAt(
   const local = stableCoordinateUnit(x, y, `terrain-decal:${tile.type}:${topology}`)
   const prominence = stableCoordinateUnit(x, y, `terrain-prominence:${topology}`)
 
-  // One parity owns a stable anchor base; the other parity independently picks
-  // either companion. Orthogonal neighbors can therefore never repeat, while
-  // diagonal/region motifs do not collapse into a visible three-cell cadence.
-  const anchor = stableCoordinateVariant(0, 0, 3, `terrain-base-anchor:${topology}`)
-  const baseVariant =
-    (x + y) % 2 === 0
-      ? anchor
-      : (anchor + 1 + stableCoordinateVariant(x, y, 2, `terrain-base:${topology}`)) % 3
+  // Hash each coordinate directly. Including visible tile content and topology
+  // keeps the choice local and deterministic without imposing a parity lattice
+  // (which reads as a checkerboard even when adjacent ids never repeat).
+  const baseVariant = stableCoordinateVariant(x, y, 3, `terrain-base:${tile.type}:${topology}`)
 
   let decal: TerrainDecal | null = null
   if (tile.type === 'land' && !classification.shoreAdjacent) {
@@ -337,9 +333,88 @@ export function terrainDecalUrl(decal: TerrainDecal): string {
 
 export type TerrainUrlSource = 'theme-variant' | 'theme-base' | 'default'
 
+export type TerrainDecodedSource = TerrainUrlSource | 'procedural'
+
 export interface TerrainUrlResolution {
   url: string | undefined
   source: TerrainUrlSource
+}
+
+export interface TerrainSpriteCandidate extends TerrainUrlResolution {
+  url: string
+}
+
+export interface TerrainDecodedResolution<Texture> {
+  url: string | undefined
+  source: TerrainDecodedSource
+  texture: Texture | undefined
+}
+
+function uniqueTerrainCandidates(
+  candidates: readonly (TerrainSpriteCandidate | undefined)[],
+): TerrainSpriteCandidate[] {
+  const urls = new Set<string>()
+  return candidates.filter((candidate): candidate is TerrainSpriteCandidate => {
+    if (!candidate || urls.has(candidate.url)) return false
+    urls.add(candidate.url)
+    return true
+  })
+}
+
+function terrainCandidates(
+  spriteUrl: (contentId: string) => string | undefined,
+  variantContentId: string | undefined,
+  baseContentId: string,
+  defaultUrl: string | undefined,
+): TerrainSpriteCandidate[] {
+  const themedVariant = variantContentId ? spriteUrl(variantContentId) : undefined
+  const themedBase = spriteUrl(baseContentId)
+  return uniqueTerrainCandidates([
+    themedVariant ? { url: themedVariant, source: 'theme-variant' } : undefined,
+    themedBase ? { url: themedBase, source: 'theme-base' } : undefined,
+    defaultUrl ? { url: defaultUrl, source: 'default' } : undefined,
+  ])
+}
+
+/** Every URL that may satisfy a themed tile, in decode-fallback order. */
+export function terrainTileCandidates(
+  spriteUrl: (contentId: string) => string | undefined,
+  tileType: 'land' | 'port',
+  variant: number,
+  defaultUrl: string | undefined,
+): TerrainSpriteCandidate[] {
+  return terrainCandidates(
+    spriteUrl,
+    variant > 0 ? tileAutotileId(tileType, variant) : undefined,
+    tileContentId(tileType),
+    defaultUrl,
+  )
+}
+
+/** Decals use their own namespace so they cannot collide with land-base overrides. */
+export function terrainDecalCandidates(
+  spriteUrl: (contentId: string) => string | undefined,
+  decal: TerrainDecal,
+): TerrainSpriteCandidate[] {
+  const baseContentId = `terrain:decal:${decal.kind}`
+  return terrainCandidates(
+    spriteUrl,
+    `${baseContentId}:variant:${decal.variant + 1}`,
+    baseContentId,
+    terrainDecalUrl(decal),
+  )
+}
+
+/** Select the first candidate that decoded; absence/failure falls through to procedural art. */
+export function resolveDecodedTerrainSprite<Texture>(
+  candidates: readonly TerrainSpriteCandidate[],
+  textureFor: (url: string) => Texture | undefined,
+): TerrainDecodedResolution<Texture> {
+  for (const candidate of candidates) {
+    const texture = textureFor(candidate.url)
+    if (texture !== undefined) return { ...candidate, texture }
+  }
+  return { url: undefined, source: 'procedural', texture: undefined }
 }
 
 /** Theme variant -> theme base -> shipped default, in that exact order. */
@@ -363,26 +438,87 @@ export function terrainArtPreloadUrls(
   spriteUrl: (contentId: string) => string | undefined,
 ): string[] {
   const urls = new Set<string>()
+  const themedUrls = new Map<string, string | undefined>()
+  const cachedSpriteUrl = (contentId: string) => {
+    if (!themedUrls.has(contentId)) themedUrls.set(contentId, spriteUrl(contentId))
+    return themedUrls.get(contentId)
+  }
+  const addCandidates = (candidates: readonly TerrainSpriteCandidate[]) => {
+    for (const candidate of candidates) urls.add(candidate.url)
+  }
   for (let variant = 0; variant < TERRAIN_ART.landBases.length; variant++) {
-    const resolved = resolveTerrainSprite(
-      spriteUrl,
-      'land',
-      variant,
-      TERRAIN_ART.landBases[variant],
+    addCandidates(
+      terrainTileCandidates(cachedSpriteUrl, 'land', variant, TERRAIN_ART.landBases[variant]),
     )
-    if (resolved.url) urls.add(resolved.url)
   }
   // Square has eight directed edges; hex consumes the first six. A theme may
-  // provide any subset, with its base still winning over shipped dock overlays.
+  // provide any subset. Both shipped overlays remain candidates after every
+  // themed direction so a decode failure cannot erase the port cue.
   for (let variant = 1; variant <= 8; variant++) {
-    const resolved = resolveTerrainSprite(spriteUrl, 'port', variant, undefined)
-    if (resolved.url) urls.add(resolved.url)
+    for (const defaultUrl of TERRAIN_ART.portOverlays) {
+      addCandidates(terrainTileCandidates(cachedSpriteUrl, 'port', variant, defaultUrl))
+    }
   }
-  for (const url of TERRAIN_ART.forestDecals) urls.add(url)
-  urls.add(TERRAIN_ART.clearingDecal)
-  urls.add(TERRAIN_ART.highlandDecal)
-  for (const url of TERRAIN_ART.portOverlays) urls.add(url)
+  addCandidates(terrainDecalCandidates(cachedSpriteUrl, { kind: 'forest', variant: 0 }))
+  addCandidates(terrainDecalCandidates(cachedSpriteUrl, { kind: 'forest', variant: 1 }))
+  addCandidates(terrainDecalCandidates(cachedSpriteUrl, { kind: 'clearing', variant: 0 }))
+  addCandidates(terrainDecalCandidates(cachedSpriteUrl, { kind: 'highland', variant: 0 }))
   return [...urls].sort()
+}
+
+export interface PointLike {
+  x: number
+  y: number
+}
+
+export interface ProceduralPortGeometry {
+  main: readonly [PointLike, PointLike]
+  arm: readonly [PointLike, PointLike] | null
+  settlement: PointLike
+  direction: PointLike
+}
+
+/** Deterministic dock geometry aimed from the land-cell center at known water. */
+export function proceduralPortGeometry(
+  center: PointLike,
+  water: PointLike,
+  tileSize: number,
+  variant: 0 | 1,
+): ProceduralPortGeometry {
+  const dx = water.x - center.x
+  const dy = water.y - center.y
+  const length = Math.hypot(dx, dy)
+  if (!(length > 0) || !(tileSize > 0) || !Number.isFinite(tileSize)) {
+    throw new Error('procedural port needs distinct centers and a positive tile size')
+  }
+  const direction = { x: dx / length, y: dy / length }
+  const perpendicular = { x: -direction.y, y: direction.x }
+  const start = {
+    x: center.x - direction.x * tileSize * 0.12,
+    y: center.y - direction.y * tileSize * 0.12,
+  }
+  const end = {
+    x: center.x + direction.x * tileSize * 0.68,
+    y: center.y + direction.y * tileSize * 0.68,
+  }
+  return {
+    main: [start, end],
+    arm:
+      variant === 1
+        ? [
+            end,
+            {
+              x: end.x + perpendicular.x * tileSize * 0.42,
+              y: end.y + perpendicular.y * tileSize * 0.42,
+            },
+          ]
+        : null,
+    settlement: {
+      x: center.x - direction.x * tileSize * 0.24,
+      y: center.y - direction.y * tileSize * 0.24,
+    },
+    direction,
+  }
 }
 
 export type StrategicMarkerFamily = 'city' | 'fleet' | 'party' | 'encounter' | 'site'
@@ -434,4 +570,60 @@ export function overviewMarkerWorldDiameter(
     throw new Error(`worldScale must be positive, got ${worldScale}`)
   }
   return overviewMarkerScreenDiameter(family, tileSize * worldScale) / worldScale
+}
+
+export type DetailedPresentationBand = Exclude<PresentationBand, 'overview'>
+
+export const DETAILED_ENTITY_SCREEN_BANDS: Readonly<
+  Record<DetailedPresentationBand, { min: number; max: number }>
+> = {
+  tactical: { min: 24, max: 40 },
+  detail: { min: 40, max: 64 },
+}
+
+/**
+ * Authoritative full-art footprint in screen pixels. Authored scale preserves
+ * class/family hierarchy inside the semantic band's accessible size range.
+ */
+export function detailedEntityScreenDiameter(
+  band: DetailedPresentationBand,
+  onScreenTilePx: number,
+  authoredScale = 1,
+): number {
+  const rule = DETAILED_ENTITY_SCREEN_BANDS[band]
+  const tilePx = Number.isFinite(onScreenTilePx) ? Math.max(0, onScreenTilePx) : 0
+  const scale = Number.isFinite(authoredScale) ? Math.max(0, authoredScale) : 0
+  const requested = tilePx * scale
+  return Math.min(rule.max, Math.max(rule.min, requested))
+}
+
+export function detailedEntityWorldDiameter(
+  band: DetailedPresentationBand,
+  tileSize: number,
+  worldScale: number,
+  authoredScale = 1,
+): number {
+  if (worldScale <= 0 || !Number.isFinite(worldScale)) {
+    throw new Error(`worldScale must be positive, got ${worldScale}`)
+  }
+  return detailedEntityScreenDiameter(band, tileSize * worldScale, authoredScale) / worldScale
+}
+
+/** Ownership badges are sized independently of sprite intrinsic dimensions. */
+export function ownershipMarkerScreenDiameter(
+  band: DetailedPresentationBand,
+  onScreenTilePx: number,
+): number {
+  return detailedEntityScreenDiameter(band, onScreenTilePx, 1.1)
+}
+
+export function ownershipMarkerWorldDiameter(
+  band: DetailedPresentationBand,
+  tileSize: number,
+  worldScale: number,
+): number {
+  if (worldScale <= 0 || !Number.isFinite(worldScale)) {
+    throw new Error(`worldScale must be positive, got ${worldScale}`)
+  }
+  return ownershipMarkerScreenDiameter(band, tileSize * worldScale) / worldScale
 }

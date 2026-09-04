@@ -29,14 +29,19 @@ import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
 import {
   PRESENTATION_LAYERS,
   TERRAIN_ART,
+  detailedEntityWorldDiameter,
   markerEligible,
+  ownershipMarkerWorldDiameter,
   overviewMarkerWorldDiameter,
   presentationBand,
-  resolveTerrainSprite,
+  proceduralPortGeometry,
+  resolveDecodedTerrainSprite,
   terrainArtPreloadUrls,
-  terrainDecalUrl,
+  terrainDecalCandidates,
   terrainPresentationAt,
+  terrainTileCandidates,
   topologyNeighbors,
+  type DetailedPresentationBand,
   type StrategicMarkerFamily,
 } from './mapPresentation'
 import {
@@ -901,6 +906,11 @@ export function MapCanvas(props: MapCanvasProps) {
       const band = presentationBand(TILE * view.scale, activePresentationBand)
       activePresentationBand = band
       const layers = PRESENTATION_LAYERS[band]
+      const detailedBand: DetailedPresentationBand = band === 'detail' ? 'detail' : 'tactical'
+      const entityWorldDiameter = (authoredScale = 1) =>
+        detailedEntityWorldDiameter(detailedBand, TILE, view.scale, authoredScale)
+      const ownershipWorldDiameter = () =>
+        ownershipMarkerWorldDiameter(detailedBand, TILE, view.scale)
       const centerOf = (x: number, y: number) => cellCenter(topology, x, y, TILE)
       const fillCell = (g: Graphics, x: number, y: number, style: FillInput) => {
         if (topology === 'hex') g.poly(cellPolygon('hex', x, y, TILE)).fill(style)
@@ -1056,24 +1066,33 @@ export function MapCanvas(props: MapCanvasProps) {
             const terrain = terrainPresentationAt(map, x, y, {
               isKnown: (neighborX, neighborY) => exploredKeys.has(`${neighborX},${neighborY}`),
             })
-            const portTheme =
-              tile.type === 'port'
-                ? resolveTerrainSprite(
-                    themeSpriteUrlRef.current,
-                    'port',
-                    (terrain.portFacing?.index ?? -1) + 1,
-                    undefined,
+            const portResolution =
+              tile.type === 'port' && terrain.portOverlayVariant !== null
+                ? resolveDecodedTerrainSprite(
+                    terrainTileCandidates(
+                      themeSpriteUrlRef.current,
+                      'port',
+                      (terrain.portFacing?.index ?? -1) + 1,
+                      TERRAIN_ART.portOverlays[terrain.portOverlayVariant],
+                    ),
+                    getTexture,
                   )
                 : null
-            const base = portTheme?.url
-              ? portTheme
-              : resolveTerrainSprite(
+            const themedPortTexture =
+              portResolution?.source === 'theme-variant' || portResolution?.source === 'theme-base'
+                ? portResolution.texture
+                : undefined
+            const texture =
+              themedPortTexture ??
+              resolveDecodedTerrainSprite(
+                terrainTileCandidates(
                   themeSpriteUrlRef.current,
                   'land',
                   terrain.baseVariant,
                   TERRAIN_ART.landBases[terrain.baseVariant],
-                )
-            const texture = base.url ? getTexture(base.url) : undefined
+                ),
+                getTexture,
+              ).texture
             if (texture) {
               const sprite = tilePool.get(key)
               sprite.texture = texture
@@ -1104,7 +1123,10 @@ export function MapCanvas(props: MapCanvasProps) {
               (layers.terrainDecals === 'rich' ||
                 (layers.terrainDecals === 'sparse' && terrain.tacticalDecal))
             if (showDecal && terrain.decal) {
-              const decalTexture = getTexture(terrainDecalUrl(terrain.decal))
+              const decalTexture = resolveDecodedTerrainSprite(
+                terrainDecalCandidates(themeSpriteUrlRef.current, terrain.decal),
+                getTexture,
+              ).texture
               const c = centerOf(x, y)
               if (decalTexture) {
                 const sprite = terrainDecalPool.get(key)
@@ -1144,17 +1166,16 @@ export function MapCanvas(props: MapCanvasProps) {
 
             if (
               tile.type === 'port' &&
-              !portTheme?.url &&
               terrain.portOverlayVariant !== null &&
-              terrain.portFacing
+              terrain.portFacing &&
+              portResolution?.source !== 'theme-variant' &&
+              portResolution?.source !== 'theme-base'
             ) {
-              const overlayTexture = getTexture(
-                TERRAIN_ART.portOverlays[terrain.portOverlayVariant],
-              )
+              const overlayTexture = portResolution?.texture
+              const c = centerOf(x, y)
+              const water = centerOf(terrain.portFacing.x, terrain.portFacing.y)
+              const angle = Math.atan2(water.y - c.y, water.x - c.x)
               if (overlayTexture) {
-                const c = centerOf(x, y)
-                const water = centerOf(terrain.portFacing.x, terrain.portFacing.y)
-                const angle = Math.atan2(water.y - c.y, water.x - c.x)
                 const sprite = portOverlayPool.get(key)
                 sprite.texture = overlayTexture
                 fitTexture(sprite, overlayTexture, TILE * 1.55, TILE * 1.05)
@@ -1163,6 +1184,55 @@ export function MapCanvas(props: MapCanvasProps) {
                   c.y + Math.sin(angle) * TILE * 0.34,
                 )
                 sprite.rotation = angle
+              } else {
+                const geometry = proceduralPortGeometry(c, water, TILE, terrain.portOverlayVariant)
+                const drawPier = (
+                  segment: readonly [{ x: number; y: number }, { x: number; y: number }],
+                ) => {
+                  coast
+                    .moveTo(segment[0].x, segment[0].y)
+                    .lineTo(segment[1].x, segment[1].y)
+                    .stroke({ width: TILE * 0.2, color: 0x2c1d13, alpha: 0.92 })
+                  coast
+                    .moveTo(segment[0].x, segment[0].y)
+                    .lineTo(segment[1].x, segment[1].y)
+                    .stroke({ width: TILE * 0.13, color: 0xa86f37, alpha: 1 })
+                }
+                drawPier(geometry.main)
+                if (geometry.arm) drawPier(geometry.arm)
+                const perpendicular = {
+                  x: -geometry.direction.y,
+                  y: geometry.direction.x,
+                }
+                for (const progress of [0.18, 0.42, 0.66, 0.9]) {
+                  const px =
+                    geometry.main[0].x + (geometry.main[1].x - geometry.main[0].x) * progress
+                  const py =
+                    geometry.main[0].y + (geometry.main[1].y - geometry.main[0].y) * progress
+                  coast
+                    .moveTo(px - perpendicular.x * TILE * 0.1, py - perpendicular.y * TILE * 0.1)
+                    .lineTo(px + perpendicular.x * TILE * 0.1, py + perpendicular.y * TILE * 0.1)
+                    .stroke({ width: TILE * 0.035, color: 0xe1b96f, alpha: 0.9 })
+                }
+                coast
+                  .rect(
+                    geometry.settlement.x - TILE * 0.12,
+                    geometry.settlement.y - TILE * 0.1,
+                    TILE * 0.24,
+                    TILE * 0.2,
+                  )
+                  .fill({ color: 0xb98243, alpha: 1 })
+                  .stroke({ width: 1 / view.scale, color: 0x2c1d13, alpha: 0.95 })
+                coast
+                  .poly([
+                    geometry.settlement.x - TILE * 0.15,
+                    geometry.settlement.y - TILE * 0.1,
+                    geometry.settlement.x,
+                    geometry.settlement.y - TILE * 0.22,
+                    geometry.settlement.x + TILE * 0.15,
+                    geometry.settlement.y - TILE * 0.1,
+                  ])
+                  .fill({ color: 0x7b3f2b, alpha: 1 })
               }
             }
           }
@@ -1215,7 +1285,7 @@ export function MapCanvas(props: MapCanvasProps) {
       factionMarkerPool.begin()
       const drawFactionPattern = (marker: Point, radius: number, factionId: FactionId) => {
         const stroke = {
-          width: layers.fullEntityArt ? 1.5 : 1 / view.scale,
+          width: (layers.fullEntityArt ? 1.5 : 1) / view.scale,
           color: 0xffffff,
           alpha: 0.95,
         }
@@ -1331,22 +1401,21 @@ export function MapCanvas(props: MapCanvasProps) {
           return
         }
 
-        // 24 px at the authored 1x map scale. The ring sits outside the token
-        // source and keeps ownership legible in grayscale via the flag's
-        // authored geometry (not color alone).
-        const ringRadius = 12
+        // Ownership is clamped in screen space alongside entity art. The flag
+        // geometry remains a second, non-color faction cue.
+        const ringRadius = ownershipWorldDiameter() / 2
         entities.circle(c.x, c.y, ringRadius).stroke({
-          width: 3,
+          width: 3 / view.scale,
           color: 0x14100d,
           alpha: 0.72,
         })
         entities.circle(c.x, c.y, ringRadius).stroke({
-          width: 1.5,
+          width: 1.5 / view.scale,
           color: faction.primaryColor,
           alpha: 0.95,
         })
 
-        const marker = { x: c.x + TILE * 0.3, y: c.y - TILE * 0.3 }
+        const marker = { x: c.x + ringRadius * 0.8, y: c.y - ringRadius * 0.8 }
         const flagUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           factionFlagContentId(factionId),
@@ -1356,14 +1425,14 @@ export function MapCanvas(props: MapCanvasProps) {
         if (flagTexture) {
           const sprite = factionMarkerPool.get(key)
           sprite.texture = flagTexture
-          fitTexture(sprite, flagTexture, TILE * 0.34, TILE * 0.34)
+          fitTexture(sprite, flagTexture, ringRadius * 0.9, ringRadius * 0.9)
           sprite.position.set(marker.x, marker.y)
           return
         }
 
         // Decode-failure fallback still has a non-color cue. In particular,
         // British uses a plus while Spanish uses a saltire.
-        const radius = TILE * 0.12
+        const radius = ringRadius * 0.32
         entities.circle(marker.x, marker.y, radius).fill(0x18130f)
         drawFactionPattern(marker, radius, factionId)
       }
@@ -1394,20 +1463,21 @@ export function MapCanvas(props: MapCanvasProps) {
           ENCOUNTER_SPRITE_URL[enc.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        const size = entityWorldDiameter(0.75)
         // Grounding shadow (#394) so the sprite reads as an object on the
         // water, not a decal floating over it.
-        entities.ellipse(cx, cy + TILE * 0.26, TILE * 0.3, TILE * 0.1).fill({
+        entities.ellipse(cx, cy + size * 0.35, size * 0.4, size * 0.13).fill({
           color: 0x000000,
           alpha: 0.22,
         })
         if (texture) {
           const sprite = encounterPool.get(enc.id)
           sprite.texture = texture
-          fitTexture(sprite, texture, TILE * 0.75, TILE * 0.75)
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(cx, cy)
           continue
         }
-        const r = TILE / 3
+        const r = size * 0.44
         entities.poly([cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy])
         entities.fill(ENCOUNTER_COLOR[enc.kind])
       }
@@ -1446,13 +1516,14 @@ export function MapCanvas(props: MapCanvasProps) {
           LAND_SITE_SPRITE_URL[s.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        const size = entityWorldDiameter(0.7)
         if (texture) {
           const sprite = landSitePool.get(s.id)
           sprite.texture = texture
-          fitTexture(sprite, texture, TILE * 0.7, TILE * 0.7)
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(c.x, c.y)
         } else {
-          const r = TILE / 3.2
+          const r = size * 0.42
           entities.rect(c.x - r, c.y - r, r * 2, r * 2).fill(LAND_SITE_COLOR[s.kind])
         }
         if (claimantFactionId) drawFactionMarker(`site:${s.id}`, c, claimantFactionId, 'site')
@@ -1484,13 +1555,14 @@ export function MapCanvas(props: MapCanvasProps) {
           LAND_ENCOUNTER_SPRITE_URL[enc.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        const size = entityWorldDiameter(0.7)
         if (texture) {
           const sprite = landEncounterPool.get(enc.id)
           sprite.texture = texture
-          fitTexture(sprite, texture, TILE * 0.7, TILE * 0.7)
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(c.x, c.y)
         } else {
-          const r = TILE / 3
+          const r = size * 0.44
           entities.poly([c.x, c.y - r, c.x + r, c.y, c.x, c.y + r, c.x - r, c.y])
           entities.fill(LAND_ENCOUNTER_COLOR[enc.kind])
         }
@@ -1528,8 +1600,9 @@ export function MapCanvas(props: MapCanvasProps) {
           CITY_SPRITE_URL[cityFactionId ?? 'neutral'],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
+        const size = entityWorldDiameter(1.05)
         // Grounding shadow (#394), drawn whether art or fallback renders above.
-        entities.ellipse(cx, cy + TILE * 0.3, TILE * 0.42, TILE * 0.13).fill({
+        entities.ellipse(cx, cy + size * 0.29, size * 0.4, size * 0.12).fill({
           color: 0x000000,
           alpha: 0.28,
         })
@@ -1539,7 +1612,7 @@ export function MapCanvas(props: MapCanvasProps) {
           sprite.texture = texture
           // Sized up (#394) so a settlement reads as a landmark, not another
           // terrain cell; anchored center like every pooled sprite.
-          fitTexture(sprite, texture, TILE * 1.05, TILE * 1.05)
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(cx, cy)
           continue
         }
@@ -1549,11 +1622,12 @@ export function MapCanvas(props: MapCanvasProps) {
         // (inland settlements), which falls through to the plain own/enemy swatch below —
         // the same muted gray a neutral city rendered as before #428 added faction colors.
         const cityFaction = cityFactionId ? FACTIONS[cityFactionId] : undefined
-        entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
+        const fallbackSize = size * 0.72
+        entities.rect(cx - fallbackSize / 2, cy - fallbackSize / 2, fallbackSize, fallbackSize)
         entities.fill(cityFaction?.primaryColor ?? (own ? OWN_CITY : ENEMY_CITY))
         if (own) {
-          entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
-          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+          entities.rect(cx - fallbackSize / 2, cy - fallbackSize / 2, fallbackSize, fallbackSize)
+          entities.stroke({ width: 2 / view.scale, color: HIGHLIGHT_COLOR, alpha: 0.9 })
         }
       }
       cityPool.end()
@@ -1634,24 +1708,24 @@ export function MapCanvas(props: MapCanvasProps) {
           cap.shipClassId,
         )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
+        const size = entityWorldDiameter(SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
         // Anchored (#498): this captain is ashore leading a landing party —
         // the ship sits here, orderless, until the captain re-embarks. Dimmed
         // plus a dark anchor ring under the hull so it reads as "not sailing"
         // at a glance, distinct from a normal docked/idle ship.
         // Hull shadow on the water (#394); the ambient bob rides above it.
-        entities.ellipse(cx, cy + TILE * 0.24, TILE * 0.28, TILE * 0.09).fill({
+        entities.ellipse(cx, cy + size * 0.32, size * 0.37, size * 0.12).fill({
           color: 0x000000,
           alpha: 0.25,
         })
         drawFactionMarker(`ship:${cap.id}`, center, factionId, 'fleet', own)
         if (anchored) {
           entities
-            .ellipse(cx, cy + TILE * 0.24, TILE * 0.36, TILE * 0.13)
-            .stroke({ width: 2, color: 0x1a1a1a, alpha: 0.55 })
+            .ellipse(cx, cy + size * 0.32, size * 0.48, size * 0.17)
+            .stroke({ width: 2 / view.scale, color: 0x1a1a1a, alpha: 0.55 })
         }
         if (texture) {
           const sprite = shipPool.get(cap.id)
-          const size = TILE * (SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
           sprite.texture = texture
           fitTexture(sprite, texture, size, size)
           sprite.position.set(cx, cy)
@@ -1662,14 +1736,19 @@ export function MapCanvas(props: MapCanvasProps) {
         // Fallback flat circle (no ship art loaded yet): faction primaryColor (#428) as the
         // base, with an own-ship highlight ring on top so own-vs-enemy stays legible even
         // when two factions' colors are close.
-        entities.circle(cx, cy, TILE / 2.6)
+        const fallbackRadius = size * 0.42
+        entities.circle(cx, cy, fallbackRadius)
         entities.fill({
           color: faction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP),
           alpha: anchored ? 0.55 : 1,
         })
         if (own) {
-          entities.circle(cx, cy, TILE / 2.6)
-          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: anchored ? 0.5 : 0.9 })
+          entities.circle(cx, cy, fallbackRadius)
+          entities.stroke({
+            width: 2 / view.scale,
+            color: HIGHLIGHT_COLOR,
+            alpha: anchored ? 0.5 : 0.9,
+          })
         }
       }
       // Drop tracking for captains that no longer exist at all (sunk, eliminated seat, …) —
@@ -1709,7 +1788,8 @@ export function MapCanvas(props: MapCanvasProps) {
           drawFactionMarker(`party:${party.id}`, pc, partyFactionId, 'party', own)
           continue
         }
-        entities.ellipse(pc.x, pc.y + TILE * 0.22, TILE * 0.24, TILE * 0.08).fill({
+        const size = entityWorldDiameter(PARTY_SPRITE_SCALE)
+        entities.ellipse(pc.x, pc.y + size * 0.37, size * 0.4, size * 0.13).fill({
           color: 0x000000,
           alpha: 0.25,
         })
@@ -1718,19 +1798,18 @@ export function MapCanvas(props: MapCanvasProps) {
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
         if (texture) {
           const sprite = partyPool.get(party.id)
-          const size = TILE * PARTY_SPRITE_SCALE
           sprite.texture = texture
           fitTexture(sprite, texture, size, size)
           sprite.position.set(pc.x, pc.y)
           continue
         }
-        const r = TILE * 0.3
+        const r = size * 0.5
         const points = [pc.x, pc.y - r, pc.x + r, pc.y + r * 0.8, pc.x - r, pc.y + r * 0.8]
         entities.poly(points)
         entities.fill(partyFaction?.primaryColor ?? (own ? OWN_SHIP : ENEMY_SHIP))
         if (own) {
           entities.poly(points)
-          entities.stroke({ width: 2, color: HIGHLIGHT_COLOR, alpha: 0.9 })
+          entities.stroke({ width: 2 / view.scale, color: HIGHLIGHT_COLOR, alpha: 0.9 })
         }
       }
       partyPool.end()

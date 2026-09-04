@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "issue": 611,
   "source": [
     {
@@ -134,8 +134,15 @@
   "proofs": [
     {
       "path": "proofs/seam-no-repeat-5x5.webp",
-      "sha256": "83960b7a1a075e65c303b585b5c6ad362fac70f1a81df1832fc3721171c52568",
-      "bytes": 94200,
+      "sha256": "d233c400ad41be52f583c53e88ab0ffb9eafb21ce28734fbb69afa84210ecf51",
+      "bytes": 99078,
+      "dimensions": [640, 640],
+      "mode": "RGB"
+    },
+    {
+      "path": "proofs/seam-no-repeat-5x5-hex.webp",
+      "sha256": "6ca58255fb3f3de01d60220788506441c8b41def2a0c884b14588524f53fc186",
+      "bytes": 99544,
       "dimensions": [640, 640],
       "mode": "RGB"
     },
@@ -150,18 +157,86 @@
   "budget": {
     "per_image_limit_bytes": 307200,
     "runtime_total_bytes": 148968,
-    "largest_image_bytes": 94200
+    "largest_image_bytes": 99544
   },
   "seam_proof": {
-    "matrix": [
-      [1, 0, 1, 2, 1],
-      [2, 1, 0, 1, 0],
-      [1, 0, 1, 2, 1],
-      [2, 1, 0, 1, 2],
-      [1, 0, 1, 2, 1]
-    ],
-    "adjacent_repeats": 0,
-    "distinct_2x2_motifs": 8,
+    "selection_salt": "terrain-base:land:{topology}",
+    "selections": {
+      "square": {
+        "matrix": [
+          [1, 0, 1, 2, 1],
+          [2, 2, 1, 1, 0],
+          [0, 2, 2, 0, 1],
+          [0, 2, 0, 2, 2],
+          [0, 1, 0, 2, 0]
+        ],
+        "variant_counts": [9, 7, 9],
+        "unique_rows": 5,
+        "unique_columns": 5,
+        "longest_axis_run": 3,
+        "parity_dominance": [0.384615, 0.416667],
+        "distinct_2x2_motifs": 14,
+        "offset_match_ratios": {
+          "1,0": 0.2,
+          "0,1": 0.35,
+          "1,1": 0.3125,
+          "-1,1": 0.3125,
+          "2,0": 0.4,
+          "0,2": 0.2
+        },
+        "minimum_base_interior_pairwise_mae": 8.177517,
+        "base_interior_pairwise_mae": {
+          "0,1": 8.177517,
+          "0,2": 8.240596,
+          "1,2": 8.227141
+        },
+        "translated_composite_mae": {
+          "1,0": 5.702368,
+          "0,1": 4.680444,
+          "1,1": 4.884827,
+          "-1,1": 4.972748,
+          "2,0": 4.337044,
+          "0,2": 5.725537
+        }
+      },
+      "hex": {
+        "matrix": [
+          [2, 0, 0, 1, 1],
+          [1, 0, 1, 2, 0],
+          [1, 2, 1, 0, 0],
+          [2, 0, 1, 0, 2],
+          [1, 2, 2, 1, 0]
+        ],
+        "variant_counts": [9, 9, 7],
+        "unique_rows": 5,
+        "unique_columns": 5,
+        "longest_axis_run": 3,
+        "parity_dominance": [0.461538, 0.416667],
+        "distinct_2x2_motifs": 16,
+        "offset_match_ratios": {
+          "1,0": 0.2,
+          "0,1": 0.3,
+          "1,1": 0.1875,
+          "-1,1": 0.3125,
+          "2,0": 0.2,
+          "0,2": 0.333333
+        },
+        "minimum_base_interior_pairwise_mae": 8.177517,
+        "base_interior_pairwise_mae": {
+          "0,1": 8.177517,
+          "0,2": 8.240596,
+          "1,2": 8.227141
+        },
+        "translated_composite_mae": {
+          "1,0": 5.73009,
+          "0,1": 5.035291,
+          "1,1": 5.777634,
+          "-1,1": 4.954132,
+          "2,0": 5.741536,
+          "0,2": 4.774316
+        }
+      }
+    },
     "maximum_cross_variant_edge_channel_delta": 1
   }
 }

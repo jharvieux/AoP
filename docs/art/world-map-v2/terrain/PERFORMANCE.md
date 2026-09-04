@@ -18,11 +18,13 @@ observations, not device guarantees.
 
 | Topology | Map checksum, first/repeat | Terrain-selection checksum, first/repeat |
 | -------- | -------------------------- | ---------------------------------------- |
-| Square   | `24ac26e4` / `24ac26e4`    | `07f57e8e` / `07f57e8e`                  |
-| Hex      | `850f93a6` / `850f93a6`    | `52a076ac` / `52a076ac`                  |
+| Square   | `24ac26e4` / `24ac26e4`    | `7cffc665` / `7cffc665`                  |
+| Hex      | `850f93a6` / `850f93a6`    | `faf50b11` / `faf50b11`                  |
 
 The terrain checksum includes every non-water coordinate's base, decal, sparse/rich eligibility,
 shore state, port overlay, and known-water facing. The repeated checksums were identical.
+These post-repair checksums bind the coordinate-hashed irregular base selection; the map checksums
+remain unchanged from the pre-repair trace.
 
 ## Overview work reduction
 
@@ -46,18 +48,18 @@ zero terrain/water sprites.
 
 | Topology / viewport / band | Screen px per tile | Example visible-bound cells | Median ms | p95 ms |
 | -------------------------- | -----------------: | --------------------------: | --------: | -----: |
-| Square phone overview      |              4.063 |           6,912 (0 visited) |     3.399 |  3.999 |
-| Square phone tactical      |                 32 |                         527 |     3.514 |  3.841 |
-| Square phone detail        |                 64 |                         187 |     3.368 |  3.572 |
-| Square desktop overview    |              9.375 |           8,832 (0 visited) |     3.306 |  3.459 |
-| Square desktop tactical    |                 32 |                       1,518 |     3.768 |  4.210 |
-| Square desktop detail      |                 64 |                         486 |     3.447 |  4.233 |
-| Hex phone overview         |              4.041 |           7,008 (0 visited) |    19.331 | 20.628 |
-| Hex phone tactical         |                 32 |                         648 |    20.015 | 22.995 |
-| Hex phone detail           |                 64 |                         240 |    20.773 | 23.767 |
-| Hex desktop overview       |             10.788 |           8,372 (0 visited) |    20.383 | 22.496 |
-| Hex desktop tactical       |                 32 |                       1,786 |    20.055 | 21.660 |
-| Hex desktop detail         |                 64 |                         616 |    20.047 | 22.058 |
+| Square phone overview      |              4.063 |           6,912 (0 visited) |     3.721 |  3.958 |
+| Square phone tactical      |                 32 |                         527 |     3.831 |  4.004 |
+| Square phone detail        |                 64 |                         187 |     3.731 |  3.856 |
+| Square desktop overview    |              9.375 |           8,832 (0 visited) |     3.670 |  3.992 |
+| Square desktop tactical    |                 32 |                       1,518 |     3.985 |  4.172 |
+| Square desktop detail      |                 64 |                         486 |     3.718 |  3.880 |
+| Hex phone overview         |              4.041 |           7,008 (0 visited) |    15.578 | 17.483 |
+| Hex phone tactical         |                 32 |                         648 |    15.791 | 16.129 |
+| Hex phone detail           |                 64 |                         240 |    15.700 | 15.818 |
+| Hex desktop overview       |             10.788 |           8,372 (0 visited) |    15.635 | 15.758 |
+| Hex desktop tactical       |                 32 |                       1,786 |    16.073 | 16.302 |
+| Hex desktop detail         |                 64 |                         616 |    15.886 | 16.722 |
 
 The baseline painted-geometry-only medians/p95s were 3.220/3.498 ms for square and
 18.844/21.217 ms for hex. Similar overview CPU time is expected because loop tracing is preserved;
@@ -65,8 +67,11 @@ the material saving is the eliminated 9,216-cell Pixi reconstruction and empty a
 
 ## Browser smoke limitation
 
-The in-app browser successfully exercised the phone's largest map across all three bands with 22
-pan drags, 12 zoom actions, and two recenters, and logged no warning or error. Its backend did not
-expose Performance Timeline entries, so this evidence deliberately does not claim browser FPS or
-frame-time percentiles. A supervisor may add a device/DevTools trace without changing the runtime
-candidate; the checked-in draw-work and CPU trace remains the fail-loud evidence available here.
+The retained pre-repair browser session successfully exercised the phone's largest map across all
+three bands with 22 pan drags, 12 zoom actions, and two recenters, and logged no warning or error.
+The repair environment exposed no browser backend and could not recapture changed pixels, so
+`RUNTIME-CAPTURES.md` marks that evidence stale and the asset checker rejects its digest. The earlier
+browser backend did not expose Performance Timeline entries, so this evidence deliberately does not
+claim browser FPS or frame-time percentiles. A supervisor may add a device/DevTools trace without
+changing the runtime candidate; the checked-in draw-work and CPU trace remains the fail-loud
+evidence available here.

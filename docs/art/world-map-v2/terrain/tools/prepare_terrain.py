@@ -212,26 +212,27 @@ def stable_hash(x: int, y: int, content: str) -> int:
     return value & MASK
 
 
-def base_variant(x: int, y: int) -> int:
-    anchor = stable_hash(0, 0, "terrain-base-anchor:square") % 3
-    if (x + y) % 2 == 0:
-        return anchor
-    return (anchor + 1 + stable_hash(x, y, "terrain-base:square") % 2) % 3
+def base_variant(x: int, y: int, topology: str) -> int:
+    return stable_hash(x, y, f"terrain-base:land:{topology}") % 3
 
 
-def proof_matrix() -> list[list[int]]:
-    return [[base_variant(x, y) for x in range(5)] for y in range(5)]
+def proof_matrix(topology: str) -> list[list[int]]:
+    return [[base_variant(x, y, topology) for x in range(5)] for y in range(5)]
 
 
 def compose_proofs(public_root: Path, proof_root: Path) -> list[Path]:
     bases = [Image.open(public_root / f"land-base-{letter}.webp").convert("RGB") for letter in "abc"]
-    matrix = proof_matrix()
-    seam = Image.new("RGB", (5 * RUNTIME_SIZE, 5 * RUNTIME_SIZE))
-    for y, row in enumerate(matrix):
-        for x, variant in enumerate(row):
-            seam.paste(bases[variant], (x * RUNTIME_SIZE, y * RUNTIME_SIZE))
-    seam_path = proof_root / "seam-no-repeat-5x5.webp"
-    save_webp(seam, seam_path, lossless=False)
+    seam_paths = []
+    for topology in ("square", "hex"):
+        matrix = proof_matrix(topology)
+        seam = Image.new("RGB", (5 * RUNTIME_SIZE, 5 * RUNTIME_SIZE))
+        for y, row in enumerate(matrix):
+            for x, variant in enumerate(row):
+                seam.paste(bases[variant], (x * RUNTIME_SIZE, y * RUNTIME_SIZE))
+        suffix = "" if topology == "square" else "-hex"
+        seam_path = proof_root / f"seam-no-repeat-5x5{suffix}.webp"
+        save_webp(seam, seam_path, lossless=False)
+        seam_paths.append(seam_path)
 
     contact = Image.new("RGB", (768, 512), (24, 42, 38))
     draw = ImageDraw.Draw(contact)
@@ -267,7 +268,7 @@ def compose_proofs(public_root: Path, proof_root: Path) -> list[Path]:
         draw.text((x + 14, y + 132), name, fill=(248, 238, 203), font=font)
     contact_path = proof_root / "terrain-contact-sheet.webp"
     save_webp(contact, contact_path, lossless=False)
-    return [seam_path, contact_path]
+    return [*seam_paths, contact_path]
 
 
 def publish(registry: dict[str, object], source_root: Path, public_root: Path, proof_root: Path) -> dict[str, object]:
@@ -323,6 +324,99 @@ def edge_delta(bases: list[Image.Image]) -> int:
     return maximum
 
 
+SPATIAL_OFFSETS = ((1, 0), (0, 1), (1, 1), (-1, 1), (2, 0), (0, 2))
+
+
+def selection_metrics(matrix: list[list[int]]) -> dict[str, object]:
+    rows = ["".join(map(str, row)) for row in matrix]
+    columns = ["".join(str(matrix[y][x]) for y in range(5)) for x in range(5)]
+    motifs = {
+        "".join(str(matrix[y + dy][x + dx]) for dy in range(2) for dx in range(2))
+        for y in range(4)
+        for x in range(4)
+    }
+    longest_run = 1
+    for line in [*matrix, *[[matrix[y][x] for y in range(5)] for x in range(5)]]:
+        run = 1
+        for index in range(1, len(line)):
+            run = run + 1 if line[index] == line[index - 1] else 1
+            longest_run = max(longest_run, run)
+
+    offset_matches = {}
+    for dx, dy in SPATIAL_OFFSETS:
+        samples = [
+            matrix[y][x] == matrix[y + dy][x + dx]
+            for y in range(5)
+            for x in range(5)
+            if 0 <= x + dx < 5 and 0 <= y + dy < 5
+        ]
+        offset_matches[f"{dx},{dy}"] = round(sum(samples) / len(samples), 6)
+    counts = [sum(value == variant for row in matrix for value in row) for variant in range(3)]
+    parity_dominance = []
+    for parity in range(2):
+        values = [
+            matrix[y][x]
+            for y in range(5)
+            for x in range(5)
+            if (x + y) % 2 == parity
+        ]
+        parity_dominance.append(
+            round(max(values.count(variant) for variant in range(3)) / len(values), 6)
+        )
+    return {
+        "matrix": matrix,
+        "variant_counts": counts,
+        "unique_rows": len(set(rows)),
+        "unique_columns": len(set(columns)),
+        "longest_axis_run": longest_run,
+        "parity_dominance": parity_dominance,
+        "distinct_2x2_motifs": len(motifs),
+        "offset_match_ratios": offset_matches,
+    }
+
+
+def perceptual_metrics(
+    bases: list[Image.Image], matrix: list[list[int]]
+) -> dict[str, object]:
+    base_arrays = [np.asarray(base.convert("RGB"), dtype=np.int16) for base in bases]
+    interior = [array[16:-16, 16:-16] for array in base_arrays]
+    pairwise_mae = {
+        f"{left},{right}": round(
+            int(np.abs(interior[left] - interior[right]).sum(dtype=np.int64))
+            / interior[left].size,
+            6,
+        )
+        for left in range(len(interior))
+        for right in range(left + 1, len(interior))
+    }
+    composite = np.zeros((5 * RUNTIME_SIZE, 5 * RUNTIME_SIZE, 3), dtype=np.int16)
+    for y, row in enumerate(matrix):
+        for x, variant in enumerate(row):
+            composite[
+                y * RUNTIME_SIZE : (y + 1) * RUNTIME_SIZE,
+                x * RUNTIME_SIZE : (x + 1) * RUNTIME_SIZE,
+            ] = base_arrays[variant]
+    offset_mae = {}
+    for dx, dy in SPATIAL_OFFSETS:
+        left = composite[
+            max(0, -dy) * RUNTIME_SIZE : min(5, 5 - dy) * RUNTIME_SIZE,
+            max(0, -dx) * RUNTIME_SIZE : min(5, 5 - dx) * RUNTIME_SIZE,
+        ]
+        right = composite[
+            max(0, dy) * RUNTIME_SIZE : min(5, 5 + dy) * RUNTIME_SIZE,
+            max(0, dx) * RUNTIME_SIZE : min(5, 5 + dx) * RUNTIME_SIZE,
+        ]
+        offset_mae[f"{dx},{dy}"] = round(
+            int(np.abs(left - right).sum(dtype=np.int64)) / left.size,
+            6,
+        )
+    return {
+        "minimum_base_interior_pairwise_mae": min(pairwise_mae.values()),
+        "base_interior_pairwise_mae": pairwise_mae,
+        "translated_composite_mae": offset_mae,
+    }
+
+
 def receipt(
     registry: dict[str, object],
     source_root: Path,
@@ -339,17 +433,15 @@ def receipt(
     ]
     proof_records = [image_record(path, f"proofs/{path.name}") for path in proof_paths]
     bases = [Image.open(path).convert("RGB") for path in public_paths if path.name.startswith("land-base-")]
-    matrix = proof_matrix()
-    motifs = {
-        "".join(str(matrix[y + dy][x + dx]) for dy in range(2) for dx in range(2))
-        for y in range(4)
-        for x in range(4)
-    }
-    adjacent_repeats = sum(
-        matrix[y][x] == matrix[y][x - 1] for y in range(5) for x in range(1, 5)
-    ) + sum(matrix[y][x] == matrix[y - 1][x] for y in range(1, 5) for x in range(5))
+    selections = {}
+    for topology in ("square", "hex"):
+        matrix = proof_matrix(topology)
+        selections[topology] = {
+            **selection_metrics(matrix),
+            **perceptual_metrics(bases, matrix),
+        }
     return {
-        "schema": 1,
+        "schema": 2,
         "issue": 611,
         "source": source_records,
         "runtime": public_records,
@@ -360,9 +452,8 @@ def receipt(
             "largest_image_bytes": max(path.stat().st_size for path in [*public_paths, *proof_paths]),
         },
         "seam_proof": {
-            "matrix": matrix,
-            "adjacent_repeats": adjacent_repeats,
-            "distinct_2x2_motifs": len(motifs),
+            "selection_salt": "terrain-base:land:{topology}",
+            "selections": selections,
             "maximum_cross_variant_edge_channel_delta": edge_delta(bases),
         },
     }
@@ -410,8 +501,19 @@ def validate(receipt_data: dict[str, object], public_root: Path) -> None:
     if any(record["bytes"] > IMAGE_LIMIT for record in records):
         raise ValueError("terrain image budget exceeded")
     seam = receipt_data["seam_proof"]
-    if seam["adjacent_repeats"] != 0 or seam["distinct_2x2_motifs"] < 6:
-        raise ValueError(f"terrain selection repetition proof failed: {seam}")
+    for topology, selection in seam["selections"].items():
+        if (
+            selection["unique_rows"] != 5
+            or selection["unique_columns"] != 5
+            or selection["longest_axis_run"] > 3
+            or max(selection["parity_dominance"]) > 0.55
+            or selection["distinct_2x2_motifs"] < 14
+            or max(selection["variant_counts"]) - min(selection["variant_counts"]) > 2
+            or max(selection["offset_match_ratios"].values()) > 0.5
+            or selection["minimum_base_interior_pairwise_mae"] < 6
+            or min(selection["translated_composite_mae"].values()) < 3.5
+        ):
+            raise ValueError(f"{topology} terrain spatial/perceptual proof failed: {selection}")
     if seam["maximum_cross_variant_edge_channel_delta"] > 1:
         raise ValueError(f"runtime base edges exceed one channel step: {seam}")
     for path in public_root.glob("*.webp"):
@@ -454,8 +556,12 @@ def renderer_asset_digest() -> str:
 def validate_runtime_captures() -> None:
     capture_receipt = json.loads(CAPTURE_RECEIPT_PATH.read_text())
     expected_digest = capture_receipt["runtime_binding"]["renderer_and_runtime_asset_digest"]
-    if renderer_asset_digest() != expected_digest:
-        raise ValueError("runtime capture renderer/art binding drift")
+    observed_digest = renderer_asset_digest()
+    if observed_digest != expected_digest:
+        raise ValueError(
+            "runtime capture renderer/art binding drift: "
+            f"expected {expected_digest}, observed {observed_digest}; recapture required"
+        )
     captures = capture_receipt["captures"]
     pairs = {(row["viewport"], row["band"]) for row in captures}
     if pairs != {
@@ -481,14 +587,17 @@ def validate_runtime_captures() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ingest-raw", type=Path)
+    parser.add_argument("--publish", action="store_true")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    if not args.ingest_raw and not args.check:
-        parser.error("choose --ingest-raw DIR or --check")
+    if not args.ingest_raw and not args.publish and not args.check:
+        parser.error("choose --ingest-raw DIR, --publish, or --check")
 
     registry = json.loads(REGISTRY_PATH.read_text())
     if args.ingest_raw:
         ingest(registry, args.ingest_raw)
+
+    if args.ingest_raw or args.publish:
         receipt_data = publish(registry, SOURCE_ROOT, PUBLIC_ROOT, PROOF_ROOT)
         validate(receipt_data, PUBLIC_ROOT)
         RECEIPT_PATH.write_text(json.dumps(receipt_data, indent=2) + "\n")
@@ -504,7 +613,9 @@ def main() -> None:
             compare_tree(rebuilt_proofs, PROOF_ROOT)
             if receipt_data != json.loads(RECEIPT_PATH.read_text()):
                 raise ValueError("terrain receipt drift")
-    validate_runtime_captures()
+        print("terrain runtime/proofs/receipt: verified")
+    if args.ingest_raw or args.check:
+        validate_runtime_captures()
     print("terrain assets: verified")
 
 

@@ -8,7 +8,6 @@ import {
   landSiteContentId,
   partyContentId,
   resolveSpriteUrl,
-  tileContentId,
 } from './mapSprites'
 
 /**
@@ -175,10 +174,8 @@ export function mapArtPreloadRequests(scene: MapArtScene): MapArtRequest[] {
     add(factionFlagContentId(factionId), FACTIONS[factionId].flagSpriteUrl)
   }
 
-  // Land/port are the only tile types that currently draw raster art. Water
-  // remains procedural, so decoding deep/shallows would waste critical bytes.
-  add(tileContentId('land'), mapArtRegistry.tiles.land)
-  add(tileContentId('port'), mapArtRegistry.tiles.port)
+  // Terrain presentation owns its complete decode-fallback preload chain.
+  // The legacy land/port registry images have no renderer consumer here.
 
   for (const encounter of scene.encounters) {
     if (!encounter.active || !scene.visibleKeys.has(positionKey(encounter.position))) continue
