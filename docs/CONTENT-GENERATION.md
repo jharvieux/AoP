@@ -1,6 +1,6 @@
 # Content generation pipeline
 
-How locally-generated audio and art get from a text prompt into the game. This complements
+How generated audio and art get from a text prompt into the game. This complements
 the tool-level setup guide (`docs/AI-TOOLS-GUIDE.md`) with the parts that are repo-specific:
 where generated files live, what "done" looks like, and which files in this codebase they
 hook into.
