@@ -24,6 +24,28 @@ function fakeAssets(): AssetLoader<{ url: string }> & { unloaded: string[] } {
 }
 
 describe('createTextureLoader', () => {
+  it('reports idle, pending, and loaded readiness without starting a second request', async () => {
+    const { promise, resolve } = deferred<{ url: string }>()
+    const assets: AssetLoader<{ url: string }> = {
+      load: () => promise,
+      unload: () => Promise.resolve(),
+    }
+    const loader = createTextureLoader(assets, () => undefined)
+
+    expect(loader.getStatus('/art/cities/british.webp')).toBe('idle')
+    const readiness = loader.preload(['/art/cities/british.webp'])
+    expect(loader.getStatus('/art/cities/british.webp')).toBe('pending')
+    expect(loader.getTexture('/art/cities/british.webp')).toBeUndefined()
+
+    resolve({ url: '/art/cities/british.webp' })
+    await readiness
+
+    expect(loader.getStatus('/art/cities/british.webp')).toBe('loaded')
+    expect(loader.getTexture('/art/cities/british.webp')).toEqual({
+      url: '/art/cities/british.webp',
+    })
+  })
+
   it('loads a URL at most once, caching the result once it resolves', async () => {
     const assets = fakeAssets()
     const loadSpy = vi.spyOn(assets, 'load')
@@ -147,7 +169,24 @@ describe('createTextureLoader', () => {
     const loader = createTextureLoader(assets, () => undefined)
 
     await expect(loader.preload(['bad', 'good'])).resolves.toBeUndefined()
+    expect(loader.getStatus('good')).toBe('loaded')
+    expect(loader.getStatus('bad')).toBe('failed')
     expect(loader.getTexture('good')).toEqual({ url: 'good' })
     expect(loader.getTexture('bad')).toBeUndefined()
+  })
+
+  it('keeps a failed URL settled so the first interactive draw can use fallback without pop', async () => {
+    const assets: AssetLoader<{ url: string }> = {
+      load: () => Promise.reject(new Error('missing')),
+      unload: () => Promise.resolve(),
+    }
+    const loadSpy = vi.spyOn(assets, 'load')
+    const loader = createTextureLoader(assets, () => undefined)
+
+    await loader.preload(['/art/sites/missing.webp'])
+
+    expect(loader.getStatus('/art/sites/missing.webp')).toBe('failed')
+    expect(loader.getTexture('/art/sites/missing.webp')).toBeUndefined()
+    expect(loadSpy).toHaveBeenCalledTimes(1)
   })
 })

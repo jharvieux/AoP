@@ -6,7 +6,10 @@ import {
   cityContentId,
   encounterContentId,
   factionFlagContentId,
+  factionMarkerPattern,
+  fitSpriteDimensions,
   LAND_ENCOUNTER_KINDS,
+  landSiteContentId,
   partyContentId,
   resolveSpriteUrl,
   SEA_ENCOUNTER_KINDS,
@@ -29,6 +32,10 @@ describe('mapSprites content ids', () => {
     expect(encounterContentId('merchant')).toBe('encounter:merchant')
   })
 
+  it('namespaces land-site content ids by kind', () => {
+    expect(landSiteContentId('lumberCamp')).toBe('landSite:lumberCamp')
+  })
+
   it('namespaces building content ids by building id', () => {
     expect(buildingContentId('townhall')).toBe('building:townhall')
   })
@@ -42,10 +49,36 @@ describe('mapSprites content ids', () => {
     expect(factionFlagContentId('british')).toBe('british')
   })
 
+  it('gives every faction a non-color marker and separates British from Spanish', () => {
+    expect([
+      factionMarkerPattern('british'),
+      factionMarkerPattern('dutch'),
+      factionMarkerPattern('french'),
+      factionMarkerPattern('pirates'),
+      factionMarkerPattern('spanish'),
+    ]).toEqual(['cross', 'horizontal-bars', 'vertical-bars', 'diamond', 'saltire'])
+    expect(factionMarkerPattern('british')).not.toBe(factionMarkerPattern('spanish'))
+  })
+
   it('namespaces party content ids by faction id, distinct from the flag content id', () => {
     expect(partyContentId('pirates')).toBe('party:pirates')
     expect(partyContentId('british')).toBe('party:british')
     expect(partyContentId('pirates')).not.toBe(factionFlagContentId('pirates'))
+  })
+})
+
+describe('fitSpriteDimensions', () => {
+  it('preserves a wide image aspect ratio inside a square render box', () => {
+    expect(fitSpriteDimensions(240, 120, 32, 32)).toEqual({ width: 32, height: 16 })
+  })
+
+  it('preserves a tall image aspect ratio inside a rectangular render box', () => {
+    expect(fitSpriteDimensions(80, 160, 30, 24)).toEqual({ width: 12, height: 24 })
+  })
+
+  it('keeps an authored square canvas square and rejects invalid dimensions', () => {
+    expect(fitSpriteDimensions(256, 256, 28, 28)).toEqual({ width: 28, height: 28 })
+    expect(fitSpriteDimensions(0, 256, 28, 28)).toEqual({ width: 0, height: 0 })
   })
 })
 

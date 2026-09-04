@@ -351,3 +351,33 @@ Composition/framing: strict orthographic near-overhead 80° camera, no horizon; 
 Lighting/mood: warm northwest/top-left key light at about 35° elevation, cool blue-green ambient shadow, one restrained connected contact shadow.
 Constraints: output one genuine transparent RGBA cutout with clean alpha and no matte; no people, text, letters, numbers, signature, watermark, logo, UI, border, icon ring, selection ring, flag, terrain, foliage, animal, fire, smoke, bloom, or disconnected shadow.
 ```
+
+## Runtime-completion generation note
+
+The two sea-encounter replacements below were made after checkpoint 1, during runtime completion. The approved Direction B map reference and the legacy `natives.png` / `settlers.png` assets were visually inspected before both calls, but no image was attached to either generation request. The built-in interface again exposed neither model identifier nor seed; both are recorded as `null` in `runtime-additions.json`.
+
+## runtime-encounter-natives
+
+```text
+Create one production-ready transparent raster sprite for the Age of Plunder world map.
+
+Asset role: neutral sea encounter token, kind “natives”.
+Subject: a compact encounter group of two historically plausible Caribbean Indigenous dugout canoes viewed from high overhead, one larger canoe and one small escort canoe. Broad carved wood hull silhouettes, a few simple paddles laid across the gunwales, woven baskets and rolled fiber mats as peaceful trade cargo. No weapons, no colonial flag, no heraldry, no people large enough for facial detail. The paired canoe silhouette must be unmistakably different from a European merchant sailboat at 24–40 CSS pixels.
+
+Art direction: Direction B “Gilded Harbor Diorama”; premium hand-painted game-token finish, warm weathered timber, restrained brass/tan accents, deep readable value separation, broad shapes over micro-detail, coherent with a polished pirate strategy game. Strict orthographic near-overhead camera at about 82 degrees. Warm northwest/top-left key light at about 35 degrees elevation and cool blue-green ambient shadow. Center optical anchor with at least 12% transparent safety margin. No baked terrain, water, wake, contact shadow, ring, selection state, text, signature, logo, or watermark. Encode no reward, danger, hostility, ownership, or gameplay modifier.
+
+Output requirements: one isolated sprite only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, not a rendered checkerboard or white/gray matte. Straight clean alpha with edge colors extended beneath transparent pixels; no pale halo. No border and no square/circular/diamond ground plane. Square canvas, subject centered, optimized for reduction to 24, 32, 48, and 96 pixels.
+```
+
+## runtime-encounter-settlers
+
+```text
+Create one production-ready transparent raster sprite for the Age of Plunder world map.
+
+Asset role: neutral sea encounter token, kind “settlers”.
+Subject: a compact colonial supply-launch encounter seen from high overhead: one broad shallow-draft wooden longboat with a short mast and small furled cream canvas lug sail, accompanied by one tiny rowing tender. The main launch visibly carries two travel trunks, a canvas-covered crate, a water barrel, a rolled blanket, and a short bundle of building timbers. No warship guns, no treasure, no faction flag, no heraldry, and no people large enough for facial detail. Its broad cargo-laden launch silhouette must remain clearly different from both a paired merchant sailing convoy and two narrow Indigenous dugout canoes at 24–40 CSS pixels.
+
+Art direction: Direction B “Gilded Harbor Diorama”; premium hand-painted game-token finish, warm weathered timber, muted canvas and leather, restrained brass/tan accents, deep readable value separation, broad shapes over micro-detail, coherent with a polished pirate strategy game. Strict orthographic near-overhead camera at about 82 degrees. Warm northwest/top-left key light at about 35 degrees elevation and cool blue-green ambient shadow. Center optical anchor with at least 12% transparent safety margin. No baked terrain, water, wake, contact shadow, ring, selection state, text, signature, logo, or watermark. Encode no reward, danger, hostility, ownership, or gameplay modifier.
+
+Output requirements: one isolated sprite only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, not a rendered checkerboard or white/gray matte. Straight clean alpha with edge colors extended beneath transparent pixels; no pale halo. No border and no square/circular/diamond ground plane. Square canvas, subject centered, optimized for reduction to 24, 32, 48, and 96 pixels.
+```

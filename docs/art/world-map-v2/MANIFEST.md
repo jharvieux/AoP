@@ -1,4 +1,4 @@
-# Checkpoint-1 asset and provenance manifest
+# Checkpoint-1 and runtime-candidate asset/provenance manifest
 
 ## Scope and coverage
 
@@ -58,7 +58,7 @@ All 21 concept prompts explicitly requested genuine transparent RGBA. The built-
 
 `tools/prepare_sources.py` therefore selects those two genuine-alpha edits and deterministically extracts the rendered checkerboard for the other 19 sources. It decontaminates pale edge pixels, removes disconnected alpha islands smaller than eight pixels, normalizes to a 512×512 transparent canvas, enforces the optical anchor and safety margin, and writes exact-alpha WebP. The 39 MiB rejected/raw working copies are not committed; their filenames and SHA-256 hashes remain in `asset-registry.json`, and the selected project-bound RGBA sources are committed.
 
-Known checkpoint limitation: several extracted sources retain a faint pale contact-shadow/matte remnant visible when inspected at 512 px against pure black. It is not apparent in the required 24–96 px representative terrain proofs, but it should receive a manual alpha-edge cleanup before any runtime candidate is approved. This checkpoint does not waive that final-art requirement.
+Known checkpoint-source limitation: several original extracted sources retain a faint pale contact-shadow/matte remnant visible when inspected at 512 px against pure black. Those immutable checkpoint sources remain committed so the approved proof and its provenance stay reproducible. The runtime derivatives remove the visible remnants with semantic exterior and named contact masks; this does not retroactively make the original checkpoint sources matte-free.
 
 ## Deterministic outputs and budgets
 
@@ -76,6 +76,27 @@ The scripts require Python with Pillow and NumPy; the existing local ComfyUI vir
 
 All 21 normalized sources, all 21 token candidates, and all three final proof sheets were visually inspected at original size. The faction-sheet ship panel was expanded after inspection exposed a footer overlap; the corrected 2200×1800 sheet was regenerated and re-inspected.
 
-## Runtime boundary
+## Runtime candidate delivery
 
-No file was placed in `apps/web/public/art`, no runtime asset registry was edited, and no production fallback or visibility path was changed. Checkpoint 2 may prepare final alpha cleanup and runtime candidates only after explicit operator approval.
+Checkpoint 1 was approved with the recommended city refinement. Runtime preparation therefore publishes the 21 approved identities plus two coherent replacements for the legacy native-canoe and settler-launch sea encounters. The latter were generated with the same Direction B contract; their exact prompts, raw hashes, interface limitations, and usage basis are recorded in `PROMPTS.md` and `runtime-additions.json`.
+
+Before the renderer change, a cold texture request returned no texture on its first draw and initiated an unawaited decode; the procedural fallback was therefore visible until the loader marked a later frame dirty and the sprite appeared. A missing URL stayed on the procedural fallback. The baseline eligibility gates were also recorded: active sea encounters, land encounters, and sites required current visibility; another player's ship or party required current visibility; another player's city required exploration; the viewer's own cities, ships, and parties remained eligible. The runtime implementation preserves those gates while moving the finite eligible decode set ahead of the first interactive frame.
+
+`tools/polish_runtime_sources.py` retains each original source, applies deterministic semantic exterior/contact cleanup, and writes review-scale 512 px and optimized 256 px exact-alpha WebP derivatives. The named problem assets—British sloop, pirate galleon, British and Spanish parties, mine, hermit, and native village—must each report removed boundary/contact pixels. Its `--check` mode rebuilds all 23 derivatives and 30 stress proofs in a temporary directory and requires byte equality.
+
+| Runtime evidence                                | Rule                                            | Observed                     |
+| ----------------------------------------------- | ----------------------------------------------- | ---------------------------- |
+| runtime identities                              | 21 approved + 2 coherent sea replacements       | 23/23                        |
+| optimized public tokens                         | RGBA, ≤128 KiB target and ≤300 KiB hard ceiling | 23/23; total 355,062 bytes   |
+| conservative all-family cold-cache critical set | ≤3 MiB                                          | 1,022,113 bytes              |
+| quadrant overview pages                         | 512 px source layout across all four fields     | 4/4; largest 148,760 bytes   |
+| actual-size stress sheet                        | every identity at 96 px                         | 23/23; 46,872 bytes          |
+| full-footprint 512 px proofs                    | every identity repeated on all four fields      | 23/23; largest 115,182 bytes |
+| full-footprint 96 px proof                      | every identity repeated on all four fields      | 23/23; 138,414 bytes         |
+| faction marker proof                            | 24 px, color and grayscale                      | 5/5; 23,116 bytes            |
+
+`tools/validate_runtime.py` also requires real full-range alpha, zero-alpha corner sentinels, no newly revealed pixels outside the source silhouette, byte-identical public copies, exact receipt hashes, complete prompt/provenance records, and the original checkpoint validator. Hidden-entity eligibility remains a renderer concern rather than an art-file property; the production registry tests use throwing identity lookups and an override-lookup census to prove hidden city, ship, party, encounter, and site detail is absent from preload requests.
+
+The runtime renderer preserves existing exploration and visibility gates, gives neutral cities a safe neutral default, keeps `city:own` and `city:enemy` theme overrides ahead of faction defaults, and waits for every eligible winning texture to settle as loaded or failed before revealing the interactive map. The wait is finite because failed decodes settle to the existing procedural fallback. It does not preload unseen detail art.
+
+Phone, tablet, and desktop in-game captures of the exact integrated head—including fog states, missing-asset fallback, initial-load behavior, and theme overrides—are still required for checkpoint 2. This manifest does not claim checkpoint-2 operator approval.

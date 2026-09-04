@@ -1,0 +1,572 @@
+{
+  "schema": 1,
+  "transform": "deterministic semantic matte cleanup; no generative edit",
+  "assets": [
+    {
+      "id": "city:british",
+      "input": "sources/selected/city-british-512.webp",
+      "input_sha256": "747ed242521c8e81b97cd889c7a57f03262f125168b8a6ff41e022e4cfaf6cfc",
+      "output_512": "sources/runtime/city-british-512.webp",
+      "output_512_sha256": "7e606b0d7a2b731afcc2ea0a01d8ebbbaa2473f2f585a39cb14fabc28c34af14",
+      "output_512_quality": 92,
+      "output_512_bytes": 59080,
+      "output_256": "sources/runtime/city-british-256.webp",
+      "output_256_sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7",
+      "output_256_quality": 90,
+      "output_256_bytes": 17936,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 3,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 93173,
+      "visible_pixels_after": 93170
+    },
+    {
+      "id": "city:dutch",
+      "input": "sources/selected/city-dutch-512.webp",
+      "input_sha256": "d155385289b8a29bf89191ef563acb56c1d5f7f213dd9536b0329fa15cda71e2",
+      "output_512": "sources/runtime/city-dutch-512.webp",
+      "output_512_sha256": "1ae2c3c037330f76ecc9a70cef6021563c3f7ce6143872460b2088e58c75cff0",
+      "output_512_quality": 92,
+      "output_512_bytes": 45056,
+      "output_256": "sources/runtime/city-dutch-256.webp",
+      "output_256_sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a",
+      "output_256_quality": 90,
+      "output_256_bytes": 14296,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 363,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 69904,
+      "visible_pixels_after": 69541
+    },
+    {
+      "id": "city:french",
+      "input": "sources/selected/city-french-512.webp",
+      "input_sha256": "740628917d4b564070c3e68e3719e6719e66ecc16741b72812f23973743fc28a",
+      "output_512": "sources/runtime/city-french-512.webp",
+      "output_512_sha256": "d79dd84a1e0d519be77af4ad9febf8efa50cebf0cb0ba7cc7d00fd2d9ec67393",
+      "output_512_quality": 92,
+      "output_512_bytes": 47416,
+      "output_256": "sources/runtime/city-french-256.webp",
+      "output_256_sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f",
+      "output_256_quality": 90,
+      "output_256_bytes": 15984,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 93,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 67258,
+      "visible_pixels_after": 67165
+    },
+    {
+      "id": "city:pirates",
+      "input": "sources/selected/city-pirates-512.webp",
+      "input_sha256": "8f25aec2c77d7e52cf492418170c267579677e3bb5901ef8c26c08c5eb6f0aec",
+      "output_512": "sources/runtime/city-pirates-512.webp",
+      "output_512_sha256": "7e664ae7893ccf9f347be0f829f9f9c48dd41b932210b7af8bae4adf6992a79f",
+      "output_512_quality": 92,
+      "output_512_bytes": 55032,
+      "output_256": "sources/runtime/city-pirates-256.webp",
+      "output_256_sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a",
+      "output_256_quality": 90,
+      "output_256_bytes": 17284,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 688,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 77647,
+      "visible_pixels_after": 76959
+    },
+    {
+      "id": "city:spanish",
+      "input": "sources/selected/city-spanish-512.webp",
+      "input_sha256": "606dc28aef64f2702cefea9005891af1c219cda2537dd58fb48541378ef674da",
+      "output_512": "sources/runtime/city-spanish-512.webp",
+      "output_512_sha256": "dcf37ee439c2b4969c019b57074d3ba36aded8f1595a206ed0d08e78c82be49f",
+      "output_512_quality": 92,
+      "output_512_bytes": 56994,
+      "output_256": "sources/runtime/city-spanish-256.webp",
+      "output_256_sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97",
+      "output_256_quality": 90,
+      "output_256_bytes": 17978,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 606,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 86065,
+      "visible_pixels_after": 85459
+    },
+    {
+      "id": "city:neutral",
+      "input": "sources/selected/city-neutral-512.webp",
+      "input_sha256": "69ce2f2bd4f903f15dc8674b80188aa0f3880b8d0499e063c6a190d654fbe7a0",
+      "output_512": "sources/runtime/city-neutral-512.webp",
+      "output_512_sha256": "0bfca5dcb09234f57af82b517c41ffa4d66cd43aac7f3750db0b24c5fac1c772",
+      "output_512_quality": 92,
+      "output_512_bytes": 36650,
+      "output_256": "sources/runtime/city-neutral-256.webp",
+      "output_256_sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3",
+      "output_256_quality": 90,
+      "output_256_bytes": 11814,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 279,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 56255,
+      "visible_pixels_after": 55976
+    },
+    {
+      "id": "ship:british:sloop",
+      "input": "sources/selected/ship-british-sloop-512.webp",
+      "input_sha256": "ce9b5716522dc09b998a9eaa587861c13c18fcd0705c07eb611059d526dccc06",
+      "output_512": "sources/runtime/ship-british-sloop-512.webp",
+      "output_512_sha256": "ee89df4c18e8ca42f213b2fbf7f15499636d55a8a04f5f937c194292a20eb6e2",
+      "output_512_quality": 92,
+      "output_512_bytes": 23402,
+      "output_256": "sources/runtime/ship-british-sloop-256.webp",
+      "output_256_sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c",
+      "output_256_quality": 90,
+      "output_256_bytes": 8798,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 4048,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 31670,
+      "visible_pixels_after": 27622
+    },
+    {
+      "id": "ship:pirates:galleon",
+      "input": "sources/selected/ship-pirates-galleon-512.webp",
+      "input_sha256": "5c0e8a7157f3a54f5a049c0765781e3d18c04142f4a5c635aa7eabea42990975",
+      "output_512": "sources/runtime/ship-pirates-galleon-512.webp",
+      "output_512_sha256": "643f44b884ac4dccf89c9aae746d1c79fe09d98ada4a902fe358ff8120c13648",
+      "output_512_quality": 92,
+      "output_512_bytes": 41428,
+      "output_256": "sources/runtime/ship-pirates-galleon-256.webp",
+      "output_256_sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200",
+      "output_256_quality": 90,
+      "output_256_bytes": 13200,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 1064,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 55089,
+      "visible_pixels_after": 54025
+    },
+    {
+      "id": "party:british",
+      "input": "sources/selected/party-british-512.webp",
+      "input_sha256": "a445245b60b7bf13657b482e435bee3c67d81be777c0540edcf37b7aca58ab0e",
+      "output_512": "sources/runtime/party-british-512.webp",
+      "output_512_sha256": "0735a838cde54d4564a8e879a917d52fae572013d103a881b42d6b80fff695d4",
+      "output_512_quality": 92,
+      "output_512_bytes": 33588,
+      "output_256": "sources/runtime/party-british-256.webp",
+      "output_256_sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7",
+      "output_256_quality": 90,
+      "output_256_bytes": 13298,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 3298,
+      "contact_pixels_removed": 476,
+      "visible_pixels_before": 57320,
+      "visible_pixels_after": 53546
+    },
+    {
+      "id": "party:dutch",
+      "input": "sources/selected/party-dutch-512.webp",
+      "input_sha256": "940bde625b64169952b78cf965c237cf07957f5ff4fd32167cf3ed7d1829633e",
+      "output_512": "sources/runtime/party-dutch-512.webp",
+      "output_512_sha256": "e002edf75cf0982240916ce57b2b3a38733924f429604be1687ae487391260f2",
+      "output_512_quality": 92,
+      "output_512_bytes": 45422,
+      "output_256": "sources/runtime/party-dutch-256.webp",
+      "output_256_sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3",
+      "output_256_quality": 90,
+      "output_256_bytes": 16284,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 824,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 66364,
+      "visible_pixels_after": 65540
+    },
+    {
+      "id": "party:french",
+      "input": "sources/selected/party-french-512.webp",
+      "input_sha256": "5c60cfcf98be1a9bfa07483bfe2a8d980fc9d72dd8338a81ff16f95e867ea564",
+      "output_512": "sources/runtime/party-french-512.webp",
+      "output_512_sha256": "d237e381006972e4e825ab35a3071ee1034362a126cb8972227b1c496ba5f458",
+      "output_512_quality": 92,
+      "output_512_bytes": 48566,
+      "output_256": "sources/runtime/party-french-256.webp",
+      "output_256_sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc",
+      "output_256_quality": 90,
+      "output_256_bytes": 17306,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 1288,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 79551,
+      "visible_pixels_after": 78263
+    },
+    {
+      "id": "party:pirates",
+      "input": "sources/selected/party-pirates-512.webp",
+      "input_sha256": "34ec1dc09735793b11da1bf139f8c2f73ecd3d4b1979f0f5cf3ffa8e4c016de6",
+      "output_512": "sources/runtime/party-pirates-512.webp",
+      "output_512_sha256": "9c5fdfae2421d4a4a282dd6b679d70ef3535fe83bfcf9a2789e221982acdba6d",
+      "output_512_quality": 92,
+      "output_512_bytes": 46194,
+      "output_256": "sources/runtime/party-pirates-256.webp",
+      "output_256_sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef",
+      "output_256_quality": 90,
+      "output_256_bytes": 17232,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 1129,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 61449,
+      "visible_pixels_after": 60320
+    },
+    {
+      "id": "party:spanish",
+      "input": "sources/selected/party-spanish-512.webp",
+      "input_sha256": "62e628cf28e862355e9cef353830154e04fa4c72ec56386d1f5205b03e13f929",
+      "output_512": "sources/runtime/party-spanish-512.webp",
+      "output_512_sha256": "3f88b5ea4c2eb1e9ce6f00114d74c1447e43124cf9695e67619a7940f5ec610b",
+      "output_512_quality": 92,
+      "output_512_bytes": 39908,
+      "output_256": "sources/runtime/party-spanish-256.webp",
+      "output_256_sha256": "1f954ee503a390295979c8dc4a4c9c9dd11c9e7eda6af547cd962d0a5fc3eb83",
+      "output_256_quality": 90,
+      "output_256_bytes": 14830,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 2317,
+      "contact_pixels_removed": 1489,
+      "visible_pixels_before": 71090,
+      "visible_pixels_after": 67284
+    },
+    {
+      "id": "encounter:merchant",
+      "input": "sources/selected/encounter-merchant-convoy-512.webp",
+      "input_sha256": "887d82e74cf6b2f00a914a5e1d689a7b8891c3a46b060ec8853225585924edf6",
+      "output_512": "sources/runtime/encounter-merchant-convoy-512.webp",
+      "output_512_sha256": "d53a0c597a23fb2186a4da94be22cb38d75489afb618a907026903f7b7bdb8b1",
+      "output_512_quality": 92,
+      "output_512_bytes": 47860,
+      "output_256": "sources/runtime/encounter-merchant-convoy-256.webp",
+      "output_256_sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567",
+      "output_256_quality": 90,
+      "output_256_bytes": 16420,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 416,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 65556,
+      "visible_pixels_after": 65140
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "input": "sources/selected/encounter-native-village-512.webp",
+      "input_sha256": "89d5bc88e8884a5695ad224120153b08135ea462d6fcc336fa4b28ff798af6f5",
+      "output_512": "sources/runtime/encounter-native-village-512.webp",
+      "output_512_sha256": "e0e493767407dda0ed8c25653949c6fcdee427192274d6d944fc885a7f235341",
+      "output_512_quality": 92,
+      "output_512_bytes": 37218,
+      "output_256": "sources/runtime/encounter-native-village-256.webp",
+      "output_256_sha256": "ddbeaa3036229e348275e8d3e42fbb45cdb9567f51461d4b1e4e197b30007882",
+      "output_256_quality": 90,
+      "output_256_bytes": 12786,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 1533,
+      "contact_pixels_removed": 312,
+      "visible_pixels_before": 61041,
+      "visible_pixels_after": 59196
+    },
+    {
+      "id": "encounter:hermit",
+      "input": "sources/selected/encounter-hermit-512.webp",
+      "input_sha256": "e293c5178f9551a850909ab9a9589fbee2a7e8f315df8fe7dd97f3cda9891f38",
+      "output_512": "sources/runtime/encounter-hermit-512.webp",
+      "output_512_sha256": "062ce489305b0d4ae127f3ba09251566d854fc79e86f4b524d3289c9c91a3b64",
+      "output_512_quality": 92,
+      "output_512_bytes": 39438,
+      "output_256": "sources/runtime/encounter-hermit-256.webp",
+      "output_256_sha256": "ee38aaca41019f455e571ccbddc732b6fa4d5f111ed9ec4e74be10ded43cbde8",
+      "output_256_quality": 90,
+      "output_256_bytes": 13412,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 438,
+      "contact_pixels_removed": 397,
+      "visible_pixels_before": 64686,
+      "visible_pixels_after": 63851
+    },
+    {
+      "id": "encounter:banditCamp",
+      "input": "sources/selected/encounter-bandit-camp-512.webp",
+      "input_sha256": "cd60e654501396cc398a1a8c3363fe0a6985f62b1bb1c41f4d80ba6b71648573",
+      "output_512": "sources/runtime/encounter-bandit-camp-512.webp",
+      "output_512_sha256": "b0178922a907c970daeb91d3295e2402bd9eaabefdd006a75539db067889b95a",
+      "output_512_quality": 92,
+      "output_512_bytes": 35338,
+      "output_256": "sources/runtime/encounter-bandit-camp-256.webp",
+      "output_256_sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f",
+      "output_256_quality": 90,
+      "output_256_bytes": 12374,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 341,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 65810,
+      "visible_pixels_after": 65469
+    },
+    {
+      "id": "landSite:mine",
+      "input": "sources/selected/site-mine-512.webp",
+      "input_sha256": "1b06434c1bf3462ab181a8c524e298f23ee37847f27d0d2a754947c35a54aa6d",
+      "output_512": "sources/runtime/site-mine-512.webp",
+      "output_512_sha256": "65e9e70835c032d07a2ecb4249cd4ef8ab32761261438a9860a0a9624b188efe",
+      "output_512_quality": 92,
+      "output_512_bytes": 47620,
+      "output_256": "sources/runtime/site-mine-256.webp",
+      "output_256_sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa",
+      "output_256_quality": 90,
+      "output_256_bytes": 17964,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 3930,
+      "contact_pixels_removed": 794,
+      "visible_pixels_before": 104269,
+      "visible_pixels_after": 99545
+    },
+    {
+      "id": "landSite:sawmill",
+      "input": "sources/selected/site-sawmill-512.webp",
+      "input_sha256": "d3137fadf5fae40894d26bdf6b754a5be3c31091934dc1b8c2d05f193481dba3",
+      "output_512": "sources/runtime/site-sawmill-512.webp",
+      "output_512_sha256": "feceea85cf6a8de2617acacf9e12ca8106d50a0a051b16fcc470a0c363198f0c",
+      "output_512_quality": 92,
+      "output_512_bytes": 51186,
+      "output_256": "sources/runtime/site-sawmill-256.webp",
+      "output_256_sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815",
+      "output_256_quality": 90,
+      "output_256_bytes": 16618,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 466,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 94219,
+      "visible_pixels_after": 93753
+    },
+    {
+      "id": "landSite:lumberCamp",
+      "input": "sources/selected/site-lumber-camp-512.webp",
+      "input_sha256": "4660574059eea55eb4b1b3419b36f45af22d3e0f30842ff9cd9718aadd39778c",
+      "output_512": "sources/runtime/site-lumber-camp-512.webp",
+      "output_512_sha256": "198919ac221075b93b553f64d79ac9a00bab36af892b8ef2a73a64eef36ab3c8",
+      "output_512_quality": 92,
+      "output_512_bytes": 56074,
+      "output_256": "sources/runtime/site-lumber-camp-256.webp",
+      "output_256_sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba",
+      "output_256_quality": 90,
+      "output_256_bytes": 19190,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 663,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 88204,
+      "visible_pixels_after": 87541
+    },
+    {
+      "id": "landSite:ruins",
+      "input": "sources/selected/site-ruins-512.webp",
+      "input_sha256": "dc9b1adc5f6c8b7ff92f720831861323b501ddfb54d7e701c883b1d00ad48c51",
+      "output_512": "sources/runtime/site-ruins-512.webp",
+      "output_512_sha256": "46e844c823e4d3684e33f35c4271af614b83258dc89c1c8aefef2bb1c2f31149",
+      "output_512_quality": 92,
+      "output_512_bytes": 46250,
+      "output_256": "sources/runtime/site-ruins-256.webp",
+      "output_256_sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760",
+      "output_256_quality": 90,
+      "output_256_bytes": 16050,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 537,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 63408,
+      "visible_pixels_after": 62871
+    },
+    {
+      "id": "encounter:natives",
+      "input": "sources/openai/encounter-natives-runtime-source.png",
+      "input_sha256": "3867d03e4393a76cce93dfc03fdf330a73b918558e2c0f7c225f4b848bac4006",
+      "output_512": "sources/runtime/runtime-encounter-natives-512.webp",
+      "output_512_sha256": "6369e5c0709cf625bbc2ce42e91772a360971947534621d9c4bcbbac3b5cdead",
+      "output_512_quality": 92,
+      "output_512_bytes": 40640,
+      "output_256": "sources/runtime/runtime-encounter-natives-256.webp",
+      "output_256_sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106",
+      "output_256_quality": 90,
+      "output_256_bytes": 13946,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 11,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 42327,
+      "visible_pixels_after": 42316
+    },
+    {
+      "id": "encounter:settlers",
+      "input": "sources/openai/encounter-settlers-runtime-source.png",
+      "input_sha256": "c4333e9e6c224b4f4621d4146679b3ceb526f9f43aced398d7729fd8457fe8c2",
+      "output_512": "sources/runtime/runtime-encounter-settlers-512.webp",
+      "output_512_sha256": "7d359eb876fa64a76f012b0d61212c5335d7f98b836c766d2658a6ed4ab399ce",
+      "output_512_quality": 92,
+      "output_512_bytes": 61500,
+      "output_256": "sources/runtime/runtime-encounter-settlers-256.webp",
+      "output_256_sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb",
+      "output_256_quality": 90,
+      "output_256_bytes": 20062,
+      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "boundary_pixels_removed": 92,
+      "contact_pixels_removed": 0,
+      "visible_pixels_before": 73311,
+      "visible_pixels_after": 73219
+    }
+  ],
+  "proofs": [
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-1.webp",
+      "sha256": "526827cf01e39ad10b1be518614373ba11a6b579714d5e6fbc129d084943b710",
+      "bytes": 148760
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-2.webp",
+      "sha256": "2d862d2690f1c2960eca7d753d7a1779aa926a95c6d0c3652fd392de251e2e32",
+      "bytes": 121598
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-3.webp",
+      "sha256": "3f2a0a704cdab1f12d499c0dbc58782dcbbc88f82713b2f73aef64e3ecc0fa64",
+      "bytes": 134948
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-4.webp",
+      "sha256": "51057e597ae33a67ab548c42e14c017c3c0eb4bd78ac39ffb9b8cb54bec96ab2",
+      "bytes": 42270
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-96-all.webp",
+      "sha256": "3ac6a9aa124c256f1afc0c4de53a6082e5dce3187eb306936890857e7a58f969",
+      "bytes": 46872
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-british.webp",
+      "sha256": "5511372ff6ffe4b179e3143307d5977d7f761fd0d4e1bc06e67a11091112dcf9",
+      "bytes": 115182
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-dutch.webp",
+      "sha256": "f4478450ff950192289b5f5898e8a17e934fd2ea93b1cdf8bc7aeaea4c12673e",
+      "bytes": 82146
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-french.webp",
+      "sha256": "92f538543428142e177d22e807c54459f34d2f5d48787da98b91044aa74fbfe7",
+      "bytes": 84086
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-pirates.webp",
+      "sha256": "6707f88ccb11729e7d2e04c8e9f899a1937501a744404fb025c1e4b556322f16",
+      "bytes": 95640
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-spanish.webp",
+      "sha256": "7f126bedf001a8b11c81ef710d2056e06dc085bb9a0e2ad3ff38fc0f9dd9087c",
+      "bytes": 111146
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-city-neutral.webp",
+      "sha256": "b58a3d02922a20766fe8897cc4765a197e9939adde50190a3480efb68f088b51",
+      "bytes": 70740
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-british-sloop.webp",
+      "sha256": "7a42b2ab4270ed05af4ec9ed21ca9aff38f9ddce84c49874d1d586e17a86e81d",
+      "bytes": 35316
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-pirates-galleon.webp",
+      "sha256": "c30ce6d0c1bdcd26d75230d08c9127cc12eaa668aba60e2ae16d65ae52206a32",
+      "bytes": 63188
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-party-british.webp",
+      "sha256": "0946cf6f4185f087d7d468884fcc94ed05ff8c641f944c83bd643f676e71f496",
+      "bytes": 59662
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-party-dutch.webp",
+      "sha256": "8b9c28a87f2df67d6f4391f70ac7dfb9ddc0d789fdcc4a5ed9944f7c6a7e6068",
+      "bytes": 64256
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-party-french.webp",
+      "sha256": "621cbb6838a0625432cda5ddd05f393e78e61fdb13d40bb66faef483c57973ea",
+      "bytes": 82750
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-party-pirates.webp",
+      "sha256": "ff1573a59ce6e73cc08bf4a5bc6c0e623328eac531a33c014dea8ab276f60cf6",
+      "bytes": 60238
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-party-spanish.webp",
+      "sha256": "4ebf76b95af0acee094758437b586ee589fb24b70a1bbe21e4a029b97a437445",
+      "bytes": 65598
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-encounter-merchant-convoy.webp",
+      "sha256": "d46f817eafe9d433500c31ca35861092921a0034099f5a7b12143e1a7ee05e75",
+      "bytes": 75564
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-encounter-native-village.webp",
+      "sha256": "d3960b5e121b6ea52682f6f64b33c62a174d7440acd9f90d7af81258e50731ea",
+      "bytes": 65432
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-encounter-hermit.webp",
+      "sha256": "b49d6d66ab3507b2beb8017c9b1f1d4a7f42e5c1c97136f7796c73c1582a633b",
+      "bytes": 66474
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-encounter-bandit-camp.webp",
+      "sha256": "0c4640f729a162f28951b67e2ebd8d8f352505a3c7bf6ce0c2d844225d887d60",
+      "bytes": 53052
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-site-mine.webp",
+      "sha256": "723c86e1141827e70deed09ae472c2ccadabaf2a02933159c6034ea29ad63ce2",
+      "bytes": 78836
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-site-sawmill.webp",
+      "sha256": "859b9aca09588edb177389b74fb8713b2136c8381825faf49d293bfbc1213d66",
+      "bytes": 90872
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-site-lumber-camp.webp",
+      "sha256": "1c9bfb6da41eaef6dde6900d67ed90adf2cd6ab0afeb105330269a14309d049f",
+      "bytes": 89178
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-site-ruins.webp",
+      "sha256": "78377cd55c6d0580bdeeb794d87cfe51bfc6faf958ed1c475072f71d723d1a17",
+      "bytes": 79394
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-runtime-encounter-natives.webp",
+      "sha256": "f0ad0bb099d099d7026042187bedfa674f2a726cdb3398ac6bde247ab6965180",
+      "bytes": 62844
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-runtime-encounter-settlers.webp",
+      "sha256": "11fc4a9c436770de7f61d9b060d7dd1e20d4439180546a7e8be4c763580b7f50",
+      "bytes": 100140
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-96-all.webp",
+      "sha256": "4634c9be25cfba754de372c27e51b55ffe852526ef9168463c081a5b0f197ce3",
+      "bytes": 138414
+    },
+    {
+      "path": "proofs/matte-stress/faction-marker-24-color-grayscale.webp",
+      "sha256": "6b2518d6fbfd19aa7acd6399e0ebf77b46d25b9dc4cc0c3a91e0673b50a4c0d6",
+      "bytes": 23116
+    }
+  ]
+}

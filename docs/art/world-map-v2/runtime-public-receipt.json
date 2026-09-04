@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "city:british",
+      "source": "sources/runtime/city-british-256.webp",
+      "public_path": "apps/web/public/art/cities/british.webp",
+      "url": "/art/cities/british.webp",
+      "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7",
+      "bytes": 17936
+    },
+    {
+      "id": "city:dutch",
+      "source": "sources/runtime/city-dutch-256.webp",
+      "public_path": "apps/web/public/art/cities/dutch.webp",
+      "url": "/art/cities/dutch.webp",
+      "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a",
+      "bytes": 14296
+    },
+    {
+      "id": "city:french",
+      "source": "sources/runtime/city-french-256.webp",
+      "public_path": "apps/web/public/art/cities/french.webp",
+      "url": "/art/cities/french.webp",
+      "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f",
+      "bytes": 15984
+    },
+    {
+      "id": "city:pirates",
+      "source": "sources/runtime/city-pirates-256.webp",
+      "public_path": "apps/web/public/art/cities/pirates.webp",
+      "url": "/art/cities/pirates.webp",
+      "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a",
+      "bytes": 17284
+    },
+    {
+      "id": "city:spanish",
+      "source": "sources/runtime/city-spanish-256.webp",
+      "public_path": "apps/web/public/art/cities/spanish.webp",
+      "url": "/art/cities/spanish.webp",
+      "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97",
+      "bytes": 17978
+    },
+    {
+      "id": "city:neutral",
+      "source": "sources/runtime/city-neutral-256.webp",
+      "public_path": "apps/web/public/art/cities/neutral.webp",
+      "url": "/art/cities/neutral.webp",
+      "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3",
+      "bytes": 11814
+    },
+    {
+      "id": "ship:british:sloop",
+      "source": "sources/runtime/ship-british-sloop-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_sloop.webp",
+      "url": "/art/factions/british/ship_sloop.webp",
+      "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c",
+      "bytes": 8798
+    },
+    {
+      "id": "ship:pirates:galleon",
+      "source": "sources/runtime/ship-pirates-galleon-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_galleon_v2.webp",
+      "url": "/art/factions/pirates/ship_galleon_v2.webp",
+      "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200",
+      "bytes": 13200
+    },
+    {
+      "id": "party:british",
+      "source": "sources/runtime/party-british-256.webp",
+      "public_path": "apps/web/public/art/parties/british.webp",
+      "url": "/art/parties/british.webp",
+      "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7",
+      "bytes": 13298
+    },
+    {
+      "id": "party:dutch",
+      "source": "sources/runtime/party-dutch-256.webp",
+      "public_path": "apps/web/public/art/parties/dutch.webp",
+      "url": "/art/parties/dutch.webp",
+      "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3",
+      "bytes": 16284
+    },
+    {
+      "id": "party:french",
+      "source": "sources/runtime/party-french-256.webp",
+      "public_path": "apps/web/public/art/parties/french.webp",
+      "url": "/art/parties/french.webp",
+      "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc",
+      "bytes": 17306
+    },
+    {
+      "id": "party:pirates",
+      "source": "sources/runtime/party-pirates-256.webp",
+      "public_path": "apps/web/public/art/parties/pirates.webp",
+      "url": "/art/parties/pirates.webp",
+      "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef",
+      "bytes": 17232
+    },
+    {
+      "id": "party:spanish",
+      "source": "sources/runtime/party-spanish-256.webp",
+      "public_path": "apps/web/public/art/parties/spanish.webp",
+      "url": "/art/parties/spanish.webp",
+      "sha256": "1f954ee503a390295979c8dc4a4c9c9dd11c9e7eda6af547cd962d0a5fc3eb83",
+      "bytes": 14830
+    },
+    {
+      "id": "encounter:merchant",
+      "source": "sources/runtime/encounter-merchant-convoy-256.webp",
+      "public_path": "apps/web/public/art/encounters/merchant-v2.webp",
+      "url": "/art/encounters/merchant-v2.webp",
+      "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567",
+      "bytes": 16420
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "source": "sources/runtime/encounter-native-village-256.webp",
+      "public_path": "apps/web/public/art/encounters/native-village.webp",
+      "url": "/art/encounters/native-village.webp",
+      "sha256": "ddbeaa3036229e348275e8d3e42fbb45cdb9567f51461d4b1e4e197b30007882",
+      "bytes": 12786
+    },
+    {
+      "id": "encounter:hermit",
+      "source": "sources/runtime/encounter-hermit-256.webp",
+      "public_path": "apps/web/public/art/encounters/hermit.webp",
+      "url": "/art/encounters/hermit.webp",
+      "sha256": "ee38aaca41019f455e571ccbddc732b6fa4d5f111ed9ec4e74be10ded43cbde8",
+      "bytes": 13412
+    },
+    {
+      "id": "encounter:banditCamp",
+      "source": "sources/runtime/encounter-bandit-camp-256.webp",
+      "public_path": "apps/web/public/art/encounters/bandit-camp.webp",
+      "url": "/art/encounters/bandit-camp.webp",
+      "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f",
+      "bytes": 12374
+    },
+    {
+      "id": "landSite:mine",
+      "source": "sources/runtime/site-mine-256.webp",
+      "public_path": "apps/web/public/art/sites/mine.webp",
+      "url": "/art/sites/mine.webp",
+      "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa",
+      "bytes": 17964
+    },
+    {
+      "id": "landSite:sawmill",
+      "source": "sources/runtime/site-sawmill-256.webp",
+      "public_path": "apps/web/public/art/sites/sawmill.webp",
+      "url": "/art/sites/sawmill.webp",
+      "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815",
+      "bytes": 16618
+    },
+    {
+      "id": "landSite:lumberCamp",
+      "source": "sources/runtime/site-lumber-camp-256.webp",
+      "public_path": "apps/web/public/art/sites/lumber-camp.webp",
+      "url": "/art/sites/lumber-camp.webp",
+      "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba",
+      "bytes": 19190
+    },
+    {
+      "id": "landSite:ruins",
+      "source": "sources/runtime/site-ruins-256.webp",
+      "public_path": "apps/web/public/art/sites/ruins.webp",
+      "url": "/art/sites/ruins.webp",
+      "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760",
+      "bytes": 16050
+    },
+    {
+      "id": "encounter:natives",
+      "source": "sources/runtime/runtime-encounter-natives-256.webp",
+      "public_path": "apps/web/public/art/encounters/natives-v2.webp",
+      "url": "/art/encounters/natives-v2.webp",
+      "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106",
+      "bytes": 13946
+    },
+    {
+      "id": "encounter:settlers",
+      "source": "sources/runtime/runtime-encounter-settlers-256.webp",
+      "public_path": "apps/web/public/art/encounters/settlers-v2.webp",
+      "url": "/art/encounters/settlers-v2.webp",
+      "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb",
+      "bytes": 20062
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "issue": 609,
+  "stage": "runtime completion",
+  "generated_on": "2026-09-03",
+  "generation_service": "OpenAI built-in image generator in Codex",
+  "billing_path": "subscription-included built-in generation authorized by D-049; no API key and no paid API call",
+  "model": null,
+  "seed": null,
+  "interface_model_exposed": false,
+  "interface_seed_exposed": false,
+  "generation_inputs": [],
+  "reviewed_reference": {
+    "path": "../commercial-visual-v2/sources/b-gilded-harbor-diorama-map-r1.webp",
+    "role": "visually inspected before prompting; not attached to either generation call",
+    "sha256": "c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9"
+  },
+  "usage_license_basis": "Outputs were created specifically for this project through the user's OpenAI subscription under D-049 and remain subject to applicable OpenAI terms. No third-party stock input was used; no exclusivity or copyrightability claim is made.",
+  "assets": [
+    {
+      "id": "encounter:natives",
+      "label": "Native canoe contact",
+      "category": "encounters",
+      "context": "water",
+      "anchor": "center",
+      "prompt_key": "runtime-encounter-natives",
+      "raw_file": "sources/openai/encounter-natives-runtime-source.png",
+      "raw_sha256": "3867d03e4393a76cce93dfc03fdf330a73b918558e2c0f7c225f4b848bac4006",
+      "public_path": "apps/web/public/art/encounters/natives-v2.webp",
+      "url": "/art/encounters/natives-v2.webp"
+    },
+    {
+      "id": "encounter:settlers",
+      "label": "Settler supply launch",
+      "category": "encounters",
+      "context": "water",
+      "anchor": "center",
+      "prompt_key": "runtime-encounter-settlers",
+      "raw_file": "sources/openai/encounter-settlers-runtime-source.png",
+      "raw_sha256": "c4333e9e6c224b4f4621d4146679b3ceb526f9f43aced398d7729fd8457fe8c2",
+      "public_path": "apps/web/public/art/encounters/settlers-v2.webp",
+      "url": "/art/encounters/settlers-v2.webp"
+    }
+  ]
+}

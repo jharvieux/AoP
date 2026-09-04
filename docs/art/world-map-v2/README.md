@@ -1,6 +1,6 @@
-# World-map v2 token proof — checkpoint 1
+# World-map v2 token proof and runtime delivery
 
-**Status:** awaiting operator approval. This is a Direction B art proof for issue #609, not runtime art. No file under `public/art`, no asset registry used by the game, and no visibility or gameplay behavior has changed.
+**Status:** checkpoint 1 was approved with the recommended city refinement. The approved Direction B family has now been prepared and wired as issue #609's runtime candidate; deterministic in-game phone, tablet, and desktop captures plus checkpoint-2 operator approval remain pending. Visibility and gameplay rules are unchanged.
 
 ## Review the proof
 
@@ -20,8 +20,20 @@ The 32 px column deliberately places each token on the visible side of a fog fro
 - `tokens/` holds optimized 256 px RGBA candidates used by the sheets.
 - `asset-registry.json`, `PROMPTS.md`, and `MANIFEST.md` preserve provenance and constraints.
 - `tools/` contains deterministic preparation, composition, and fail-loud validation.
-- Nothing here is approved for runtime placement yet.
+- Checkpoint 1 approved the art direction, not the final checkpoint-2 runtime captures.
+
+## Runtime candidate
+
+The runtime pass adds semantic matte cleanup without overwriting the checkpoint sources, exports 512 px review sources and optimized 256 px tokens, and publishes byte-identical copies of 23 identities. The two added identities replace the legacy native-canoe and settler-launch encounter art so all production sea encounters share the approved camera, lighting, and materials.
+
+![All runtime identities on full-footprint stress backgrounds at 96 px](proofs/matte-stress/matte-full-footprint-96-all.webp)
+
+![24 px faction marker proof in color and grayscale](proofs/matte-stress/faction-marker-24-color-grayscale.webp)
+
+The four overview pages and per-identity `matte-full-footprint-512-*.webp` proofs are in `proofs/matte-stress/`. Each full-footprint proof repeats the complete 512 px alpha footprint over approved land or deep-water texture, near-black, saturated magenta, and saturated cyan. `matte-full-footprint-96-all.webp` repeats the same fields at exact 96 px. This deliberately exposes pale matte and contact remnants that representative terrain alone can hide.
+
+`runtime-additions.json` records the exact provenance for the two additional OpenAI generations. `sources/runtime/polish-receipt.json` records every cleaned source and proof hash. `runtime-public-receipt.json` binds each public URL to a byte-identical runtime token. `tools/validate_runtime.py` fails loud on provenance drift, dimensions, alpha/privacy sentinels, matte-cleanup omissions, budgets, public-copy drift, proof coverage, or nondeterministic recomposition.
 
 ## Operator decision
 
-Do you approve this Direction B token family as the target for checkpoint 2, with the disclosed alpha-edge cleanup and any specific token replacements completed before runtime integration?
+Checkpoint 2 is not yet approved. Review the exact-head phone, tablet, and desktop in-game captures after assets load—including fog states, missing-asset fallback, and theme override cases—before approving the runtime presentation.
