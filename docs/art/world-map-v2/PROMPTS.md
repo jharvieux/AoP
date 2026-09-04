@@ -381,3 +381,332 @@ Art direction: Direction B “Gilded Harbor Diorama”; premium hand-painted gam
 
 Output requirements: one isolated sprite only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, not a rendered checkerboard or white/gray matte. Straight clean alpha with edge colors extended beneath transparent pixels; no pale halo. No border and no square/circular/diamond ground plane. Square canvas, subject centered, optimized for reduction to 24, 32, 48, and 96 pixels.
 ```
+
+## Runtime 20-ship fleet generation note
+
+The eighteen sections below are the exact request bodies sent on 2026-09-04, one built-in OpenAI image-generator concept call per missing faction/class identity. Every call attached the same three locally inspected references in this order: Direction B map (style/camera/light), approved British sloop (small-class finish/baseline), approved Pirate galleon (heavy-class finish/baseline). The interface exposed neither model identifier nor seed; both remain `null` in `runtime-additions.json`.
+
+## ship-british-brigantine-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated British Royal Navy brigantine as a genuinely distinct faction-and-class production asset.
+Subject: one medium two-masted brigantine: square sails on the forward mast, one large fore-and-aft gaff sail on the aft mast, pronounced bowsprit, low fighting hull, and a compact raised quarterdeck. Apply disciplined naval construction: a squared transom, straight gunport rhythm, taut orderly rigging, clean cream canvas, and one restrained navy-and-red rectangular sail panel.
+Class-readability rule: exactly two masts and the mixed square-plus-gaff rig must read at 24 pixels.
+Faction-readability rule: The squared stern, ruler-straight spars, and rectangular panel are the British non-color cues; never use a diagonal cross or Spanish-style castle.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-british-frigate-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated British Royal Navy frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply disciplined naval construction: a squared transom, straight gunport rhythm, taut orderly rigging, clean cream canvas, and one restrained navy-and-red rectangular sail panel.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The squared stern, ruler-straight spars, and rectangular panel are the British non-color cues; never use a diagonal cross or Spanish-style castle.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-british-galleon-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated British Royal Navy galleon as a genuinely distinct faction-and-class production asset.
+Subject: one massive three-masted ocean galleon with a broad deep hull, high forecastle, towering multi-level stern, stacked square sails, and a short heavy bowsprit. Apply disciplined naval construction: a squared transom, straight gunport rhythm, taut orderly rigging, clean cream canvas, and one restrained navy-and-red rectangular sail panel.
+Class-readability rule: the tall stern mass and broad deep hull must read as the heaviest class at 24 pixels.
+Faction-readability rule: The squared stern, ruler-straight spars, and rectangular panel are the British non-color cues; never use a diagonal cross or Spanish-style castle.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-dutch-sloop-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Dutch charter-company sloop as a genuinely distinct faction-and-class production asset.
+Subject: one small, very narrow single-masted sloop with a long bowsprit, one broad fore-and-aft mainsail and one triangular headsail; low open deck, no gun deck. Apply broad practical merchant-naval construction: a rounded full bow, low wide cargo hull, stepped boxy transom, compact sturdy rigging, and one restrained orange-and-indigo horizontal sail band.
+Class-readability rule: one mast and the slim needle-like hull must be unmistakable at 24 pixels.
+Faction-readability rule: The broad beam, stepped transom, and low mercantile stance are the Dutch non-color cues; avoid crown-navy symmetry and ornate castles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-dutch-brigantine-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Dutch charter-company brigantine as a genuinely distinct faction-and-class production asset.
+Subject: one medium two-masted brigantine: square sails on the forward mast, one large fore-and-aft gaff sail on the aft mast, pronounced bowsprit, low fighting hull, and a compact raised quarterdeck. Apply broad practical merchant-naval construction: a rounded full bow, low wide cargo hull, stepped boxy transom, compact sturdy rigging, and one restrained orange-and-indigo horizontal sail band.
+Class-readability rule: exactly two masts and the mixed square-plus-gaff rig must read at 24 pixels.
+Faction-readability rule: The broad beam, stepped transom, and low mercantile stance are the Dutch non-color cues; avoid crown-navy symmetry and ornate castles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-dutch-frigate-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Dutch charter-company frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply broad practical merchant-naval construction: a rounded full bow, low wide cargo hull, stepped boxy transom, compact sturdy rigging, and one restrained orange-and-indigo horizontal sail band.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The broad beam, stepped transom, and low mercantile stance are the Dutch non-color cues; avoid crown-navy symmetry and ornate castles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-dutch-galleon-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Dutch charter-company galleon as a genuinely distinct faction-and-class production asset.
+Subject: one massive three-masted ocean galleon with a broad deep hull, high forecastle, towering multi-level stern, stacked square sails, and a short heavy bowsprit. Apply broad practical merchant-naval construction: a rounded full bow, low wide cargo hull, stepped boxy transom, compact sturdy rigging, and one restrained orange-and-indigo horizontal sail band.
+Class-readability rule: the tall stern mass and broad deep hull must read as the heaviest class at 24 pixels.
+Faction-readability rule: The broad beam, stepped transom, and low mercantile stance are the Dutch non-color cues; avoid crown-navy symmetry and ornate castles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-french-sloop-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated French crown and corsair sloop as a genuinely distinct faction-and-class production asset.
+Subject: one small, very narrow single-masted sloop with a long bowsprit, one broad fore-and-aft mainsail and one triangular headsail; low open deck, no gun deck. Apply elegant fast naval construction: a long narrow hull, swept curved stern rail, slender raked masts, restrained gold scroll at bow and stern, and one muted blue-and-cream crescent sail panel.
+Class-readability rule: one mast and the slim needle-like hull must be unmistakable at 24 pixels.
+Faction-readability rule: The elongated hull, swept stern, and crescent panel are the French non-color cues; keep the silhouette graceful rather than broad or blocky.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-french-brigantine-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated French crown and corsair brigantine as a genuinely distinct faction-and-class production asset.
+Subject: one medium two-masted brigantine: square sails on the forward mast, one large fore-and-aft gaff sail on the aft mast, pronounced bowsprit, low fighting hull, and a compact raised quarterdeck. Apply elegant fast naval construction: a long narrow hull, swept curved stern rail, slender raked masts, restrained gold scroll at bow and stern, and one muted blue-and-cream crescent sail panel.
+Class-readability rule: exactly two masts and the mixed square-plus-gaff rig must read at 24 pixels.
+Faction-readability rule: The elongated hull, swept stern, and crescent panel are the French non-color cues; keep the silhouette graceful rather than broad or blocky.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-french-frigate-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated French crown and corsair frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply elegant fast naval construction: a long narrow hull, swept curved stern rail, slender raked masts, restrained gold scroll at bow and stern, and one muted blue-and-cream crescent sail panel.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The elongated hull, swept stern, and crescent panel are the French non-color cues; keep the silhouette graceful rather than broad or blocky.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-french-galleon-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated French crown and corsair galleon as a genuinely distinct faction-and-class production asset.
+Subject: one massive three-masted ocean galleon with a broad deep hull, high forecastle, towering multi-level stern, stacked square sails, and a short heavy bowsprit. Apply elegant fast naval construction: a long narrow hull, swept curved stern rail, slender raked masts, restrained gold scroll at bow and stern, and one muted blue-and-cream crescent sail panel.
+Class-readability rule: the tall stern mass and broad deep hull must read as the heaviest class at 24 pixels.
+Faction-readability rule: The elongated hull, swept stern, and crescent panel are the French non-color cues; keep the silhouette graceful rather than broad or blocky.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-pirates-sloop-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated independent pirate sloop as a genuinely distinct faction-and-class production asset.
+Subject: one small, very narrow single-masted sloop with a long bowsprit, one broad fore-and-aft mainsail and one triangular headsail; low open deck, no gun deck. Apply improvised predatory construction: a dark salt-blackened hull, asymmetric yards, mismatched rope repairs, two large irregular canvas patches, and one jagged repaired sail edge.
+Class-readability rule: one mast and the slim needle-like hull must be unmistakable at 24 pixels.
+Faction-readability rule: The broken symmetry, patched canvas, and jagged edge are the pirate non-color cues; no skull, bones, flag, or heraldic emblem.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-pirates-brigantine-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated independent pirate brigantine as a genuinely distinct faction-and-class production asset.
+Subject: one medium two-masted brigantine: square sails on the forward mast, one large fore-and-aft gaff sail on the aft mast, pronounced bowsprit, low fighting hull, and a compact raised quarterdeck. Apply improvised predatory construction: a dark salt-blackened hull, asymmetric yards, mismatched rope repairs, two large irregular canvas patches, and one jagged repaired sail edge.
+Class-readability rule: exactly two masts and the mixed square-plus-gaff rig must read at 24 pixels.
+Faction-readability rule: The broken symmetry, patched canvas, and jagged edge are the pirate non-color cues; no skull, bones, flag, or heraldic emblem.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-pirates-frigate-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated independent pirate frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply improvised predatory construction: a dark salt-blackened hull, asymmetric yards, mismatched rope repairs, two large irregular canvas patches, and one jagged repaired sail edge.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The broken symmetry, patched canvas, and jagged edge are the pirate non-color cues; no skull, bones, flag, or heraldic emblem.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-spanish-sloop-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Spanish treasure-fleet sloop as a genuinely distinct faction-and-class production asset.
+Subject: one small, very narrow single-masted sloop with a long bowsprit, one broad fore-and-aft mainsail and one triangular headsail; low open deck, no gun deck. Apply high-sided Iberian construction: a rounded forecastle, tiered curved sterncastle, heavy warm timber, restrained gold trim, and one muted red-and-ochre diagonal-lattice sail panel.
+Class-readability rule: one mast and the slim needle-like hull must be unmistakable at 24 pixels.
+Faction-readability rule: The rounded tiered castles and diagonal lattice are the Spanish non-color cues; they must remain distinct from the British squared stern and rectangles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-spanish-brigantine-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Spanish treasure-fleet brigantine as a genuinely distinct faction-and-class production asset.
+Subject: one medium two-masted brigantine: square sails on the forward mast, one large fore-and-aft gaff sail on the aft mast, pronounced bowsprit, low fighting hull, and a compact raised quarterdeck. Apply high-sided Iberian construction: a rounded forecastle, tiered curved sterncastle, heavy warm timber, restrained gold trim, and one muted red-and-ochre diagonal-lattice sail panel.
+Class-readability rule: exactly two masts and the mixed square-plus-gaff rig must read at 24 pixels.
+Faction-readability rule: The rounded tiered castles and diagonal lattice are the Spanish non-color cues; they must remain distinct from the British squared stern and rectangles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-spanish-frigate-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Spanish treasure-fleet frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply high-sided Iberian construction: a rounded forecastle, tiered curved sterncastle, heavy warm timber, restrained gold trim, and one muted red-and-ochre diagonal-lattice sail panel.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The rounded tiered castles and diagonal lattice are the Spanish non-color cues; they must remain distinct from the British squared stern and rectangles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-spanish-galleon-runtime
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated Spanish treasure-fleet galleon as a genuinely distinct faction-and-class production asset.
+Subject: one massive three-masted ocean galleon with a broad deep hull, high forecastle, towering multi-level stern, stacked square sails, and a short heavy bowsprit. Apply high-sided Iberian construction: a rounded forecastle, tiered curved sterncastle, heavy warm timber, restrained gold trim, and one muted red-and-ochre diagonal-lattice sail panel.
+Class-readability rule: the tall stern mass and broad deep hull must read as the heaviest class at 24 pixels.
+Faction-readability rule: The rounded tiered castles and diagonal lattice are the Spanish non-color cues; they must remain distinct from the British squared stern and rectangles.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+```
+
+## ship-pirates-frigate-runtime-alpha-edit-rejected
+
+```text
+Use case: background-extraction
+Asset type: transparent production world-map ship token
+Input images: Image 1 is the sole edit target, the accepted Pirate frigate concept.
+Primary request: remove the entire dark brown and black vignette, glow, and background outside the Pirate frigate and replace it with genuine transparent alpha.
+Constraints: preserve the complete Pirate frigate exactly—its hull, all three masts, spars, rigging, patched and torn sails, cannons, northwest lighting, camera, proportions, color, internal shadows, edges, and composition. Keep every connected ship pixel and remove every disconnected backdrop pixel. Return a clean isolated RGBA cutout with at least fully transparent and fully opaque pixels. No checkerboard, white or gray matte, colored halo, terrain, water, wake, contact shadow, new object, crop, restyle, text, signature, logo, or watermark.
+```
+
+## ship-pirates-frigate-runtime-r2
+
+```text
+Use case: stylized-concept
+Asset type: production world-map ship token for a commercial pirate strategy game
+Input images: Image 1 is the approved Direction B map reference for painted material, palette, strict overhead camera, and northwest lighting only. Image 2 is the approved British sloop reference for token finish, clean alpha, optical baseline, and small-class scale only. Image 3 is the approved pirate galleon reference for token finish, clean alpha, optical baseline, and heavy-class scale only. Do not copy terrain, water, wakes, shadows, flags, exact hull decoration, or either reference ship as another class.
+Primary request: create one isolated independent pirate frigate as a genuinely distinct faction-and-class production asset.
+Subject: one long lean three-masted frigate with three disciplined square-rig towers, a visibly extended single gun deck, sharp bow, low stern, and a fast narrow hull. Apply improvised predatory construction: a dark salt-blackened hull, asymmetric yards, mismatched rope repairs, two large irregular canvas patches, and one jagged repaired sail edge.
+Class-readability rule: three tall masts over a long low hull must read as faster and leaner than the galleon.
+Faction-readability rule: The broken symmetry, patched canvas, and jagged edge are the pirate non-color cues; no skull, bones, flag, or heraldic emblem.
+Style/medium: Direction B “Gilded Harbor Diorama”; premium hand-painted strategy-game miniature with layered gouache and restrained oil-brush texture, simplified warm weathered timber and canvas, deep readable value separation, broad authored shapes over micro-detail, dimensional but clearly illustrated, not photorealistic and not generic 3D.
+Composition/framing: strict orthographic near-overhead camera at about 82 degrees, no horizon; bow points toward the upper-right and stern toward the lower-left; centered single ship; bottom-center optical anchor shared with the reference fleet; the complete rig and hull fill about 72% of a square canvas with at least 13% transparent safety on every edge; preserve natural ship aspect ratio; no cropping. Use only two or three major value planes so the silhouette survives at exact 24, 32, 48, and 96 CSS pixels.
+Lighting/mood: warm northwest/top-left key light at about 35 degrees elevation, cool blue-green ambient shadow, consistent across hull and sails. No disconnected cast shadow.
+Output requirements: one isolated ship only on a genuinely transparent RGBA background. Transparent pixels must be truly transparent, never a checkerboard, white/gray plate, pale matte, or halo. Straight clean alpha with no baked background. No water, terrain, wake, foam, contact shadow, icon ring, selection state, UI, text, letters, numbers, signature, logo, watermark, people, animals, smoke, fire, flag, pennant, coat of arms, cross, skull, bones, or gameplay modifier. Do not add another boat or loose object.
+Recovery requirement after a rejected alpha result: create a genuinely new Pirate frigate variant, not an edit of the rejected image. Transparency is load-bearing. The canvas outside the connected ship silhouette must contain actual alpha-zero pixels at the file level. Do not visualize transparency with any checkerboard, gradient, vignette, glow, shadow, color field, or black backdrop.
+```
+
+## ship-spanish-sloop-runtime-alpha-edit
+
+```text
+Use case: background-extraction
+Asset type: transparent production world-map ship token
+Input images: Image 1 is the sole edit target, the accepted Spanish sloop concept.
+Primary request: remove the entire dark brown and black vignette, glow, and background outside the Spanish sloop and replace it with genuine transparent alpha.
+Constraints: preserve the complete Spanish sloop exactly—its narrow hull, single mast, bowsprit, cream sails, red-and-ochre diagonal lattice, tiered curved stern, rigging, northwest lighting, camera, proportions, color, internal shadows, edges, and composition. Keep every connected ship pixel and remove every disconnected backdrop pixel. Return a clean isolated RGBA cutout with at least fully transparent and fully opaque pixels. No checkerboard, white or gray matte, colored halo, terrain, water, wake, contact shadow, new object, crop, restyle, text, signature, logo, or watermark.
+```

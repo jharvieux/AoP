@@ -32,11 +32,16 @@ EXPECTED_PROOFS = {
     "proofs/matte-stress/matte-stress-512-page-1.webp": (1120, 2232),
     "proofs/matte-stress/matte-stress-512-page-2.webp": (1120, 2232),
     "proofs/matte-stress/matte-stress-512-page-3.webp": (1120, 2232),
-    "proofs/matte-stress/matte-stress-512-page-4.webp": (1120, 558),
-    "proofs/matte-stress/matte-stress-96-all.webp": (1092, 568),
-    "proofs/matte-stress/matte-full-footprint-96-all.webp": (590, 2424),
+    "proofs/matte-stress/matte-stress-512-page-4.webp": (1120, 2232),
+    "proofs/matte-stress/matte-stress-512-page-5.webp": (1120, 2232),
+    "proofs/matte-stress/matte-stress-512-page-6.webp": (1120, 1674),
+    "proofs/matte-stress/matte-stress-96-all.webp": (1092, 852),
+    "proofs/matte-stress/matte-full-footprint-96-all.webp": (590, 4296),
     "proofs/matte-stress/faction-marker-24-color-grayscale.webp": (850, 310),
     "proofs/matte-stress/runtime-public-contact-sheet-23.webp": (1024, 2992),
+    "proofs/matte-stress/runtime-public-contact-sheet-41.webp": (1024, 5008),
+    "proofs/matte-stress/ship-fleet-runtime-contact-sheet-20.webp": (1600, 3180),
+    "proofs/matte-stress/ship-fleet-alpha-stress-96-all.webp": (606, 2116),
 }
 MATTE_REQUIRED_IDS = {
     "ship:british:sloop",
@@ -54,6 +59,12 @@ CONTAMINATION_REQUIRED_IDS = {
 }
 RUNTIME_SIZES = [24, 32, 48, 96]
 FACTIONS = ["british", "dutch", "french", "pirates", "spanish"]
+SHIP_CLASSES = ["sloop", "brigantine", "frigate", "galleon"]
+FLEET_IDS = [
+    f"ship:{faction}:{ship_class}" for faction in FACTIONS for ship_class in SHIP_CLASSES
+]
+REUSED_SHIP_IDS = {"ship:british:sloop", "ship:pirates:galleon"}
+GENERATED_SHIP_IDS = set(FLEET_IDS) - REUSED_SHIP_IDS
 IMAGE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
 UNRETAINED_ORIGINALS = {
     "encounter:natives": {
@@ -67,6 +78,7 @@ UNRETAINED_ORIGINALS = {
         "alpha_bbox": [172, 111, 1086, 1090],
     },
 }
+SEA_ADDITION_IDS = set(UNRETAINED_ORIGINALS)
 
 
 def fail(message: str) -> None:
@@ -84,15 +96,23 @@ def check_file_budget(path: Path, byte_limit: int, role: str) -> None:
         fail(f"{role}: {path} is {path.stat().st_size} bytes, exceeds {byte_limit}")
 
 
-def load_polish_module():
-    path = ROOT / "tools" / "polish_runtime_sources.py"
-    spec = importlib.util.spec_from_file_location("aop_map_polish", path)
+def load_tool_module(filename: str, module_name: str):
+    path = ROOT / "tools" / filename
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        fail("could not load polish_runtime_sources.py")
+        fail(f"could not load {filename}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def load_polish_module():
+    return load_tool_module("polish_runtime_sources.py", "aop_map_polish")
+
+
+def load_ship_fleet_module():
+    return load_tool_module("ship_fleet.py", "aop_ship_fleet")
 
 
 def check_rgba(path: Path, size: tuple[int, int], byte_limit: int) -> Image.Image:
@@ -120,7 +140,7 @@ def check_metadata(additions: dict[str, object]) -> None:
     if additions.get("interface_seed_exposed") is not False:
         fail("runtime-additions must record seed as unavailable")
     if additions.get("generation_inputs") != []:
-        fail("runtime additions must truthfully record that no image was attached to generation")
+        fail("top-level sea-replacement provenance must record that no image was attached")
     reference = additions.get("reviewed_reference", {})
     if not isinstance(reference, dict):
         fail("runtime additions lack reviewed-reference provenance")
@@ -139,9 +159,63 @@ def check_metadata(additions: dict[str, object]) -> None:
     if normalization.get("tool") != "tools/polish_runtime_sources.py --normalize-retained-sources":
         fail("retained-source normalization tool is not reproducibly identified")
 
+    fleet = additions.get("ship_fleet", {})
+    ship_tool = load_ship_fleet_module()
+    expected_fleet_metadata = {
+        "identity_count": 20,
+        "generated_count": 18,
+        "reused_count": 2,
+        "factions": FACTIONS,
+        "classes": SHIP_CLASSES,
+        "generation_service": "OpenAI built-in image generator in Codex",
+        "generation_tool": "image_gen.imagegen",
+        "generation_date": "2026-09-04",
+        "model": None,
+        "seed": None,
+        "interface_model_exposed": False,
+        "interface_seed_exposed": False,
+    }
+    if not isinstance(fleet, dict):
+        fail("runtime additions lack 20-ship fleet provenance")
+    for key, expected in expected_fleet_metadata.items():
+        if fleet.get(key) != expected:
+            fail(f"ship fleet {key} provenance drifted")
+    if fleet.get("generation_inputs") != ship_tool.REFERENCE_INPUTS:
+        fail("ship fleet input-reference roles or hashes drifted")
+    for reference in fleet["generation_inputs"]:
+        path = ROOT / str(reference["path"])
+        if not path.is_file() or sha256(path) != reference["sha256"] or not reference.get("role"):
+            fail(f"ship fleet input reference is missing or drifted: {path}")
+    fleet_normalization = fleet.get("normalization", {})
+    if not isinstance(fleet_normalization, dict):
+        fail("ship fleet normalization provenance is missing")
+    if (
+        fleet_normalization.get("tool") != "tools/ship_fleet.py --normalize-sources"
+        or fleet_normalization.get("hard_ceiling_bytes") != SOURCE_LIMIT
+        or not fleet_normalization.get("operation")
+    ):
+        fail("ship fleet normalization provenance drifted")
+    if not fleet.get("usage_license_basis"):
+        fail("ship fleet usage/license basis is missing")
+    if fleet.get("rejections") != ship_tool.rejection_rows():
+        fail("ship fleet rejected-output provenance drifted")
+    for rejection in fleet["rejections"]:
+        if rejection.get("retained") is not False or not rejection.get("reason"):
+            fail(f"{rejection.get('id')}: rejected output is not explicitly unretained")
+        if rejection.get("bytes", 0) <= SOURCE_LIMIT or len(str(rejection.get("sha256", ""))) != 64:
+            fail(f"{rejection.get('id')}: rejected output hash/byte record is malformed")
+
     assets = additions.get("assets", [])
-    if not isinstance(assets, list) or {asset.get("id") for asset in assets} != set(UNRETAINED_ORIGINALS):
-        fail("runtime additions must map exactly the two generated sea replacements")
+    expected_addition_ids = SEA_ADDITION_IDS | GENERATED_SHIP_IDS
+    if not isinstance(assets, list):
+        fail("runtime additions assets must be a list")
+    asset_ids = [asset.get("id") for asset in assets]
+    if set(asset_ids) != expected_addition_ids or len(asset_ids) != len(expected_addition_ids):
+        fail("runtime additions must map exactly two sea replacements and 18 generated ships")
+    if asset_ids[:2] != ["encounter:natives", "encounter:settlers"] or asset_ids[2:] != ship_tool.generated_ids():
+        fail("runtime additions ordering drifted from the deterministic two-sea-plus-fleet build")
+
+    prompts = PROMPTS.read_text()
     for asset in assets:
         asset_id = str(asset["id"])
         if "raw_file" in asset or "raw_sha256" in asset:
@@ -164,22 +238,103 @@ def check_metadata(additions: dict[str, object]) -> None:
         if list(bbox) != asset.get("retained_alpha_bbox"):
             fail(f"{asset_id}: retained normalized alpha bounds drifted")
 
+        rgba = np.asarray(image.convert("RGBA"))
+        if np.any(rgba[rgba[:, :, 3] == 0, :3] != 0):
+            fail(f"{asset_id}: transparent retained-source pixels contain RGB matte residue")
+
         original = asset.get("unretained_original", {})
-        expected = UNRETAINED_ORIGINALS[asset_id]
         if not isinstance(original, dict) or original.get("retained") is not False:
             fail(f"{asset_id}: original byte stream must be truthfully marked unretained")
-        if original.get("sha256") != expected["sha256"] or original.get("bytes") != expected["bytes"]:
-            fail(f"{asset_id}: original unretained hash/byte provenance drifted")
-        if (
-            original.get("dimensions") != [1254, 1254]
-            or original.get("mode") != "RGBA"
-            or original.get("alpha_bbox_at_threshold_8") != expected["alpha_bbox"]
-            or original.get("capture_path") != asset.get("retained_source_file")
-            or not original.get("disposition")
-        ):
-            fail(f"{asset_id}: original unretained capture metadata drifted")
         if original.get("sha256") == asset.get("retained_source_sha256"):
             fail(f"{asset_id}: retained and original-unretained hashes are ambiguously identical")
+
+        if asset_id in SEA_ADDITION_IDS:
+            expected = UNRETAINED_ORIGINALS[asset_id]
+            if original.get("sha256") != expected["sha256"] or original.get("bytes") != expected["bytes"]:
+                fail(f"{asset_id}: original unretained hash/byte provenance drifted")
+            if (
+                original.get("dimensions") != [1254, 1254]
+                or original.get("mode") != "RGBA"
+                or original.get("alpha_bbox_at_threshold_8") != expected["alpha_bbox"]
+                or original.get("capture_path") != asset.get("retained_source_file")
+                or not original.get("disposition")
+            ):
+                fail(f"{asset_id}: original unretained capture metadata drifted")
+            continue
+
+        _, faction, ship_class = asset_id.split(":")
+        prompt_section, request_kind, exact_prompt = ship_tool.selected_prompt(asset_id)
+        expected_prompt_key = f"ship-{faction}-{ship_class}-runtime"
+        if (
+            asset.get("category") != "ships"
+            or asset.get("faction") != faction
+            or asset.get("ship_class") != ship_class
+            or asset.get("prompt_key") != expected_prompt_key
+            or asset.get("selected_prompt_section") != prompt_section
+            or asset.get("selected_prompt_sha256")
+            != hashlib.sha256(exact_prompt.encode()).hexdigest()
+        ):
+            fail(f"{asset_id}: identity or exact selected-prompt binding drifted")
+        if f"## {expected_prompt_key}\n\n```text\n{ship_tool.exact_prompt(asset_id)}\n```" not in prompts:
+            fail(f"{asset_id}: exact distinct concept-call prompt is missing")
+        if f"## {prompt_section}\n\n```text\n{exact_prompt}\n```" not in prompts:
+            fail(f"{asset_id}: exact selected-output prompt is missing")
+
+        generation = asset.get("generation", {})
+        if not isinstance(generation, dict):
+            fail(f"{asset_id}: generation receipt is missing")
+        if (
+            generation.get("service") != expected_fleet_metadata["generation_service"]
+            or generation.get("tool") != expected_fleet_metadata["generation_tool"]
+            or generation.get("date") != expected_fleet_metadata["generation_date"]
+            or generation.get("request_kind") != request_kind
+            or generation.get("model") is not None
+            or generation.get("seed") is not None
+            or generation.get("interface_model_exposed") is not False
+            or generation.get("interface_seed_exposed") is not False
+            or generation.get("input_references") != fleet["generation_inputs"]
+        ):
+            fail(f"{asset_id}: per-call generation provenance drifted")
+
+        if (
+            asset.get("public_path") != ship_tool.public_path(asset_id)
+            or asset.get("url") != "/" + str(asset["public_path"]).removeprefix("apps/web/public/")
+        ):
+            fail(f"{asset_id}: public ship path drifted")
+        if list(image.size) != [512, 512] or bbox is None or bbox[3] != 448:
+            fail(f"{asset_id}: source canvas or shared optical baseline drifted")
+        if asset.get("subject_max_dimension") not in (384, 368, 352, 336, 320):
+            fail(f"{asset_id}: normalized subject size is not an allowed deterministic step")
+        expected_alpha_source = (
+            "deterministic neutral-checkerboard recovery from selected built-in output"
+            if asset_id in ship_tool.CHECKERBOARD_RECOVERY_IDS
+            else "native full-range RGBA from built-in output"
+        )
+        if asset.get("alpha_source") != expected_alpha_source:
+            fail(f"{asset_id}: alpha-source truth drifted")
+        if (
+            original.get("project_bound_path") != asset.get("retained_source_file")
+            or original.get("bytes", 0) <= SOURCE_LIMIT
+            or len(str(original.get("sha256", ""))) != 64
+            or not original.get("capture_path")
+            or not original.get("dimensions")
+            or original.get("mode") not in ("RGB", "RGBA")
+            or not original.get("disposition")
+        ):
+            fail(f"{asset_id}: original generated-byte provenance is incomplete")
+        expected_capture = f"{ship_tool.GENERATION_ROOT}/{ship_tool.CAPTURE_PATHS[asset_id]}"
+        if original.get("capture_path") != expected_capture:
+            fail(f"{asset_id}: selected generated capture path drifted")
+
+    generated_assets = [asset for asset in assets if asset.get("id") in GENERATED_SHIP_IDS]
+    raw_hashes = [str(asset["unretained_original"]["sha256"]) for asset in generated_assets]
+    capture_paths = [str(asset["unretained_original"]["capture_path"]) for asset in generated_assets]
+    base_prompt_hashes = [
+        hashlib.sha256(ship_tool.exact_prompt(str(asset["id"])).encode()).hexdigest()
+        for asset in generated_assets
+    ]
+    if len(set(raw_hashes)) != 18 or len(set(capture_paths)) != 18 or len(set(base_prompt_hashes)) != 18:
+        fail("the 18 generated ships do not have distinct raw captures and concept prompts")
 
 
 def check_contamination_witnesses(
@@ -210,20 +365,23 @@ def check_runtime_sheet_coverage(
     row: dict[str, object],
     ids: list[str],
     polish_by_id: dict[str, dict[str, object]],
+    *,
+    expected_kind: str,
+    label: str,
 ) -> None:
-    if row.get("kind") != "runtime-public-contact-sheet":
-        fail("runtime contact sheet is not marked as production/public evidence")
+    if row.get("kind") != expected_kind:
+        fail(f"{label} contact sheet has kind {row.get('kind')!r}, expected {expected_kind!r}")
     if row.get("identity_ids") != ids:
-        fail("runtime contact sheet does not cover all 23 shipping identities in registry order")
+        fail(f"{label} contact sheet does not cover its complete identity set in registry order")
     if row.get("sizes_css_px") != RUNTIME_SIZES:
-        fail("runtime contact sheet must show exact 24/32/48/96 CSS pixel sizes")
+        fail(f"{label} contact sheet must show exact 24/32/48/96 CSS pixel sizes")
     if row.get("grayscale_factions") != FACTIONS:
-        fail("runtime contact sheet lacks the five-faction grayscale comparison")
+        fail(f"{label} contact sheet lacks the five-faction grayscale comparison")
     if row.get("public_binding") != "runtime-public-receipt.json byte identity":
-        fail("runtime contact sheet lacks an explicit public-receipt byte binding")
+        fail(f"{label} contact sheet lacks an explicit public-receipt byte binding")
     runtime_inputs = row.get("runtime_inputs", [])
     if not isinstance(runtime_inputs, list) or [item.get("id") for item in runtime_inputs] != ids:
-        fail("runtime contact sheet input list is not the complete shipping identity set")
+        fail(f"{label} contact sheet input list is not the complete shipping identity set")
     for item in runtime_inputs:
         asset_id = str(item["id"])
         source = ROOT / str(item.get("source", ""))
@@ -231,6 +389,43 @@ def check_runtime_sheet_coverage(
             fail(f"{asset_id}: runtime contact sheet used a non-shipping source")
         if item.get("sha256") != sha256(source):
             fail(f"{asset_id}: runtime contact-sheet input hash drifted")
+
+
+def check_ship_fleet_sheet_coverage(
+    row: dict[str, object], polish_by_id: dict[str, dict[str, object]]
+) -> None:
+    if row.get("kind") != "ship-fleet-runtime-contact-sheet":
+        fail("20-ship sheet is not marked as production/runtime evidence")
+    if row.get("identity_ids") != FLEET_IDS:
+        fail("20-ship sheet lacks the exact five-faction by four-class matrix")
+    if row.get("sizes_css_px") != RUNTIME_SIZES:
+        fail("20-ship sheet must show every identity at exact 24/32/48/96 CSS pixels")
+    if row.get("grayscale_identity_ids") != FLEET_IDS:
+        fail("20-ship sheet lacks the complete all-faction/class grayscale comparison")
+    if row.get("public_binding") != "runtime-public-receipt.json byte identity":
+        fail("20-ship sheet lacks an explicit public-receipt byte binding")
+    runtime_inputs = row.get("runtime_inputs", [])
+    if not isinstance(runtime_inputs, list) or [item.get("id") for item in runtime_inputs] != FLEET_IDS:
+        fail("20-ship sheet input list is incomplete or out of matrix order")
+    for item in runtime_inputs:
+        asset_id = str(item["id"])
+        source = ROOT / str(item.get("source", ""))
+        if source != ROOT / str(polish_by_id[asset_id]["output_256"]):
+            fail(f"{asset_id}: 20-ship sheet used a non-shipping source")
+        if item.get("sha256") != sha256(source):
+            fail(f"{asset_id}: 20-ship sheet input hash drifted")
+
+
+def check_ship_stress_coverage(row: dict[str, object]) -> None:
+    ids = row.get("identity_ids", [])
+    if row.get("kind") != "ship-fleet-alpha-stress-96":
+        fail("ship alpha-stress proof kind drifted")
+    if not isinstance(ids, list) or set(ids) != set(FLEET_IDS) or len(ids) != len(FLEET_IDS):
+        fail("ship alpha-stress proof does not cover all 20 distinct ships")
+    if row.get("size_css_px") != 96:
+        fail("ship alpha-stress proof must use exact 96 CSS px tokens")
+    if row.get("background_modes") != ["representative", "dark", "magenta", "cyan"]:
+        fail("ship alpha-stress proof lacks water/dark/magenta/cyan fields")
 
 
 def check_referenced_image_census(
@@ -297,7 +492,7 @@ def run_negative_controls() -> None:
         ),
     )
 
-    ids = [f"identity:{index}" for index in range(23)]
+    ids = [f"identity:{index}" for index in range(41)]
     fake_rows = {
         asset_id: {"output_256": f"sources/runtime/{index}.webp"}
         for index, asset_id in enumerate(ids)
@@ -315,9 +510,45 @@ def run_negative_controls() -> None:
             },
             ids,
             fake_rows,
+            expected_kind="runtime-public-contact-sheet",
+            label="shipping-41",
         ),
     )
-    print("PASS: negative controls reject oversized images, nonzero witnesses, and incomplete runtime sheets")
+    expect_negative_control(
+        "checkpoint-only sheet cannot satisfy runtime evidence",
+        lambda: check_runtime_sheet_coverage(
+            {
+                "kind": "legacy-runtime-public-contact-sheet",
+                "identity_ids": ids,
+                "sizes_css_px": RUNTIME_SIZES,
+                "grayscale_factions": FACTIONS,
+                "public_binding": "runtime-public-receipt.json byte identity",
+                "runtime_inputs": [],
+            },
+            ids,
+            fake_rows,
+            expected_kind="runtime-public-contact-sheet",
+            label="shipping-41",
+        ),
+    )
+    expect_negative_control(
+        "incomplete ship-fleet matrix",
+        lambda: check_ship_fleet_sheet_coverage(
+            {
+                "kind": "ship-fleet-runtime-contact-sheet",
+                "identity_ids": FLEET_IDS[:-1],
+                "sizes_css_px": RUNTIME_SIZES,
+                "grayscale_identity_ids": FLEET_IDS,
+                "public_binding": "runtime-public-receipt.json byte identity",
+                "runtime_inputs": [],
+            },
+            {},
+        ),
+    )
+    print(
+        "PASS: negative controls reject oversized images, nonzero witnesses, incomplete "
+        "runtime sheets, checkpoint-only evidence, and incomplete ship matrices"
+    )
 
 
 def main() -> None:
@@ -326,8 +557,13 @@ def main() -> None:
     check_metadata(additions)
     assets = [*registry["assets"], *additions["assets"]]
     ids = [asset["id"] for asset in assets]
-    if len(ids) != 23 or len(set(ids)) != 23:
-        fail(f"expected 23 distinct runtime identities, found {len(ids)}/{len(set(ids))}")
+    if len(registry["assets"]) != 21 or len(additions["assets"]) != 20:
+        fail("runtime family must retain 21 checkpoint assets plus 20 runtime additions")
+    if len(ids) != 41 or len(set(ids)) != 41:
+        fail(f"expected 41 distinct runtime identities, found {len(ids)}/{len(set(ids))}")
+    ship_ids = [asset_id for asset_id in ids if asset_id.startswith("ship:")]
+    if set(ship_ids) != set(FLEET_IDS) or len(ship_ids) != len(FLEET_IDS):
+        fail("runtime family does not contain exactly all five factions by four ship classes")
 
     prompts = PROMPTS.read_text()
     for asset in additions["assets"]:
@@ -339,11 +575,14 @@ def main() -> None:
             fail(f"{asset['id']}: retained generated source is not genuine full-range RGBA")
 
     polish_receipt = json.loads(POLISH_RECEIPT.read_text())
-    if polish_receipt.get("schema") != 2:
-        fail("polish receipt must use semantic-witness schema 2")
+    if polish_receipt.get("schema") != 3:
+        fail("polish receipt must use expanded-fleet schema 3")
     polish_rows = polish_receipt.get("assets", [])
     polish_by_id = {row["id"]: row for row in polish_rows}
-    public_rows = json.loads(PUBLIC_RECEIPT.read_text()).get("assets", [])
+    public_receipt = json.loads(PUBLIC_RECEIPT.read_text())
+    if public_receipt.get("schema") != 1:
+        fail("public receipt schema drifted")
+    public_rows = public_receipt.get("assets", [])
     public_by_id = {row["id"]: row for row in public_rows}
     if set(polish_by_id) != set(ids) or len(polish_rows) != len(ids):
         fail("polish receipt does not map exactly one row to every runtime identity")
@@ -425,8 +664,28 @@ def main() -> None:
             fail(f"{relative}: differs from polish receipt")
         if proof_by_path[relative]["bytes"] != path.stat().st_size:
             fail(f"{relative}: byte receipt drifted")
-    runtime_sheet = proof_by_path["proofs/matte-stress/runtime-public-contact-sheet-23.webp"]
-    check_runtime_sheet_coverage(runtime_sheet, ids, polish_by_id)
+    legacy_ids = ids[:23]
+    check_runtime_sheet_coverage(
+        proof_by_path["proofs/matte-stress/runtime-public-contact-sheet-23.webp"],
+        legacy_ids,
+        polish_by_id,
+        expected_kind="legacy-runtime-public-contact-sheet",
+        label="legacy-23",
+    )
+    check_runtime_sheet_coverage(
+        proof_by_path["proofs/matte-stress/runtime-public-contact-sheet-41.webp"],
+        ids,
+        polish_by_id,
+        expected_kind="runtime-public-contact-sheet",
+        label="shipping-41",
+    )
+    check_ship_fleet_sheet_coverage(
+        proof_by_path["proofs/matte-stress/ship-fleet-runtime-contact-sheet-20.webp"],
+        polish_by_id,
+    )
+    check_ship_stress_coverage(
+        proof_by_path["proofs/matte-stress/ship-fleet-alpha-stress-96-all.webp"]
+    )
 
     image_count = check_referenced_image_census(registry, additions, public_rows)
 
@@ -438,9 +697,10 @@ def main() -> None:
         *[f"art/sites/{name}.webp" for name in ("mine", "sawmill", "lumber-camp", "ruins")],
         *[f"art/parties/{name}.webp" for name in ("british", "dutch", "french", "pirates", "spanish")],
         *[f"art/factions/{name}/flag.png" for name in ("british", "dutch", "french", "pirates", "spanish")],
-        "art/factions/british/ship_sloop.webp",
-        "art/factions/pirates/ship_galleon_v2.webp",
-        *[f"art/factions/{name}/ship.png" for name in ("dutch", "french", "spanish")],
+        *[
+            str(public_by_id[asset_id]["public_path"]).removeprefix("apps/web/public/")
+            for asset_id in FLEET_IDS
+        ],
     ]
     critical_bytes = sum((REPO / "apps" / "web" / "public" / url).stat().st_size for url in critical_urls)
     if critical_bytes > CRITICAL_LIMIT:
@@ -451,9 +711,9 @@ def main() -> None:
         [sys.executable, str(ROOT / "tools" / "polish_runtime_sources.py"), "--check"], check=True
     )
     print(
-        f"PASS: 23 runtime identities, real alpha/matte/privacy sentinels, public copies, proofs, "
-        f"and {image_count} committed/referenced image budgets; runtime={runtime_total} bytes "
-        f"critical={critical_bytes} bytes"
+        f"PASS: 41 runtime identities including all 20 faction/class ships, real alpha/matte/"
+        f"privacy sentinels, public copies, expanded runtime proofs, and {image_count} committed/"
+        f"referenced image budgets; runtime={runtime_total} bytes critical={critical_bytes} bytes"
     )
 
 

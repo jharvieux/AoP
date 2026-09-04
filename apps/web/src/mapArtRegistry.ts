@@ -11,11 +11,6 @@ import {
   tileContentId,
 } from './mapSprites'
 
-function requiredDefaultUrl(url: string | undefined, identity: string): string {
-  if (!url) throw new Error(`Missing default map art URL for ${identity}`)
-  return url
-}
-
 /**
  * Default world-map art is centralized here so URL completeness and fog-safe
  * preload selection can be tested without initializing Pixi.
@@ -51,23 +46,49 @@ export const mapArtRegistry = {
     lumberCamp: '/art/sites/lumber-camp.webp',
     ruins: '/art/sites/ruins.webp',
   },
-  generatedShips: {
-    'british:sloop': requiredDefaultUrl(FACTIONS.british.shipSpriteUrl, 'ship:british:sloop'),
-    'pirates:galleon': requiredDefaultUrl(
-      FACTIONS.pirates.shipSpriteUrlsByClass?.galleon,
-      'ship:pirates:galleon',
-    ),
+  ships: {
+    british: {
+      sloop: '/art/factions/british/ship_sloop.webp',
+      brigantine: '/art/factions/british/ship_brigantine_v2.webp',
+      frigate: '/art/factions/british/ship_frigate_v2.webp',
+      galleon: '/art/factions/british/ship_galleon_v2.webp',
+    },
+    dutch: {
+      sloop: '/art/factions/dutch/ship_sloop_v2.webp',
+      brigantine: '/art/factions/dutch/ship_brigantine_v2.webp',
+      frigate: '/art/factions/dutch/ship_frigate_v2.webp',
+      galleon: '/art/factions/dutch/ship_galleon_v2.webp',
+    },
+    french: {
+      sloop: '/art/factions/french/ship_sloop_v2.webp',
+      brigantine: '/art/factions/french/ship_brigantine_v2.webp',
+      frigate: '/art/factions/french/ship_frigate_v2.webp',
+      galleon: '/art/factions/french/ship_galleon_v2.webp',
+    },
+    pirates: {
+      sloop: '/art/factions/pirates/ship_sloop_v2.webp',
+      brigantine: '/art/factions/pirates/ship_brigantine_v2.webp',
+      frigate: '/art/factions/pirates/ship_frigate_v2.webp',
+      galleon: '/art/factions/pirates/ship_galleon_v2.webp',
+    },
+    spanish: {
+      sloop: '/art/factions/spanish/ship_sloop_v2.webp',
+      brigantine: '/art/factions/spanish/ship_brigantine_v2.webp',
+      frigate: '/art/factions/spanish/ship_frigate_v2.webp',
+      galleon: '/art/factions/spanish/ship_galleon_v2.webp',
+    },
   },
   parties: {
-    british: FACTIONS.british.partySpriteUrl,
-    dutch: FACTIONS.dutch.partySpriteUrl,
-    french: FACTIONS.french.partySpriteUrl,
-    pirates: FACTIONS.pirates.partySpriteUrl,
-    spanish: FACTIONS.spanish.partySpriteUrl,
+    british: '/art/parties/british.webp',
+    dutch: '/art/parties/dutch.webp',
+    french: '/art/parties/french.webp',
+    pirates: '/art/parties/pirates.webp',
+    spanish: '/art/parties/spanish.webp',
   },
 } as const
 
 export type CityArtIdentity = FactionId | 'neutral'
+export type MapShipClass = 'sloop' | 'brigantine' | 'frigate' | 'galleon'
 
 export interface MapArtRequest {
   contentId: string
@@ -120,9 +141,23 @@ function cityIdentity(scene: MapArtScene, ownerId: string): CityArtIdentity {
   return scene.cityFactionOf(ownerId) ?? 'neutral'
 }
 
-function shipDefaultUrl(factionId: FactionId, shipClassId: string): string | undefined {
-  const faction = FACTIONS[factionId]
-  return faction.shipSpriteUrlsByClass?.[shipClassId] ?? faction.shipSpriteUrl
+export function mapShipDefaultUrl(factionId: FactionId, shipClassId: string): string | undefined {
+  return (mapArtRegistry.ships[factionId] as Readonly<Record<string, string>>)[shipClassId]
+}
+
+export function resolveMapShipUrl(
+  spriteUrl: (contentId: string) => string | undefined,
+  factionId: FactionId,
+  shipClassId: string,
+): string | undefined {
+  return resolveSpriteUrl(spriteUrl, shipClassId, mapShipDefaultUrl(factionId, shipClassId))
+}
+
+export function resolveMapPartyUrl(
+  spriteUrl: (contentId: string) => string | undefined,
+  factionId: FactionId,
+): string | undefined {
+  return resolveSpriteUrl(spriteUrl, partyContentId(factionId), mapArtRegistry.parties[factionId])
 }
 
 /**
@@ -174,7 +209,10 @@ export function mapArtPreloadRequests(scene: MapArtScene): MapArtRequest[] {
     if ((!own && !scene.visibleKeys.has(positionKey(captain.position))) || captain.shipLost)
       continue
     const factionId = scene.factionOf(captain.ownerId)
-    add(captain.shipClassId, shipDefaultUrl(factionId, captain.shipClassId))
+    const url = resolveMapShipUrl(scene.spriteUrl, factionId, captain.shipClassId)
+    if (url && !requests.has(url)) {
+      requests.set(url, { contentId: captain.shipClassId, url })
+    }
     addFactionFlag(factionId)
   }
 
@@ -182,7 +220,9 @@ export function mapArtPreloadRequests(scene: MapArtScene): MapArtRequest[] {
     const own = party.ownerId === scene.viewerId
     if (!own && !scene.visibleKeys.has(positionKey(party.position))) continue
     const factionId = scene.factionOf(party.ownerId)
-    add(partyContentId(factionId), FACTIONS[factionId].partySpriteUrl)
+    const contentId = partyContentId(factionId)
+    const url = resolveMapPartyUrl(scene.spriteUrl, factionId)
+    if (url && !requests.has(url)) requests.set(url, { contentId, url })
     addFactionFlag(factionId)
   }
 
@@ -217,15 +257,10 @@ export function mapArtDefaultUrls(): string[] {
   addRecord(mapArtRegistry.seaEncounters)
   addRecord(mapArtRegistry.landEncounters)
   addRecord(mapArtRegistry.landSites)
-  addRecord(mapArtRegistry.generatedShips)
+  for (const factionShips of Object.values(mapArtRegistry.ships)) addRecord(factionShips)
   addRecord(mapArtRegistry.parties)
   for (const faction of Object.values(FACTIONS)) {
     urls.add(faction.flagSpriteUrl)
-    urls.add(faction.partySpriteUrl)
-    if (faction.shipSpriteUrl) urls.add(faction.shipSpriteUrl)
-    for (const url of Object.values(faction.shipSpriteUrlsByClass ?? {})) {
-      if (url) urls.add(url)
-    }
   }
   return [...urls].sort()
 }

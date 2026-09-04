@@ -37,7 +37,13 @@ import {
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { fleetCaptains } from './fleetVisibility'
 import { Minimap } from './Minimap'
-import { mapArtPreloadRequests, mapArtRegistry, unsettledMapArtUrls } from './mapArtRegistry'
+import {
+  mapArtPreloadRequests,
+  mapArtRegistry,
+  resolveMapPartyUrl,
+  resolveMapShipUrl,
+  unsettledMapArtUrls,
+} from './mapArtRegistry'
 import {
   cityContentId,
   encounterContentId,
@@ -45,7 +51,6 @@ import {
   factionMarkerPattern,
   fitSpriteDimensions,
   landSiteContentId,
-  partyContentId,
   resolveSpriteUrl,
   tileContentId,
 } from './mapSprites'
@@ -1383,15 +1388,13 @@ export function MapCanvas(props: MapCanvasProps) {
         const cy = center.y
         const faction = FACTIONS[factionOf(cap.ownerId)]
         const factionId = faction.id
-        const defaultShipSpriteUrl =
-          faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
         // Ship overrides are keyed by ship class id, same content id the Theme
         // Packs editor already uses for ship name/sprite overrides — not
         // faction-specific, since ThemePack has no per-faction ship art slot.
-        const shipSpriteUrl = resolveSpriteUrl(
+        const shipSpriteUrl = resolveMapShipUrl(
           themeSpriteUrlRef.current,
+          factionId,
           cap.shipClassId,
-          defaultShipSpriteUrl,
         )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
         // Anchored (#498): this captain is ashore leading a landing party —
@@ -1463,11 +1466,7 @@ export function MapCanvas(props: MapCanvasProps) {
         const partyFactionId = factionOf(party.ownerId)
         const partyFaction = FACTIONS[partyFactionId]
         drawFactionMarker(`party:${party.id}`, pc, partyFactionId)
-        const partySpriteUrl = resolveSpriteUrl(
-          themeSpriteUrlRef.current,
-          partyContentId(partyFactionId),
-          partyFaction?.partySpriteUrl,
-        )
+        const partySpriteUrl = resolveMapPartyUrl(themeSpriteUrlRef.current, partyFactionId)
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
         if (texture) {
           const sprite = partyPool.get(party.id)

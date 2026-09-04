@@ -184,6 +184,150 @@
       "url": "/art/encounters/settlers-v2.webp",
       "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb",
       "bytes": 20062
+    },
+    {
+      "id": "ship:british:brigantine",
+      "source": "sources/runtime/ship-british-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_brigantine_v2.webp",
+      "url": "/art/factions/british/ship_brigantine_v2.webp",
+      "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490",
+      "bytes": 14960
+    },
+    {
+      "id": "ship:british:frigate",
+      "source": "sources/runtime/ship-british-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_frigate_v2.webp",
+      "url": "/art/factions/british/ship_frigate_v2.webp",
+      "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c",
+      "bytes": 14140
+    },
+    {
+      "id": "ship:british:galleon",
+      "source": "sources/runtime/ship-british-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_galleon_v2.webp",
+      "url": "/art/factions/british/ship_galleon_v2.webp",
+      "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723",
+      "bytes": 15502
+    },
+    {
+      "id": "ship:dutch:sloop",
+      "source": "sources/runtime/ship-dutch-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_sloop_v2.webp",
+      "url": "/art/factions/dutch/ship_sloop_v2.webp",
+      "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de",
+      "bytes": 12402
+    },
+    {
+      "id": "ship:dutch:brigantine",
+      "source": "sources/runtime/ship-dutch-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_brigantine_v2.webp",
+      "url": "/art/factions/dutch/ship_brigantine_v2.webp",
+      "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79",
+      "bytes": 16866
+    },
+    {
+      "id": "ship:dutch:frigate",
+      "source": "sources/runtime/ship-dutch-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_frigate_v2.webp",
+      "url": "/art/factions/dutch/ship_frigate_v2.webp",
+      "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e",
+      "bytes": 15072
+    },
+    {
+      "id": "ship:dutch:galleon",
+      "source": "sources/runtime/ship-dutch-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_galleon_v2.webp",
+      "url": "/art/factions/dutch/ship_galleon_v2.webp",
+      "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2",
+      "bytes": 15734
+    },
+    {
+      "id": "ship:french:sloop",
+      "source": "sources/runtime/ship-french-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_sloop_v2.webp",
+      "url": "/art/factions/french/ship_sloop_v2.webp",
+      "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c",
+      "bytes": 10748
+    },
+    {
+      "id": "ship:french:brigantine",
+      "source": "sources/runtime/ship-french-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_brigantine_v2.webp",
+      "url": "/art/factions/french/ship_brigantine_v2.webp",
+      "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306",
+      "bytes": 14868
+    },
+    {
+      "id": "ship:french:frigate",
+      "source": "sources/runtime/ship-french-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_frigate_v2.webp",
+      "url": "/art/factions/french/ship_frigate_v2.webp",
+      "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf",
+      "bytes": 12904
+    },
+    {
+      "id": "ship:french:galleon",
+      "source": "sources/runtime/ship-french-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_galleon_v2.webp",
+      "url": "/art/factions/french/ship_galleon_v2.webp",
+      "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b",
+      "bytes": 14852
+    },
+    {
+      "id": "ship:pirates:sloop",
+      "source": "sources/runtime/ship-pirates-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+      "url": "/art/factions/pirates/ship_sloop_v2.webp",
+      "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a",
+      "bytes": 10808
+    },
+    {
+      "id": "ship:pirates:brigantine",
+      "source": "sources/runtime/ship-pirates-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_brigantine_v2.webp",
+      "url": "/art/factions/pirates/ship_brigantine_v2.webp",
+      "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193",
+      "bytes": 16568
+    },
+    {
+      "id": "ship:pirates:frigate",
+      "source": "sources/runtime/ship-pirates-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_frigate_v2.webp",
+      "url": "/art/factions/pirates/ship_frigate_v2.webp",
+      "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786",
+      "bytes": 13762
+    },
+    {
+      "id": "ship:spanish:sloop",
+      "source": "sources/runtime/ship-spanish-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_sloop_v2.webp",
+      "url": "/art/factions/spanish/ship_sloop_v2.webp",
+      "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94",
+      "bytes": 10114
+    },
+    {
+      "id": "ship:spanish:brigantine",
+      "source": "sources/runtime/ship-spanish-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_brigantine_v2.webp",
+      "url": "/art/factions/spanish/ship_brigantine_v2.webp",
+      "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310",
+      "bytes": 13086
+    },
+    {
+      "id": "ship:spanish:frigate",
+      "source": "sources/runtime/ship-spanish-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_frigate_v2.webp",
+      "url": "/art/factions/spanish/ship_frigate_v2.webp",
+      "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1",
+      "bytes": 13526
+    },
+    {
+      "id": "ship:spanish:galleon",
+      "source": "sources/runtime/ship-spanish-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_galleon_v2.webp",
+      "url": "/art/factions/spanish/ship_galleon_v2.webp",
+      "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f",
+      "bytes": 16318
     }
   ]
 }

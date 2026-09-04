@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "transform": "deterministic semantic matte cleanup with contamination witnesses; no generative edit",
   "assets": [
     {
@@ -536,6 +536,366 @@
       "contamination_witnesses": [],
       "visible_pixels_before": 73311,
       "visible_pixels_after": 73219
+    },
+    {
+      "id": "ship:british:brigantine",
+      "input": "sources/openai/ships/british-brigantine-source.png",
+      "input_sha256": "36e020ba153063c9ba10b0509fbe900cd16904220ac76a3eba87b53bfcc46822",
+      "output_512": "sources/runtime/ship-british-brigantine-runtime-512.webp",
+      "output_512_sha256": "23946560c2f97d4c9fe9adda663975a3e0156e16a8a40662766c2147fcd7b434",
+      "output_512_quality": 92,
+      "output_512_bytes": 47880,
+      "output_256": "sources/runtime/ship-british-brigantine-runtime-256.webp",
+      "output_256_sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490",
+      "output_256_quality": 90,
+      "output_256_bytes": 14960,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 45117,
+      "visible_pixels_after": 45116
+    },
+    {
+      "id": "ship:british:frigate",
+      "input": "sources/openai/ships/british-frigate-source.png",
+      "input_sha256": "bc92dd42566612209590339cc8b2f6cd5213c190768b6a9347ad25a33a297e4e",
+      "output_512": "sources/runtime/ship-british-frigate-runtime-512.webp",
+      "output_512_sha256": "7083e62a1de2eaff2bf85fc82f72bd0288cc5370191213775fe0dcf8d2f6e7cd",
+      "output_512_quality": 92,
+      "output_512_bytes": 44030,
+      "output_256": "sources/runtime/ship-british-frigate-runtime-256.webp",
+      "output_256_sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c",
+      "output_256_quality": 90,
+      "output_256_bytes": 14140,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 43292,
+      "visible_pixels_after": 43291
+    },
+    {
+      "id": "ship:british:galleon",
+      "input": "sources/openai/ships/british-galleon-source.png",
+      "input_sha256": "de68160fb3ec255f0d4f442883bef4adeb8ac3fd695e5f6757192d64ea367ff7",
+      "output_512": "sources/runtime/ship-british-galleon-runtime-512.webp",
+      "output_512_sha256": "a1e3041eee6fa176bdf63598f7182423e26419ee171d1374eeee01e385b32240",
+      "output_512_quality": 92,
+      "output_512_bytes": 49376,
+      "output_256": "sources/runtime/ship-british-galleon-runtime-256.webp",
+      "output_256_sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723",
+      "output_256_quality": 90,
+      "output_256_bytes": 15502,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 55026,
+      "visible_pixels_after": 55025
+    },
+    {
+      "id": "ship:dutch:sloop",
+      "input": "sources/openai/ships/dutch-sloop-source.png",
+      "input_sha256": "9d969c33a40a9903cbc6d23cc54f2cf50cf854f1ea9599b26929b5a62de7d625",
+      "output_512": "sources/runtime/ship-dutch-sloop-runtime-512.webp",
+      "output_512_sha256": "c25da3dc0dc24b44d9feb0ac5356520c3a944f120294fc0422c198da379f9eb4",
+      "output_512_quality": 92,
+      "output_512_bytes": 36912,
+      "output_256": "sources/runtime/ship-dutch-sloop-runtime-256.webp",
+      "output_256_sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de",
+      "output_256_quality": 90,
+      "output_256_bytes": 12402,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 35542,
+      "visible_pixels_after": 35541
+    },
+    {
+      "id": "ship:dutch:brigantine",
+      "input": "sources/openai/ships/dutch-brigantine-source.png",
+      "input_sha256": "83252141d791cda0ab77a96305e8a23580a9d6bd13026af67fd9c40ea746d7ca",
+      "output_512": "sources/runtime/ship-dutch-brigantine-runtime-512.webp",
+      "output_512_sha256": "ac7291558aef356a221b1ccc7f8ecc875c35686b6256ba39d20f5d7a996d520b",
+      "output_512_quality": 92,
+      "output_512_bytes": 53636,
+      "output_256": "sources/runtime/ship-dutch-brigantine-runtime-256.webp",
+      "output_256_sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79",
+      "output_256_quality": 90,
+      "output_256_bytes": 16866,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 49521,
+      "visible_pixels_after": 49521
+    },
+    {
+      "id": "ship:dutch:frigate",
+      "input": "sources/openai/ships/dutch-frigate-source.png",
+      "input_sha256": "4ce142b381b0d7055fc5cd279f0547f3edc37b871a384cb6898b9e982a44dec3",
+      "output_512": "sources/runtime/ship-dutch-frigate-runtime-512.webp",
+      "output_512_sha256": "93e7c43ec0c4f82e44542f1c3fc299261f27b3f40066cb632e40f2964d4dd097",
+      "output_512_quality": 92,
+      "output_512_bytes": 46800,
+      "output_256": "sources/runtime/ship-dutch-frigate-runtime-256.webp",
+      "output_256_sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e",
+      "output_256_quality": 90,
+      "output_256_bytes": 15072,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 47524,
+      "visible_pixels_after": 47524
+    },
+    {
+      "id": "ship:dutch:galleon",
+      "input": "sources/openai/ships/dutch-galleon-source.png",
+      "input_sha256": "32411978e414921375455370655a6a22817826b58b68226e6cca14199ec9708c",
+      "output_512": "sources/runtime/ship-dutch-galleon-runtime-512.webp",
+      "output_512_sha256": "b8b699817617e90011a1fb5d0175e3d68ccdf5c0e0e5cebfddda3c9dc1e7d495",
+      "output_512_quality": 92,
+      "output_512_bytes": 51000,
+      "output_256": "sources/runtime/ship-dutch-galleon-runtime-256.webp",
+      "output_256_sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2",
+      "output_256_quality": 90,
+      "output_256_bytes": 15734,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 53527,
+      "visible_pixels_after": 53527
+    },
+    {
+      "id": "ship:french:sloop",
+      "input": "sources/openai/ships/french-sloop-source.png",
+      "input_sha256": "d4f251a0c819dd0ed54f10305702b9663035065e219be9a5aa98934695b33441",
+      "output_512": "sources/runtime/ship-french-sloop-runtime-512.webp",
+      "output_512_sha256": "75878e86af84461de2438d49d5522781c674aeeb5b437567cf4d88d0309723f7",
+      "output_512_quality": 92,
+      "output_512_bytes": 32244,
+      "output_256": "sources/runtime/ship-french-sloop-runtime-256.webp",
+      "output_256_sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c",
+      "output_256_quality": 90,
+      "output_256_bytes": 10748,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 31,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 30640,
+      "visible_pixels_after": 30609
+    },
+    {
+      "id": "ship:french:brigantine",
+      "input": "sources/openai/ships/french-brigantine-source.png",
+      "input_sha256": "788d50738d25faa5650cbb690c9fe2f2ac4c18f92c0155b1de0aaccf571fce60",
+      "output_512": "sources/runtime/ship-french-brigantine-runtime-512.webp",
+      "output_512_sha256": "81976c39870c0402502b68875a121c3df619937580fe31e175b484cb4bde1114",
+      "output_512_quality": 92,
+      "output_512_bytes": 46312,
+      "output_256": "sources/runtime/ship-french-brigantine-runtime-256.webp",
+      "output_256_sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306",
+      "output_256_quality": 90,
+      "output_256_bytes": 14868,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 11,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 43176,
+      "visible_pixels_after": 43165
+    },
+    {
+      "id": "ship:french:frigate",
+      "input": "sources/openai/ships/french-frigate-source.png",
+      "input_sha256": "768ed37d455ebdd402adb3b17d8f8df5a4cafbc4d7373d8227c806e87536df1f",
+      "output_512": "sources/runtime/ship-french-frigate-runtime-512.webp",
+      "output_512_sha256": "661fb55a7c0115c1044c12f05a74ccde2cec26afc7f95d21a6c6a0d4ebf2d72b",
+      "output_512_quality": 92,
+      "output_512_bytes": 39802,
+      "output_256": "sources/runtime/ship-french-frigate-runtime-256.webp",
+      "output_256_sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf",
+      "output_256_quality": 90,
+      "output_256_bytes": 12904,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 39952,
+      "visible_pixels_after": 39951
+    },
+    {
+      "id": "ship:french:galleon",
+      "input": "sources/openai/ships/french-galleon-source.png",
+      "input_sha256": "f4bc4f434519dff2f34ad02e94d6c38cae339353af4b39a58f02e2d73ff3ada7",
+      "output_512": "sources/runtime/ship-french-galleon-runtime-512.webp",
+      "output_512_sha256": "27fd90477ab3bdccc164d6cf2b595d41a0ef3958bd38880580b61ccf23d02b23",
+      "output_512_quality": 92,
+      "output_512_bytes": 47348,
+      "output_256": "sources/runtime/ship-french-galleon-runtime-256.webp",
+      "output_256_sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b",
+      "output_256_quality": 90,
+      "output_256_bytes": 14852,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 51406,
+      "visible_pixels_after": 51406
+    },
+    {
+      "id": "ship:pirates:sloop",
+      "input": "sources/openai/ships/pirates-sloop-source.png",
+      "input_sha256": "08b930885a1631d8d7bb161dabc810ce3adfaea365da4446abee5cdd9fb1cefb",
+      "output_512": "sources/runtime/ship-pirates-sloop-runtime-512.webp",
+      "output_512_sha256": "995662f14e2f1cf6288b3a0740afa849a54e29d134cdfad858884c00d6a912c8",
+      "output_512_quality": 92,
+      "output_512_bytes": 32666,
+      "output_256": "sources/runtime/ship-pirates-sloop-runtime-256.webp",
+      "output_256_sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a",
+      "output_256_quality": 90,
+      "output_256_bytes": 10808,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 3,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 30351,
+      "visible_pixels_after": 30348
+    },
+    {
+      "id": "ship:pirates:brigantine",
+      "input": "sources/openai/ships/pirates-brigantine-source.png",
+      "input_sha256": "b80d446e5138416ece08ff9daa1cea2b5da7756ff485caec293ee43572f62dc8",
+      "output_512": "sources/runtime/ship-pirates-brigantine-runtime-512.webp",
+      "output_512_sha256": "8d0e74a3230bb59a9348787f2359785af9970997ba44bca86e420f712ecad0e0",
+      "output_512_quality": 92,
+      "output_512_bytes": 52756,
+      "output_256": "sources/runtime/ship-pirates-brigantine-runtime-256.webp",
+      "output_256_sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193",
+      "output_256_quality": 90,
+      "output_256_bytes": 16568,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 2,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 53463,
+      "visible_pixels_after": 53461
+    },
+    {
+      "id": "ship:pirates:frigate",
+      "input": "sources/openai/ships/pirates-frigate-source.png",
+      "input_sha256": "76ec13e9763f30e182f65048fbb1fdfd141ae4a20e3005c5d2aa3a4472e1dee9",
+      "output_512": "sources/runtime/ship-pirates-frigate-runtime-512.webp",
+      "output_512_sha256": "3cb423cacb7e066acfd3467bfb45bc1f755dc0ec3b15b7401b13f9e491099a35",
+      "output_512_quality": 92,
+      "output_512_bytes": 43474,
+      "output_256": "sources/runtime/ship-pirates-frigate-runtime-256.webp",
+      "output_256_sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786",
+      "output_256_quality": 90,
+      "output_256_bytes": 13762,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 1691,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 45588,
+      "visible_pixels_after": 43897
+    },
+    {
+      "id": "ship:spanish:sloop",
+      "input": "sources/openai/ships/spanish-sloop-source.png",
+      "input_sha256": "281e605c852449f1fec8b30321fc945b3239505b60511a683ca2a092af9962a6",
+      "output_512": "sources/runtime/ship-spanish-sloop-runtime-512.webp",
+      "output_512_sha256": "ffcf43ecd89f3d687f8dc97d0965cc7832afb24c9b75c4ed9a13373163f00b51",
+      "output_512_quality": 92,
+      "output_512_bytes": 29740,
+      "output_256": "sources/runtime/ship-spanish-sloop-runtime-256.webp",
+      "output_256_sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94",
+      "output_256_quality": 90,
+      "output_256_bytes": 10114,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 192,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 28288,
+      "visible_pixels_after": 28096
+    },
+    {
+      "id": "ship:spanish:brigantine",
+      "input": "sources/openai/ships/spanish-brigantine-source.png",
+      "input_sha256": "26ec667a6790af5be656161774af34c95a9e7a32c01af50d01340e911c2d1406",
+      "output_512": "sources/runtime/ship-spanish-brigantine-runtime-512.webp",
+      "output_512_sha256": "13379a77455a72bc4f70f37065ecf0d3b9d479a757fb8c649c6ec2225e4e1bbf",
+      "output_512_quality": 92,
+      "output_512_bytes": 40560,
+      "output_256": "sources/runtime/ship-spanish-brigantine-runtime-256.webp",
+      "output_256_sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310",
+      "output_256_quality": 90,
+      "output_256_bytes": 13086,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 38731,
+      "visible_pixels_after": 38731
+    },
+    {
+      "id": "ship:spanish:frigate",
+      "input": "sources/openai/ships/spanish-frigate-source.png",
+      "input_sha256": "9cb99ddee5937f74c9baaa378286cd110c8c4bda2f89a0a3ddbacfc20833bc8c",
+      "output_512": "sources/runtime/ship-spanish-frigate-runtime-512.webp",
+      "output_512_sha256": "d191d1d53306f3f087b9c31fa6085b89830c4ce9ce6555d80d49d1a102f4cbd6",
+      "output_512_quality": 92,
+      "output_512_bytes": 42638,
+      "output_256": "sources/runtime/ship-spanish-frigate-runtime-256.webp",
+      "output_256_sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1",
+      "output_256_quality": 90,
+      "output_256_bytes": 13526,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 44351,
+      "visible_pixels_after": 44351
+    },
+    {
+      "id": "ship:spanish:galleon",
+      "input": "sources/openai/ships/spanish-galleon-source.png",
+      "input_sha256": "f564f681c3db8f1043fe33db18c1a188836c640a88b5fb061cba91af61c8aa41",
+      "output_512": "sources/runtime/ship-spanish-galleon-runtime-512.webp",
+      "output_512_sha256": "7022a42a4a107450ba6f88151d32046796d42846bd9b0bbebbe841e02fe84b0b",
+      "output_512_quality": 92,
+      "output_512_bytes": 53198,
+      "output_256": "sources/runtime/ship-spanish-galleon-runtime-256.webp",
+      "output_256_sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f",
+      "output_256_quality": 90,
+      "output_256_bytes": 16318,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
+      "boundary_pixels_removed": 0,
+      "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
+      "visible_pixels_before": 62072,
+      "visible_pixels_after": 62072
     }
   ],
   "proofs": [
@@ -556,13 +916,23 @@
     },
     {
       "path": "proofs/matte-stress/matte-stress-512-page-4.webp",
-      "sha256": "51057e597ae33a67ab548c42e14c017c3c0eb4bd78ac39ffb9b8cb54bec96ab2",
-      "bytes": 42270
+      "sha256": "018b79a31e2b67090b3aadc4590b14ad42ffcf7cdce7ea587360d03698dd1688",
+      "bytes": 120696
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-5.webp",
+      "sha256": "a99863e30d766c6ab307a64fc7202a30293732eaed4506f1299dcf7d5d07c456",
+      "bytes": 101846
+    },
+    {
+      "path": "proofs/matte-stress/matte-stress-512-page-6.webp",
+      "sha256": "9a85b0b62d9a129fcdf0d041aef22fb6e213952685cc9bc19d8a13ce28903f9e",
+      "bytes": 93824
     },
     {
       "path": "proofs/matte-stress/matte-stress-96-all.webp",
-      "sha256": "db01e55b5084de1a2e47ac26ca8a7ac6920be92271a69dc8744a17d265537ff2",
-      "bytes": 46772
+      "sha256": "eaad9d6180973d22bf5e2fe7816f761a87db7a4c92b37099c53d59fc754eca41",
+      "bytes": 77606
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-city-british.webp",
@@ -680,9 +1050,99 @@
       "bytes": 100140
     },
     {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-british-brigantine-runtime.webp",
+      "sha256": "3172616003401536bbd2c29bd42b4a589eeb5d6d139a5a091fa8228c7deedde1",
+      "bytes": 59116
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-british-frigate-runtime.webp",
+      "sha256": "503b0a09fd584c014ad35471ad35b540d0035b81fd18e6ad7b5c73f22ce990da",
+      "bytes": 56282
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-british-galleon-runtime.webp",
+      "sha256": "0f8c074967abf9889174eb177193566d99649f53e361ccdca3eb0d1c96100dae",
+      "bytes": 66868
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-dutch-sloop-runtime.webp",
+      "sha256": "007bb5392a1ed28f950339657e5bce60ccdf41537705d582df0561e58caa3cc2",
+      "bytes": 49360
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-dutch-brigantine-runtime.webp",
+      "sha256": "ad84b05b85a3f1f1dcee5713d68f07918246c34d948b80ecdf96a55ef58597ef",
+      "bytes": 67222
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-dutch-frigate-runtime.webp",
+      "sha256": "5d08c53eecaa00b6d29e70fc24ab7d2383fb5a3e682acde7a35ad659e0d9f55a",
+      "bytes": 64112
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-dutch-galleon-runtime.webp",
+      "sha256": "41c05705f884a3da56402a7a1058f07adb588e7251ea10d51baff3a342e0e9d4",
+      "bytes": 68084
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-french-sloop-runtime.webp",
+      "sha256": "22dc2367af6f19692e32c5de457c89a922cfdefafbeb934abfb3ce3985982605",
+      "bytes": 41462
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-french-brigantine-runtime.webp",
+      "sha256": "6f40910fd4c2deca7d5bec67f51c691452978e97b294155106bb5ad420683cfd",
+      "bytes": 56380
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-french-frigate-runtime.webp",
+      "sha256": "e4f45cc612755d702dc47c53b82062ea3fe24aba7cf334b97aa0f8858459ef1f",
+      "bytes": 53368
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-french-galleon-runtime.webp",
+      "sha256": "0743d70f9ac03fb78902f714a75de944ec99f5cf1493582932b5b21f162ac8b0",
+      "bytes": 64492
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-pirates-sloop-runtime.webp",
+      "sha256": "c84e9c02eb50712b2e34fad6be049e559418d5977ba9bc54ecbc2ee7b7eb97cf",
+      "bytes": 41094
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-pirates-brigantine-runtime.webp",
+      "sha256": "f7e7e8e3dfbc77a065323acdc19003ef7a8afc2ec0513a12fa85b94655c157b2",
+      "bytes": 63538
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-pirates-frigate-runtime.webp",
+      "sha256": "7764de1685a84c83845e9abd7828f4d44251d8b4bff250d99c89e4bd82be0ad5",
+      "bytes": 63200
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-spanish-sloop-runtime.webp",
+      "sha256": "2b4f3c865325d802d56292793d81d80d1816d4b1ee679bcdb6ef7899b37e7813",
+      "bytes": 43662
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-spanish-brigantine-runtime.webp",
+      "sha256": "a9e180f881a55b759668ebfa52adb4899820f23f1446a905075422b42e50417b",
+      "bytes": 56304
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-spanish-frigate-runtime.webp",
+      "sha256": "341f1543da36343ea77b1b64701b74ca435738349b1bee8d1425ba10d0bf7e60",
+      "bytes": 57270
+    },
+    {
+      "path": "proofs/matte-stress/matte-full-footprint-512-ship-spanish-galleon-runtime.webp",
+      "sha256": "15ca48fdb8aa0e6d1e786f1da2dccbff5439484ce5dca109682cffb2a4bdb1e0",
+      "bytes": 72464
+    },
+    {
       "path": "proofs/matte-stress/matte-full-footprint-96-all.webp",
-      "sha256": "c26516f8ec7c29e282b188fab2ffa5de74e849ac23e4ad4d993fc43ef64f2545",
-      "bytes": 138258
+      "sha256": "fc1a8abc65d65148be3cbf6d5c6965f50a1af3391c5acb45d523ca6b0fbd114b",
+      "bytes": 227346
     },
     {
       "path": "proofs/matte-stress/faction-marker-24-color-grayscale.webp",
@@ -693,7 +1153,7 @@
       "path": "proofs/matte-stress/runtime-public-contact-sheet-23.webp",
       "sha256": "509ed83e1bec0300b99aba83acfaffbd0f176dfc0e117d28e38b700f07d66b0d",
       "bytes": 154140,
-      "kind": "runtime-public-contact-sheet",
+      "kind": "legacy-runtime-public-contact-sheet",
       "identity_ids": [
         "city:british",
         "city:dutch",
@@ -839,6 +1299,449 @@
         }
       ],
       "public_binding": "runtime-public-receipt.json byte identity"
+    },
+    {
+      "path": "proofs/matte-stress/runtime-public-contact-sheet-41.webp",
+      "sha256": "a1b0ef5f0e673bbc5238a86cf883cdb114c9677b9a827c420e02371f2e6ce51e",
+      "bytes": 240336,
+      "kind": "runtime-public-contact-sheet",
+      "identity_ids": [
+        "city:british",
+        "city:dutch",
+        "city:french",
+        "city:pirates",
+        "city:spanish",
+        "city:neutral",
+        "ship:british:sloop",
+        "ship:pirates:galleon",
+        "party:british",
+        "party:dutch",
+        "party:french",
+        "party:pirates",
+        "party:spanish",
+        "encounter:merchant",
+        "encounter:nativeVillage",
+        "encounter:hermit",
+        "encounter:banditCamp",
+        "landSite:mine",
+        "landSite:sawmill",
+        "landSite:lumberCamp",
+        "landSite:ruins",
+        "encounter:natives",
+        "encounter:settlers",
+        "ship:british:brigantine",
+        "ship:british:frigate",
+        "ship:british:galleon",
+        "ship:dutch:sloop",
+        "ship:dutch:brigantine",
+        "ship:dutch:frigate",
+        "ship:dutch:galleon",
+        "ship:french:sloop",
+        "ship:french:brigantine",
+        "ship:french:frigate",
+        "ship:french:galleon",
+        "ship:pirates:sloop",
+        "ship:pirates:brigantine",
+        "ship:pirates:frigate",
+        "ship:spanish:sloop",
+        "ship:spanish:brigantine",
+        "ship:spanish:frigate",
+        "ship:spanish:galleon"
+      ],
+      "sizes_css_px": [24, 32, 48, 96],
+      "grayscale_factions": ["british", "dutch", "french", "pirates", "spanish"],
+      "runtime_inputs": [
+        {
+          "id": "city:british",
+          "source": "sources/runtime/city-british-256.webp",
+          "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7"
+        },
+        {
+          "id": "city:dutch",
+          "source": "sources/runtime/city-dutch-256.webp",
+          "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a"
+        },
+        {
+          "id": "city:french",
+          "source": "sources/runtime/city-french-256.webp",
+          "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f"
+        },
+        {
+          "id": "city:pirates",
+          "source": "sources/runtime/city-pirates-256.webp",
+          "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a"
+        },
+        {
+          "id": "city:spanish",
+          "source": "sources/runtime/city-spanish-256.webp",
+          "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97"
+        },
+        {
+          "id": "city:neutral",
+          "source": "sources/runtime/city-neutral-256.webp",
+          "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3"
+        },
+        {
+          "id": "ship:british:sloop",
+          "source": "sources/runtime/ship-british-sloop-256.webp",
+          "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+        },
+        {
+          "id": "ship:pirates:galleon",
+          "source": "sources/runtime/ship-pirates-galleon-256.webp",
+          "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+        },
+        {
+          "id": "party:british",
+          "source": "sources/runtime/party-british-256.webp",
+          "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7"
+        },
+        {
+          "id": "party:dutch",
+          "source": "sources/runtime/party-dutch-256.webp",
+          "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3"
+        },
+        {
+          "id": "party:french",
+          "source": "sources/runtime/party-french-256.webp",
+          "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc"
+        },
+        {
+          "id": "party:pirates",
+          "source": "sources/runtime/party-pirates-256.webp",
+          "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef"
+        },
+        {
+          "id": "party:spanish",
+          "source": "sources/runtime/party-spanish-256.webp",
+          "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6"
+        },
+        {
+          "id": "encounter:merchant",
+          "source": "sources/runtime/encounter-merchant-convoy-256.webp",
+          "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567"
+        },
+        {
+          "id": "encounter:nativeVillage",
+          "source": "sources/runtime/encounter-native-village-256.webp",
+          "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b"
+        },
+        {
+          "id": "encounter:hermit",
+          "source": "sources/runtime/encounter-hermit-256.webp",
+          "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8"
+        },
+        {
+          "id": "encounter:banditCamp",
+          "source": "sources/runtime/encounter-bandit-camp-256.webp",
+          "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f"
+        },
+        {
+          "id": "landSite:mine",
+          "source": "sources/runtime/site-mine-256.webp",
+          "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa"
+        },
+        {
+          "id": "landSite:sawmill",
+          "source": "sources/runtime/site-sawmill-256.webp",
+          "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815"
+        },
+        {
+          "id": "landSite:lumberCamp",
+          "source": "sources/runtime/site-lumber-camp-256.webp",
+          "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba"
+        },
+        {
+          "id": "landSite:ruins",
+          "source": "sources/runtime/site-ruins-256.webp",
+          "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760"
+        },
+        {
+          "id": "encounter:natives",
+          "source": "sources/runtime/runtime-encounter-natives-256.webp",
+          "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106"
+        },
+        {
+          "id": "encounter:settlers",
+          "source": "sources/runtime/runtime-encounter-settlers-256.webp",
+          "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb"
+        },
+        {
+          "id": "ship:british:brigantine",
+          "source": "sources/runtime/ship-british-brigantine-runtime-256.webp",
+          "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490"
+        },
+        {
+          "id": "ship:british:frigate",
+          "source": "sources/runtime/ship-british-frigate-runtime-256.webp",
+          "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c"
+        },
+        {
+          "id": "ship:british:galleon",
+          "source": "sources/runtime/ship-british-galleon-runtime-256.webp",
+          "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723"
+        },
+        {
+          "id": "ship:dutch:sloop",
+          "source": "sources/runtime/ship-dutch-sloop-runtime-256.webp",
+          "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de"
+        },
+        {
+          "id": "ship:dutch:brigantine",
+          "source": "sources/runtime/ship-dutch-brigantine-runtime-256.webp",
+          "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79"
+        },
+        {
+          "id": "ship:dutch:frigate",
+          "source": "sources/runtime/ship-dutch-frigate-runtime-256.webp",
+          "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e"
+        },
+        {
+          "id": "ship:dutch:galleon",
+          "source": "sources/runtime/ship-dutch-galleon-runtime-256.webp",
+          "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2"
+        },
+        {
+          "id": "ship:french:sloop",
+          "source": "sources/runtime/ship-french-sloop-runtime-256.webp",
+          "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c"
+        },
+        {
+          "id": "ship:french:brigantine",
+          "source": "sources/runtime/ship-french-brigantine-runtime-256.webp",
+          "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306"
+        },
+        {
+          "id": "ship:french:frigate",
+          "source": "sources/runtime/ship-french-frigate-runtime-256.webp",
+          "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf"
+        },
+        {
+          "id": "ship:french:galleon",
+          "source": "sources/runtime/ship-french-galleon-runtime-256.webp",
+          "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b"
+        },
+        {
+          "id": "ship:pirates:sloop",
+          "source": "sources/runtime/ship-pirates-sloop-runtime-256.webp",
+          "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+        },
+        {
+          "id": "ship:pirates:brigantine",
+          "source": "sources/runtime/ship-pirates-brigantine-runtime-256.webp",
+          "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193"
+        },
+        {
+          "id": "ship:pirates:frigate",
+          "source": "sources/runtime/ship-pirates-frigate-runtime-256.webp",
+          "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786"
+        },
+        {
+          "id": "ship:spanish:sloop",
+          "source": "sources/runtime/ship-spanish-sloop-runtime-256.webp",
+          "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94"
+        },
+        {
+          "id": "ship:spanish:brigantine",
+          "source": "sources/runtime/ship-spanish-brigantine-runtime-256.webp",
+          "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310"
+        },
+        {
+          "id": "ship:spanish:frigate",
+          "source": "sources/runtime/ship-spanish-frigate-runtime-256.webp",
+          "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1"
+        },
+        {
+          "id": "ship:spanish:galleon",
+          "source": "sources/runtime/ship-spanish-galleon-runtime-256.webp",
+          "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f"
+        }
+      ],
+      "public_binding": "runtime-public-receipt.json byte identity"
+    },
+    {
+      "path": "proofs/matte-stress/ship-fleet-runtime-contact-sheet-20.webp",
+      "sha256": "9b303a4b059ab00e6cd4249ac00d8e4a103616a805001e7bf0d4412955e729e1",
+      "bytes": 117316,
+      "kind": "ship-fleet-runtime-contact-sheet",
+      "identity_ids": [
+        "ship:british:sloop",
+        "ship:british:brigantine",
+        "ship:british:frigate",
+        "ship:british:galleon",
+        "ship:dutch:sloop",
+        "ship:dutch:brigantine",
+        "ship:dutch:frigate",
+        "ship:dutch:galleon",
+        "ship:french:sloop",
+        "ship:french:brigantine",
+        "ship:french:frigate",
+        "ship:french:galleon",
+        "ship:pirates:sloop",
+        "ship:pirates:brigantine",
+        "ship:pirates:frigate",
+        "ship:pirates:galleon",
+        "ship:spanish:sloop",
+        "ship:spanish:brigantine",
+        "ship:spanish:frigate",
+        "ship:spanish:galleon"
+      ],
+      "sizes_css_px": [24, 32, 48, 96],
+      "grayscale_identity_ids": [
+        "ship:british:sloop",
+        "ship:british:brigantine",
+        "ship:british:frigate",
+        "ship:british:galleon",
+        "ship:dutch:sloop",
+        "ship:dutch:brigantine",
+        "ship:dutch:frigate",
+        "ship:dutch:galleon",
+        "ship:french:sloop",
+        "ship:french:brigantine",
+        "ship:french:frigate",
+        "ship:french:galleon",
+        "ship:pirates:sloop",
+        "ship:pirates:brigantine",
+        "ship:pirates:frigate",
+        "ship:pirates:galleon",
+        "ship:spanish:sloop",
+        "ship:spanish:brigantine",
+        "ship:spanish:frigate",
+        "ship:spanish:galleon"
+      ],
+      "runtime_inputs": [
+        {
+          "id": "ship:british:sloop",
+          "source": "sources/runtime/ship-british-sloop-256.webp",
+          "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+        },
+        {
+          "id": "ship:british:brigantine",
+          "source": "sources/runtime/ship-british-brigantine-runtime-256.webp",
+          "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490"
+        },
+        {
+          "id": "ship:british:frigate",
+          "source": "sources/runtime/ship-british-frigate-runtime-256.webp",
+          "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c"
+        },
+        {
+          "id": "ship:british:galleon",
+          "source": "sources/runtime/ship-british-galleon-runtime-256.webp",
+          "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723"
+        },
+        {
+          "id": "ship:dutch:sloop",
+          "source": "sources/runtime/ship-dutch-sloop-runtime-256.webp",
+          "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de"
+        },
+        {
+          "id": "ship:dutch:brigantine",
+          "source": "sources/runtime/ship-dutch-brigantine-runtime-256.webp",
+          "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79"
+        },
+        {
+          "id": "ship:dutch:frigate",
+          "source": "sources/runtime/ship-dutch-frigate-runtime-256.webp",
+          "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e"
+        },
+        {
+          "id": "ship:dutch:galleon",
+          "source": "sources/runtime/ship-dutch-galleon-runtime-256.webp",
+          "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2"
+        },
+        {
+          "id": "ship:french:sloop",
+          "source": "sources/runtime/ship-french-sloop-runtime-256.webp",
+          "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c"
+        },
+        {
+          "id": "ship:french:brigantine",
+          "source": "sources/runtime/ship-french-brigantine-runtime-256.webp",
+          "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306"
+        },
+        {
+          "id": "ship:french:frigate",
+          "source": "sources/runtime/ship-french-frigate-runtime-256.webp",
+          "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf"
+        },
+        {
+          "id": "ship:french:galleon",
+          "source": "sources/runtime/ship-french-galleon-runtime-256.webp",
+          "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b"
+        },
+        {
+          "id": "ship:pirates:sloop",
+          "source": "sources/runtime/ship-pirates-sloop-runtime-256.webp",
+          "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+        },
+        {
+          "id": "ship:pirates:brigantine",
+          "source": "sources/runtime/ship-pirates-brigantine-runtime-256.webp",
+          "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193"
+        },
+        {
+          "id": "ship:pirates:frigate",
+          "source": "sources/runtime/ship-pirates-frigate-runtime-256.webp",
+          "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786"
+        },
+        {
+          "id": "ship:pirates:galleon",
+          "source": "sources/runtime/ship-pirates-galleon-256.webp",
+          "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+        },
+        {
+          "id": "ship:spanish:sloop",
+          "source": "sources/runtime/ship-spanish-sloop-runtime-256.webp",
+          "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94"
+        },
+        {
+          "id": "ship:spanish:brigantine",
+          "source": "sources/runtime/ship-spanish-brigantine-runtime-256.webp",
+          "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310"
+        },
+        {
+          "id": "ship:spanish:frigate",
+          "source": "sources/runtime/ship-spanish-frigate-runtime-256.webp",
+          "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1"
+        },
+        {
+          "id": "ship:spanish:galleon",
+          "source": "sources/runtime/ship-spanish-galleon-runtime-256.webp",
+          "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f"
+        }
+      ],
+      "public_binding": "runtime-public-receipt.json byte identity"
+    },
+    {
+      "path": "proofs/matte-stress/ship-fleet-alpha-stress-96-all.webp",
+      "sha256": "14645f63e31e443de7a7a015d8b6a4dee6c08f9afd9e9008049d08b6ed363449",
+      "bytes": 97676,
+      "kind": "ship-fleet-alpha-stress-96",
+      "identity_ids": [
+        "ship:british:sloop",
+        "ship:pirates:galleon",
+        "ship:british:brigantine",
+        "ship:british:frigate",
+        "ship:british:galleon",
+        "ship:dutch:sloop",
+        "ship:dutch:brigantine",
+        "ship:dutch:frigate",
+        "ship:dutch:galleon",
+        "ship:french:sloop",
+        "ship:french:brigantine",
+        "ship:french:frigate",
+        "ship:french:galleon",
+        "ship:pirates:sloop",
+        "ship:pirates:brigantine",
+        "ship:pirates:frigate",
+        "ship:spanish:sloop",
+        "ship:spanish:brigantine",
+        "ship:spanish:frigate",
+        "ship:spanish:galleon"
+      ],
+      "size_css_px": 96,
+      "background_modes": ["representative", "dark", "magenta", "cyan"]
     }
   ]
 }

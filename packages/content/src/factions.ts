@@ -80,12 +80,12 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Outlaws of every flag. Cheap, fast, and vicious — weak in a long fight.',
     primaryColor: '#1a1a1a',
     flagSpriteUrl: '/art/factions/pirates/flag.png',
-    partySpriteUrl: '/art/parties/pirates.webp',
+    partySpriteUrl: '/art/parties/pirates.png',
     shipSpriteUrl: '/art/factions/pirates/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/pirates/ship_brigantine.png',
       frigate: '/art/factions/pirates/ship_frigate.png',
-      galleon: '/art/factions/pirates/ship_galleon_v2.webp',
+      galleon: '/art/factions/pirates/ship_galleon.png',
     },
     captainPortraitUrl: '/art/factions/pirates/captain.png',
     unitTierSpriteUrls: {
@@ -159,8 +159,8 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'The Royal Navy: disciplined line infantry and superior gunnery.',
     primaryColor: '#a6192e',
     flagSpriteUrl: '/art/factions/british/flag.png',
-    partySpriteUrl: '/art/parties/british.webp',
-    shipSpriteUrl: '/art/factions/british/ship_sloop.webp',
+    partySpriteUrl: '/art/parties/british.png',
+    shipSpriteUrl: '/art/factions/british/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/british/ship_brigantine.png',
       frigate: '/art/factions/british/ship_frigate.png',
@@ -238,7 +238,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Treasure-fleet escorts and conquistadors: heavy armor, heavy gold.',
     primaryColor: '#c9a227',
     flagSpriteUrl: '/art/factions/spanish/flag.png',
-    partySpriteUrl: '/art/parties/spanish.webp',
+    partySpriteUrl: '/art/parties/spanish.png',
     shipSpriteUrl: '/art/factions/spanish/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/spanish/ship_brigantine.png',
@@ -317,7 +317,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     description: 'Merchant-company men of the VOC: economy-focused, strong defensively.',
     primaryColor: '#e07b1a',
     flagSpriteUrl: '/art/factions/dutch/flag.png',
-    partySpriteUrl: '/art/parties/dutch.webp',
+    partySpriteUrl: '/art/parties/dutch.png',
     shipSpriteUrl: '/art/factions/dutch/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/dutch/ship_brigantine.png',
@@ -397,7 +397,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
       'Corsairs and crown regiments alike: aggressive gunnery and rapid rearmament, at the cost of a thinner hull.',
     primaryColor: '#2255a4',
     flagSpriteUrl: '/art/factions/french/flag.png',
-    partySpriteUrl: '/art/parties/french.webp',
+    partySpriteUrl: '/art/parties/french.png',
     shipSpriteUrl: '/art/factions/french/ship.png',
     shipSpriteUrlsByClass: {
       brigantine: '/art/factions/french/ship_brigantine.png',

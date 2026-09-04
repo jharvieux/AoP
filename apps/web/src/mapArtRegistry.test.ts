@@ -1,8 +1,14 @@
+import { FACTIONS } from '@aop/content'
+import { ENGINE_VERSION } from '@aop/shared'
 import { describe, expect, it } from 'vitest'
+import { computeEngineVersion } from '../../../scripts/generate-engine-version.mjs'
 import {
   mapArtDefaultUrls,
   mapArtPreloadRequests,
   mapArtRegistry,
+  mapShipDefaultUrl,
+  resolveMapPartyUrl,
+  resolveMapShipUrl,
   unsettledMapArtUrls,
   type MapArtLoadStatus,
   type MapArtScene,
@@ -51,18 +57,23 @@ function urls(input: MapArtScene): string[] {
 }
 
 describe('mapArtRegistry', () => {
-  it('maps the 21 approved identities plus two runtime sea-family replacements to files', () => {
+  it('maps the complete 41-identity runtime family, including all 20 ships, to files', () => {
+    const shipUrls = Object.values(mapArtRegistry.ships).flatMap((faction) =>
+      Object.values(faction),
+    )
     const generatedUrls = [
       ...Object.values(mapArtRegistry.cities),
-      ...Object.values(mapArtRegistry.generatedShips),
+      ...shipUrls,
       ...Object.values(mapArtRegistry.parties),
       ...Object.values(mapArtRegistry.seaEncounters),
       ...Object.values(mapArtRegistry.landEncounters),
       ...Object.values(mapArtRegistry.landSites),
     ]
 
-    expect(generatedUrls).toHaveLength(23)
-    expect(new Set(generatedUrls)).toHaveLength(23)
+    expect(shipUrls).toHaveLength(20)
+    expect(new Set(shipUrls)).toHaveLength(20)
+    expect(generatedUrls).toHaveLength(41)
+    expect(new Set(generatedUrls)).toHaveLength(41)
     for (const url of generatedUrls) {
       expect(hasPublicAsset(url), `${url} missing under public`).toBe(true)
     }
@@ -73,9 +84,64 @@ describe('mapArtRegistry', () => {
       expect(hasPublicAsset(url), `${url} missing under public`).toBe(true)
     }
   })
+
+  it('makes every faction/class ship reachable through the pure web registry', () => {
+    const factions = ['british', 'dutch', 'french', 'pirates', 'spanish'] as const
+    const classes = ['sloop', 'brigantine', 'frigate', 'galleon'] as const
+
+    for (const faction of factions) {
+      for (const shipClass of classes) {
+        const expected = mapArtRegistry.ships[faction][shipClass]
+        expect(mapShipDefaultUrl(faction, shipClass)).toBe(expected)
+        expect(resolveMapShipUrl(() => undefined, faction, shipClass)).toBe(expected)
+        expect(hasPublicAsset(expected), `${faction}/${shipClass} missing under public`).toBe(true)
+      }
+    }
+  })
+
+  it('keeps theme overrides ahead of registry defaults for ships and parties', () => {
+    expect(resolveMapShipUrl(() => '/theme/ship.webp', 'spanish', 'galleon')).toBe(
+      '/theme/ship.webp',
+    )
+    expect(resolveMapPartyUrl(() => '/theme/party.webp', 'british')).toBe('/theme/party.webp')
+    for (const faction of ['british', 'dutch', 'french', 'pirates', 'spanish'] as const) {
+      expect(resolveMapPartyUrl(() => undefined, faction)).toBe(mapArtRegistry.parties[faction])
+    }
+  })
+
+  it('leaves content URLs at their legacy replay-hash values', () => {
+    expect(FACTIONS.british.shipSpriteUrl).toBe('/art/factions/british/ship.png')
+    expect(FACTIONS.pirates.shipSpriteUrlsByClass?.galleon).toBe(
+      '/art/factions/pirates/ship_galleon.png',
+    )
+    for (const faction of Object.values(FACTIONS)) {
+      expect(faction.partySpriteUrl).toBe(`/art/parties/${faction.id}.png`)
+    }
+    expect(ENGINE_VERSION).toBe('47d4a5867f0d16d7')
+    expect(computeEngineVersion()).toBe('47d4a5867f0d16d7')
+  })
 })
 
 describe('mapArtPreloadRequests', () => {
+  it('preloads the same registry winner the renderer resolves for every faction and class', () => {
+    const factions = ['british', 'dutch', 'french', 'pirates', 'spanish'] as const
+    const classes = ['sloop', 'brigantine', 'frigate', 'galleon'] as const
+
+    for (const faction of factions) {
+      for (const shipClass of classes) {
+        const input = scene({
+          captains: [{ ownerId: 'self', position: { x: 1, y: 1 }, shipClassId: shipClass }],
+          factionOf: () => faction,
+        })
+        const request = mapArtPreloadRequests(input).find(
+          (candidate) => candidate.contentId === shipClass,
+        )
+        expect(request?.url).toBe(resolveMapShipUrl(input.spriteUrl, faction, shipClass))
+        expect(request?.url).toBe(mapArtRegistry.ships[faction][shipClass])
+      }
+    }
+  })
+
   it('selects faction and neutral city defaults without calling factionOf for neutral', () => {
     const input = scene({
       cities: [
@@ -143,6 +209,22 @@ describe('mapArtPreloadRequests', () => {
         mapArtRegistry.landSites.mine,
       ]),
     )
+  })
+
+  it('uses the same winning registry/theme URL that the renderer consumes', () => {
+    const themeUrl = '/theme/frigate.webp'
+    const input = scene({
+      captains: [{ ownerId: 'self', position: { x: 1, y: 1 }, shipClassId: 'frigate' }],
+      factionOf: () => 'french',
+      spriteUrl: (contentId) => (contentId === 'frigate' ? themeUrl : undefined),
+    })
+
+    const request = mapArtPreloadRequests(input).find(
+      (candidate) => candidate.contentId === 'frigate',
+    )
+    expect(request?.url).toBe(resolveMapShipUrl(input.spriteUrl, 'french', 'frigate'))
+    expect(request?.url).toBe(themeUrl)
+    expect(request?.url).not.toBe(mapArtRegistry.ships.french.frigate)
   })
 
   it('never selects, decodes, or outlines hidden sentinel identities', () => {
