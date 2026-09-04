@@ -275,6 +275,26 @@ function materialDescriptor(binding) {
   }
 }
 
+function materialRecords(binding) {
+  const records = [
+    ...binding.shipping_sources,
+    ...binding.build_inputs,
+    binding.stylesheet_source,
+    ...binding.runtime_assets.receipts,
+    ...binding.runtime_assets.files,
+    ...binding.captures,
+  ]
+  const byPath = new Map()
+  for (const { path, bytes, sha256: digest } of records) {
+    const prior = byPath.get(path)
+    if (prior && (prior.bytes !== bytes || prior.sha256 !== digest)) {
+      throw new Error(`conflicting material records for ${path}`)
+    }
+    byPath.set(path, { path, bytes, sha256: digest })
+  }
+  return [...byPath.values()].sort((left, right) => left.path.localeCompare(right.path))
+}
+
 function readBuffer(path, overrides) {
   const override = overrides.get(path)
   if (override !== undefined) return Buffer.isBuffer(override) ? override : Buffer.from(override)
@@ -688,53 +708,135 @@ export function buildRuntimeCaptureBindings(options = {}) {
   return assertMaterialBaseline(computeRuntimeCaptureBindings(options))
 }
 
-export function prepareRuntimeCaptureBaselineRenewal({
+export function assertRuntimeCaptureProposalRepository({
+  sourceHead,
+  currentHead,
+  statusPorcelain,
+  sparseCheckout,
+  branch,
+  upstreamRef,
+  upstreamHead,
+  hostedBranchHead,
+  hostedPrHead,
+  originUrl,
+}) {
+  if (statusPorcelain !== '') {
+    throw new Error('capture proposal requires a completely clean tracked and untracked worktree')
+  }
+  if (sparseCheckout === true) {
+    throw new Error('capture proposal does not permit a sparse checkout')
+  }
+  if (!/^[0-9a-f]{40}$/.test(sourceHead) || sourceHead !== currentHead) {
+    throw new Error('capture proposal source head must equal the current exact local HEAD')
+  }
+  if (!branch || upstreamRef !== `origin/${branch}`) {
+    throw new Error('capture proposal branch must track its same-named origin branch')
+  }
+  if (
+    upstreamHead !== sourceHead ||
+    hostedBranchHead !== sourceHead ||
+    hostedPrHead !== sourceHead
+  ) {
+    throw new Error(
+      'capture proposal local, upstream, hosted branch, and hosted PR heads must match',
+    )
+  }
+  if (
+    ![
+      'https://github.com/jharvieux/AoP.git',
+      'https://github.com/jharvieux/AoP',
+      'git@github.com:jharvieux/AoP.git',
+      'git@github.com:jharvieux/AoP',
+      'ssh://git@github.com/jharvieux/AoP.git',
+      'ssh://git@github.com/jharvieux/AoP',
+    ].includes(originUrl)
+  ) {
+    throw new Error('capture proposal origin is not the canonical jharvieux/AoP repository')
+  }
+}
+
+export function inspectRuntimeCaptureProposalComment({ captureRecord, comment }) {
+  const match = captureRecord?.match(
+    /^https:\/\/github\.com\/jharvieux\/AoP\/issues\/610#issuecomment-(\d+)$/,
+  )
+  if (!match) throw new Error('capture proposal requires a canonical issue #610 comment URL')
+  if (!comment || typeof comment !== 'object') {
+    throw new Error('capture proposal comment could not be resolved through the GitHub API')
+  }
+  if (
+    comment.html_url !== captureRecord ||
+    comment.issue_url !== 'https://api.github.com/repos/jharvieux/AoP/issues/610' ||
+    Number(match[1]) !== comment.id
+  ) {
+    throw new Error('capture proposal comment API identity does not match issue #610 URL')
+  }
+  if (
+    comment.author_association !== 'OWNER' ||
+    typeof comment.user?.login !== 'string' ||
+    comment.user.login.length === 0
+  ) {
+    throw new Error('capture proposal comment is not from the canonical repository owner')
+  }
+  if (typeof comment.body !== 'string' || comment.body.length === 0) {
+    throw new Error('capture proposal comment body is unavailable for manual review')
+  }
+  return {
+    url: comment.html_url,
+    id: comment.id,
+    author: comment.user.login,
+    author_association: comment.author_association,
+    body_sha256: sha256(comment.body),
+  }
+}
+
+export function prepareRuntimeCaptureBaselineProposal({
   sourceHead,
   captureRecord,
   capturedOn,
   confirmation,
+  comment,
+  buildOptions = {},
 }) {
-  if (confirmation !== 'RENEW_CAPTURE_APPROVAL') {
-    throw new Error('baseline renewal requires the exact RENEW_CAPTURE_APPROVAL confirmation')
+  if (confirmation !== 'VERIFY_CAPTURE_RENEWAL_PROPOSAL') {
+    throw new Error(
+      'capture proposal requires the exact VERIFY_CAPTURE_RENEWAL_PROPOSAL confirmation',
+    )
   }
   if (!/^[0-9a-f]{40}$/.test(sourceHead) || sourceHead === retainedMaterialBaseline.capture_head) {
-    throw new Error('baseline renewal requires a new exact 40-character capture source head')
+    throw new Error('capture proposal requires a new exact 40-character capture source head')
   }
   if (
     !/^https:\/\/github\.com\/jharvieux\/AoP\/issues\/610#issuecomment-\d+$/.test(captureRecord) ||
     sha256(captureRecord) === retainedMaterialBaseline.capture_record_sha256
   ) {
-    throw new Error('baseline renewal requires a new issue #610 capture-record URL')
+    throw new Error('capture proposal requires a new issue #610 comment record')
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(capturedOn)) {
-    throw new Error('baseline renewal requires capturedOn in YYYY-MM-DD form')
-  }
-  for (const path of [
-    'docs/art/gameplay-chrome-v2/README.md',
-    'docs/art/gameplay-chrome-v2/RUNTIME-VERIFICATION.md',
-  ]) {
-    const source = readText(path, new Map())
-    if (
-      !source.includes(sourceHead) ||
-      !source.includes(captureRecord) ||
-      !source.includes(capturedOn)
-    ) {
-      throw new Error(`baseline renewal identity is not recorded in ${path}`)
-    }
+    throw new Error('capture proposal requires capturedOn in YYYY-MM-DD form')
   }
   const nextBaseline = {
     captured_on: capturedOn,
     source_head: sourceHead,
     policy: captureBaseline.policy,
   }
-  const binding = computeRuntimeCaptureBindings({}, nextBaseline)
+  const binding = computeRuntimeCaptureBindings(buildOptions, nextBaseline)
+  const evidence = inspectRuntimeCaptureProposalComment({ captureRecord, comment })
+  const captures = Object.fromEntries(
+    binding.captures.map(({ id, path, bytes, sha256: digest, dimensions }) => [
+      id,
+      { path, bytes, sha256: digest, dimensions },
+    ]),
+  )
   return {
-    schema: 1,
-    kind: 'gameplay-runtime-material-baseline',
+    notice:
+      'PROPOSAL ONLY: this output cannot renew evidence. A separately reviewed manual patch is required after direct trusted-user approval and comparison of the opaque comment body to every printed fact.',
     captured_on: capturedOn,
-    capture_head: sourceHead,
-    capture_record_sha256: sha256(captureRecord),
+    source_head: sourceHead,
+    comment: evidence,
+    capture_record_url_sha256: sha256(captureRecord),
     material: materialDescriptor(binding),
+    captures,
+    bound_files: materialRecords(binding),
   }
 }
 

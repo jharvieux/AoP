@@ -5,14 +5,16 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   acceptanceProjection,
+  assertRuntimeCaptureProposalRepository,
   bindingPath,
   buildInputPaths,
   buildRuntimeCaptureBindings,
   captureSpecs,
   frozenCaptureState,
+  inspectRuntimeCaptureProposalComment,
   materialBaselineRelativePath,
   materialProjection,
-  prepareRuntimeCaptureBaselineRenewal,
+  prepareRuntimeCaptureBaselineProposal,
   receiptPaths,
   sourceTreePolicies,
   stylesheetPath,
@@ -361,37 +363,163 @@ for (const name of retainedBinding.canvas_token_census.schema_v2_escape_tokens) 
   })
 }
 
-function expectRenewalFailure(label, options) {
+function expectProposalFailure(label, operation) {
   try {
-    prepareRuntimeCaptureBaselineRenewal(options)
+    operation()
   } catch {
-    console.log(`PASS material-baseline renewal negative control: ${label} rejected`)
+    console.log(`PASS material-baseline proposal negative control: ${label} rejected`)
     return
   }
-  console.error(`FAIL material-baseline renewal negative control: ${label} escaped`)
+  console.error(`FAIL material-baseline proposal negative control: ${label} escaped`)
   failures++
 }
 
-const renewalDefaults = {
-  capturedOn: retainedMaterialBaseline.captured_on,
-  confirmation: 'RENEW_CAPTURE_APPROVAL',
+const proposalHead = 'a'.repeat(40)
+const proposalUrl = 'https://github.com/jharvieux/AoP/issues/610#issuecomment-9999999999'
+const proposalComment = {
+  id: 9999999999,
+  html_url: proposalUrl,
+  issue_url: 'https://api.github.com/repos/jharvieux/AoP/issues/610',
+  author_association: 'OWNER',
+  user: { login: 'repository-owner' },
+  body: 'Opaque operator-controlled text retained only by its SHA-256 for manual review.',
 }
-expectRenewalFailure('current capture head reused', {
-  ...renewalDefaults,
-  sourceHead: retainedMaterialBaseline.capture_head,
-  captureRecord: 'https://github.com/jharvieux/AoP/issues/610#issuecomment-9999999999',
+const proposalDefaults = {
+  capturedOn: retainedMaterialBaseline.captured_on,
+  confirmation: 'VERIFY_CAPTURE_RENEWAL_PROPOSAL',
+  comment: proposalComment,
+}
+const repositoryState = {
+  sourceHead: proposalHead,
+  currentHead: proposalHead,
+  statusPorcelain: '',
+  sparseCheckout: false,
+  branch: 'feature/capture-proposal',
+  upstreamRef: 'origin/feature/capture-proposal',
+  upstreamHead: proposalHead,
+  hostedBranchHead: proposalHead,
+  hostedPrHead: proposalHead,
+  originUrl: 'https://github.com/jharvieux/AoP.git',
+}
+assertRuntimeCaptureProposalRepository(repositoryState)
+expectProposalFailure('dirty tracked file', () =>
+  assertRuntimeCaptureProposalRepository({
+    ...repositoryState,
+    statusPorcelain: ' M apps/web/src/styles.css',
+  }),
+)
+expectProposalFailure('dirty untracked shipping source', () =>
+  assertRuntimeCaptureProposalRepository({
+    ...repositoryState,
+    statusPorcelain: '?? apps/web/src/captureProposalEscape.ts',
+  }),
+)
+expectProposalFailure('sparse checkout', () =>
+  assertRuntimeCaptureProposalRepository({ ...repositoryState, sparseCheckout: true }),
+)
+expectProposalFailure('hosted PR head mismatch', () =>
+  assertRuntimeCaptureProposalRepository({ ...repositoryState, hostedPrHead: 'b'.repeat(40) }),
+)
+
+inspectRuntimeCaptureProposalComment({ captureRecord: proposalUrl, comment: proposalComment })
+expectProposalFailure('fake or unresolvable comment', () =>
+  inspectRuntimeCaptureProposalComment({ captureRecord: proposalUrl, comment: null }),
+)
+expectProposalFailure('off-repository comment URL', () =>
+  inspectRuntimeCaptureProposalComment({
+    captureRecord: 'https://github.com/elsewhere/AoP/issues/610#issuecomment-9999999999',
+    comment: proposalComment,
+  }),
+)
+expectProposalFailure('wrong-issue comment URL', () =>
+  inspectRuntimeCaptureProposalComment({
+    captureRecord: 'https://github.com/jharvieux/AoP/issues/619#issuecomment-9999999999',
+    comment: proposalComment,
+  }),
+)
+expectProposalFailure('API response for wrong issue', () =>
+  inspectRuntimeCaptureProposalComment({
+    captureRecord: proposalUrl,
+    comment: {
+      ...proposalComment,
+      issue_url: 'https://api.github.com/repos/jharvieux/AoP/issues/619',
+    },
+  }),
+)
+expectProposalFailure('non-owner comment', () =>
+  inspectRuntimeCaptureProposalComment({
+    captureRecord: proposalUrl,
+    comment: { ...proposalComment, author_association: 'CONTRIBUTOR' },
+  }),
+)
+
+expectProposalFailure('current capture head reused', () =>
+  prepareRuntimeCaptureBaselineProposal({
+    ...proposalDefaults,
+    sourceHead: retainedMaterialBaseline.capture_head,
+    captureRecord: proposalUrl,
+  }),
+)
+const retainedCommentId = Number(captureRecord?.match(/issuecomment-(\d+)/)?.[1])
+expectProposalFailure('current capture record reused', () =>
+  prepareRuntimeCaptureBaselineProposal({
+    ...proposalDefaults,
+    sourceHead: proposalHead,
+    captureRecord: captureRecord ?? '',
+    comment: {
+      ...proposalComment,
+      id: retainedCommentId,
+      html_url: captureRecord,
+    },
+  }),
+)
+expectProposalFailure('explicit confirmation omitted', () =>
+  prepareRuntimeCaptureBaselineProposal({
+    ...proposalDefaults,
+    sourceHead: proposalHead,
+    captureRecord: proposalUrl,
+    confirmation: '',
+  }),
+)
+
+const proposalArtifactPaths = [materialBaselineRelativePath, 'RUNTIME-CAPTURE-BINDINGS.json']
+const proposalArtifactHashes = () =>
+  proposalArtifactPaths.map((path) =>
+    createHash('sha256')
+      .update(readFileSync(join(root, path.split('/').at(-1))))
+      .digest('hex'),
+  )
+const proposalHashesBefore = proposalArtifactHashes()
+const verifiedProposal = prepareRuntimeCaptureBaselineProposal({
+  ...proposalDefaults,
+  sourceHead: proposalHead,
+  captureRecord: proposalUrl,
 })
-expectRenewalFailure('current capture record reused', {
-  ...renewalDefaults,
-  sourceHead: 'a'.repeat(40),
-  captureRecord: captureRecord ?? '',
+const driftedProposal = prepareRuntimeCaptureBaselineProposal({
+  ...proposalDefaults,
+  sourceHead: proposalHead,
+  captureRecord: proposalUrl,
+  buildOptions: {
+    overrides: new Map([[sourceDriftPath, driftedBuffer(sourceDriftPath, '\nproposal-drift')]]),
+  },
 })
-expectRenewalFailure('explicit confirmation omitted', {
-  ...renewalDefaults,
-  sourceHead: 'a'.repeat(40),
-  captureRecord: 'https://github.com/jharvieux/AoP/issues/610#issuecomment-9999999999',
-  confirmation: '',
+const proposalHashesAfter = proposalArtifactHashes()
+if (
+  verifiedProposal.notice.startsWith('PROPOSAL ONLY:') === false ||
+  JSON.stringify(Object.keys(verifiedProposal.captures)) !== JSON.stringify(expectedCaptureIds) ||
+  verifiedProposal.bound_files.length < retainedBinding.shipping_sources.length ||
+  verifiedProposal.comment.body_sha256 !==
+    createHash('sha256').update(proposalComment.body).digest('hex') ||
+  driftedProposal.material.sha256 === verifiedProposal.material.sha256 ||
+  JSON.stringify(proposalHashesBefore) !== JSON.stringify(proposalHashesAfter)
+) {
+  console.error('FAIL proposal-only contract changed evidence or omitted opaque receipt facts')
+  failures++
+}
+expectBindingDrift('proposal does not re-bless material drift', {
+  overrides: new Map([[sourceDriftPath, driftedBuffer(sourceDriftPath, '\nproposal-drift')]]),
 })
+console.log('PASS capture proposal is read-only and cannot re-bless material drift')
 const spec = readFileSync(join(root, 'README.md'), 'utf8')
 const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
@@ -426,7 +554,7 @@ if (
   builderWriteIndex < 0 ||
   builderComputeIndex > builderWriteIndex ||
   builderSource.includes('materialBaselinePath') ||
-  builderSource.includes('prepareRuntimeCaptureBaselineRenewal')
+  builderSource.includes('prepareRuntimeCaptureBaselineProposal')
 ) {
   console.error(
     'FAIL normal capture builder can write before anchor validation or renew the anchor',
@@ -439,13 +567,32 @@ for (const marker of [
   "'--capture-record'",
   "'--captured-on'",
   "'--confirmation'",
-  'RENEW_CAPTURE_APPROVAL',
-  "execFileSync('git', ['rev-parse', 'HEAD']",
-  'writeFileSync(materialBaselinePath, priorBaseline)',
-  'writeFileSync(bindingPath, priorBinding)',
+  'VERIFY_CAPTURE_RENEWAL_PROPOSAL',
+  "'--untracked-files=all'",
+  "'ls-remote'",
+  "'view',\n        branch,",
+  "'headRefName,headRefOid,headRepositoryOwner,state,url'",
+  "'--hostname'",
+  "['show', `${requestedHead}:${record.path}`]",
+  'no_write_guard',
+  'manual_next_step',
 ]) {
   if (!renewalSource.includes(marker)) {
-    console.error(`FAIL capture-baseline renewal contract: missing ${marker}`)
+    console.error(`FAIL capture-baseline proposal contract: missing ${marker}`)
+    failures++
+  }
+}
+for (const forbiddenWriter of [
+  'writeFile',
+  'appendFile',
+  'rename',
+  'copyFile',
+  'truncate',
+  'unlink',
+  'rmSync',
+]) {
+  if (renewalSource.includes(forbiddenWriter)) {
+    console.error(`FAIL proposal-only utility contains file writer ${forbiddenWriter}`)
     failures++
   }
 }
@@ -454,7 +601,10 @@ for (const marker of [
   'builder recomputes and compares that projection before writing',
   'it cannot update the anchor',
   'renew-runtime-capture-baseline.mjs',
-  'new 40-character capture head',
+  'proposal-only',
+  'completely clean tracked and untracked worktree',
+  'opaque comment body',
+  'separately reviewed manual `apply_patch`',
   'require builder rejection',
 ]) {
   if (!runtimeReport.includes(marker)) {
