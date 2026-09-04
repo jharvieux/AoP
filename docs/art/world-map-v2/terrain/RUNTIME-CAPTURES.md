@@ -1,15 +1,12 @@
 # Three-band runtime captures
 
-> **Repair recapture required:** these six images bind the pre-repair renderer digest recorded in
-> `runtime-capture-receipt.json`. The current candidate deliberately fails the terrain asset check
-> with `recapture required`; the available browser backend exposed no browser and the local preview
-> could not bind its port in this sandbox. Retaining the old files makes the gap explicit and does not
-> represent them as evidence for the repaired pixels.
-
 All six captures come from one untouched round-1 96×96 square-map session with five seats,
 default/no-override theme, and no gameplay action between frames. The browser origin was fresh so
 the development service worker could not substitute an older same-path terrain asset. Exact image
-hashes, camera procedures, canvas sizes, and limitations are in `runtime-capture-receipt.json`.
+hashes, camera procedures, canvas sizes, and limitations are in `runtime-capture-receipt.json`. The
+receipt binds the repaired renderer and runtime terrain assets at
+`76214b0df4de930d5b9d0cae9fe0f3a7521de494`; any bound-source or capture-byte change invalidates
+this evidence.
 
 The New Game UI creates a seeded deterministic map but does not expose that seed. These images
 therefore bind the same live session and renderer/art digest, while the separately recorded seed-611
