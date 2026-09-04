@@ -4,8 +4,8 @@ All six captures come from one untouched round-1 96×96 square-map session with 
 default/no-override theme, and no gameplay action between frames. The browser origin was fresh so
 the development service worker could not substitute an older same-path terrain asset. Exact image
 hashes, camera procedures, canvas sizes, and limitations are in `runtime-capture-receipt.json`. The
-receipt binds the repaired renderer and runtime terrain assets at
-`76214b0df4de930d5b9d0cae9fe0f3a7521de494`; any bound-source or capture-byte change invalidates
+receipt binds the combined terrain and shared-chrome renderer plus runtime terrain assets at
+`090cb97bb8f93fd35d774014f7bb945bd9b6162d`; any bound-source or capture-byte change invalidates
 this evidence.
 
 The New Game UI creates a seeded deterministic map but does not expose that seed. These images

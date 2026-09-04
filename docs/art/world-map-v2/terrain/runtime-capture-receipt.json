@@ -3,11 +3,11 @@
   "issue": 611,
   "captured_on": "2026-09-04",
   "browser": "Codex in-app browser",
-  "origin": "http://127.0.0.1:4614/",
+  "origin": "http://127.0.0.1:4616/",
   "fresh_origin": true,
   "runtime_binding": {
-    "immutable_starting_head": "76214b0df4de930d5b9d0cae9fe0f3a7521de494",
-    "renderer_and_runtime_asset_digest": "768e292826dde5e5d3428c8f95be168cf908b5ac61584aee031fda17bf792f1a",
+    "immutable_starting_head": "090cb97bb8f93fd35d774014f7bb945bd9b6162d",
+    "renderer_and_runtime_asset_digest": "3c78432372f9fe2b67ca1f4b56430c0d9899af5d5614d9a21b0754a64ae4606c",
     "digest_method": "SHA-256 of the ordered SHA-256 lines for MapCanvas.tsx, mapPresentation.ts, and every apps/web/public/art/world-map-v2/terrain file"
   },
   "scene": {
@@ -28,11 +28,11 @@
   "viewports": {
     "desktop": {
       "viewport": [1440, 900],
-      "map_canvas": [1440, 769]
+      "map_canvas": [1440, 740]
     },
     "phone": {
       "viewport": [390, 844],
-      "map_canvas": [390, 683]
+      "map_canvas": [390, 650]
     }
   },
   "captures": [
@@ -41,17 +41,17 @@
       "band": "overview",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 38140,
-      "sha256": "2f816cb54d0600892bf80999df9022a76d06d10446791d13df8a5c6b6338a199",
-      "camera": "Fit to map from tactical; scale 0.250326, 8.011 screen px per tile"
+      "bytes": 39126,
+      "sha256": "9d813db06f3bfb0ff92eb51f456551cde71faa900c7e29c8ad6459222dbb48e5",
+      "camera": "Fit to map from tactical; scale 0.240885, 7.708 screen px per tile"
     },
     {
       "path": "runtime-captures/desktop-tactical.png",
       "band": "tactical",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 45943,
-      "sha256": "0fdc0f2698b82d9d34b9a4ef745e0b90483db0488db07f9b5a4db3103a0e5176",
+      "bytes": 46870,
+      "sha256": "5ede02fdce67393a91f780b29bfc64c0d42c6ccc732acc3342c4e775e8e6e09e",
       "camera": "Three 0.8x zoom steps from detail, then centered on fleet; scale 0.945874, 30.268 screen px per tile"
     },
     {
@@ -59,8 +59,8 @@
       "band": "detail",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 62028,
-      "sha256": "d2907a5dcbe4597f561060b20117eabfcb194b93b93a0ab8b948cfafcbc1cf53",
+      "bytes": 63327,
+      "sha256": "450aeda254d2a9d0426347d55d711b055c22382ea1e67e04b55288a3eeb16918",
       "camera": "Phone detail scale retained across the desktop viewport switch, then centered on fleet; scale 1.847411, 59.117 screen px per tile"
     },
     {
@@ -68,8 +68,8 @@
       "band": "overview",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 18471,
-      "sha256": "4b873e061d3c6e5750eaa3237840385b6f5fb308d728c98cb3fbf1c5ac0113f7",
+      "bytes": 19327,
+      "sha256": "2a916ac1b51143b1d35be8854fe6cd714d710246c38178032d3bc6c123faa8c7",
       "camera": "Fit to map; scale 0.126953, 4.063 screen px per tile"
     },
     {
@@ -77,8 +77,8 @@
       "band": "tactical",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 25617,
-      "sha256": "b7b0741db095b608c193b17a1cfc88f2018bcf77142a0d18236ab4514bd49518",
+      "bytes": 26552,
+      "sha256": "8b292f179323acaf47bc3bf775b3bfa44feb0922fb78d1b7fc04115d2a263607",
       "camera": "Nine 1.25x zoom steps from phone fit, then center on fleet; scale 0.945874, 30.268 screen px per tile"
     },
     {
@@ -86,8 +86,8 @@
       "band": "detail",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 33866,
-      "sha256": "e56c50f2aafa65989277c9407db8d57b2e528daa0869a5be5d7042909f2b4374",
+      "bytes": 33631,
+      "sha256": "60ae14060387e76201f074767972cef71e427107d0f5e08926d6b7ba55ed84b6",
       "camera": "Three more 1.25x zoom steps from tactical, then center on fleet; scale 1.847411, 59.117 screen px per tile"
     }
   ],
