@@ -47,8 +47,10 @@ only for review evidence; shipping assets remain the separately validated WebPs.
   recruitment district, citadel, and shipyard.
 - The shipyard's gangway visibly meets dry shoreline while the slip, crane, hull frame,
   and pilings remain over water.
-- No baked future building, opaque checker/matte, clipped Pirate flag, detached alpha
-  fragment, or fallback reflow was observed.
+- No baked future building, opaque checker/matte, detached alpha fragment, or fallback
+  reflow was observed. At fitted 1× the Pirate flag is fully visible; at 3× normal panning
+  can move it partly or wholly outside the scroll viewport without clipping its scene
+  geometry.
 
 The five-faction live matrix is not duplicated here: faction art does not change building
 geometry, and the independently verified `proofs/factions/*.webp` set covers all five flag
@@ -65,6 +67,7 @@ possessive copy also renders as “You's Capital” and “You's Flagship.” Bo
 carried into #612's dedicated city-shell, target-size, and copy polish work and do not alter
 the #608 art verdict.
 
-The screenshot pixel dimensions reflect the browser viewport output. DPR2/3 source-density
-coverage is separately measured for every zoom and asset in `RESOLUTION-CENSUS.json`; these
-captures do not mislabel the screenshot output as a DPR2 bitmap.
+The screenshot pixel dimensions reflect the browser viewport output. Source-density
+coverage at DPR2, across every supported zoom stop including 3×, is separately measured
+for every asset in `RESOLUTION-CENSUS.json`; these captures do not mislabel the screenshot
+output as a DPR2 bitmap.
