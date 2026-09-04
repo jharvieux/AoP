@@ -28,6 +28,12 @@ IMAGE_LIMIT = 300 * 1024
 SOURCE_SIZE = 256
 RUNTIME_SIZE = 128
 MASK = 0xFFFFFFFF
+APPROVAL_SOURCE_HEAD = "272c8ded20d97f3ab770e803b1b4d819e5546527"
+APPROVAL_COMMENT = "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944"
+APPROVAL_BOUNDARY = (
+    "Approval covers the exact renderer/runtime-asset digest and six capture hashes in this receipt. "
+    "Any material bound-byte change requires renewed approval."
+)
 
 
 def sha256(path: Path) -> str:
@@ -555,6 +561,19 @@ def renderer_asset_digest() -> str:
 
 def validate_runtime_captures() -> None:
     capture_receipt = json.loads(CAPTURE_RECEIPT_PATH.read_text())
+    approval = capture_receipt.get("operator_approval")
+    if approval != {
+        "status": "approved",
+        "approved_on": "2026-09-04",
+        "source_head": APPROVAL_SOURCE_HEAD,
+        "issue_comment": APPROVAL_COMMENT,
+        "boundary": APPROVAL_BOUNDARY,
+    }:
+        raise ValueError(f"runtime capture approval record drift: {approval}")
+    capture_report = (TERRAIN_ROOT / "RUNTIME-CAPTURES.md").read_text()
+    for marker in [APPROVAL_SOURCE_HEAD, APPROVAL_COMMENT, "operator approved these exact six combined frames"]:
+        if marker not in capture_report:
+            raise ValueError(f"runtime capture approval marker missing: {marker}")
     expected_digest = capture_receipt["runtime_binding"]["renderer_and_runtime_asset_digest"]
     observed_digest = renderer_asset_digest()
     if observed_digest != expected_digest:

@@ -91,6 +91,13 @@
       "camera": "Three more 1.25x zoom steps from tactical, then center on fleet; scale 1.847411, 59.117 screen px per tile"
     }
   ],
+  "operator_approval": {
+    "status": "approved",
+    "approved_on": "2026-09-04",
+    "source_head": "272c8ded20d97f3ab770e803b1b4d819e5546527",
+    "issue_comment": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944",
+    "boundary": "Approval covers the exact renderer/runtime-asset digest and six capture hashes in this receipt. Any material bound-byte change requires renewed approval."
+  },
   "interaction_smoke": {
     "phone_pan_drags": 22,
     "zoom_button_actions": 12,
@@ -100,7 +107,6 @@
   },
   "limitations": [
     "The New Game UI does not expose its generated seed, so the visual receipt binds one untouched live session and exact pixels rather than asserting a seed value.",
-    "The in-app browser exposed screenshots and console logs but not Performance Timeline entries; CPU timings and draw-work counts are recorded separately in PERFORMANCE.md.",
-    "These captures are implementation evidence, not operator approval."
+    "The in-app browser exposed screenshots and console logs but not Performance Timeline entries; CPU timings and draw-work counts are recorded separately in PERFORMANCE.md."
   ]
 }

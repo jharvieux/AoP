@@ -48,4 +48,9 @@ reported no warning or error. The in-app backend did not expose Performance Time
 browser frame-time percentile is claimed; the reproducible CPU/draw-work trace is recorded in
 `PERFORMANCE.md`.
 
-These captures still require operator approval. They are not represented as an approved checkpoint.
+The operator approved these exact six combined frames on 2026-09-04 at source head
+`272c8ded20d97f3ab770e803b1b4d819e5546527`; the durable record is
+[issue comment 5546965944](https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944).
+That approval carries across docs/evidence-only commits only while the receipt's renderer/runtime
+asset digest and all six capture hashes remain exact. Any material bound-byte change requires renewed
+approval.
