@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — approved contract
 
-This directory contains the approved visual contract and deterministic review package for [issue #610](https://github.com/jharvieux/AoP/issues/610). The operator approved **Direction B — Gilded Harbor Diorama with the recommended city refinement** before runtime implementation began. The mockups remain non-runtime evidence; the implemented CSS, components, vector primitives, and verification are recorded in [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md).
+This directory contains the approved visual contract and deterministic review package for [issue #610](https://github.com/jharvieux/AoP/issues/610). The operator approved **Direction B — Gilded Harbor Diorama with the recommended city refinement** before runtime implementation began, then approved the three exact-source runtime captures on 2026-09-04 against the bound runtime-source and capture bytes at `f1dea84d0d489ef52db3944c47748a708ba40004`. The mockups remain non-runtime evidence; the implemented CSS, components, vector primitives, and verification are recorded in [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md).
 
 ## Review at native size
 
@@ -106,4 +106,6 @@ Run `node compose.mjs && node build-runtime-capture-bindings.mjs && node validat
 
 ## Approval record
 
-Approved for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant. Final after-font/assets-loaded runtime captures remain a separate acceptance gate; they must not be inferred from these static checkpoint files.
+Approved for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
+
+On 2026-09-04, the operator approved all three exact-source runtime frames at `f1dea84d0d489ef52db3944c47748a708ba40004`; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5544612671). That approval carries across docs/evidence-only commits only while `RUNTIME-CAPTURE-BINDINGS.json` proves every bound runtime source, CSS projection, asset, and capture byte remains exact; any material bound-byte change requires renewed capture approval.

@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — runtime verification
 
-This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded.
+This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded. On 2026-09-04, the operator approved all three exact-source runtime frames at `f1dea84d0d489ef52db3944c47748a708ba40004`; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5544612671).
 
 ## Implemented contract
 
@@ -85,7 +85,7 @@ The stylesheet is not hand-waved as a whole-file acceptance hash. Each capture h
 
 `validate.mjs` requires exact top-level, capture, source-set and CSS-scope inventory equality before recomputing every source, asset, capture, dimension, byte count and SHA-256. Its failing-direction controls prove that stale manifest data, runtime source drift, runtime asset drift, capture drift, selected CSS drift, resolved-token drift, unresolved/cyclic tokens and missing component providers are rejected, while unrelated CSS remains outside the acceptance projection.
 
-## Final runtime capture evidence
+## Operator-approved final runtime capture evidence
 
 The supervisor rebuilt the production preview after the source freeze, waited for the runtime to settle, and native-inspected every frame for font fallback or incomplete or missing imagery before acceptance. These are the resulting real runtime frames:
 
@@ -103,4 +103,4 @@ All three are true RGB PNGs. They total **692,913 bytes**; the largest is 279,83
 - **City inspector:** the viewport is 1440 × 900. The city art layer behind the selected Shipyard task is approximately `[306, 181, 812, 488]`; the required building-inspector BottomSheet begins near y=205 and extends to the bottom. The real implementation uses the existing full-width task sheet rather than the checkpoint's aspirational right rail, so the capture demonstrates the shipped inspector surface honestly without claiming that later city-shell layout. Its close and action targets are at least 44 × 44.
 - **Interaction evidence:** the viewport is 1440 × 960 and the required Town Hall BottomSheet occupies y=193–960. The capture freezes a 52 × 52 keyboard-focused close control, a 44 × 44 hovered info control, the open/selected Town Hall context, and disabled Build controls with their non-color slash, all at least 44 px high. Pressed is inherently transient and is verified by the runtime `:active` rules/tests plus the approved static state sheet; it is not falsely claimed as frozen in this frame.
 
-Native-size inspection found no font fallback, missing image, clipped label, control below 44 × 44, or unintended opaque panel over a selectable map entity. Final visual approval remains operator-owned.
+Native-size inspection found no font fallback, missing image, clipped label, control below 44 × 44, or unintended opaque panel over a selectable map entity. The operator approval carries across docs/evidence-only commits only while `RUNTIME-CAPTURE-BINDINGS.json` proves every bound runtime source, CSS projection, asset, and capture byte remains exact; any material bound-byte change requires renewed capture approval.

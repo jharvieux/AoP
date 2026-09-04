@@ -243,6 +243,27 @@ if (!providerSource.includes(providerMarker)) {
 const spec = readFileSync(join(root, 'README.md'), 'utf8')
 const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
+const approvalMarkers = [
+  '2026-09-04',
+  'operator approved all three exact-source runtime frames',
+  'f1dea84d0d489ef52db3944c47748a708ba40004',
+  'issuecomment-5544612671',
+  'docs/evidence-only commits only while',
+  'every bound runtime source, CSS projection, asset, and capture byte remains exact',
+  'any material bound-byte change requires renewed capture approval',
+]
+for (const [name, source] of [
+  ['README.md', spec],
+  ['RUNTIME-VERIFICATION.md', runtimeReport],
+]) {
+  for (const marker of approvalMarkers) {
+    if (!source.includes(marker)) {
+      console.error(`FAIL ${name}: missing operator-approval binding marker ${marker}`)
+      failures++
+    }
+  }
+}
+console.log('PASS operator approval is bound to exact runtime-source and capture bytes')
 for (const marker of [
   '--color-action',
   '44 × 44',
