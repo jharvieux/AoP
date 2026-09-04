@@ -30,21 +30,26 @@ import {
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
 import { canAfford } from '@aop/shared'
-import { useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { captainAshoreState } from './captainAshore'
 import { buildCatalog } from './catalog'
 import { deepEqual } from './deepEqual'
 import { tapFeedback } from './audio/feedback'
 import { buildUnavailableReason, buildingFacts, unitFacts } from './cityBuildingInfo'
-import { BottomSheet } from './components/BottomSheet'
+import { CityBuildingArt } from './CityScene'
 import { useTheme } from './theme/ThemeContext'
-import { UI_ICON } from './uiIcons'
+import { UI_ICON, UiIcon } from './uiIcons'
 
 const CAPTAIN_STATS: readonly CaptainStat[] = ['attack', 'defense', 'speed']
 const CAPTAIN_STAT_LABELS: Record<CaptainStat, string> = {
   attack: 'Attack',
   defense: 'Defense',
   speed: 'Speed',
+}
+
+/** Engine names remain untouched; only player-facing copy gets the natural possessive. */
+export function playerFacingName(name: string): string {
+  return name.replace(/^You's\b/, 'Your')
 }
 
 // Frozen content snapshot for display math (effective stats via the same
@@ -73,7 +78,59 @@ function costLabel(cost: BuildingDef['cost']): string {
   return parts.length > 0 ? parts.join(', ') : 'Free'
 }
 
+const RESOURCE_ICON: Record<keyof ResourcePool, string> = {
+  gold: '/art/resources/gold.png',
+  timber: '/art/resources/timber.png',
+  iron: '/art/resources/iron.png',
+  rum: '/art/resources/rum.png',
+}
+
+function ResourceCost({ cost }: { cost: BuildingDef['cost'] }) {
+  const entries = (Object.entries(cost) as [keyof ResourcePool, number | undefined][]).filter(
+    (entry): entry is [keyof ResourcePool, number] => Boolean(entry[1]),
+  )
+  if (entries.length === 0) return <span>Free</span>
+  return (
+    <span className="resource-cost" aria-label={costLabel(cost)}>
+      {entries.map(([resource, amount]) => (
+        <span key={resource} aria-hidden>
+          <img src={RESOURCE_ICON[resource]} alt="" />
+          {amount}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 type ModalKind = 'build' | 'recruit' | 'shipyard' | 'tavern' | 'passive'
+
+function CityManagementPanel({
+  title,
+  onClose,
+  children,
+}: {
+  title: ReactNode
+  onClose: () => void
+  children: ReactNode
+}) {
+  const titleId = useId()
+  return (
+    <section className="city-management" aria-labelledby={titleId}>
+      <header className="city-management__header">
+        <h2 id={titleId}>{title}</h2>
+        <button
+          type="button"
+          data-city-detail-close
+          aria-label="Close building details"
+          onClick={onClose}
+        >
+          <UiIcon name="close" />
+        </button>
+      </header>
+      <div className="city-management__content">{children}</div>
+    </section>
+  )
+}
 
 function modalKind(def: BuildingDef | undefined): ModalKind {
   if (!def) return 'passive'
@@ -84,10 +141,9 @@ function modalKind(def: BuildingDef | undefined): ModalKind {
   return 'passive'
 }
 
-/** Placeholder building graphic (no art yet, #429): category-colored block. */
+/** The same resolved art chain used in the city scene, sized for management rows. */
 function BuildingGraphic({ buildingId }: { buildingId: string }) {
-  const category = BUILDINGS[buildingId]?.category ?? 'economy'
-  return <span className={`building-graphic building-graphic--${category}`} aria-hidden />
+  return <CityBuildingArt key={buildingId} buildingId={buildingId} className="building-graphic" />
 }
 
 /** Tap-to-reveal info affordance (#430) — tooltips must work on touch, so the
@@ -270,7 +326,7 @@ function BuildModal({
 }: CityBuildingModalProps) {
   const [infoId, setInfoId] = useState<string | null>(null)
   return (
-    <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
+    <CityManagementPanel title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
       {CATEGORY_ORDER.map((category) => (
         <section key={category}>
           <h3>{CATEGORY_LABELS[category]}</h3>
@@ -290,7 +346,7 @@ function BuildModal({
                       <div className="build-row__text">
                         <span className="garrison-row__name">{name}</span>
                         <span className="garrison-row__counts">
-                          {costLabel(def.cost)}
+                          <ResourceCost cost={def.cost} />
                           {reason ? ` — ${reason}` : ''}
                         </span>
                       </div>
@@ -320,7 +376,7 @@ function BuildModal({
           </ul>
         </section>
       ))}
-    </BottomSheet>
+    </CityManagementPanel>
   )
 }
 
@@ -348,14 +404,17 @@ function RecruitModal({
   const tierIconUrl = FACTIONS[faction].unitTierSpriteUrls?.[def.unlocksTier!]
   const [infoId, setInfoId] = useState<string | null>(null)
   return (
-    <BottomSheet title={buildingDisplayName(def.id, faction)} onClose={onClose}>
+    <CityManagementPanel title={buildingDisplayName(def.id, faction)} onClose={onClose}>
       <section className="building-modal__intro">
         <BuildingGraphic buildingId={def.id} />
         <p className="building-option__hint">{def.description}</p>
       </section>
       <section>
         <h3>
-          Recruit{captain ? ` — ${captain.name} (${aboardTotal}/${crewCapacity} aboard)` : ''}
+          Recruit
+          {captain
+            ? ` — ${playerFacingName(captain.name)} (${aboardTotal}/${crewCapacity} aboard)`
+            : ''}
         </h3>
         {!captain && (
           <p className="building-option__hint">
@@ -441,7 +500,7 @@ function RecruitModal({
           })}
         </ul>
       </section>
-    </BottomSheet>
+    </CityManagementPanel>
   )
 }
 
@@ -459,7 +518,7 @@ function ShipyardModal({
   const shipStats =
     captain && shipClass ? effectiveShipStats(shipClass, captain.shipUpgrades) : undefined
   return (
-    <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
+    <CityManagementPanel title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
       <section className="building-modal__intro">
         <BuildingGraphic buildingId={buildingId} />
         <p className="building-option__hint">{BUILDINGS[buildingId]?.description}</p>
@@ -468,7 +527,7 @@ function ShipyardModal({
         {captain && shipClass && shipStats ? (
           <>
             <h3>
-              {captain.name} — {shipName(shipClass.id, shipClass.name)}
+              {playerFacingName(captain.name)} — {shipName(shipClass.id, shipClass.name)}
             </h3>
             <p className="building-option__hint">
               Hull {shipStats.hull} · Cannons {shipStats.cannons} · Speed {shipStats.speed} · Crew{' '}
@@ -517,7 +576,7 @@ function ShipyardModal({
           </p>
         )}
       </section>
-    </BottomSheet>
+    </CityManagementPanel>
   )
 }
 
@@ -557,7 +616,7 @@ function TavernModal({
   )
   const canRecruitCaptain = canAfford(resources, { gold: recruitCost })
   return (
-    <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
+    <CityManagementPanel title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
       <section>
         <h3>Fleet ({captains.length})</h3>
         <div className="garrison-row">
@@ -607,7 +666,7 @@ function TavernModal({
                 )}
                 <div className="captain-row__body">
                   <span className="garrison-row__name">
-                    {cap.name}
+                    {playerFacingName(cap.name)}
                     {capShipClass ? ` — ${shipName(capShipClass.id, capShipClass.name)}` : ''}
                     {' · '}
                     Level {levelForXp(cap.xp, CAPTAIN_XP_THRESHOLDS)}
@@ -658,7 +717,7 @@ function TavernModal({
       {captain ? (
         <>
           <section>
-            <h3>Standing orders — {captain.name}</h3>
+            <h3>Standing orders — {playerFacingName(captain.name)}</h3>
             <p className="building-option__hint">
               Conditional defence plan used when this fleet is attacked while you're offline.
             </p>
@@ -683,7 +742,7 @@ function TavernModal({
           </section>
 
           <section>
-            <h3>Boarding defence — {captain.name}</h3>
+            <h3>Boarding defence — {playerFacingName(captain.name)}</h3>
             <p className="building-option__hint">
               Melee doctrine your crew fights by on the battle board when boarded while you're
               offline.
@@ -754,7 +813,7 @@ function TavernModal({
           </section>
 
           <section>
-            <h3>Stat training — {captain.name}</h3>
+            <h3>Stat training — {playerFacingName(captain.name)}</h3>
             {(() => {
               const points = availableStatPoints(captain, CAPTAIN_XP_THRESHOLDS)
               const effective = effectiveCaptainStats(captain, CATALOG)
@@ -803,7 +862,7 @@ function TavernModal({
           </section>
 
           <section>
-            <h3>Inventory — {captain.name}</h3>
+            <h3>Inventory — {playerFacingName(captain.name)}</h3>
             {(() => {
               const ashore = captainAshoreState(captain, parties)
               return (
@@ -853,8 +912,8 @@ function TavernModal({
               const full = captain.items.length >= ITEM_DROPS.captainItemCap
               return playerItemStash.length === 0 ? (
                 <p className="building-option__hint">
-                  No items in the stash — found items overflow here once {captain.name}'s hold is
-                  full.
+                  No items in the stash — found items overflow here once{' '}
+                  {playerFacingName(captain.name)}'s hold is full.
                 </p>
               ) : (
                 <>
@@ -878,7 +937,9 @@ function TavernModal({
                                 onTakeItem(itemId)
                               }}
                             >
-                              {full ? `${captain.name} full` : `Take for ${captain.name}`}
+                              {full
+                                ? `${playerFacingName(captain.name)} full`
+                                : `Take for ${playerFacingName(captain.name)}`}
                             </button>
                           </div>
                         </li>
@@ -897,7 +958,7 @@ function TavernModal({
           </p>
         </section>
       )}
-    </BottomSheet>
+    </CityManagementPanel>
   )
 }
 
@@ -906,11 +967,11 @@ function TavernModal({
 function PassiveModal({ buildingId, faction, onClose }: CityBuildingModalProps) {
   const def = BUILDINGS[buildingId]
   return (
-    <BottomSheet title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
+    <CityManagementPanel title={buildingDisplayName(buildingId, faction)} onClose={onClose}>
       <section className="building-modal__intro">
         <BuildingGraphic buildingId={buildingId} />
         {def && <BuildingInfo def={def} faction={faction} />}
       </section>
-    </BottomSheet>
+    </CityManagementPanel>
   )
 }

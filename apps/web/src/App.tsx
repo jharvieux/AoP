@@ -79,6 +79,19 @@ type Screen =
   | 'match'
   | 'leaderboard'
 
+export const NATIVE_BACK_EVENT = 'aop:native-back'
+
+/** Gives the foremost in-app surface one synchronous chance to consume a
+ * native back gesture before App falls back to its existing screen change. */
+export function handleNativeBack(screen: Screen, onFallback: () => void): boolean {
+  if (screen === 'menu' || screen === 'title') return false
+  const event = new Event(NATIVE_BACK_EVENT, { cancelable: true })
+  window.dispatchEvent(event)
+  if (event.defaultPrevented) return true
+  onFallback()
+  return true
+}
+
 interface ReplayData {
   config: GameConfig
   actions: Action[]
@@ -308,15 +321,11 @@ export function App() {
     setScreen(replayReturnScreen)
   }
 
-  // Android hardware back / gesture-nav back: return to the menu from any
-  // other screen instead of falling through to Capacitor's default (exiting
-  // the app) — see plugins/androidBackButton.ts. No-op on web/no native shell.
+  // Android hardware back / gesture-nav back: let the foremost in-app layer
+  // consume it, then return to the menu instead of falling through to
+  // Capacitor's default (exiting the app). No-op on web/no native shell.
   useEffect(() => {
-    return registerBackButtonHandler(() => {
-      if (screen === 'menu' || screen === 'title') return false
-      setScreen('menu')
-      return true
-    })
+    return registerBackButtonHandler(() => handleNativeBack(screen, () => setScreen('menu')))
   }, [screen])
 
   return (

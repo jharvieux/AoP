@@ -1,17 +1,76 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { GAME_SETUP } from '@aop/content'
+import { createGame, type GameConfig } from '@aop/engine'
+import { useState } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CityScene } from './CityScene'
+import { CityScreen } from './CityScreen'
 import citySceneLayout from './citySceneLayout.json'
 
 const theme = vi.hoisted(() => ({
   spriteUrl: vi.fn<(contentId: string) => string | undefined>(),
 }))
 
+const FOCUSABLE_SELECTOR = 'button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+
+afterEach(cleanup)
+
 vi.mock('./theme/ThemeContext', () => ({
-  useTheme: () => ({ spriteUrl: theme.spriteUrl }),
+  useTheme: () => ({
+    factionName: (_id: string, fallback: string) => fallback,
+    shipName: (_id: string, fallback: string) => fallback,
+    spriteUrl: theme.spriteUrl,
+    unitName: (_id: string, fallback: string) => fallback,
+  }),
 }))
+
+vi.mock('./audio/feedback', () => ({ tapFeedback: vi.fn() }))
+
+const config: GameConfig = {
+  seed: 612,
+  mapSize: 'small',
+  setup: GAME_SETUP,
+  players: [
+    { id: 'player-0', name: 'You', faction: 'pirates', isAI: false },
+    { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+  ],
+}
+
+function cityScreenProps() {
+  const game = createGame(config)
+  const city = game.cities.find((candidate) => candidate.ownerId === 'player-0')!
+  const captain = game.captains.find((candidate) => candidate.ownerId === 'player-0')!
+  return {
+    city,
+    captain,
+    captains: [captain],
+    parties: [],
+    faction: 'pirates' as const,
+    resources: { gold: 20_000, timber: 20_000, iron: 20_000, rum: 20_000 },
+    setup: game.config.setup,
+    round: game.round,
+    playerName: (id: string) => id,
+    playerItemStash: [],
+    portDefenderCount: 1,
+    onClose: vi.fn(),
+    onBuild: vi.fn(),
+    onRecruit: vi.fn(),
+    onTransfer: vi.fn(),
+    onSetStandingOrders: vi.fn(),
+    onSetBoardOrders: vi.fn(),
+    onChooseCaptainSkill: vi.fn(),
+    onChooseCaptainStat: vi.fn(),
+    onUpgradeShip: vi.fn(),
+    onRecruitCaptain: vi.fn(),
+    onRansomCaptain: vi.fn(),
+    onGarrisonCaptain: vi.fn(),
+    onUngarrisonCaptain: vi.fn(),
+    onTakeItem: vi.fn(),
+    onDepositItem: vi.fn(),
+  }
+}
 
 function expectStableBackdropCells(container: HTMLElement, missing: readonly number[] = []) {
   const cells = [...container.querySelectorAll<HTMLElement>('.city-scene__backdrop-cell')]
@@ -64,12 +123,12 @@ describe('CityScene production art consumer', () => {
       <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
     )
     const button = container.querySelector<HTMLButtonElement>('.city-scene__building')!
-    let sprite = button.querySelector<HTMLImageElement>('.city-scene__sprite')!
+    let sprite = button.querySelector<HTMLImageElement>('.city-building-art__image')!
     expect(sprite.getAttribute('src')).toBe('/theme/townhall.webp')
 
     fireEvent.error(sprite)
     await waitFor(() => {
-      sprite = button.querySelector<HTMLImageElement>('.city-scene__sprite')!
+      sprite = button.querySelector<HTMLImageElement>('.city-building-art__image')!
       expect(sprite.getAttribute('src')).toBe('/art/city/townhall.webp')
     })
     fireEvent.load(sprite)
@@ -77,8 +136,73 @@ describe('CityScene production art consumer', () => {
 
     fireEvent.error(sprite)
     await waitFor(() => {
-      expect(button.querySelector('.city-scene__sprite')).toBeNull()
+      expect(button.querySelector('.city-building-art__image')).toBeNull()
       expect(button.classList.contains('city-scene__building--art')).toBe(false)
+    })
+  })
+
+  it('exposes selected state without changing the constructed-only building set', () => {
+    const { container } = render(
+      <CityScene
+        buildings={['townhall', 'shipyard', 'not-a-building']}
+        faction="pirates"
+        selectedBuildingId="shipyard"
+        onOpenBuilding={() => undefined}
+      />,
+    )
+
+    const buildings = [...container.querySelectorAll<HTMLButtonElement>('[data-building-id]')]
+    expect(buildings.map((button) => button.dataset.buildingId)).toEqual(['townhall', 'shipyard'])
+    expect(buildings.map((button) => button.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+    ])
+    expect(buildings[1]?.getAttribute('aria-label')).toBe('Manage Shipyard')
+  })
+
+  it('reports bounded zoom state and resets the scene to 100 percent', () => {
+    const { container, getByRole } = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    const viewport = container.querySelector<HTMLElement>('.city-scene-viewport')!
+    viewport.scrollTo = vi.fn()
+    const zoomIn = getByRole('button', { name: 'Zoom in' })
+    const zoomOut = getByRole('button', { name: 'Zoom out' })
+
+    expect((zoomOut as HTMLButtonElement).disabled).toBe(true)
+    expect(getByRole('status', { name: 'City zoom level' }).textContent).toBe('100%')
+    for (let index = 0; index < citySceneLayout.zoomStops.length + 2; index += 1) {
+      fireEvent.click(zoomIn)
+    }
+    expect((zoomIn as HTMLButtonElement).disabled).toBe(true)
+    expect(getByRole('status', { name: 'City zoom level' }).textContent).toBe('300%')
+
+    fireEvent.click(getByRole('button', { name: 'Reset city view' }))
+    expect(getByRole('status', { name: 'City zoom level' }).textContent).toBe('100%')
+    expect(viewport.scrollTo).toHaveBeenCalledWith({ left: 0, top: 0 })
+  })
+
+  it('supports keyboard panning and an explicit recenter control', () => {
+    const { container, getByRole } = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    const viewport = container.querySelector<HTMLElement>('.city-scene-viewport')!
+    viewport.scrollBy = vi.fn()
+    viewport.scrollTo = vi.fn()
+    Object.defineProperties(viewport, {
+      scrollWidth: { configurable: true, value: 600 },
+      clientWidth: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    })
+
+    fireEvent.keyDown(viewport, { key: 'ArrowRight' })
+    expect(viewport.scrollBy).toHaveBeenCalledWith({ left: 48 })
+    fireEvent.click(getByRole('button', { name: 'Recenter city' }))
+    expect(viewport.scrollTo).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 150,
+      top: 100,
     })
   })
 
@@ -222,5 +346,158 @@ describe('CityScene production art consumer', () => {
     }
 
     await waitFor(() => expectStableBackdropCells(container, failedIndices))
+  })
+})
+
+describe('CityScreen dedicated overlay', () => {
+  it('contains focus, inerts the map, restores the opener, and uses Escape one layer at a time', async () => {
+    const props = cityScreenProps()
+
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button">Outside city branch</button>
+          <div>
+            <button type="button" onClick={() => setOpen(true)}>
+              Open city
+            </button>
+            {open && (
+              <CityScreen
+                {...props}
+                onClose={() => {
+                  props.onClose()
+                  setOpen(false)
+                }}
+              />
+            )}
+          </div>
+        </>
+      )
+    }
+
+    const view = render(<Harness />)
+    const opener = view.getByRole('button', { name: 'Open city' })
+    opener.focus()
+    fireEvent.click(opener)
+
+    const dialog = view.getByRole('dialog', { name: 'Your Capital' })
+    expect(opener.hasAttribute('inert')).toBe(true)
+    expect(opener.getAttribute('aria-hidden')).toBe('true')
+    expect(view.getByText('Outside city branch').hasAttribute('inert')).toBe(true)
+    expect(document.activeElement).toBe(view.getByRole('button', { name: 'Return to world map' }))
+    expect(view.getAllByRole('dialog')).toHaveLength(1)
+    expect(view.queryByText("You's Capital")).toBeNull()
+    expect(view.queryByText("You's Flagship")).toBeNull()
+    expect(view.getByText('Your Flagship')).not.toBeNull()
+
+    const townHall = view.getByRole('button', { name: 'Manage Town Hall' })
+    fireEvent.click(townHall)
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        view.getByRole('button', { name: 'Close building details' }),
+      ),
+    )
+    expect(view.getAllByRole('dialog')).toHaveLength(1)
+    expect(view.container.querySelector('.sheet')).toBeNull()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(townHall))
+    expect(view.queryByRole('button', { name: 'Close building details' })).toBeNull()
+    expect(props.onClose).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(props.onClose).toHaveBeenCalledOnce()
+    expect(view.queryByRole('dialog')).toBeNull()
+    expect(opener.hasAttribute('inert')).toBe(false)
+    expect(opener.getAttribute('aria-hidden')).toBeNull()
+    expect(view.getByRole('button', { name: 'Outside city branch' }).hasAttribute('inert')).toBe(
+      false,
+    )
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('consumes native back to close details first and the city second', async () => {
+    const props = cityScreenProps()
+
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return open ? <CityScreen {...props} onClose={() => setOpen(false)} /> : null
+    }
+
+    const view = render(<Harness />)
+    fireEvent.click(view.getByRole('button', { name: 'Manage Town Hall' }))
+
+    const closeDetails = new Event('aop:native-back', { cancelable: true })
+    fireEvent(window, closeDetails)
+    expect(closeDetails.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(view.queryByRole('button', { name: 'Close building details' })).toBeNull(),
+    )
+    expect(view.getByRole('dialog')).not.toBeNull()
+
+    const closeCity = new Event('aop:native-back', { cancelable: true })
+    fireEvent(window, closeCity)
+    expect(closeCity.defaultPrevented).toBe(true)
+    await waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
+  })
+
+  it('cycles cities, clears stale building selection, and preserves garrison callbacks', () => {
+    const props = cityScreenProps()
+    const secondCity = { ...props.city, id: 'city-second', name: 'Second Harbor' }
+
+    function Harness() {
+      const [city, setCity] = useState(props.city)
+      return (
+        <CityScreen
+          {...props}
+          city={city}
+          cities={[props.city, secondCity]}
+          onSelectCity={(id) => setCity(id === secondCity.id ? secondCity : props.city)}
+        />
+      )
+    }
+
+    const view = render(<Harness />)
+    fireEvent.click(view.getByRole('button', { name: 'Manage Town Hall' }))
+    expect(view.getByRole('button', { name: 'Close building details' })).not.toBeNull()
+
+    fireEvent.click(view.getByRole('button', { name: 'Next city' }))
+    expect(view.getByRole('dialog', { name: 'Second Harbor' })).not.toBeNull()
+    expect(view.queryByRole('button', { name: 'Close building details' })).toBeNull()
+
+    fireEvent.click(view.getByRole('button', { name: 'Garrison' }))
+    expect(props.onGarrisonCaptain).toHaveBeenCalledOnce()
+  })
+
+  it('preserves the ungarrison callback and explains a disabled garrison action', () => {
+    const props = cityScreenProps()
+    const withoutCaptain = render(<CityScreen {...props} captain={undefined} />)
+    const disabled = withoutCaptain.getByRole('button', { name: 'Garrison' })
+    expect((disabled as HTMLButtonElement).disabled).toBe(true)
+    expect(disabled.getAttribute('aria-describedby')).not.toBeNull()
+    expect(withoutCaptain.getByText('Dock a captain to manage ships')).not.toBeNull()
+    withoutCaptain.unmount()
+
+    const garrisonedCity = { ...props.city, garrisonCaptainId: props.captain.id }
+    const garrisoned = render(<CityScreen {...props} city={garrisonedCity} />)
+    fireEvent.click(garrisoned.getByRole('button', { name: 'Ungarrison' }))
+    expect(props.onUngarrisonCaptain).toHaveBeenCalledOnce()
+  })
+
+  it('wraps focus at both ends of its one modal boundary', () => {
+    const props = cityScreenProps()
+    const view = render(<CityScreen {...props} />)
+    const dialog = view.getByRole('dialog')
+    const focusable = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
+    const first = focusable[0]!
+    const last = focusable[focusable.length - 1]!
+
+    last.focus()
+    fireEvent.keyDown(last, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+    first.focus()
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(last)
   })
 })
