@@ -14,9 +14,10 @@ same round-one Pirate world state after eligible default art had settled.
 | [`tablet-768x1024.jpg`](runtime-captures/tablet-768x1024.jpg)   | 768×1024 | 50,169 | `dd6e39557b6bc35efb429cf7dbf3c64fea60af3062265d8a67c1052c454eb5ec` |
 | [`phone-390x844.jpg`](runtime-captures/phone-390x844.jpg)       |  390×844 | 33,085 | `c6f8fbd30b66841944f0f1232f26a7bdb0ceb6fcce4a4ab266eb833009e84c5c` |
 
-The captures verify representative actual-size default city, ship, party, encounter, and
-site presentation, the explored/visible fog boundary, minimap parity, and usable responsive
-map/control layout.
+The captures verify the same round-one default city, fleet, and nearby land-content slice at
+three actual viewport sizes, together with the explored/visible fog boundary, minimap parity,
+and usable responsive map/control layout. Complete 23-identity coverage at 24, 32, 48, and
+96 px remains in `proofs/matte-stress/runtime-public-contact-sheet-23.webp`.
 The hidden-identity sentinel, theme-override priority, decode-failure fallback, preload
 readiness, and no-fallback-pop behavior remain bound by the focused runtime tests and the
 independent exact-head verification; no browser-only claim replaces those tests.
