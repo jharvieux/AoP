@@ -1,4 +1,5 @@
 import type { ResourcePool } from '@aop/shared'
+import type { ReactNode } from 'react'
 
 const RESOURCE_LABELS: Record<keyof ResourcePool, string> = {
   gold: 'Gold',
@@ -19,14 +20,34 @@ const RESOURCE_ICON: Record<keyof ResourcePool, string> = {
 /** Compact per-resource readout for the top HUD bar. */
 export function ResourceHud({ resources }: { resources: ResourcePool }) {
   return (
-    <div className="resource-hud">
+    <div className="resource-hud" role="group" aria-label="Resources">
       {(Object.keys(RESOURCE_LABELS) as (keyof ResourcePool)[]).map((key) => (
-        <span key={key} className="resource-hud__item">
+        <span
+          key={key}
+          className="resource-hud__item"
+          aria-label={`${RESOURCE_LABELS[key]}: ${resources[key]}`}
+        >
           <img className="resource-hud__icon" src={RESOURCE_ICON[key]} alt="" aria-hidden />
           <span className="resource-hud__label">{RESOURCE_LABELS[key]}</span>
-          {resources[key]}
+          <span className="resource-hud__value">{resources[key]}</span>
         </span>
       ))}
     </div>
+  )
+}
+
+interface GameplayHudProps {
+  status: ReactNode
+  resources?: ResourcePool | undefined
+}
+
+/** The shared header contract for local and multiplayer gameplay. */
+export function GameplayHud({ status, resources }: GameplayHudProps) {
+  return (
+    <header className="hud gameplay-hud" data-gameplay-chrome="hud">
+      <h1>Age of Plunder</h1>
+      <span className="turn-info">{status}</span>
+      {resources && <ResourceHud resources={resources} />}
+    </header>
   )
 }

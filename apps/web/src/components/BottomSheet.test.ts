@@ -37,13 +37,32 @@ describe('BottomSheet', () => {
       }),
     )
 
+    const dialog = screen.getByRole('dialog', { name: 'Harbor' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(screen.getByRole('heading', { name: 'Harbor' })).not.toBeNull()
     expect(screen.getByText('Dockyard options')).not.toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(container.querySelector('.sheet')!)
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledOnce()
     fireEvent.click(container.querySelector('.sheet-backdrop')!)
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('dismisses with Escape without depending on a platform glyph', () => {
+    const onClose = vi.fn()
+    const { container } = render(
+      createElement(BottomSheet, {
+        title: 'Shipyard',
+        onClose,
+        children: createElement('p', undefined, 'Refit options'),
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'Shipyard' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(container.querySelector('.sheet__close svg')).not.toBeNull()
   })
 })

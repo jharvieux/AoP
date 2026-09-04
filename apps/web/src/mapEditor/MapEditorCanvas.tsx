@@ -17,7 +17,7 @@ import type { EditorDraft } from './types'
 const TILE = 22
 const START_COLOR = cssToken('--color-success', '#3be2a1')
 const RESOURCE_COLOR = {
-  gold: cssToken('--color-gold', '#c9a227'),
+  gold: cssToken('--color-brass', '#c9a227'),
   timber: cssToken('--map-resource-timber', '#8a5a2b'),
   iron: cssToken('--map-enemy-city', '#9aa0a6'),
   rum: cssToken('--map-resource-rum', '#b23bd8'),

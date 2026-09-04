@@ -50,7 +50,7 @@ import {
   type TacticalProbeOutcome,
 } from '../boardingPlanner'
 import { MapCanvas, type MapControls } from '../MapCanvas'
-import { ResourceHud } from '../ResourceHud'
+import { GameplayHud } from '../ResourceHud'
 import { CityScreen } from '../CityScreen'
 import { SaveScreen } from '../SaveScreen'
 import { TacticalRoundSheet } from '../TacticalRoundSheet'
@@ -68,7 +68,7 @@ import {
   shipMoveFeedback,
   tapFeedback,
 } from '../audio/feedback'
-import { UI_ICON } from '../uiIcons'
+import { UiIcon } from '../uiIcons'
 import { ENCOUNTER_PORTRAIT } from '../encounterPortraits'
 
 const BATTLE_TAUNT_KEY = 'battle-taunt'
@@ -1678,22 +1678,23 @@ export function GameScreen({
   }
 
   return (
-    <div className="game-screen-container">
-      <header className="hud">
-        <h1>Age of Plunder</h1>
-        <span className="turn-info">
-          Round {game.round}
-          {game.config.setup.roundLimit !== undefined &&
-            ` / ${game.config.setup.roundLimit}`} — {player.name} (
-          {factionName(player.faction, FACTIONS[player.faction].name)})
-        </span>
-        <ResourceHud resources={viewer.resources} />
-      </header>
+    <div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen">
+      <GameplayHud
+        status={
+          <>
+            Round {game.round}
+            {game.config.setup.roundLimit !== undefined &&
+              ` / ${game.config.setup.roundLimit}`} — {player.name} (
+            {factionName(player.faction, FACTIONS[player.faction].name)})
+          </>
+        }
+        resources={viewer.resources}
+      />
 
       {/* Persistent until the next successful autosave (#237) — a long game
           is exactly when hitting storage quota costs the most. */}
       {autosaveFailing && (
-        <div className="autosave-failing-banner" role="status">
+        <div className="autosave-failing-banner gameplay-alert" role="status">
           Autosave failing — free up storage or save to a slot manually.
         </div>
       )}
@@ -1798,7 +1799,7 @@ export function GameScreen({
                     aria-label={c.builtThisRound ? 'Built this round' : 'Idle this round'}
                     title={c.builtThisRound ? 'Built this round' : 'Idle this round'}
                   >
-                    {c.builtThisRound ? '✓' : '•'}
+                    <UiIcon name={c.builtThisRound ? 'constructed' : 'idle'} size={16} />
                   </span>
                 </button>
               </li>
@@ -1809,7 +1810,7 @@ export function GameScreen({
 
       {/* Primary actions live in a bottom bar, not the header, so they sit in
           the thumb-reach zone on one-handed phone use (#27). */}
-      <div className="bottom-action-bar">
+      <div className="bottom-action-bar gameplay-command-dock" data-gameplay-chrome="command-dock">
         {/* Movement-points readout (#476): the selected ship/party's remaining
             vs. max movement had no display anywhere before this — the only
             feedback was the dotted route preview, which needs a mouse hover to
@@ -1868,9 +1869,7 @@ export function GameScreen({
             Saves
           </button>
           <button className="primary" onClick={endTurn} disabled={player.isAI}>
-            {UI_ICON.endTurn && (
-              <img className="button-icon" src={UI_ICON.endTurn} alt="" aria-hidden />
-            )}
+            <UiIcon name="endTurn" />
             {player.isAI ? 'AI thinking…' : 'End Turn'}
           </button>
           {!confirmingResign ? (
@@ -2006,9 +2005,7 @@ export function GameScreen({
             </p>
             <div className="button-group">
               <button className="primary" onClick={confirmAttack}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 {game.config.setup.battleResolution === 'tactical' ? 'Fight tactically' : 'Attack'}
               </button>
               {/* D-002: auto-resolve stays available from the battle screen even in
@@ -2049,9 +2046,7 @@ export function GameScreen({
             )}
             <div className="button-group">
               <button className="primary" onClick={confirmAssault}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 {game.config.setup.battleResolution === 'tactical'
                   ? 'Assault tactically'
                   : 'Assault'}
@@ -2096,7 +2091,7 @@ export function GameScreen({
                         setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing - 1 }))
                       }
                     >
-                      −
+                      <UiIcon name="decrease" />
                     </button>
                     <button
                       className="secondary"
@@ -2106,7 +2101,7 @@ export function GameScreen({
                         setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing + 1 }))
                       }
                     >
-                      +
+                      <UiIcon name="increase" />
                     </button>
                   </div>
                 </div>
@@ -2148,9 +2143,7 @@ export function GameScreen({
             </p>
             <div className="button-group">
               <button className="primary" onClick={confirmPartyAttack}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 {game.config.setup.battleResolution === 'tactical' ? 'Fight tactically' : 'Attack'}
               </button>
               {game.config.setup.battleResolution === 'tactical' && (
@@ -2182,9 +2175,7 @@ export function GameScreen({
             )}
             <div className="button-group">
               <button className="primary" onClick={confirmPartyAssault}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 {game.config.setup.battleResolution === 'tactical'
                   ? 'Assault tactically'
                   : 'Assault'}

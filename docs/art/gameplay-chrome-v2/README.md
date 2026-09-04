@@ -1,6 +1,6 @@
-# Gameplay chrome v2 — operator checkpoint
+# Gameplay chrome v2 — approved contract
 
-This is the visual approval package for [issue #610](https://github.com/jharvieux/AoP/issues/610). It is a deterministic review artifact, not runtime CSS, a component rewrite, or a production asset bundle. It applies the approved **Direction B — Gilded Harbor Diorama** mood as the dominant illustrated layer while keeping D-023's Weathered Parchment & Rope recognizable as quiet gameplay chrome.
+This directory contains the approved visual contract and deterministic review package for [issue #610](https://github.com/jharvieux/AoP/issues/610). The operator approved **Direction B — Gilded Harbor Diorama with the recommended city refinement** before runtime implementation began. The mockups remain non-runtime evidence; the implemented CSS, components, vector primitives, and verification are recorded in [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md).
 
 ## Review at native size
 
@@ -10,11 +10,11 @@ This is the visual approval package for [issue #610](https://github.com/jharvieu
 
 Open each at 100%. The approved Direction B map/city review sources are embedded only as non-runtime backdrop evidence. All chrome, labels, selection rings, icon marks, numeric values, and panels are locally authored deterministic SVG geometry/text; there are no platform glyph controls, third-party logos, signatures, watermarks, or generated UI art.
 
-## Proposed contract
+## Approved contract
 
 ### Semantic vocabulary
 
-The runtime implementation retains `:root` in `apps/web/src/styles.css` as the single source of truth. The checkpoint proposes one semantic surface and emphasis vocabulary:
+The runtime implementation retains `:root` in `apps/web/src/styles.css` as the single source of truth and uses one semantic surface and emphasis vocabulary:
 
 | Intent                   | Proposed token                          | Value / rule                                                                      |
 | ------------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
@@ -88,13 +88,15 @@ City uses the same HUD/dock type and panel grammar as map. Its selected-building
 ## Files and reproducibility
 
 - `compose.mjs` embeds the approved Direction B source backdrop hashes by local path and writes deterministic self-contained SVG mockups.
-- `validate.mjs` checks dimensions, embedded backdrop evidence, geometry markers, asset size, and required design-contract language; it exits nonzero on failure.
+- `RUNTIME-INVENTORY.md` records the exact pre-implementation token, glyph, geometry, and local/multiplayer drift census.
+- `RUNTIME-VERIFICATION.md` records implemented surfaces, test/build budgets, explicit follow-ups, and the still-pending final runtime capture gate.
+- `validate.mjs` checks proof dimensions, embedded backdrop evidence, geometry, asset size and contract language, then checks runtime token parity, icon markers, glyph removal, control states, and local/multiplayer parity; it exits nonzero on failure.
 - The final review files are self-contained SVG. They are intentionally not copied into `apps/web/public` and must not be treated as shippable runtime assets.
 
 Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only; #608 must deliver the approved city amendment before any runtime art ships.
 
 Run `node compose.mjs && node validate.mjs` from this directory to recreate and validate the package.
 
-## Operator decision requested
+## Approval record
 
-Approve this chrome system for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
+Approved for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant. Final after-font/assets-loaded runtime captures remain a separate acceptance gate; they must not be inferred from these static checkpoint files.

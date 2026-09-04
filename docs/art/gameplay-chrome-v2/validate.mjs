@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = dirname(fileURLToPath(import.meta.url))
+const repoRoot = join(root, '..', '..', '..')
 const required = [
   ['mockups/phone-world-map-375x812.svg', 375, 812],
   ['mockups/city-inspector-desktop-1440x900.svg', 1440, 900],
@@ -149,5 +150,148 @@ if (actionFilledControls !== 3) {
 } else {
   console.log('PASS primary action census: 3 action-filled controls')
 }
+
+const runtimeFiles = {
+  styles: readFileSync(join(repoRoot, 'apps/web/src/styles.css'), 'utf8'),
+  tokens: readFileSync(join(repoRoot, 'apps/web/src/colorTokens.ts'), 'utf8'),
+  icons: readFileSync(join(repoRoot, 'apps/web/src/uiIcons.ts'), 'utf8'),
+  map: readFileSync(join(repoRoot, 'apps/web/src/MapCanvas.tsx'), 'utf8'),
+  minimap: readFileSync(join(repoRoot, 'apps/web/src/Minimap.tsx'), 'utf8'),
+  editor: readFileSync(join(repoRoot, 'apps/web/src/mapEditor/MapEditorCanvas.tsx'), 'utf8'),
+  sheet: readFileSync(join(repoRoot, 'apps/web/src/components/BottomSheet.tsx'), 'utf8'),
+  game: readFileSync(join(repoRoot, 'apps/web/src/screens/GameScreen.tsx'), 'utf8'),
+  match: readFileSync(join(repoRoot, 'apps/web/src/screens/MatchScreen.tsx'), 'utf8'),
+}
+const runtimeRoot = runtimeFiles.styles.match(/:root\s*\{([\s\S]*?)\}/)?.[1] ?? ''
+const rootTokens = new Map(
+  [...runtimeRoot.matchAll(/^\s*(--[^:]+):\s*([^;]+);/gm)].map((match) => [
+    match[1],
+    match[2].trim(),
+  ]),
+)
+const fallbackTokens = new Map(
+  [
+    ...runtimeFiles.tokens.matchAll(/['"](?<name>--[^'"]+)['"]:\s*['"](?<value>#[0-9a-f]+)['"]/gi),
+  ].map((match) => [match.groups.name, match.groups.value]),
+)
+const canvasSources = [runtimeFiles.map, runtimeFiles.minimap, runtimeFiles.editor]
+const canvasCalls = canvasSources.flatMap((source) => [
+  ...source.matchAll(
+    /cssToken\(\s*['"](?<name>--[^'"]+)['"]\s*,\s*['"](?<value>#[0-9a-f]+)['"]\s*\)/gi,
+  ),
+])
+if (canvasCalls.length !== 40 || fallbackTokens.size !== 31) {
+  console.error(
+    `FAIL runtime token census: expected 40 calls / 31 properties, found ${canvasCalls.length} / ${fallbackTokens.size}`,
+  )
+  failures++
+}
+for (const call of canvasCalls) {
+  const { name, value } = call.groups
+  const fallback = fallbackTokens.get(name)
+  const declaration = rootTokens.get(name)
+  if (fallback !== value || declaration !== value) {
+    console.error(
+      `FAIL runtime token parity ${name}: call=${value}, fallback=${fallback}, CSS=${declaration}`,
+    )
+    failures++
+  }
+}
+console.log(
+  `PASS runtime token census: ${canvasCalls.length} calls / ${fallbackTokens.size} properties`,
+)
+
+for (const [name, value] of [
+  ['--color-action', '#c8962c'],
+  ['--stroke-focus', '#c8962c'],
+  ['--color-brass', '#c9a227'],
+  ['--stroke-selected', '#c9a227'],
+  ['--color-highlight', '#f0cb66'],
+]) {
+  if (rootTokens.get(name) !== value) {
+    console.error(`FAIL runtime semantic token ${name}: expected ${value}`)
+    failures++
+  }
+}
+for (const stale of ['--accent:', '--accent-2:', '--accent-glow:', '--color-gold:']) {
+  if (runtimeFiles.styles.includes(stale)) {
+    console.error(`FAIL stale runtime token declaration: ${stale}`)
+    failures++
+  }
+}
+
+const ownedGlyphSources = [
+  ['MapCanvas.tsx', runtimeFiles.map],
+  ['BottomSheet.tsx', runtimeFiles.sheet],
+  ['GameScreen.tsx', runtimeFiles.game],
+  ['MatchScreen.tsx', runtimeFiles.match],
+]
+for (const [name, source] of ownedGlyphSources) {
+  if (/^\s*[+−×✓•⌖⛶]\s*$/mu.test(source)) {
+    console.error(`FAIL platform control glyph remains in ${name}`)
+    failures++
+  }
+}
+for (const marker of [
+  "viewBox: '0 0 20 20'",
+  "stroke: 'currentColor'",
+  "fill: 'currentColor'",
+  "'aria-hidden': true",
+  "focusable: 'false'",
+]) {
+  if (!runtimeFiles.icons.includes(marker)) {
+    console.error(`FAIL runtime icon contract: missing ${marker}`)
+    failures++
+  }
+}
+for (const source of [runtimeFiles.game, runtimeFiles.match]) {
+  for (const marker of [
+    '<GameplayHud',
+    'game-screen-container gameplay-chrome',
+    'bottom-action-bar gameplay-command-dock',
+    'data-gameplay-chrome="screen"',
+    'data-gameplay-chrome="command-dock"',
+  ]) {
+    if (!source.includes(marker)) {
+      console.error(`FAIL GameScreen/MatchScreen parity: missing ${marker}`)
+      failures++
+    }
+  }
+}
+for (const marker of [
+  'button:disabled::after',
+  'outline: 2px solid var(--stroke-focus)',
+  '0 0 0 4px var(--selected-glow)',
+]) {
+  if (!runtimeFiles.styles.includes(marker)) {
+    console.error(`FAIL runtime control-state contract: missing ${marker}`)
+    failures++
+  }
+}
+for (const selector of [
+  'button.primary',
+  'button.secondary',
+  'button.danger',
+  '.map-nav-button',
+  '.city-roster-entry',
+  '.building-option',
+  '.garrison-row__actions button',
+  '.build-row__build',
+  '.city-scene__building',
+  '.city-scene-zoom button',
+  '.city-scene-nav',
+  '.info-toggle',
+  '.sheet__close',
+]) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const block = runtimeFiles.styles.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+  if (!/(?:min-)?width: 44px/.test(block) || !/(?:min-)?height: 44px/.test(block)) {
+    console.error(`FAIL runtime control geometry: ${selector} is not explicitly at least 44×44`)
+    failures++
+  }
+}
+console.log('PASS runtime control geometry: 13 touched families are explicitly at least 44×44')
+console.log('PASS runtime icon, parity, and non-color state contracts')
+
 if (failures) process.exit(1)
-console.log('PASS #610 design-checkpoint package')
+console.log('PASS #610 design-checkpoint and runtime package')
