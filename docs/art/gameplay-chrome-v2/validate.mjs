@@ -3,6 +3,13 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  acceptanceProjection,
+  bindingPath,
+  buildRuntimeCaptureBindings,
+  captureSpecs,
+  stylesheetPath,
+} from './runtime-capture-bindings.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(root, '..', '..', '..')
@@ -77,6 +84,160 @@ for (const [name, width, height] of runtimeCaptureSpecs) {
   }
   console.log(
     `PASS ${relative}: ${width}×${height}, ${bytes.toLocaleString()} bytes, sha256 ${digest}`,
+  )
+}
+
+const retainedBinding = JSON.parse(readFileSync(bindingPath, 'utf8'))
+const expectedBinding = buildRuntimeCaptureBindings()
+const projectBinding = (binding) => JSON.stringify(acceptanceProjection(binding))
+const bindingMatches = (candidate) => projectBinding(candidate) === projectBinding(expectedBinding)
+const expectedCaptureIds = captureSpecs.map((capture) => capture.id)
+const retainedCaptureIds = retainedBinding.captures.map((capture) => capture.id)
+const retainedSourceSetIds = Object.keys(retainedBinding.source_sets)
+const retainedScopeIds = retainedBinding.stylesheet_source.scopes.map((scope) => scope.id)
+const exactInventory =
+  JSON.stringify(Object.keys(retainedBinding).sort()) ===
+    JSON.stringify([
+      'capture_baseline',
+      'captures',
+      'schema',
+      'source_sets',
+      'stylesheet_source',
+    ]) &&
+  JSON.stringify(retainedCaptureIds) === JSON.stringify(expectedCaptureIds) &&
+  JSON.stringify(retainedSourceSetIds) === JSON.stringify(expectedCaptureIds) &&
+  JSON.stringify(retainedScopeIds) === JSON.stringify(expectedCaptureIds)
+if (!exactInventory) {
+  console.error('FAIL runtime source binding inventory equality')
+  failures++
+}
+if (!bindingMatches(retainedBinding)) {
+  console.error('FAIL runtime captures are stale for their bound source/CSS/asset bytes')
+  failures++
+}
+const diagnosticHash = retainedBinding.stylesheet_source.diagnostic_full_sha256
+if (!/^[0-9a-f]{64}$/.test(diagnosticHash)) {
+  console.error('FAIL runtime source binding stylesheet diagnostic hash')
+  failures++
+}
+console.log(
+  `PASS runtime source bindings: ${retainedCaptureIds.length} captures / ${retainedSourceSetIds.length} exact source sets`,
+)
+
+function driftedBuffer(path, suffix = '\nsource-drift') {
+  return Buffer.concat([readFileSync(join(repoRoot, path)), Buffer.from(suffix)])
+}
+
+function expectBindingDrift(label, overrides) {
+  let drifted
+  try {
+    drifted = buildRuntimeCaptureBindings({ overrides })
+  } catch {
+    console.log(`PASS runtime source binding negative control: ${label} rejected`)
+    return
+  }
+  if (projectBinding(drifted) === projectBinding(retainedBinding)) {
+    console.error(`FAIL runtime source binding negative control: ${label} escaped`)
+    failures++
+  } else {
+    console.log(`PASS runtime source binding negative control: ${label} rejected`)
+  }
+}
+
+const staleBinding = structuredClone(retainedBinding)
+staleBinding.captures[0].sha256 = '0'.repeat(64)
+if (bindingMatches(staleBinding)) {
+  console.error('FAIL runtime source binding negative control: stale manifest escaped')
+  failures++
+} else {
+  console.log('PASS runtime source binding negative control: stale manifest rejected')
+}
+
+const sourceDriftPath = captureSpecs[0].runtimeSources[0]
+expectBindingDrift(
+  'runtime source drift',
+  new Map([[sourceDriftPath, driftedBuffer(sourceDriftPath)]]),
+)
+const assetDriftPath = 'apps/web/public/art/resources/gold.png'
+expectBindingDrift(
+  'runtime asset drift',
+  new Map([[assetDriftPath, driftedBuffer(assetDriftPath)]]),
+)
+const captureDriftPath = captureSpecs[0].path
+const captureDrift = Buffer.from(readFileSync(join(repoRoot, captureDriftPath)))
+captureDrift[captureDrift.length - 1] ^= 1
+expectBindingDrift('capture drift', new Map([[captureDriftPath, captureDrift]]))
+
+const stylesheet = readFileSync(join(repoRoot, stylesheetPath), 'utf8')
+const selectedCssMarker = '.resource-hud {'
+if (!stylesheet.includes(selectedCssMarker)) {
+  console.error('FAIL runtime source binding CSS negative-control marker missing')
+  failures++
+} else {
+  expectBindingDrift(
+    'selected CSS drift',
+    new Map([
+      [
+        stylesheetPath,
+        stylesheet.replace(selectedCssMarker, `${selectedCssMarker}\n  opacity: 0.999;`),
+      ],
+    ]),
+  )
+}
+const tokenMarker = '  --surface-panel: #2d1b10;'
+if (!stylesheet.includes(tokenMarker)) {
+  console.error('FAIL runtime source binding token negative-control marker missing')
+  failures++
+} else {
+  expectBindingDrift(
+    'resolved token drift',
+    new Map([[stylesheetPath, stylesheet.replace(tokenMarker, '  --surface-panel: #2d1b11;')]]),
+  )
+}
+const unrelatedCss = `${stylesheet}\n.capture-binding-unrelated { color: #fff; }\n`
+const unrelatedBinding = buildRuntimeCaptureBindings({
+  overrides: new Map([[stylesheetPath, unrelatedCss]]),
+})
+if (projectBinding(unrelatedBinding) !== projectBinding(expectedBinding)) {
+  console.error('FAIL unrelated CSS invalidated the scoped runtime capture binding')
+  failures++
+} else {
+  console.log('PASS runtime source binding negative control: unrelated CSS ignored')
+}
+
+for (const [label, candidate] of [
+  ['unresolved token', stylesheet.replace('  --stroke-standard: #725838;\n', '')],
+  [
+    'cyclic token',
+    stylesheet
+      .replace('  --stroke-standard: #725838;', '  --stroke-standard: var(--stroke-emphasized);')
+      .replace('  --stroke-emphasized: #cbb17a;', '  --stroke-emphasized: var(--stroke-standard);'),
+  ],
+]) {
+  try {
+    buildRuntimeCaptureBindings({ overrides: new Map([[stylesheetPath, candidate]]) })
+  } catch (error) {
+    if (!String(error).includes(label.split(' ')[0])) {
+      console.error(`FAIL ${label} produced the wrong binding failure: ${error}`)
+      failures++
+    } else {
+      console.log(`PASS runtime source binding negative control: ${label} rejected`)
+    }
+    continue
+  }
+  console.error(`FAIL runtime source binding negative control: ${label} escaped`)
+  failures++
+}
+const providerPath = 'apps/web/src/CityScene.tsx'
+const providerSource = readFileSync(join(repoRoot, providerPath), 'utf8')
+const providerMarker = "'--city-shadow-left':"
+if (!providerSource.includes(providerMarker)) {
+  console.error('FAIL runtime source binding component-provider marker missing')
+  failures++
+} else {
+  expectBindingDrift(
+    'component property provider drift',
+    new Map([[providerPath, providerSource.replace(providerMarker, "'--removed-shadow-left':")]]),
   )
 }
 const spec = readFileSync(join(root, 'README.md'), 'utf8')

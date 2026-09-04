@@ -94,13 +94,15 @@ City uses the same HUD/dock type and panel grammar as map. Its selected-building
 
 - `compose.mjs` embeds the approved Direction B source backdrop hashes by local path and writes deterministic self-contained SVG mockups.
 - `RUNTIME-INVENTORY.md` records the exact pre-implementation token, glyph, geometry, and local/multiplayer drift census.
-- `RUNTIME-VERIFICATION.md` records implemented surfaces, test/build budgets, explicit follow-ups, and the still-pending final runtime capture gate.
-- `validate.mjs` checks proof dimensions, embedded backdrop evidence, geometry, asset size and contract language, then checks runtime token parity, icon markers, glyph removal, control states, and local/multiplayer parity; it exits nonzero on failure.
+- `RUNTIME-CAPTURE-BINDINGS.json` binds every retained PNG to the exact React/Canvas/icon/sheet sources, runtime art/font resources, and scoped stylesheet/token closure that determine it. The full stylesheet hash is diagnostic only.
+- `build-runtime-capture-bindings.mjs` regenerates that schema-v2 binding; unrelated CSS does not invalidate it, while selected rules, recursively resolved tokens, component-provided properties, runtime sources/assets, or capture bytes do.
+- `RUNTIME-VERIFICATION.md` records implemented surfaces, test/build budgets, and exact-source evidence.
+- `validate.mjs` checks proof dimensions, embedded backdrop evidence, geometry, asset size and contract language, then checks source-binding inventory and drift controls, runtime token parity, icon markers, glyph removal, control states, and local/multiplayer parity; it exits nonzero on failure.
 - The final review files are self-contained SVG. They are intentionally not copied into `apps/web/public` and must not be treated as shippable runtime assets.
 
 Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only. Issue #608 has since delivered the approved layered city amendment; exact-head runtime captures, not this historical checkpoint backdrop, verify the shipping city art.
 
-Run `node compose.mjs && node validate.mjs` from this directory to recreate and validate the package.
+Run `node compose.mjs && node build-runtime-capture-bindings.mjs && node validate.mjs` from this directory to recreate and validate the package. Run repository formatting afterward if the generated JSON layout changes.
 
 ## Approval record
 

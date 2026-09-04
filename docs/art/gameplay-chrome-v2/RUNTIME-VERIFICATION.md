@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — runtime verification
 
-This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded. The captures and native-size inspection are complete; explicit operator acceptance remains a separate gate and is not claimed here.
+This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded.
 
 ## Implemented contract
 
@@ -73,11 +73,19 @@ No static asset was added. Existing `apps/web/public/art/ui` totals **161,783 by
 - Web tests: 100 files, 862 tests passed.
 - All package and web TypeScript projects passed.
 - Web production build passed and emitted the budget values above.
-- `node compose.mjs` followed by `node validate.mjs` validates deterministic proof regeneration, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.
+- `node compose.mjs`, `node build-runtime-capture-bindings.mjs` and `node validate.mjs` validate deterministic proof/binding regeneration, exact runtime-source evidence, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.
 
-The literal `pnpm verify` wrapper was attempted, but pnpm rejected the isolated worktree's read-only dependency links with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`. Equivalent repository-owned formatter, TypeScript, Vitest and Vite commands then passed against the existing lockfile installation. The integration owner must run the literal wrapper again after rebase and before push.
+The isolated writer's first literal wrapper attempt could not replace read-only dependency links and exited with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; the equivalent repository-owned commands passed there. Independent exact-source verification later ran the literal `CI=true pnpm verify` gate successfully: Prettier, all five TypeScript projects, 100 web files / 862 tests, 37 engine files / 765 tests, 5 shared files / 57 tests, and the production build all passed.
 
-## Final runtime capture evidence — captured, operator acceptance pending
+## Exact-source capture binding
+
+`RUNTIME-CAPTURE-BINDINGS.json` is a schema-v2 manifest for all three PNGs. The phone world frame binds 18 runtime sources and 54 runtime assets; each city frame binds 15 runtime sources and 52 runtime assets. Those sets include the relevant `GameScreen`, HUD, Canvas/minimap, map registry, icon, city, modal and `BottomSheet` consumers; Cabin/Pirata font bytes; resource and action art; and the world/city runtime art receipts' exact public files.
+
+The stylesheet is not hand-waved as a whole-file acceptance hash. Each capture has a deterministic selector projection with enclosing media rules, font-face declarations, selected rule-body hashes, recursively resolved `:root` and local custom properties, and CityScene's component-provided custom properties. The phone projection contains 77 rules and 48 root tokens. Each city projection contains 134 rules, 63 root tokens, one local token and 16 component-provided tokens. The full stylesheet hash remains diagnostic only, so unrelated-screen CSS does not stale this evidence.
+
+`validate.mjs` requires exact top-level, capture, source-set and CSS-scope inventory equality before recomputing every source, asset, capture, dimension, byte count and SHA-256. Its failing-direction controls prove that stale manifest data, runtime source drift, runtime asset drift, capture drift, selected CSS drift, resolved-token drift, unresolved/cyclic tokens and missing component providers are rejected, while unrelated CSS remains outside the acceptance projection.
+
+## Final runtime capture evidence
 
 The supervisor rebuilt the production preview after the source freeze, waited for the runtime to settle, and native-inspected every frame for font fallback or incomplete or missing imagery before acceptance. These are the resulting real runtime frames:
 

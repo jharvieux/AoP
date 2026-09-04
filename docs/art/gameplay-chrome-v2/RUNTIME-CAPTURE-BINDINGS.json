@@ -1,0 +1,3654 @@
+{
+  "schema": 2,
+  "capture_baseline": {
+    "captured_on": "2026-09-04",
+    "source_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
+    "policy": "This evidence baseline carries across docs-only commits only while every bound runtime source, CSS projection, asset, and capture byte remains exact."
+  },
+  "stylesheet_source": {
+    "path": "apps/web/src/styles.css",
+    "diagnostic_full_sha256": "25adbef0255380fa49ecd8f182bf0817c7eb192194a6e21e1e8b206e8d2a6006",
+    "scopes": [
+      {
+        "id": "phone-world",
+        "kind": "gameplay-runtime-capture-selector-token-closure-v1",
+        "sha256": "a04b310ed52ec937a23a9ad26221f06011848d0044c79960f6cf8e6aa17eb909",
+        "selector_families": [
+          ".button-group",
+          ".game-screen-container",
+          ".gameplay-alert",
+          ".gameplay-chrome",
+          ".gameplay-hud",
+          ".hud",
+          ".resource-hud",
+          ".turn-info",
+          ".ui-icon",
+          ".bottom-action-bar",
+          ".city-roster",
+          ".gameplay-command-dock",
+          ".idle-city-hint",
+          ".map-canvas",
+          ".map-container",
+          ".map-course",
+          ".map-minimap",
+          ".map-nav",
+          ".sail-interrupt",
+          ".selection-info",
+          ".turn-event-feed"
+        ],
+        "rules": [
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "1a1acbfabe4c5c678d5909390cc26fca7838524dda5fbd5eeb5b4bb341e43983"
+          },
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "cc28cd34655b0381afd370423211dac7d5b05b0a102056b75fdb4a2b350863ff"
+          },
+          {
+            "at_rules": [],
+            "selector": "*",
+            "body_sha256": "2944b967194ffc33b5a806276f08fc8820e64096d4850529f79a9fb6377b8b1e"
+          },
+          {
+            "at_rules": [],
+            "selector": "html, body, #root",
+            "body_sha256": "83e35eb0d53397c5f685d9e5e72ba1bf08e31ca823ace76545c544342f1dd867"
+          },
+          {
+            "at_rules": [],
+            "selector": "body",
+            "body_sha256": "8602ea947a28c2d7757f9b2707a4f693151a564ca2b2938fc3492fee4734fee3"
+          },
+          {
+            "at_rules": [],
+            "selector": "button",
+            "body_sha256": "d082e75eaed306742326a255271f826730d4b551bae9a1396292ddb71cdbdc92"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud",
+            "body_sha256": "4536e0fd11c11af3f5dba3205c3c4138657528f0cdee03a673dc6554cbf1839a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud h1",
+            "body_sha256": "032e91831a1237df9c3f4cf0e9fef7df041ccc94e291ac188ce6fa0d9fa37ac0"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud .turn-info",
+            "body_sha256": "54ba747771ef00d59bdb6d998ebb0dcfc71fa7f05fe83bdaec8ef50cf5af77dc"
+          },
+          {
+            "at_rules": ["@media (max-width: 420px)"],
+            "selector": ".hud h1",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-container",
+            "body_sha256": "a18b4cb7d3249f5eaff5680d3ff3e781fe013a148f1741484fb3e62f2cc614c7"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-container canvas",
+            "body_sha256": "11d2120a43a6e207a5edb412ecd977243e391b5c0449f43ebec6e57aeb2ce02c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-nav-controls",
+            "body_sha256": "433a012a5580872cc3240b32faafd4b5453e40f76d337b0a4e4fa0a7e06a69c9"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-nav-button",
+            "body_sha256": "6336f10ce7df51d44af62471ef5298d89a1803fa663c04253c621d3fbf42ed4c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-nav-button:active",
+            "body_sha256": "ee1e7a923dd8ae85b05870f9b8e62973a8698a7af7bca25318a307eec760585e"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".map-nav-button:hover",
+            "body_sha256": "f0b708cefa192b31e15407e4edd92412e40575ca598fdb6beaa18d04ab8537df"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-course-hint",
+            "body_sha256": "2de3e287ec6a32d8f247583cb845a87ec8269676e758b31e9a2cd60e76e8fef0"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap",
+            "body_sha256": "cc815292cad339f229aaf3020aae8e691bafc726171ba0e6e8dbe9cf9a17047a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap canvas",
+            "body_sha256": "aa75644121bba56bb5ee1061230d240a97c40775c6bedd263516bafae33a3945"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap__viewport",
+            "body_sha256": "bd08cc8d4aea43713987bef48c5d86fb8d6acee955f872a8318a12913d0a8ceb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".turn-event-feed",
+            "body_sha256": "ed1362eef854b6103ca7154befce06e0decb0718fb7b240c1955b091ae2dc189"
+          },
+          {
+            "at_rules": [],
+            "selector": ".turn-event-feed li",
+            "body_sha256": "a56bf55e94a2f814274880974ddaf20253c91bd6a922ec265c0d5f1c81245790"
+          },
+          {
+            "at_rules": [],
+            "selector": ".turn-event-feed li:first-child",
+            "body_sha256": "857d5ef019080524c780f342a1d5a2a4a03d78fcd90ce40a9afc53a0f3df6023"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sail-interrupt-banner",
+            "body_sha256": "df4989587614ac8588358bb304c0a7c3964ec69a4cf58fa8de6fc96cb08b2dc0"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster",
+            "body_sha256": "baa06695547c6cd003456997c8ce044ac73ccb34ea920867338576c737613bce"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-entry",
+            "body_sha256": "134930ea0707e88c8a2c86f3b612152777a2733feb8cd866cd3b3dd2ce6cb36c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-entry:active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-entry.selected",
+            "body_sha256": "f1314502acfb5ae2fdc0ab9c6b38c55526f9eb9cbce6e48c5d1786d333bce208"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-name",
+            "body_sha256": "b8a1c1ae9c543ed8edbd4f12173236dbfe17014aeaa5b2af41f207a99beda354"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-built",
+            "body_sha256": "a54c1a26e59e9b1ae95b029c6975934101944a2c428cd12aa240b2fc83ea8d52"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster-built.done",
+            "body_sha256": "857d5ef019080524c780f342a1d5a2a4a03d78fcd90ce40a9afc53a0f3df6023"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".city-roster-entry:hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".selection-info",
+            "body_sha256": "cec38c9940ebcf59e02ba2dfbb951d1a23b87ba3c22fbc9049c1ca16fe326de3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".idle-city-hint",
+            "body_sha256": "e010075bde229626783314c548d82364c88e07df01d6bae8c833a9a14289603a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary",
+            "body_sha256": "8100d0b8f2aa26680aad7794513ca7a81c3794ccc4105a24cffc9e3eb9b55006"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary",
+            "body_sha256": "d3a00b819246380e00284ccdc30e7d3c03d249716eec72cd56882c36e7d66523"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:active",
+            "body_sha256": "0cf3f7b5edc80d4bd8dba42cca2edbf7de9646f86764aab6ced2c8943a44232b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger",
+            "body_sha256": "4f3553055eb06bbfcdefdf1426a27f62633fa5a5852956c6e4a0a79f46f71a3d"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled",
+            "body_sha256": "898f2966a052149769d54525ba2e588a5dab0ff1bcfff9588231e75d48987210"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled::after",
+            "body_sha256": "97e7d0aa7fb4832a69b733f2fde1a56d0e93d4e359c4e15769c5eca317754a9b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:focus-visible, .checkbox-row input:focus-visible, .map-canvas-root:focus-visible, .map-minimap:focus-visible",
+            "body_sha256": "030622add0fd4d73a17cea89de585b38d33b2b0a49e1ab2b2a41f74d24b7d803"
+          },
+          {
+            "at_rules": [],
+            "selector": ".ui-icon",
+            "body_sha256": "2b071923eb4e49a870e355ece4e9dbed0c4ac5c15d7416d9ecd671833eebd841"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.primary:not(:disabled):hover",
+            "body_sha256": "ac0686456f4f0521fca69aef3ed76aca0ec824dc5de08e86d9c7e44714845a8b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.secondary:not(:disabled):hover",
+            "body_sha256": "7847f976b90347eb4ce5547b633a59b1b1560195f210fc0afd50af0b82720f91"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.danger:not(:disabled):hover",
+            "body_sha256": "ec7fe5bec53c459c6e1ce6b8f9b136153a2c0a7c1baf9d3efa787331a25cf8bf"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.large",
+            "body_sha256": "844361500020f252c2c18dd30275536dc45edeca20d18a9a0fb687acf469f238"
+          },
+          {
+            "at_rules": [],
+            "selector": ".button-group",
+            "body_sha256": "fd12b7926b85b00603652d1bfd16d30beb969116e54f05fc93bc1e66e890ae8c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".game-screen-container",
+            "body_sha256": "380c5f78a30ac9fe8adcabb86a682c5493adafa4c5eb88d7e1c56bcebdd394c1"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar",
+            "body_sha256": "d98cadaa475ecd40bf8d3a02e45eb29aa51d566ba15ad3d99ffbabd18fba39a4"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "9d4140ed66cb828bf05cae3614c2c07945d64121a616b25fb6168672ff23f3fd"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "fae5bd6137486c5ecf0b914ba3272a4ee9584f269b4611b7bb9bd46902ffcbac"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud",
+            "body_sha256": "db1108b34890c48b73b455e19d09280071aab74ff0a7274129c3fb6ae15bc3fd"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud .turn-info",
+            "body_sha256": "fb982780915e1f36877414ffb19f90790adb4fdcae0a5894fdb429bda967ad7b"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud",
+            "body_sha256": "ca2bfe3e3cbd56da40eb37236aca9ad0f4eb8d1a10ea851ce989dab5d18c9b50"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud__item",
+            "body_sha256": "d529e1f5d1cf9dc4a2e0a526da39d4283f9f1f20389251e3e1f1e1d6914a2e31"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "8efe0a2bca1f5fa6ff662a23e693f8bee18d6a7915946435b52f82ddc54795a8"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "c4ef49f77b72db19ad58d48bbe1377473a30e21210609541c085f7b9adad0f34"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sail-interrupt-banner",
+            "body_sha256": "86bc102d21d5a68f5540b8b9b0349a5e936f88ec07d23e67fc56bc3594dd888d"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".city-roster",
+            "body_sha256": "04d675fa9a87a63ded937eccee7f3b1dde77afbac9abf5ae042c3a83f97db82f"
+          },
+          {
+            "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
+            "selector": ".map-minimap",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
+            "at_rules": ["@media (min-width: 600px)"],
+            "selector": ".button-group",
+            "body_sha256": "58cf3fe563b8b0f68d5ac5c1390a7032203cee0724add5364564e45e3f9d8155"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud",
+            "body_sha256": "dcaad624a3ad7e2076eee34de6bf7ade9e22f2a62b042fe0936fa9cc1eee3ece"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__item",
+            "body_sha256": "0aa7ace6a82c2e29725fb540a0d9d3cb7b4b099dbd3fd44d2d1e6cda147008b2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__icon",
+            "body_sha256": "c9167a9142be0c9506227befc82b5ec5742e21eb102efe6f72cf38221f00be2c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__label",
+            "body_sha256": "2aba194a6b9f20ce859ea2e41e7199ef1ee9e37846979ab985b33c7c90292301"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__value",
+            "body_sha256": "7b486c3cdb0b1952e5e650d588030ec94246dcd0e3dc06039e0c5646fcda4870"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary.secondary",
+            "body_sha256": "1abec0044cfe175e3cfcb3a005e4ad9f1edb0b127bcf19b6bec4d5a2a2d860fe"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-canvas-root:focus-visible",
+            "body_sha256": "030622add0fd4d73a17cea89de585b38d33b2b0a49e1ab2b2a41f74d24b7d803"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-canvas-error",
+            "body_sha256": "252297d811ab5d777c7fac377bbf3883782d5a7edd05e18d48023280905dca9d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-canvas-error__detail",
+            "body_sha256": "0fdefd986e495a5115a831218fbf6aa3010cc85f8b22abeaba47db5072efb367"
+          }
+        ],
+        "root_custom_properties": [
+          {
+            "name": "--color-action",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--color-bg",
+            "value": "#1c1206"
+          },
+          {
+            "name": "--color-brass",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--color-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--color-deep-water",
+            "value": "#1b4a6b"
+          },
+          {
+            "name": "--color-highlight",
+            "value": "#f0cb66"
+          },
+          {
+            "name": "--color-muted-light",
+            "value": "#eee"
+          },
+          {
+            "name": "--color-text",
+            "value": "var(--text-primary)"
+          },
+          {
+            "name": "--ease-standard",
+            "value": "cubic-bezier(0.2, 0, 0, 1)"
+          },
+          {
+            "name": "--elevation-1",
+            "value": "0 2px 8px rgb(0 0 0 / 32%)"
+          },
+          {
+            "name": "--elevation-2",
+            "value": "0 6px 18px rgb(0 0 0 / 42%)"
+          },
+          {
+            "name": "--elevation-dock",
+            "value": "0 -4px 14px rgb(0 0 0 / 34%)"
+          },
+          {
+            "name": "--font-body",
+            "value": "Cabin, system-ui, -apple-system, sans-serif"
+          },
+          {
+            "name": "--font-display",
+            "value": "'Pirata One', 'Times New Roman', serif"
+          },
+          {
+            "name": "--motion-fast",
+            "value": "120ms"
+          },
+          {
+            "name": "--motion-standard",
+            "value": "180ms"
+          },
+          {
+            "name": "--radius-2",
+            "value": "8px"
+          },
+          {
+            "name": "--radius-pill",
+            "value": "999px"
+          },
+          {
+            "name": "--selected-glow",
+            "value": "rgb(201 162 39 / 18%)"
+          },
+          {
+            "name": "--space-1",
+            "value": "4px"
+          },
+          {
+            "name": "--space-2",
+            "value": "8px"
+          },
+          {
+            "name": "--space-3",
+            "value": "12px"
+          },
+          {
+            "name": "--space-4",
+            "value": "16px"
+          },
+          {
+            "name": "--stroke-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--stroke-disabled",
+            "value": "#796f61"
+          },
+          {
+            "name": "--stroke-focus",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--stroke-selected",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--stroke-standard",
+            "value": "#725838"
+          },
+          {
+            "name": "--surface-canvas",
+            "value": "#17100a"
+          },
+          {
+            "name": "--surface-disabled",
+            "value": "#33291f"
+          },
+          {
+            "name": "--surface-inset",
+            "value": "#21150d"
+          },
+          {
+            "name": "--surface-overlay",
+            "value": "rgb(45 27 16 / 92%)"
+          },
+          {
+            "name": "--surface-panel",
+            "value": "#2d1b10"
+          },
+          {
+            "name": "--surface-raised",
+            "value": "#3a2416"
+          },
+          {
+            "name": "--text-danger",
+            "value": "#f6e9dd"
+          },
+          {
+            "name": "--text-disabled",
+            "value": "#b4aa9a"
+          },
+          {
+            "name": "--text-inverse",
+            "value": "#21150d"
+          },
+          {
+            "name": "--text-muted",
+            "value": "#b9a47b"
+          },
+          {
+            "name": "--text-primary",
+            "value": "#f3e5c2"
+          },
+          {
+            "name": "--text-secondary",
+            "value": "#e7d4ac"
+          },
+          {
+            "name": "--texture-parchment-faint",
+            "value": "rgb(255 241 202 / 4%)"
+          },
+          {
+            "name": "--texture-parchment-hairline",
+            "value": "rgb(255 241 202 / 2%)"
+          },
+          {
+            "name": "--type-body-leading",
+            "value": "1.4"
+          },
+          {
+            "name": "--type-body-size",
+            "value": "1rem"
+          },
+          {
+            "name": "--type-caption-size",
+            "value": "0.75rem"
+          },
+          {
+            "name": "--type-label-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-numeric-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-title-size",
+            "value": "clamp(1.35rem, 2.5vw, 2rem)"
+          }
+        ],
+        "local_custom_properties": [],
+        "component_custom_properties": []
+      },
+      {
+        "id": "city-inspector",
+        "kind": "gameplay-runtime-capture-selector-token-closure-v1",
+        "sha256": "1dac4d5506f273d8508270389131fe521ed2a6d31f22dc1ea5b2ed037773560a",
+        "selector_families": [
+          ".button-group",
+          ".game-screen-container",
+          ".gameplay-alert",
+          ".gameplay-chrome",
+          ".gameplay-hud",
+          ".hud",
+          ".resource-hud",
+          ".turn-info",
+          ".ui-icon",
+          ".build-row",
+          ".building-",
+          ".button-icon",
+          ".checkbox-row",
+          ".city-scene",
+          ".garrison-row",
+          ".info-toggle",
+          ".sheet",
+          ".unit-row"
+        ],
+        "rules": [
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "1a1acbfabe4c5c678d5909390cc26fca7838524dda5fbd5eeb5b4bb341e43983"
+          },
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "cc28cd34655b0381afd370423211dac7d5b05b0a102056b75fdb4a2b350863ff"
+          },
+          {
+            "at_rules": [],
+            "selector": "*",
+            "body_sha256": "2944b967194ffc33b5a806276f08fc8820e64096d4850529f79a9fb6377b8b1e"
+          },
+          {
+            "at_rules": [],
+            "selector": "html, body, #root",
+            "body_sha256": "83e35eb0d53397c5f685d9e5e72ba1bf08e31ca823ace76545c544342f1dd867"
+          },
+          {
+            "at_rules": [],
+            "selector": "body",
+            "body_sha256": "8602ea947a28c2d7757f9b2707a4f693151a564ca2b2938fc3492fee4734fee3"
+          },
+          {
+            "at_rules": [],
+            "selector": "button",
+            "body_sha256": "d082e75eaed306742326a255271f826730d4b551bae9a1396292ddb71cdbdc92"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud",
+            "body_sha256": "4536e0fd11c11af3f5dba3205c3c4138657528f0cdee03a673dc6554cbf1839a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud h1",
+            "body_sha256": "032e91831a1237df9c3f4cf0e9fef7df041ccc94e291ac188ce6fa0d9fa37ac0"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud .turn-info",
+            "body_sha256": "54ba747771ef00d59bdb6d998ebb0dcfc71fa7f05fe83bdaec8ef50cf5af77dc"
+          },
+          {
+            "at_rules": ["@media (max-width: 420px)"],
+            "selector": ".hud h1",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary",
+            "body_sha256": "8100d0b8f2aa26680aad7794513ca7a81c3794ccc4105a24cffc9e3eb9b55006"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary",
+            "body_sha256": "d3a00b819246380e00284ccdc30e7d3c03d249716eec72cd56882c36e7d66523"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:active",
+            "body_sha256": "0cf3f7b5edc80d4bd8dba42cca2edbf7de9646f86764aab6ced2c8943a44232b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger",
+            "body_sha256": "4f3553055eb06bbfcdefdf1426a27f62633fa5a5852956c6e4a0a79f46f71a3d"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled",
+            "body_sha256": "898f2966a052149769d54525ba2e588a5dab0ff1bcfff9588231e75d48987210"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled::after",
+            "body_sha256": "97e7d0aa7fb4832a69b733f2fde1a56d0e93d4e359c4e15769c5eca317754a9b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:focus-visible, .checkbox-row input:focus-visible, .map-canvas-root:focus-visible, .map-minimap:focus-visible",
+            "body_sha256": "030622add0fd4d73a17cea89de585b38d33b2b0a49e1ab2b2a41f74d24b7d803"
+          },
+          {
+            "at_rules": [],
+            "selector": ".ui-icon",
+            "body_sha256": "2b071923eb4e49a870e355ece4e9dbed0c4ac5c15d7416d9ecd671833eebd841"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.primary:not(:disabled):hover",
+            "body_sha256": "ac0686456f4f0521fca69aef3ed76aca0ec824dc5de08e86d9c7e44714845a8b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.secondary:not(:disabled):hover",
+            "body_sha256": "7847f976b90347eb4ce5547b633a59b1b1560195f210fc0afd50af0b82720f91"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.danger:not(:disabled):hover",
+            "body_sha256": "ec7fe5bec53c459c6e1ce6b8f9b136153a2c0a7c1baf9d3efa787331a25cf8bf"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.large",
+            "body_sha256": "844361500020f252c2c18dd30275536dc45edeca20d18a9a0fb687acf469f238"
+          },
+          {
+            "at_rules": [],
+            "selector": ".button-group",
+            "body_sha256": "fd12b7926b85b00603652d1bfd16d30beb969116e54f05fc93bc1e66e890ae8c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".game-screen-container",
+            "body_sha256": "380c5f78a30ac9fe8adcabb86a682c5493adafa4c5eb88d7e1c56bcebdd394c1"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "9d4140ed66cb828bf05cae3614c2c07945d64121a616b25fb6168672ff23f3fd"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "fae5bd6137486c5ecf0b914ba3272a4ee9584f269b4611b7bb9bd46902ffcbac"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud",
+            "body_sha256": "db1108b34890c48b73b455e19d09280071aab74ff0a7274129c3fb6ae15bc3fd"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud .turn-info",
+            "body_sha256": "fb982780915e1f36877414ffb19f90790adb4fdcae0a5894fdb429bda967ad7b"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud",
+            "body_sha256": "ca2bfe3e3cbd56da40eb37236aca9ad0f4eb8d1a10ea851ce989dab5d18c9b50"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud__item",
+            "body_sha256": "d529e1f5d1cf9dc4a2e0a526da39d4283f9f1f20389251e3e1f1e1d6914a2e31"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "8efe0a2bca1f5fa6ff662a23e693f8bee18d6a7915946435b52f82ddc54795a8"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "c4ef49f77b72db19ad58d48bbe1377473a30e21210609541c085f7b9adad0f34"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sheet",
+            "body_sha256": "488bc5ae2e8df6e9f3a30632c60a978c3c1fc384760338d0a608c9166cad2db4"
+          },
+          {
+            "at_rules": ["@media (min-width: 600px)"],
+            "selector": ".button-group",
+            "body_sha256": "58cf3fe563b8b0f68d5ac5c1390a7032203cee0724add5364564e45e3f9d8155"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud",
+            "body_sha256": "dcaad624a3ad7e2076eee34de6bf7ade9e22f2a62b042fe0936fa9cc1eee3ece"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__item",
+            "body_sha256": "0aa7ace6a82c2e29725fb540a0d9d3cb7b4b099dbd3fd44d2d1e6cda147008b2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__icon",
+            "body_sha256": "c9167a9142be0c9506227befc82b5ec5742e21eb102efe6f72cf38221f00be2c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__label",
+            "body_sha256": "2aba194a6b9f20ce859ea2e41e7199ef1ee9e37846979ab985b33c7c90292301"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__value",
+            "body_sha256": "7b486c3cdb0b1952e5e650d588030ec94246dcd0e3dc06039e0c5646fcda4870"
+          },
+          {
+            "at_rules": [],
+            "selector": ".button-icon",
+            "body_sha256": "44e79a41b17412de4a4d126385f46a1c770069e301f24601a868314f6faf8557"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__icon",
+            "body_sha256": "6b6b11e42d724a60ad76d527dca6e2d6b97d91a8d36265c9d26bea0fdb35b7b5"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary.secondary",
+            "body_sha256": "1abec0044cfe175e3cfcb3a005e4ad9f1edb0b127bcf19b6bec4d5a2a2d860fe"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet-backdrop",
+            "body_sha256": "05af7f015f5558be1b57375f04371393f76cd54a9676aefa5351f89d7db83a76"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet",
+            "body_sha256": "31ca65d59cb196ab709f47629d9f8cb6a6a07ffafd59a1d6d10048301d73858b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__header",
+            "body_sha256": "9d7fabf09ac65afcf79694fd7556f0032bc09b04e4e1b48e717b3030a1663017"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__header h2",
+            "body_sha256": "5f2c0a14e46a7a5737e8bc38ebe4137f669de8a4a904b7acfae2cdc6f236cc31"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__drag-handle",
+            "body_sha256": "ff8526e034937e1ab708b6db3707ca7edff875780f19647636ec2394bed25f86"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__grip",
+            "body_sha256": "b4d1b729b65db8034a559e200a3b758ef86ea43432980e4f5008a05172f15d40"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__close",
+            "body_sha256": "d65521ea79bb00e95e43a0306509e40ea8f40ba1b05cc536c57671b278ff439a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__close:active",
+            "body_sha256": "bbf8a3b29d5dba45afa454a6304ba810d9bbceee144b49b3753dcbb467a6677c"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".sheet__close:hover",
+            "body_sha256": "02596714d0f725d943e51a3cb97a17331f219f7671a6bdbda51c67a99e6a29e8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-list",
+            "body_sha256": "7b4a2cb6d2761496abf402e9d6cbe3bc232e2abfa7b605ff50c4b40d45ac12ea"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option",
+            "body_sha256": "fe24cfc4d4a32e7c9335f740f9b6e5dbfd7d7edf3e2205828997894865c8bcf9"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option:not(:disabled):active",
+            "body_sha256": "74f3b8a0001233264c0825df4480b1a767f598022e815b3c7354bc2ea17d62cf"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".building-option:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option__cost",
+            "body_sha256": "68519d3c990d5da1dfd5dfc066dd1048bea2691ed4ab4fd0bc210dd22bb270ad"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option__hint",
+            "body_sha256": "cae53b2abf63c82cf5aa84f97db218574079a004276dfcba5ec9e44cce68f4a4"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row",
+            "body_sha256": "f35ce7754d12ecc2dcbdc23d433b711b20472e6aa8d99fa48a27d383749d0182"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__name",
+            "body_sha256": "77a316569984c297211fe17c19bd083051858df65c931550c70dc5fb4227610f"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__counts",
+            "body_sha256": "406e372a8bb8aa81e4e24cb180bdb71111ed4649ea1e0bf237deba177f85dac8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions",
+            "body_sha256": "1581fdbde4edaa649c71abfaef31dd34edae77194bc447466f070e27d5aef104"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button",
+            "body_sha256": "ff9bec5e4745fc9835b7e0fcade1034ccd635021f1ca8fa5d839cb4452aa054c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button:not(:disabled):active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".garrison-row__actions button:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".checkbox-row",
+            "body_sha256": "a24ec858cd0d2caeafff419a9338629f3c415448c01e3a9a3b5148aa7f312f15"
+          },
+          {
+            "at_rules": [],
+            "selector": ".checkbox-row input[type='checkbox']",
+            "body_sha256": "46d736271a47222c068dfa4344c9bfe9a85373d1048851057e039cb22949de11"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-section",
+            "body_sha256": "6b90e3805a017662db32af168af34c2548a23478189525181ed6a751a0c6a0bb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-viewport",
+            "body_sha256": "8ae66a28b196408d897a44b4bfef25e185c784eb2228d96250e769eaf665bd5b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene",
+            "body_sha256": "3843cd4724c4af151ceaa79e3915e88c7bf91a4f3637853de92123c328ece1a7"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building",
+            "body_sha256": "c586a628218ef2a88deab862fbc9a6bd1bb258512a09ef859f207f84ce5530c2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building::before",
+            "body_sha256": "9ecbbc7fcffe6774657709466b58b5242aa149202f6b4c91d3a953007c9202bd"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building:active",
+            "body_sha256": "f7748f732fc065bb44f654773256888ce52508ef9502044a9e5b6ac1d812dd48"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".city-scene__building:hover",
+            "body_sha256": "ac0686456f4f0521fca69aef3ed76aca0ec824dc5de08e86d9c7e44714845a8b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--economy",
+            "body_sha256": "1a613a8441883bed86bc7437376dc5ed248c9abb98955c734fa97898aa59791b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--recruitment",
+            "body_sha256": "cc60b71d770f47f11a270afda841edfacc304b0c0812fa05b30aea81fd5ca590"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--fortification",
+            "body_sha256": "15ab4999ad927bd06c818a6152d01842971008ab75c6bd484248d63d74579dd3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--shipyard",
+            "body_sha256": "7c1c8b92b89a20b5e5aa875dc566557c27486e26300114bb491f5a20befa6dbb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--art",
+            "body_sha256": "9e57b53eafec74e8be6a2489c5fd179dbd8deebf09b0abcfcf6b7953af1ea6ff"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__sprite",
+            "body_sha256": "78754528da58bfbfb74362b13e9a0a2b3af6164ae23def322cba2e88d4dcec84"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__sprite--tower",
+            "body_sha256": "f558e36541ef900b1e969d678a5d7461ea54a84eb9dc497b775659a78cb47d76"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop",
+            "body_sha256": "d29bfd320ee2e64dbaa7a6af7e27794da715a996261d4d175342c351de4a463e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop-tiles",
+            "body_sha256": "3544a365d83b897111674736f8b98708db69967ae96e2851cea6e7af184559d5"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop-tile",
+            "body_sha256": "64dfa96de684a7587e5d829089a0a0b175af1fb5f3adf9ff9b7a20ea71bca348"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__label",
+            "body_sha256": "5e7e4a5af0f930ba74fc35c8acbdfa55211ea834ff953cdb8ae8a89e8891d5db"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole",
+            "body_sha256": "22a374fba8b8d3d3489c9f82fcbf206338b15245923030b458906f302beb5b2e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mast",
+            "body_sha256": "f0733ca377d089102dddf19230f115d69998c0734d81d3f05e9fb67851def1b2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount",
+            "body_sha256": "9bde03cc0e7dac9e7a7df63830ef4a0091e2e6d74d9ec2e9cfe36f0f35ee7ef2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::before, .city-scene__flagpole-mount::after",
+            "body_sha256": "3face2ce8ffe5ddcbe0250ff2433b67b5c941f87f5f55c023b05bc7c408da3fa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::before",
+            "body_sha256": "15f6c13e172137b1d7fa99d76e4066f745ae31cc063ff4d76de03c8ef75f407b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::after",
+            "body_sha256": "ca58b27014be8fd59a09d9178ac9baefc660654c26829f2383ec2ce10b4286d3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flag",
+            "body_sha256": "5f0703f61676fc52d7ef80fea5fefeeb77e2845fc779cbeb51d2b68e3c242d2b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flag img",
+            "body_sha256": "beabd33dbe23e6c6ca8b22f1ef7484c8953a09472733a85ed896dc35c4b3def9"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom",
+            "body_sha256": "6b20da7bd9715dee150d9cc44eeccd5ed3cae3b6972306590c4f0ceead4e2946"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button",
+            "body_sha256": "2db6cc3f1a11cfacea444b2468a311b027997aa5a0dc675cb4007c36427c8ea8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button:not(:disabled):active",
+            "body_sha256": "95db433a667210fd529668f1874f1e5ebbe5a82d02c23ffe0b6e363448097a1c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__overflow",
+            "body_sha256": "aa117aa15ca03348049f35977984fcb12713a9240dee2cf7bdb4239546061d06"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav",
+            "body_sha256": "b2caaa2d7889a490a3cabd799d304a255140792c7957a3502554380a1ed7652c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav:active",
+            "body_sha256": "bbf8a3b29d5dba45afa454a6304ba810d9bbceee144b49b3753dcbb467a6677c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav--left",
+            "body_sha256": "ec261421dc3b5d990c317260d220e6fc8b7e2724a2e9407d98bf7bc1fe41beeb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav--right",
+            "body_sha256": "09c3def3c273ca6b6fff082bad38ad95295d3b777ef8558e9fc98a59786fd4cf"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-modal__intro",
+            "body_sha256": "1bcedf1012d74c354bfed9b7a5bd4c12d050298d61c08c6d0c5e639ccfb428fa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic",
+            "body_sha256": "76bc79888f52f0b9bf8c06835cf9f78edb2e5e3d724b66c068ae294301731af5"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--economy",
+            "body_sha256": "1a613a8441883bed86bc7437376dc5ed248c9abb98955c734fa97898aa59791b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--recruitment",
+            "body_sha256": "cc60b71d770f47f11a270afda841edfacc304b0c0812fa05b30aea81fd5ca590"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--fortification",
+            "body_sha256": "15ab4999ad927bd06c818a6152d01842971008ab75c6bd484248d63d74579dd3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--shipyard",
+            "body_sha256": "7c1c8b92b89a20b5e5aa875dc566557c27486e26300114bb491f5a20befa6dbb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row",
+            "body_sha256": "0182b65d87061bf18f211a610a8b00dedfedf825e518ea6e8a9e9ea2f04a6d7b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row--unavailable .build-row__text, .build-row--unavailable .building-graphic",
+            "body_sha256": "a8defcd778ac65e3f0de789b4f490c554611853caa4b02dbc961350a238b1f25"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__main",
+            "body_sha256": "871dd508886159f0743c5d1e5580f03f3d34e047ee5d22f78503b432bf26fffa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row .building-graphic",
+            "body_sha256": "70b70546ae8b6e592f30c78399e769f5d0faf97fab3674d465169cf7e459714f"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__text",
+            "body_sha256": "3d2986151c19c5a0625215f4ccfe62fe33cd5bfea212ab47c401f7e400fd4061"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build",
+            "body_sha256": "0bc83613989c3a3001aef8a2f92ab8fa5709a691f467be2c683287ed4324ab32"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build:not(:disabled):active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".build-row__build:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle",
+            "body_sha256": "fa28aac191b897edd2db526a7890a1c8c39b6dff7ba9bfdac91ee4134be0ba91"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle:active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle[aria-expanded='true']",
+            "body_sha256": "ecc953f84fb1c92a752b51fc9118797c587e2c12b32d6eb26f2020771dc69847"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".city-scene-zoom button:not(:disabled):hover, .city-scene-nav:hover, .info-toggle:hover",
+            "body_sha256": "f0b708cefa192b31e15407e4edd92412e40575ca598fdb6beaa18d04ab8537df"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-info",
+            "body_sha256": "0166bd3ddbf7b0395707bb7356458a36a35a2434443d1258545ba0cc8985e42e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-info ul",
+            "body_sha256": "14d80967c6363cd44b6d034446bf3dc512473d7cb17318fa50b8127b2ad8d619"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-modal__intro .building-info",
+            "body_sha256": "83edfc7450ea8aafebd652ccdf2cf2a0da099b84bab68965f539ca69e529d0ed"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__header",
+            "body_sha256": "ab46ccc0f7d6568f602358d7fa55bfd5d8808993823c7d4c33e5b005534de807"
+          },
+          {
+            "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+            "selector": ".screen-transition, .title-screen, .main-menu__panel, .sheet, .sheet-backdrop, .action-toast, .spinner, .skeleton",
+            "body_sha256": "d50ca3ac0cb0aebcfa34cd80cb8192a2e339118fb1f315e99188b11ef530390e"
+          }
+        ],
+        "root_custom_properties": [
+          {
+            "name": "--city-building-economy",
+            "value": "#8a6d3b"
+          },
+          {
+            "name": "--city-building-fortification",
+            "value": "#6e7681"
+          },
+          {
+            "name": "--city-building-recruitment",
+            "value": "#a33c2e"
+          },
+          {
+            "name": "--city-building-shipyard",
+            "value": "#2e5da3"
+          },
+          {
+            "name": "--city-ground",
+            "value": "#6b7a3f"
+          },
+          {
+            "name": "--city-ground-low",
+            "value": "#55632f"
+          },
+          {
+            "name": "--city-sky",
+            "value": "#7fa8c9"
+          },
+          {
+            "name": "--city-sky-low",
+            "value": "#b5cbdd"
+          },
+          {
+            "name": "--city-water",
+            "value": "#2a6a8f"
+          },
+          {
+            "name": "--color-action",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--color-bg",
+            "value": "#1c1206"
+          },
+          {
+            "name": "--color-brass",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--color-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--color-highlight",
+            "value": "#f0cb66"
+          },
+          {
+            "name": "--color-text",
+            "value": "var(--text-primary)"
+          },
+          {
+            "name": "--ease-emphasized",
+            "value": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+          },
+          {
+            "name": "--ease-standard",
+            "value": "cubic-bezier(0.2, 0, 0, 1)"
+          },
+          {
+            "name": "--elevation-1",
+            "value": "0 2px 8px rgb(0 0 0 / 32%)"
+          },
+          {
+            "name": "--elevation-2",
+            "value": "0 6px 18px rgb(0 0 0 / 42%)"
+          },
+          {
+            "name": "--elevation-3",
+            "value": "0 12px 32px rgb(0 0 0 / 52%)"
+          },
+          {
+            "name": "--font-body",
+            "value": "Cabin, system-ui, -apple-system, sans-serif"
+          },
+          {
+            "name": "--font-display",
+            "value": "'Pirata One', 'Times New Roman', serif"
+          },
+          {
+            "name": "--motion-emphasized",
+            "value": "220ms"
+          },
+          {
+            "name": "--motion-fast",
+            "value": "120ms"
+          },
+          {
+            "name": "--motion-standard",
+            "value": "180ms"
+          },
+          {
+            "name": "--radius-1",
+            "value": "4px"
+          },
+          {
+            "name": "--radius-2",
+            "value": "8px"
+          },
+          {
+            "name": "--radius-3",
+            "value": "12px"
+          },
+          {
+            "name": "--radius-4",
+            "value": "16px"
+          },
+          {
+            "name": "--radius-pill",
+            "value": "999px"
+          },
+          {
+            "name": "--selected-glow",
+            "value": "rgb(201 162 39 / 18%)"
+          },
+          {
+            "name": "--space-1",
+            "value": "4px"
+          },
+          {
+            "name": "--space-2",
+            "value": "8px"
+          },
+          {
+            "name": "--space-3",
+            "value": "12px"
+          },
+          {
+            "name": "--space-4",
+            "value": "16px"
+          },
+          {
+            "name": "--space-5",
+            "value": "24px"
+          },
+          {
+            "name": "--stroke-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--stroke-disabled",
+            "value": "#796f61"
+          },
+          {
+            "name": "--stroke-emphasized",
+            "value": "#cbb17a"
+          },
+          {
+            "name": "--stroke-focus",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--stroke-selected",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--stroke-standard",
+            "value": "#725838"
+          },
+          {
+            "name": "--surface-canvas",
+            "value": "#17100a"
+          },
+          {
+            "name": "--surface-disabled",
+            "value": "#33291f"
+          },
+          {
+            "name": "--surface-inset",
+            "value": "#21150d"
+          },
+          {
+            "name": "--surface-overlay",
+            "value": "rgb(45 27 16 / 92%)"
+          },
+          {
+            "name": "--surface-panel",
+            "value": "#2d1b10"
+          },
+          {
+            "name": "--surface-raised",
+            "value": "#3a2416"
+          },
+          {
+            "name": "--surface-scrim",
+            "value": "rgb(7 18 26 / 64%)"
+          },
+          {
+            "name": "--text-danger",
+            "value": "#f6e9dd"
+          },
+          {
+            "name": "--text-disabled",
+            "value": "#b4aa9a"
+          },
+          {
+            "name": "--text-inverse",
+            "value": "#21150d"
+          },
+          {
+            "name": "--text-muted",
+            "value": "#b9a47b"
+          },
+          {
+            "name": "--text-primary",
+            "value": "#f3e5c2"
+          },
+          {
+            "name": "--text-secondary",
+            "value": "#e7d4ac"
+          },
+          {
+            "name": "--texture-parchment-faint",
+            "value": "rgb(255 241 202 / 4%)"
+          },
+          {
+            "name": "--texture-parchment-hairline",
+            "value": "rgb(255 241 202 / 2%)"
+          },
+          {
+            "name": "--type-body-leading",
+            "value": "1.4"
+          },
+          {
+            "name": "--type-body-size",
+            "value": "1rem"
+          },
+          {
+            "name": "--type-caption-size",
+            "value": "0.75rem"
+          },
+          {
+            "name": "--type-label-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-numeric-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-title-size",
+            "value": "clamp(1.35rem, 2.5vw, 2rem)"
+          }
+        ],
+        "local_custom_properties": [
+          {
+            "name": "--city-zoom",
+            "values": ["1"]
+          }
+        ],
+        "component_custom_properties": [
+          "--city-flag-cloth-left",
+          "--city-flag-cloth-width",
+          "--city-flag-height",
+          "--city-flag-left",
+          "--city-flag-mast-width",
+          "--city-flag-mount-height",
+          "--city-flag-mount-width",
+          "--city-flag-top",
+          "--city-flag-width",
+          "--city-shadow-blur",
+          "--city-shadow-bottom",
+          "--city-shadow-color",
+          "--city-shadow-height",
+          "--city-shadow-left",
+          "--city-shadow-opacity",
+          "--city-shadow-width"
+        ]
+      },
+      {
+        "id": "interaction-states",
+        "kind": "gameplay-runtime-capture-selector-token-closure-v1",
+        "sha256": "e49aeef940ee82d4cc8cc50ae7da513b390b06b9b211001f5cb9788e1da6c864",
+        "selector_families": [
+          ".button-group",
+          ".game-screen-container",
+          ".gameplay-alert",
+          ".gameplay-chrome",
+          ".gameplay-hud",
+          ".hud",
+          ".resource-hud",
+          ".turn-info",
+          ".ui-icon",
+          ".build-row",
+          ".building-",
+          ".button-icon",
+          ".checkbox-row",
+          ".city-scene",
+          ".garrison-row",
+          ".info-toggle",
+          ".sheet",
+          ".unit-row"
+        ],
+        "rules": [
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "1a1acbfabe4c5c678d5909390cc26fca7838524dda5fbd5eeb5b4bb341e43983"
+          },
+          {
+            "at_rules": [],
+            "selector": "@font-face",
+            "body_sha256": "cc28cd34655b0381afd370423211dac7d5b05b0a102056b75fdb4a2b350863ff"
+          },
+          {
+            "at_rules": [],
+            "selector": "*",
+            "body_sha256": "2944b967194ffc33b5a806276f08fc8820e64096d4850529f79a9fb6377b8b1e"
+          },
+          {
+            "at_rules": [],
+            "selector": "html, body, #root",
+            "body_sha256": "83e35eb0d53397c5f685d9e5e72ba1bf08e31ca823ace76545c544342f1dd867"
+          },
+          {
+            "at_rules": [],
+            "selector": "body",
+            "body_sha256": "8602ea947a28c2d7757f9b2707a4f693151a564ca2b2938fc3492fee4734fee3"
+          },
+          {
+            "at_rules": [],
+            "selector": "button",
+            "body_sha256": "d082e75eaed306742326a255271f826730d4b551bae9a1396292ddb71cdbdc92"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud",
+            "body_sha256": "4536e0fd11c11af3f5dba3205c3c4138657528f0cdee03a673dc6554cbf1839a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud h1",
+            "body_sha256": "032e91831a1237df9c3f4cf0e9fef7df041ccc94e291ac188ce6fa0d9fa37ac0"
+          },
+          {
+            "at_rules": [],
+            "selector": ".hud .turn-info",
+            "body_sha256": "54ba747771ef00d59bdb6d998ebb0dcfc71fa7f05fe83bdaec8ef50cf5af77dc"
+          },
+          {
+            "at_rules": ["@media (max-width: 420px)"],
+            "selector": ".hud h1",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary",
+            "body_sha256": "8100d0b8f2aa26680aad7794513ca7a81c3794ccc4105a24cffc9e3eb9b55006"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary",
+            "body_sha256": "d3a00b819246380e00284ccdc30e7d3c03d249716eec72cd56882c36e7d66523"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:active",
+            "body_sha256": "0cf3f7b5edc80d4bd8dba42cca2edbf7de9646f86764aab6ced2c8943a44232b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.secondary:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger",
+            "body_sha256": "4f3553055eb06bbfcdefdf1426a27f62633fa5a5852956c6e4a0a79f46f71a3d"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:active",
+            "body_sha256": "226fea5bc35f9c6a9a39a1a72a0705a933fe8c52ff30c52dce4af1d503e2e895"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.danger:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled",
+            "body_sha256": "898f2966a052149769d54525ba2e588a5dab0ff1bcfff9588231e75d48987210"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:disabled::after",
+            "body_sha256": "97e7d0aa7fb4832a69b733f2fde1a56d0e93d4e359c4e15769c5eca317754a9b"
+          },
+          {
+            "at_rules": [],
+            "selector": "button:focus-visible, .checkbox-row input:focus-visible, .map-canvas-root:focus-visible, .map-minimap:focus-visible",
+            "body_sha256": "030622add0fd4d73a17cea89de585b38d33b2b0a49e1ab2b2a41f74d24b7d803"
+          },
+          {
+            "at_rules": [],
+            "selector": ".ui-icon",
+            "body_sha256": "2b071923eb4e49a870e355ece4e9dbed0c4ac5c15d7416d9ecd671833eebd841"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.primary:not(:disabled):hover",
+            "body_sha256": "ac0686456f4f0521fca69aef3ed76aca0ec824dc5de08e86d9c7e44714845a8b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.secondary:not(:disabled):hover",
+            "body_sha256": "7847f976b90347eb4ce5547b633a59b1b1560195f210fc0afd50af0b82720f91"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": "button.danger:not(:disabled):hover",
+            "body_sha256": "ec7fe5bec53c459c6e1ce6b8f9b136153a2c0a7c1baf9d3efa787331a25cf8bf"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.large",
+            "body_sha256": "844361500020f252c2c18dd30275536dc45edeca20d18a9a0fb687acf469f238"
+          },
+          {
+            "at_rules": [],
+            "selector": ".button-group",
+            "body_sha256": "fd12b7926b85b00603652d1bfd16d30beb969116e54f05fc93bc1e66e890ae8c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".game-screen-container",
+            "body_sha256": "380c5f78a30ac9fe8adcabb86a682c5493adafa4c5eb88d7e1c56bcebdd394c1"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "9d4140ed66cb828bf05cae3614c2c07945d64121a616b25fb6168672ff23f3fd"
+          },
+          {
+            "at_rules": [],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "fae5bd6137486c5ecf0b914ba3272a4ee9584f269b4611b7bb9bd46902ffcbac"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud",
+            "body_sha256": "db1108b34890c48b73b455e19d09280071aab74ff0a7274129c3fb6ae15bc3fd"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".hud .turn-info",
+            "body_sha256": "fb982780915e1f36877414ffb19f90790adb4fdcae0a5894fdb429bda967ad7b"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud",
+            "body_sha256": "ca2bfe3e3cbd56da40eb37236aca9ad0f4eb8d1a10ea851ce989dab5d18c9b50"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".resource-hud__item",
+            "body_sha256": "d529e1f5d1cf9dc4a2e0a526da39d4283f9f1f20389251e3e1f1e1d6914a2e31"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group",
+            "body_sha256": "8efe0a2bca1f5fa6ff662a23e693f8bee18d6a7915946435b52f82ddc54795a8"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .button-group > button",
+            "body_sha256": "c4ef49f77b72db19ad58d48bbe1377473a30e21210609541c085f7b9adad0f34"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sail-interrupt-banner .button-group",
+            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".sheet",
+            "body_sha256": "488bc5ae2e8df6e9f3a30632c60a978c3c1fc384760338d0a608c9166cad2db4"
+          },
+          {
+            "at_rules": ["@media (min-width: 600px)"],
+            "selector": ".button-group",
+            "body_sha256": "58cf3fe563b8b0f68d5ac5c1390a7032203cee0724add5364564e45e3f9d8155"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud",
+            "body_sha256": "dcaad624a3ad7e2076eee34de6bf7ade9e22f2a62b042fe0936fa9cc1eee3ece"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__item",
+            "body_sha256": "0aa7ace6a82c2e29725fb540a0d9d3cb7b4b099dbd3fd44d2d1e6cda147008b2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__icon",
+            "body_sha256": "c9167a9142be0c9506227befc82b5ec5742e21eb102efe6f72cf38221f00be2c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__label",
+            "body_sha256": "2aba194a6b9f20ce859ea2e41e7199ef1ee9e37846979ab985b33c7c90292301"
+          },
+          {
+            "at_rules": [],
+            "selector": ".resource-hud__value",
+            "body_sha256": "7b486c3cdb0b1952e5e650d588030ec94246dcd0e3dc06039e0c5646fcda4870"
+          },
+          {
+            "at_rules": [],
+            "selector": ".button-icon",
+            "body_sha256": "44e79a41b17412de4a4d126385f46a1c770069e301f24601a868314f6faf8557"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__icon",
+            "body_sha256": "6b6b11e42d724a60ad76d527dca6e2d6b97d91a8d36265c9d26bea0fdb35b7b5"
+          },
+          {
+            "at_rules": [],
+            "selector": "button.primary.secondary",
+            "body_sha256": "1abec0044cfe175e3cfcb3a005e4ad9f1edb0b127bcf19b6bec4d5a2a2d860fe"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet-backdrop",
+            "body_sha256": "05af7f015f5558be1b57375f04371393f76cd54a9676aefa5351f89d7db83a76"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet",
+            "body_sha256": "31ca65d59cb196ab709f47629d9f8cb6a6a07ffafd59a1d6d10048301d73858b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__header",
+            "body_sha256": "9d7fabf09ac65afcf79694fd7556f0032bc09b04e4e1b48e717b3030a1663017"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__header h2",
+            "body_sha256": "5f2c0a14e46a7a5737e8bc38ebe4137f669de8a4a904b7acfae2cdc6f236cc31"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__drag-handle",
+            "body_sha256": "ff8526e034937e1ab708b6db3707ca7edff875780f19647636ec2394bed25f86"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__grip",
+            "body_sha256": "b4d1b729b65db8034a559e200a3b758ef86ea43432980e4f5008a05172f15d40"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__close",
+            "body_sha256": "d65521ea79bb00e95e43a0306509e40ea8f40ba1b05cc536c57671b278ff439a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".sheet__close:active",
+            "body_sha256": "bbf8a3b29d5dba45afa454a6304ba810d9bbceee144b49b3753dcbb467a6677c"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".sheet__close:hover",
+            "body_sha256": "02596714d0f725d943e51a3cb97a17331f219f7671a6bdbda51c67a99e6a29e8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-list",
+            "body_sha256": "7b4a2cb6d2761496abf402e9d6cbe3bc232e2abfa7b605ff50c4b40d45ac12ea"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option",
+            "body_sha256": "fe24cfc4d4a32e7c9335f740f9b6e5dbfd7d7edf3e2205828997894865c8bcf9"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option:not(:disabled):active",
+            "body_sha256": "74f3b8a0001233264c0825df4480b1a767f598022e815b3c7354bc2ea17d62cf"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".building-option:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option__cost",
+            "body_sha256": "68519d3c990d5da1dfd5dfc066dd1048bea2691ed4ab4fd0bc210dd22bb270ad"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-option__hint",
+            "body_sha256": "cae53b2abf63c82cf5aa84f97db218574079a004276dfcba5ec9e44cce68f4a4"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row",
+            "body_sha256": "f35ce7754d12ecc2dcbdc23d433b711b20472e6aa8d99fa48a27d383749d0182"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__name",
+            "body_sha256": "77a316569984c297211fe17c19bd083051858df65c931550c70dc5fb4227610f"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__counts",
+            "body_sha256": "406e372a8bb8aa81e4e24cb180bdb71111ed4649ea1e0bf237deba177f85dac8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions",
+            "body_sha256": "1581fdbde4edaa649c71abfaef31dd34edae77194bc447466f070e27d5aef104"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button",
+            "body_sha256": "ff9bec5e4745fc9835b7e0fcade1034ccd635021f1ca8fa5d839cb4452aa054c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__actions button:not(:disabled):active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".garrison-row__actions button:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".checkbox-row",
+            "body_sha256": "a24ec858cd0d2caeafff419a9338629f3c415448c01e3a9a3b5148aa7f312f15"
+          },
+          {
+            "at_rules": [],
+            "selector": ".checkbox-row input[type='checkbox']",
+            "body_sha256": "46d736271a47222c068dfa4344c9bfe9a85373d1048851057e039cb22949de11"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-section",
+            "body_sha256": "6b90e3805a017662db32af168af34c2548a23478189525181ed6a751a0c6a0bb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-viewport",
+            "body_sha256": "8ae66a28b196408d897a44b4bfef25e185c784eb2228d96250e769eaf665bd5b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene",
+            "body_sha256": "3843cd4724c4af151ceaa79e3915e88c7bf91a4f3637853de92123c328ece1a7"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building",
+            "body_sha256": "c586a628218ef2a88deab862fbc9a6bd1bb258512a09ef859f207f84ce5530c2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building::before",
+            "body_sha256": "9ecbbc7fcffe6774657709466b58b5242aa149202f6b4c91d3a953007c9202bd"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building:active",
+            "body_sha256": "f7748f732fc065bb44f654773256888ce52508ef9502044a9e5b6ac1d812dd48"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".city-scene__building:hover",
+            "body_sha256": "ac0686456f4f0521fca69aef3ed76aca0ec824dc5de08e86d9c7e44714845a8b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--economy",
+            "body_sha256": "1a613a8441883bed86bc7437376dc5ed248c9abb98955c734fa97898aa59791b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--recruitment",
+            "body_sha256": "cc60b71d770f47f11a270afda841edfacc304b0c0812fa05b30aea81fd5ca590"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--fortification",
+            "body_sha256": "15ab4999ad927bd06c818a6152d01842971008ab75c6bd484248d63d74579dd3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--shipyard",
+            "body_sha256": "7c1c8b92b89a20b5e5aa875dc566557c27486e26300114bb491f5a20befa6dbb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__building--art",
+            "body_sha256": "9e57b53eafec74e8be6a2489c5fd179dbd8deebf09b0abcfcf6b7953af1ea6ff"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__sprite",
+            "body_sha256": "78754528da58bfbfb74362b13e9a0a2b3af6164ae23def322cba2e88d4dcec84"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__sprite--tower",
+            "body_sha256": "f558e36541ef900b1e969d678a5d7461ea54a84eb9dc497b775659a78cb47d76"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop",
+            "body_sha256": "d29bfd320ee2e64dbaa7a6af7e27794da715a996261d4d175342c351de4a463e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop-tiles",
+            "body_sha256": "3544a365d83b897111674736f8b98708db69967ae96e2851cea6e7af184559d5"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__backdrop-tile",
+            "body_sha256": "64dfa96de684a7587e5d829089a0a0b175af1fb5f3adf9ff9b7a20ea71bca348"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__label",
+            "body_sha256": "5e7e4a5af0f930ba74fc35c8acbdfa55211ea834ff953cdb8ae8a89e8891d5db"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole",
+            "body_sha256": "22a374fba8b8d3d3489c9f82fcbf206338b15245923030b458906f302beb5b2e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mast",
+            "body_sha256": "f0733ca377d089102dddf19230f115d69998c0734d81d3f05e9fb67851def1b2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount",
+            "body_sha256": "9bde03cc0e7dac9e7a7df63830ef4a0091e2e6d74d9ec2e9cfe36f0f35ee7ef2"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::before, .city-scene__flagpole-mount::after",
+            "body_sha256": "3face2ce8ffe5ddcbe0250ff2433b67b5c941f87f5f55c023b05bc7c408da3fa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::before",
+            "body_sha256": "15f6c13e172137b1d7fa99d76e4066f745ae31cc063ff4d76de03c8ef75f407b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flagpole-mount::after",
+            "body_sha256": "ca58b27014be8fd59a09d9178ac9baefc660654c26829f2383ec2ce10b4286d3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flag",
+            "body_sha256": "5f0703f61676fc52d7ef80fea5fefeeb77e2845fc779cbeb51d2b68e3c242d2b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__flag img",
+            "body_sha256": "beabd33dbe23e6c6ca8b22f1ef7484c8953a09472733a85ed896dc35c4b3def9"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom",
+            "body_sha256": "6b20da7bd9715dee150d9cc44eeccd5ed3cae3b6972306590c4f0ceead4e2946"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button",
+            "body_sha256": "2db6cc3f1a11cfacea444b2468a311b027997aa5a0dc675cb4007c36427c8ea8"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-zoom button:not(:disabled):active",
+            "body_sha256": "95db433a667210fd529668f1874f1e5ebbe5a82d02c23ffe0b6e363448097a1c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene__overflow",
+            "body_sha256": "aa117aa15ca03348049f35977984fcb12713a9240dee2cf7bdb4239546061d06"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav",
+            "body_sha256": "b2caaa2d7889a490a3cabd799d304a255140792c7957a3502554380a1ed7652c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav:active",
+            "body_sha256": "bbf8a3b29d5dba45afa454a6304ba810d9bbceee144b49b3753dcbb467a6677c"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav--left",
+            "body_sha256": "ec261421dc3b5d990c317260d220e6fc8b7e2724a2e9407d98bf7bc1fe41beeb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-scene-nav--right",
+            "body_sha256": "09c3def3c273ca6b6fff082bad38ad95295d3b777ef8558e9fc98a59786fd4cf"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-modal__intro",
+            "body_sha256": "1bcedf1012d74c354bfed9b7a5bd4c12d050298d61c08c6d0c5e639ccfb428fa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic",
+            "body_sha256": "76bc79888f52f0b9bf8c06835cf9f78edb2e5e3d724b66c068ae294301731af5"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--economy",
+            "body_sha256": "1a613a8441883bed86bc7437376dc5ed248c9abb98955c734fa97898aa59791b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--recruitment",
+            "body_sha256": "cc60b71d770f47f11a270afda841edfacc304b0c0812fa05b30aea81fd5ca590"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--fortification",
+            "body_sha256": "15ab4999ad927bd06c818a6152d01842971008ab75c6bd484248d63d74579dd3"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-graphic--shipyard",
+            "body_sha256": "7c1c8b92b89a20b5e5aa875dc566557c27486e26300114bb491f5a20befa6dbb"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row",
+            "body_sha256": "0182b65d87061bf18f211a610a8b00dedfedf825e518ea6e8a9e9ea2f04a6d7b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row--unavailable .build-row__text, .build-row--unavailable .building-graphic",
+            "body_sha256": "a8defcd778ac65e3f0de789b4f490c554611853caa4b02dbc961350a238b1f25"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__main",
+            "body_sha256": "871dd508886159f0743c5d1e5580f03f3d34e047ee5d22f78503b432bf26fffa"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row .building-graphic",
+            "body_sha256": "70b70546ae8b6e592f30c78399e769f5d0faf97fab3674d465169cf7e459714f"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__text",
+            "body_sha256": "3d2986151c19c5a0625215f4ccfe62fe33cd5bfea212ab47c401f7e400fd4061"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build",
+            "body_sha256": "0bc83613989c3a3001aef8a2f92ab8fa5709a691f467be2c683287ed4324ab32"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build:disabled",
+            "body_sha256": "a798494dced5b6abf1a229980f9f93dfaa16c6a7616133695e369e05afb8cb7a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".build-row__build:not(:disabled):active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".build-row__build:not(:disabled):hover",
+            "body_sha256": "c1896e4029d3be91d29a4d3a66191be7b16c0fee4f250f5c72981ad4a066ad5d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle",
+            "body_sha256": "fa28aac191b897edd2db526a7890a1c8c39b6dff7ba9bfdac91ee4134be0ba91"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle:active",
+            "body_sha256": "47b52757d1704a97eafc6b54e40352dd5a2fdc9c2368f56a7daed4038f73523b"
+          },
+          {
+            "at_rules": [],
+            "selector": ".info-toggle[aria-expanded='true']",
+            "body_sha256": "ecc953f84fb1c92a752b51fc9118797c587e2c12b32d6eb26f2020771dc69847"
+          },
+          {
+            "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+            "selector": ".city-scene-zoom button:not(:disabled):hover, .city-scene-nav:hover, .info-toggle:hover",
+            "body_sha256": "f0b708cefa192b31e15407e4edd92412e40575ca598fdb6beaa18d04ab8537df"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-info",
+            "body_sha256": "0166bd3ddbf7b0395707bb7356458a36a35a2434443d1258545ba0cc8985e42e"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-info ul",
+            "body_sha256": "14d80967c6363cd44b6d034446bf3dc512473d7cb17318fa50b8127b2ad8d619"
+          },
+          {
+            "at_rules": [],
+            "selector": ".building-modal__intro .building-info",
+            "body_sha256": "83edfc7450ea8aafebd652ccdf2cf2a0da099b84bab68965f539ca69e529d0ed"
+          },
+          {
+            "at_rules": [],
+            "selector": ".garrison-row__header",
+            "body_sha256": "ab46ccc0f7d6568f602358d7fa55bfd5d8808993823c7d4c33e5b005534de807"
+          },
+          {
+            "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+            "selector": ".screen-transition, .title-screen, .main-menu__panel, .sheet, .sheet-backdrop, .action-toast, .spinner, .skeleton",
+            "body_sha256": "d50ca3ac0cb0aebcfa34cd80cb8192a2e339118fb1f315e99188b11ef530390e"
+          }
+        ],
+        "root_custom_properties": [
+          {
+            "name": "--city-building-economy",
+            "value": "#8a6d3b"
+          },
+          {
+            "name": "--city-building-fortification",
+            "value": "#6e7681"
+          },
+          {
+            "name": "--city-building-recruitment",
+            "value": "#a33c2e"
+          },
+          {
+            "name": "--city-building-shipyard",
+            "value": "#2e5da3"
+          },
+          {
+            "name": "--city-ground",
+            "value": "#6b7a3f"
+          },
+          {
+            "name": "--city-ground-low",
+            "value": "#55632f"
+          },
+          {
+            "name": "--city-sky",
+            "value": "#7fa8c9"
+          },
+          {
+            "name": "--city-sky-low",
+            "value": "#b5cbdd"
+          },
+          {
+            "name": "--city-water",
+            "value": "#2a6a8f"
+          },
+          {
+            "name": "--color-action",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--color-bg",
+            "value": "#1c1206"
+          },
+          {
+            "name": "--color-brass",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--color-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--color-highlight",
+            "value": "#f0cb66"
+          },
+          {
+            "name": "--color-text",
+            "value": "var(--text-primary)"
+          },
+          {
+            "name": "--ease-emphasized",
+            "value": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+          },
+          {
+            "name": "--ease-standard",
+            "value": "cubic-bezier(0.2, 0, 0, 1)"
+          },
+          {
+            "name": "--elevation-1",
+            "value": "0 2px 8px rgb(0 0 0 / 32%)"
+          },
+          {
+            "name": "--elevation-2",
+            "value": "0 6px 18px rgb(0 0 0 / 42%)"
+          },
+          {
+            "name": "--elevation-3",
+            "value": "0 12px 32px rgb(0 0 0 / 52%)"
+          },
+          {
+            "name": "--font-body",
+            "value": "Cabin, system-ui, -apple-system, sans-serif"
+          },
+          {
+            "name": "--font-display",
+            "value": "'Pirata One', 'Times New Roman', serif"
+          },
+          {
+            "name": "--motion-emphasized",
+            "value": "220ms"
+          },
+          {
+            "name": "--motion-fast",
+            "value": "120ms"
+          },
+          {
+            "name": "--motion-standard",
+            "value": "180ms"
+          },
+          {
+            "name": "--radius-1",
+            "value": "4px"
+          },
+          {
+            "name": "--radius-2",
+            "value": "8px"
+          },
+          {
+            "name": "--radius-3",
+            "value": "12px"
+          },
+          {
+            "name": "--radius-4",
+            "value": "16px"
+          },
+          {
+            "name": "--radius-pill",
+            "value": "999px"
+          },
+          {
+            "name": "--selected-glow",
+            "value": "rgb(201 162 39 / 18%)"
+          },
+          {
+            "name": "--space-1",
+            "value": "4px"
+          },
+          {
+            "name": "--space-2",
+            "value": "8px"
+          },
+          {
+            "name": "--space-3",
+            "value": "12px"
+          },
+          {
+            "name": "--space-4",
+            "value": "16px"
+          },
+          {
+            "name": "--space-5",
+            "value": "24px"
+          },
+          {
+            "name": "--stroke-danger",
+            "value": "#a6402f"
+          },
+          {
+            "name": "--stroke-disabled",
+            "value": "#796f61"
+          },
+          {
+            "name": "--stroke-emphasized",
+            "value": "#cbb17a"
+          },
+          {
+            "name": "--stroke-focus",
+            "value": "#c8962c"
+          },
+          {
+            "name": "--stroke-selected",
+            "value": "#c9a227"
+          },
+          {
+            "name": "--stroke-standard",
+            "value": "#725838"
+          },
+          {
+            "name": "--surface-canvas",
+            "value": "#17100a"
+          },
+          {
+            "name": "--surface-disabled",
+            "value": "#33291f"
+          },
+          {
+            "name": "--surface-inset",
+            "value": "#21150d"
+          },
+          {
+            "name": "--surface-overlay",
+            "value": "rgb(45 27 16 / 92%)"
+          },
+          {
+            "name": "--surface-panel",
+            "value": "#2d1b10"
+          },
+          {
+            "name": "--surface-raised",
+            "value": "#3a2416"
+          },
+          {
+            "name": "--surface-scrim",
+            "value": "rgb(7 18 26 / 64%)"
+          },
+          {
+            "name": "--text-danger",
+            "value": "#f6e9dd"
+          },
+          {
+            "name": "--text-disabled",
+            "value": "#b4aa9a"
+          },
+          {
+            "name": "--text-inverse",
+            "value": "#21150d"
+          },
+          {
+            "name": "--text-muted",
+            "value": "#b9a47b"
+          },
+          {
+            "name": "--text-primary",
+            "value": "#f3e5c2"
+          },
+          {
+            "name": "--text-secondary",
+            "value": "#e7d4ac"
+          },
+          {
+            "name": "--texture-parchment-faint",
+            "value": "rgb(255 241 202 / 4%)"
+          },
+          {
+            "name": "--texture-parchment-hairline",
+            "value": "rgb(255 241 202 / 2%)"
+          },
+          {
+            "name": "--type-body-leading",
+            "value": "1.4"
+          },
+          {
+            "name": "--type-body-size",
+            "value": "1rem"
+          },
+          {
+            "name": "--type-caption-size",
+            "value": "0.75rem"
+          },
+          {
+            "name": "--type-label-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-numeric-size",
+            "value": "0.875rem"
+          },
+          {
+            "name": "--type-title-size",
+            "value": "clamp(1.35rem, 2.5vw, 2rem)"
+          }
+        ],
+        "local_custom_properties": [
+          {
+            "name": "--city-zoom",
+            "values": ["1"]
+          }
+        ],
+        "component_custom_properties": [
+          "--city-flag-cloth-left",
+          "--city-flag-cloth-width",
+          "--city-flag-height",
+          "--city-flag-left",
+          "--city-flag-mast-width",
+          "--city-flag-mount-height",
+          "--city-flag-mount-width",
+          "--city-flag-top",
+          "--city-flag-width",
+          "--city-shadow-blur",
+          "--city-shadow-bottom",
+          "--city-shadow-color",
+          "--city-shadow-height",
+          "--city-shadow-left",
+          "--city-shadow-opacity",
+          "--city-shadow-width"
+        ]
+      }
+    ]
+  },
+  "source_sets": {
+    "phone-world": {
+      "runtime_sources": [
+        {
+          "path": "apps/web/src/MapCanvas.tsx",
+          "bytes": 89735,
+          "sha256": "81b764b4adcd3e64a9f37c8c6f4af86638120007ab3d723aec03a033165bd3c2"
+        },
+        {
+          "path": "apps/web/src/Minimap.tsx",
+          "bytes": 8390,
+          "sha256": "e1e3b1fde4bae3fce9f7d66dee2a842b4b192de857b00f9573b559cbf1c1a1f7"
+        },
+        {
+          "path": "apps/web/src/ResourceHud.tsx",
+          "bytes": 1748,
+          "sha256": "0a1b99e6d43b70913208e2cd3642155e9b876d3a64b84e6fef3c4d951d7411bb"
+        },
+        {
+          "path": "apps/web/src/colorTokens.ts",
+          "bytes": 1794,
+          "sha256": "53951fbd6cd4aeea21bd293e22705a0f7bac092a34e12ba905a5a59cf8ccf237"
+        },
+        {
+          "path": "apps/web/src/fleetVisibility.ts",
+          "bytes": 1721,
+          "sha256": "b0bd8c3ec3ba9988798ebabbf88ddcad17775cb67b27b9d102be6877b2e516a7"
+        },
+        {
+          "path": "apps/web/src/mapArtRegistry.ts",
+          "bytes": 9428,
+          "sha256": "e5586dd1bf81a6b8f10c6e7cadd88db0bdf4cf3636624d8b9a84cb5586551f54"
+        },
+        {
+          "path": "apps/web/src/mapCursor.ts",
+          "bytes": 4317,
+          "sha256": "81a3186b6edcc1d624bd283855b235d1b3e72e02364eb52170cfdc046c4f3e0f"
+        },
+        {
+          "path": "apps/web/src/mapLayout.ts",
+          "bytes": 7999,
+          "sha256": "f892b8767e9636b30a16cd98b6c7a2888c9dc57bc7551f926cdbeb896633c8e7"
+        },
+        {
+          "path": "apps/web/src/mapSprites.ts",
+          "bytes": 7235,
+          "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
+        },
+        {
+          "path": "apps/web/src/paintedWorld.ts",
+          "bytes": 7630,
+          "sha256": "b3f56ff797c4d1036ae54621a7b52a7cc5e0be810cf92ca928e1af5165184bb0"
+        },
+        {
+          "path": "apps/web/src/pathPreview.ts",
+          "bytes": 3203,
+          "sha256": "38af2b380ee78d2c87f32c555b12457a39b84f922b5636582074a73ff8f41a68"
+        },
+        {
+          "path": "apps/web/src/screens/GameScreen.tsx",
+          "bytes": 88933,
+          "sha256": "2a087630a861241105adaeab88eca70c5b02fe39627468fab247a397e74618e6"
+        },
+        {
+          "path": "apps/web/src/shipAnimation.ts",
+          "bytes": 4573,
+          "sha256": "a2744d4e15d8bf0d838fd40828708411e1377cacef5777c4d2a272109fdc6ac9"
+        },
+        {
+          "path": "apps/web/src/textureLoader.ts",
+          "bytes": 4629,
+          "sha256": "8c69b18bcdfddaff6ca78fbab502483876f6d194ff80bbfb9634a537fc432aad"
+        },
+        {
+          "path": "apps/web/src/theme/ThemeContext.tsx",
+          "bytes": 2328,
+          "sha256": "d432a72b0089906f4802bb9ee1fda9c536f39eef3b7134ec910ee87345be302c"
+        },
+        {
+          "path": "apps/web/src/uiIcons.ts",
+          "bytes": 6147,
+          "sha256": "e4137065cdbd2446a04f646cde53c90ea3f82a2bf27fcbdba1db4b70df7f4f90"
+        },
+        {
+          "path": "apps/web/src/usePixiApp.ts",
+          "bytes": 3986,
+          "sha256": "497820d62d4354828b0c383d07bfcb2c91682d6e0b9599a365334de2afdfaa1c"
+        },
+        {
+          "path": "packages/content/src/factions.ts",
+          "bytes": 13049,
+          "sha256": "123145d63d8066401f111e42d72b4d4d03129a64f91de3bf88bb2c34ac6cad09"
+        }
+      ],
+      "runtime_assets": [
+        {
+          "path": "apps/web/public/art/cities/british.webp",
+          "bytes": 17936,
+          "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7"
+        },
+        {
+          "path": "apps/web/public/art/cities/dutch.webp",
+          "bytes": 14296,
+          "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a"
+        },
+        {
+          "path": "apps/web/public/art/cities/french.webp",
+          "bytes": 15984,
+          "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f"
+        },
+        {
+          "path": "apps/web/public/art/cities/neutral.webp",
+          "bytes": 11814,
+          "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3"
+        },
+        {
+          "path": "apps/web/public/art/cities/pirates.webp",
+          "bytes": 17284,
+          "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a"
+        },
+        {
+          "path": "apps/web/public/art/cities/spanish.webp",
+          "bytes": 17978,
+          "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97"
+        },
+        {
+          "path": "apps/web/public/art/encounters/bandit-camp.webp",
+          "bytes": 12374,
+          "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f"
+        },
+        {
+          "path": "apps/web/public/art/encounters/hermit.webp",
+          "bytes": 13494,
+          "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8"
+        },
+        {
+          "path": "apps/web/public/art/encounters/merchant-v2.webp",
+          "bytes": 16420,
+          "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567"
+        },
+        {
+          "path": "apps/web/public/art/encounters/native-village.webp",
+          "bytes": 12600,
+          "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b"
+        },
+        {
+          "path": "apps/web/public/art/encounters/natives-v2.webp",
+          "bytes": 13946,
+          "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106"
+        },
+        {
+          "path": "apps/web/public/art/encounters/settlers-v2.webp",
+          "bytes": 20062,
+          "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/flag.png",
+          "bytes": 10804,
+          "sha256": "51b1686e7cfbe5f2e304337d0b45ee29ae4fba05db35b91b3ec00dba5a1979bb"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/ship_brigantine_v2.webp",
+          "bytes": 14960,
+          "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/ship_frigate_v2.webp",
+          "bytes": 14140,
+          "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/ship_galleon_v2.webp",
+          "bytes": 15502,
+          "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/ship_sloop.webp",
+          "bytes": 8798,
+          "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/flag.png",
+          "bytes": 5843,
+          "sha256": "3f21fbbf96f15051f31fdfb0f70b2264bbc5ee9707f7111c05d19d60f76d531a"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/ship_brigantine_v2.webp",
+          "bytes": 16866,
+          "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/ship_frigate_v2.webp",
+          "bytes": 15072,
+          "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/ship_galleon_v2.webp",
+          "bytes": 15734,
+          "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/ship_sloop_v2.webp",
+          "bytes": 12402,
+          "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/flag.png",
+          "bytes": 15953,
+          "sha256": "94a8467effd2c4d40aeef05531181aa054c20850461267d6ec6ff3b10b0ccb91"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/ship_brigantine_v2.webp",
+          "bytes": 14868,
+          "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/ship_frigate_v2.webp",
+          "bytes": 12904,
+          "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/ship_galleon_v2.webp",
+          "bytes": 14852,
+          "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/ship_sloop_v2.webp",
+          "bytes": 10748,
+          "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/flag.png",
+          "bytes": 22910,
+          "sha256": "23bb5e4a2563633ab586c8f5cf110ef90cfa586bc4726b09726b66c9efe03296"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/ship_brigantine_v2.webp",
+          "bytes": 16568,
+          "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/ship_frigate_v2.webp",
+          "bytes": 13762,
+          "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/ship_galleon_v2.webp",
+          "bytes": 13200,
+          "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+          "bytes": 10808,
+          "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/flag.png",
+          "bytes": 17034,
+          "sha256": "02e518bc4b01a1310fa2a9a90285f52e6426bc97284c84852001325ceaa6545c"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/ship_brigantine_v2.webp",
+          "bytes": 13086,
+          "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/ship_frigate_v2.webp",
+          "bytes": 13526,
+          "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/ship_galleon_v2.webp",
+          "bytes": 16318,
+          "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/ship_sloop_v2.webp",
+          "bytes": 10114,
+          "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94"
+        },
+        {
+          "path": "apps/web/public/art/parties/british.webp",
+          "bytes": 13298,
+          "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7"
+        },
+        {
+          "path": "apps/web/public/art/parties/dutch.webp",
+          "bytes": 16284,
+          "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3"
+        },
+        {
+          "path": "apps/web/public/art/parties/french.webp",
+          "bytes": 17306,
+          "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc"
+        },
+        {
+          "path": "apps/web/public/art/parties/pirates.webp",
+          "bytes": 17232,
+          "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef"
+        },
+        {
+          "path": "apps/web/public/art/parties/spanish.webp",
+          "bytes": 14882,
+          "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6"
+        },
+        {
+          "path": "apps/web/public/art/resources/gold.png",
+          "bytes": 6885,
+          "sha256": "a33b424ca44602beffeeafcfabd49a089cc01aae851cc4deca3ec01cab3ca6db"
+        },
+        {
+          "path": "apps/web/public/art/resources/iron.png",
+          "bytes": 11192,
+          "sha256": "90b0f2e521b9e8c405e566eb8e671179ea72eaadb9868160ad5700aadf2dc394"
+        },
+        {
+          "path": "apps/web/public/art/resources/rum.png",
+          "bytes": 2033,
+          "sha256": "6478faf5c0a42dba0e6058ae375483953eb618e0dceea92b4c172b5992650eca"
+        },
+        {
+          "path": "apps/web/public/art/resources/timber.png",
+          "bytes": 6678,
+          "sha256": "e20e5735b26e4e352670cc9748a22ed9addf8a7acab72c9ff89fe1371a876b4b"
+        },
+        {
+          "path": "apps/web/public/art/sites/lumber-camp.webp",
+          "bytes": 19190,
+          "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba"
+        },
+        {
+          "path": "apps/web/public/art/sites/mine.webp",
+          "bytes": 17964,
+          "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa"
+        },
+        {
+          "path": "apps/web/public/art/sites/ruins.webp",
+          "bytes": 16050,
+          "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760"
+        },
+        {
+          "path": "apps/web/public/art/sites/sawmill.webp",
+          "bytes": 16618,
+          "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815"
+        },
+        {
+          "path": "apps/web/public/art/tiles/land.png",
+          "bytes": 19327,
+          "sha256": "d9571057d4a44b6c2dfcd692e8d9adade66358afd073dd25e532aff616d5007f"
+        },
+        {
+          "path": "apps/web/public/art/tiles/port.png",
+          "bytes": 17759,
+          "sha256": "29db69da334364eab148d7350b9350bb5cfa66eb673c74a846078ce56eaf0982"
+        },
+        {
+          "path": "apps/web/public/fonts/cabin-latin.woff2",
+          "bytes": 28228,
+          "sha256": "3912b808ba0a5888e70ec69585dc500bfd241929c58f073ff7789b12179c3843"
+        },
+        {
+          "path": "apps/web/public/fonts/pirata-one-latin.woff2",
+          "bytes": 8824,
+          "sha256": "37d289e4600f084545a6def9ca145a547fff4ce7ceca7847a08d598a23c8d6cb"
+        }
+      ],
+      "stylesheet_scope": "a04b310ed52ec937a23a9ad26221f06011848d0044c79960f6cf8e6aa17eb909"
+    },
+    "city-inspector": {
+      "runtime_sources": [
+        {
+          "path": "apps/web/src/CityScene.tsx",
+          "bytes": 12398,
+          "sha256": "02735501ccb30d7ab8e794dc9432acdb5605167f04ea0590d9a63c1933d62876"
+        },
+        {
+          "path": "apps/web/src/CityScreen.tsx",
+          "bytes": 6938,
+          "sha256": "1ec95fe3ec071171c56c16c550cdb9e7d2640b7b566c557e7907d2c4f50dc4f3"
+        },
+        {
+          "path": "apps/web/src/ResourceHud.tsx",
+          "bytes": 1748,
+          "sha256": "0a1b99e6d43b70913208e2cd3642155e9b876d3a64b84e6fef3c4d951d7411bb"
+        },
+        {
+          "path": "apps/web/src/cityBuildingInfo.ts",
+          "bytes": 3252,
+          "sha256": "04297115d363d8622c139b2507056e4869411c8872d95558cb48e365d1836d2b"
+        },
+        {
+          "path": "apps/web/src/cityModals.tsx",
+          "bytes": 35415,
+          "sha256": "edbaaae367cb50d82068763232faf739941fc492bd65f476e31b846f38b32819"
+        },
+        {
+          "path": "apps/web/src/citySceneLayout.json",
+          "bytes": 7842,
+          "sha256": "c7a6f599f27e6548db237667ac9cd99abf60e398427babad23f318bddf25385f"
+        },
+        {
+          "path": "apps/web/src/colorTokens.ts",
+          "bytes": 1794,
+          "sha256": "53951fbd6cd4aeea21bd293e22705a0f7bac092a34e12ba905a5a59cf8ccf237"
+        },
+        {
+          "path": "apps/web/src/components/BottomSheet.tsx",
+          "bytes": 3696,
+          "sha256": "21f5a5e12c696da03a82d8449bd5f59ff9b4d2924e3bcebd416275a9b7465a2b"
+        },
+        {
+          "path": "apps/web/src/mapSprites.ts",
+          "bytes": 7235,
+          "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
+        },
+        {
+          "path": "apps/web/src/screens/GameScreen.tsx",
+          "bytes": 88933,
+          "sha256": "2a087630a861241105adaeab88eca70c5b02fe39627468fab247a397e74618e6"
+        },
+        {
+          "path": "apps/web/src/theme/ThemeContext.tsx",
+          "bytes": 2328,
+          "sha256": "d432a72b0089906f4802bb9ee1fda9c536f39eef3b7134ec910ee87345be302c"
+        },
+        {
+          "path": "apps/web/src/uiIcons.ts",
+          "bytes": 6147,
+          "sha256": "e4137065cdbd2446a04f646cde53c90ea3f82a2bf27fcbdba1db4b70df7f4f90"
+        },
+        {
+          "path": "packages/content/src/buildings.ts",
+          "bytes": 9372,
+          "sha256": "5b37fe64f4cb3b7ea6d22d5ebc61c98a300b81fd080f880168550a016499fdbf"
+        },
+        {
+          "path": "packages/content/src/factions.ts",
+          "bytes": 13049,
+          "sha256": "123145d63d8066401f111e42d72b4d4d03129a64f91de3bf88bb2c34ac6cad09"
+        },
+        {
+          "path": "packages/content/src/ships.ts",
+          "bytes": 3855,
+          "sha256": "d368336c57230683edad9922de91e34b76c0696b733081e2c54923f1eedc3e88"
+        }
+      ],
+      "runtime_assets": [
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r1.webp",
+          "bytes": 60378,
+          "sha256": "89cca01aa439d05a68f3312c4a115c559aae5e99a7b4e707a4499d276eec4856"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r2.webp",
+          "bytes": 57430,
+          "sha256": "3d3cbf817db1a66328d8c6cb209dc495443e6c79b68f30b43319af18a8110778"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r3.webp",
+          "bytes": 56932,
+          "sha256": "157d18d151d64685af2d40c0364a1b7021c27f69899f96b6ee2fd45135158ea1"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r4.webp",
+          "bytes": 60878,
+          "sha256": "11bbca0a8ff34edbb219146f1fda81712806c72eba8a5c0c4747083d084cff4c"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r1.webp",
+          "bytes": 50390,
+          "sha256": "5484034876fe6d7608ff44413f764a03043cfe66495511a23396b40a14cb1935"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r2.webp",
+          "bytes": 69218,
+          "sha256": "c1aa408938c98899718d78733c438bdb15e6da928e20ed51846dc658d9b8208f"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r3.webp",
+          "bytes": 58516,
+          "sha256": "e17d554f3e287acf4901ec761a1e3c36bbb4dd28d0385c50e782cdb2971da8f4"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r4.webp",
+          "bytes": 58772,
+          "sha256": "3b0943dd8ed95f8a24699472893329df7e44138a6d22d0830e4957ba48ec00eb"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r1.webp",
+          "bytes": 50006,
+          "sha256": "7072891f5c23a9f492a1ee6df80d06d8ff5e3c0762a5a02357099d05c401e246"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r2.webp",
+          "bytes": 63378,
+          "sha256": "bc26dd36c0100b4fc57e9d6181061bb967d0c8181eb3435e25fd4021959236b3"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r3.webp",
+          "bytes": 61050,
+          "sha256": "f5c9b43dc82df33614ddd62d6bbffed0fded854252f33d418ff88220a45c02a4"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r4.webp",
+          "bytes": 32558,
+          "sha256": "210466e409d5e205da328c29c98e355771d56ccf9f5a73940224f360b435ef5b"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r1.webp",
+          "bytes": 55958,
+          "sha256": "06bb2c5e08919855a2fe1359bc01f90486686cadcdd6f2972b193ed762ad1721"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r2.webp",
+          "bytes": 56610,
+          "sha256": "606b3c1fec9b5afc752dcb38ce867f118bca51f80f77d7b2b7e096b89a737ff5"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r3.webp",
+          "bytes": 47630,
+          "sha256": "efe8cf9ee224bc4ea9f489840d6dfa64861dfea5a6ebe833903d5735a76e5db1"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r4.webp",
+          "bytes": 18996,
+          "sha256": "a7cd75a1e11a1388f0fc7a94c853c5bdcaafa7005a44a55612caf776092695f8"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r1.webp",
+          "bytes": 57268,
+          "sha256": "7c48f1897f524bf5a209ca3e766c9f5de81e68e10e0e40c8661728725277f6f0"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r2.webp",
+          "bytes": 59454,
+          "sha256": "29d039ee1b7574f782a406fb0ea92d51459620ed9af35dccb9ddfd637cdd544b"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r3.webp",
+          "bytes": 35224,
+          "sha256": "8eefe4c370e91ec231d5d870d5741b3673d207dc26463110e16e56e61c3b7cdf"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r4.webp",
+          "bytes": 15760,
+          "sha256": "6ef03d17acf57601d344390d25d1ddb29f1103783e0bb04a20dc1e01674ffe62"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r1.webp",
+          "bytes": 38326,
+          "sha256": "b72948b51473f41fd0794242688b37983fd09161b700d6ac0dcb773024a58f57"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r2.webp",
+          "bytes": 32496,
+          "sha256": "57245beb51994903acbbd021678ff374dbf395d81a8ce610814f33a44bb28817"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r3.webp",
+          "bytes": 44764,
+          "sha256": "e4d5b6067f18b027f2d201a60b6460b0fe8495d1235004482e5bcd5ec7491f06"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r4.webp",
+          "bytes": 19224,
+          "sha256": "01c9e6141b2511ea3183633b0bd179f2fb1baf348599bbaf90da4e755f725e42"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop.webp",
+          "bytes": 195292,
+          "sha256": "6f4449bd1d1926f0a8cb315ecd1400a94c69f1ff5d292ac9e6b1f0963d9d20a3"
+        },
+        {
+          "path": "apps/web/public/art/city/barracks.webp",
+          "bytes": 115258,
+          "sha256": "27081eb9236dfe5484483898b942a8ad40eb9b345d99d100c07ef5eee06c2639"
+        },
+        {
+          "path": "apps/web/public/art/city/citadel-tower.webp",
+          "bytes": 70666,
+          "sha256": "dc4a75efc36737df82c49b7aba1e355c8d8810dc2b66d9a55bdb05f6cc42d595"
+        },
+        {
+          "path": "apps/web/public/art/city/citadel.webp",
+          "bytes": 91260,
+          "sha256": "d11926a278876055cad9aadb5e28efb7415b4ea8b6f6c0e46ddf09ae3dd903a4"
+        },
+        {
+          "path": "apps/web/public/art/city/distillery.webp",
+          "bytes": 99024,
+          "sha256": "a8bd03ffde417ab17271ac28336cdbf3fec41ff959005eb2bb913a6517bf9028"
+        },
+        {
+          "path": "apps/web/public/art/city/fortressArmory.webp",
+          "bytes": 185498,
+          "sha256": "592a766da33606837316753410d7a072c23e9716174b7fa3709dd663b1e1e225"
+        },
+        {
+          "path": "apps/web/public/art/city/garrisonHall.webp",
+          "bytes": 161642,
+          "sha256": "360c51145cbf9fb58a50bbc9cea50966d255e850e98d24476ccb3f296a8fce91"
+        },
+        {
+          "path": "apps/web/public/art/city/grandArsenal.webp",
+          "bytes": 197404,
+          "sha256": "b1484ae8a1a57a78c02aac4c5d7006c65743eb4565e87a1fb2935e7d97b832b8"
+        },
+        {
+          "path": "apps/web/public/art/city/ironmine.webp",
+          "bytes": 90286,
+          "sha256": "9b30a80ac79222f4292d4e284e56e973b2821faaaec2a5443313cf0db05f6c5a"
+        },
+        {
+          "path": "apps/web/public/art/city/palisade.webp",
+          "bytes": 75388,
+          "sha256": "cf4274b7106e9aac827cbf45b3d0c23cd69ce6e463b28b3a63ed4b5e1e2747d3"
+        },
+        {
+          "path": "apps/web/public/art/city/sawmill.webp",
+          "bytes": 104330,
+          "sha256": "64bc14d5ab303555bc8a0d7afa8ed1db8a7ea8a8e9b10856175e7401380d3a50"
+        },
+        {
+          "path": "apps/web/public/art/city/shipyard.webp",
+          "bytes": 141246,
+          "sha256": "c29693b722862b383923a493b6435a1c54e45205eb8135fdd0d4c17fe4505847"
+        },
+        {
+          "path": "apps/web/public/art/city/stoneWall.webp",
+          "bytes": 73984,
+          "sha256": "b7b5b048109d8c7d0b8fd38eadc08b1ef03a163464d8863340c8111d44864540"
+        },
+        {
+          "path": "apps/web/public/art/city/tavern.webp",
+          "bytes": 119156,
+          "sha256": "f476687761a68ee13811bd56d893d391a8e36ec49659ba5f2952b8c52c06085e"
+        },
+        {
+          "path": "apps/web/public/art/city/townhall.webp",
+          "bytes": 203636,
+          "sha256": "9228c6a739e80d89685cb71c3a5bd0f860007a9893477910300f66d53428156f"
+        },
+        {
+          "path": "apps/web/public/art/city/tradehouse.webp",
+          "bytes": 122652,
+          "sha256": "7da3ac5b485df534e356d85f924eed67f75a7ebc12e0adcd098f7034d12fdbca"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/flag.png",
+          "bytes": 10804,
+          "sha256": "51b1686e7cfbe5f2e304337d0b45ee29ae4fba05db35b91b3ec00dba5a1979bb"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/flag.png",
+          "bytes": 5843,
+          "sha256": "3f21fbbf96f15051f31fdfb0f70b2264bbc5ee9707f7111c05d19d60f76d531a"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/flag.png",
+          "bytes": 15953,
+          "sha256": "94a8467effd2c4d40aeef05531181aa054c20850461267d6ec6ff3b10b0ccb91"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/flag.png",
+          "bytes": 22910,
+          "sha256": "23bb5e4a2563633ab586c8f5cf110ef90cfa586bc4726b09726b66c9efe03296"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/flag.png",
+          "bytes": 17034,
+          "sha256": "02e518bc4b01a1310fa2a9a90285f52e6426bc97284c84852001325ceaa6545c"
+        },
+        {
+          "path": "apps/web/public/art/resources/gold.png",
+          "bytes": 6885,
+          "sha256": "a33b424ca44602beffeeafcfabd49a089cc01aae851cc4deca3ec01cab3ca6db"
+        },
+        {
+          "path": "apps/web/public/art/resources/iron.png",
+          "bytes": 11192,
+          "sha256": "90b0f2e521b9e8c405e566eb8e671179ea72eaadb9868160ad5700aadf2dc394"
+        },
+        {
+          "path": "apps/web/public/art/resources/rum.png",
+          "bytes": 2033,
+          "sha256": "6478faf5c0a42dba0e6058ae375483953eb618e0dceea92b4c172b5992650eca"
+        },
+        {
+          "path": "apps/web/public/art/resources/timber.png",
+          "bytes": 6678,
+          "sha256": "e20e5735b26e4e352670cc9748a22ed9addf8a7acab72c9ff89fe1371a876b4b"
+        },
+        {
+          "path": "apps/web/public/art/ui/upgrade.png",
+          "bytes": 6780,
+          "sha256": "aca53597176bca94e47a9f936d91499af1f1fe6f21892e710e45f71dcaa38d51"
+        },
+        {
+          "path": "apps/web/public/fonts/cabin-latin.woff2",
+          "bytes": 28228,
+          "sha256": "3912b808ba0a5888e70ec69585dc500bfd241929c58f073ff7789b12179c3843"
+        },
+        {
+          "path": "apps/web/public/fonts/pirata-one-latin.woff2",
+          "bytes": 8824,
+          "sha256": "37d289e4600f084545a6def9ca145a547fff4ce7ceca7847a08d598a23c8d6cb"
+        }
+      ],
+      "stylesheet_scope": "1dac4d5506f273d8508270389131fe521ed2a6d31f22dc1ea5b2ed037773560a"
+    },
+    "interaction-states": {
+      "runtime_sources": [
+        {
+          "path": "apps/web/src/CityScene.tsx",
+          "bytes": 12398,
+          "sha256": "02735501ccb30d7ab8e794dc9432acdb5605167f04ea0590d9a63c1933d62876"
+        },
+        {
+          "path": "apps/web/src/CityScreen.tsx",
+          "bytes": 6938,
+          "sha256": "1ec95fe3ec071171c56c16c550cdb9e7d2640b7b566c557e7907d2c4f50dc4f3"
+        },
+        {
+          "path": "apps/web/src/ResourceHud.tsx",
+          "bytes": 1748,
+          "sha256": "0a1b99e6d43b70913208e2cd3642155e9b876d3a64b84e6fef3c4d951d7411bb"
+        },
+        {
+          "path": "apps/web/src/cityBuildingInfo.ts",
+          "bytes": 3252,
+          "sha256": "04297115d363d8622c139b2507056e4869411c8872d95558cb48e365d1836d2b"
+        },
+        {
+          "path": "apps/web/src/cityModals.tsx",
+          "bytes": 35415,
+          "sha256": "edbaaae367cb50d82068763232faf739941fc492bd65f476e31b846f38b32819"
+        },
+        {
+          "path": "apps/web/src/citySceneLayout.json",
+          "bytes": 7842,
+          "sha256": "c7a6f599f27e6548db237667ac9cd99abf60e398427babad23f318bddf25385f"
+        },
+        {
+          "path": "apps/web/src/colorTokens.ts",
+          "bytes": 1794,
+          "sha256": "53951fbd6cd4aeea21bd293e22705a0f7bac092a34e12ba905a5a59cf8ccf237"
+        },
+        {
+          "path": "apps/web/src/components/BottomSheet.tsx",
+          "bytes": 3696,
+          "sha256": "21f5a5e12c696da03a82d8449bd5f59ff9b4d2924e3bcebd416275a9b7465a2b"
+        },
+        {
+          "path": "apps/web/src/mapSprites.ts",
+          "bytes": 7235,
+          "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
+        },
+        {
+          "path": "apps/web/src/screens/GameScreen.tsx",
+          "bytes": 88933,
+          "sha256": "2a087630a861241105adaeab88eca70c5b02fe39627468fab247a397e74618e6"
+        },
+        {
+          "path": "apps/web/src/theme/ThemeContext.tsx",
+          "bytes": 2328,
+          "sha256": "d432a72b0089906f4802bb9ee1fda9c536f39eef3b7134ec910ee87345be302c"
+        },
+        {
+          "path": "apps/web/src/uiIcons.ts",
+          "bytes": 6147,
+          "sha256": "e4137065cdbd2446a04f646cde53c90ea3f82a2bf27fcbdba1db4b70df7f4f90"
+        },
+        {
+          "path": "packages/content/src/buildings.ts",
+          "bytes": 9372,
+          "sha256": "5b37fe64f4cb3b7ea6d22d5ebc61c98a300b81fd080f880168550a016499fdbf"
+        },
+        {
+          "path": "packages/content/src/factions.ts",
+          "bytes": 13049,
+          "sha256": "123145d63d8066401f111e42d72b4d4d03129a64f91de3bf88bb2c34ac6cad09"
+        },
+        {
+          "path": "packages/content/src/ships.ts",
+          "bytes": 3855,
+          "sha256": "d368336c57230683edad9922de91e34b76c0696b733081e2c54923f1eedc3e88"
+        }
+      ],
+      "runtime_assets": [
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r1.webp",
+          "bytes": 60378,
+          "sha256": "89cca01aa439d05a68f3312c4a115c559aae5e99a7b4e707a4499d276eec4856"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r2.webp",
+          "bytes": 57430,
+          "sha256": "3d3cbf817db1a66328d8c6cb209dc495443e6c79b68f30b43319af18a8110778"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r3.webp",
+          "bytes": 56932,
+          "sha256": "157d18d151d64685af2d40c0364a1b7021c27f69899f96b6ee2fd45135158ea1"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c1r4.webp",
+          "bytes": 60878,
+          "sha256": "11bbca0a8ff34edbb219146f1fda81712806c72eba8a5c0c4747083d084cff4c"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r1.webp",
+          "bytes": 50390,
+          "sha256": "5484034876fe6d7608ff44413f764a03043cfe66495511a23396b40a14cb1935"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r2.webp",
+          "bytes": 69218,
+          "sha256": "c1aa408938c98899718d78733c438bdb15e6da928e20ed51846dc658d9b8208f"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r3.webp",
+          "bytes": 58516,
+          "sha256": "e17d554f3e287acf4901ec761a1e3c36bbb4dd28d0385c50e782cdb2971da8f4"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c2r4.webp",
+          "bytes": 58772,
+          "sha256": "3b0943dd8ed95f8a24699472893329df7e44138a6d22d0830e4957ba48ec00eb"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r1.webp",
+          "bytes": 50006,
+          "sha256": "7072891f5c23a9f492a1ee6df80d06d8ff5e3c0762a5a02357099d05c401e246"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r2.webp",
+          "bytes": 63378,
+          "sha256": "bc26dd36c0100b4fc57e9d6181061bb967d0c8181eb3435e25fd4021959236b3"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r3.webp",
+          "bytes": 61050,
+          "sha256": "f5c9b43dc82df33614ddd62d6bbffed0fded854252f33d418ff88220a45c02a4"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c3r4.webp",
+          "bytes": 32558,
+          "sha256": "210466e409d5e205da328c29c98e355771d56ccf9f5a73940224f360b435ef5b"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r1.webp",
+          "bytes": 55958,
+          "sha256": "06bb2c5e08919855a2fe1359bc01f90486686cadcdd6f2972b193ed762ad1721"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r2.webp",
+          "bytes": 56610,
+          "sha256": "606b3c1fec9b5afc752dcb38ce867f118bca51f80f77d7b2b7e096b89a737ff5"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r3.webp",
+          "bytes": 47630,
+          "sha256": "efe8cf9ee224bc4ea9f489840d6dfa64861dfea5a6ebe833903d5735a76e5db1"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c4r4.webp",
+          "bytes": 18996,
+          "sha256": "a7cd75a1e11a1388f0fc7a94c853c5bdcaafa7005a44a55612caf776092695f8"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r1.webp",
+          "bytes": 57268,
+          "sha256": "7c48f1897f524bf5a209ca3e766c9f5de81e68e10e0e40c8661728725277f6f0"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r2.webp",
+          "bytes": 59454,
+          "sha256": "29d039ee1b7574f782a406fb0ea92d51459620ed9af35dccb9ddfd637cdd544b"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r3.webp",
+          "bytes": 35224,
+          "sha256": "8eefe4c370e91ec231d5d870d5741b3673d207dc26463110e16e56e61c3b7cdf"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c5r4.webp",
+          "bytes": 15760,
+          "sha256": "6ef03d17acf57601d344390d25d1ddb29f1103783e0bb04a20dc1e01674ffe62"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r1.webp",
+          "bytes": 38326,
+          "sha256": "b72948b51473f41fd0794242688b37983fd09161b700d6ac0dcb773024a58f57"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r2.webp",
+          "bytes": 32496,
+          "sha256": "57245beb51994903acbbd021678ff374dbf395d81a8ce610814f33a44bb28817"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r3.webp",
+          "bytes": 44764,
+          "sha256": "e4d5b6067f18b027f2d201a60b6460b0fe8495d1235004482e5bcd5ec7491f06"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop-c6r4.webp",
+          "bytes": 19224,
+          "sha256": "01c9e6141b2511ea3183633b0bd179f2fb1baf348599bbaf90da4e755f725e42"
+        },
+        {
+          "path": "apps/web/public/art/city/backdrop.webp",
+          "bytes": 195292,
+          "sha256": "6f4449bd1d1926f0a8cb315ecd1400a94c69f1ff5d292ac9e6b1f0963d9d20a3"
+        },
+        {
+          "path": "apps/web/public/art/city/barracks.webp",
+          "bytes": 115258,
+          "sha256": "27081eb9236dfe5484483898b942a8ad40eb9b345d99d100c07ef5eee06c2639"
+        },
+        {
+          "path": "apps/web/public/art/city/citadel-tower.webp",
+          "bytes": 70666,
+          "sha256": "dc4a75efc36737df82c49b7aba1e355c8d8810dc2b66d9a55bdb05f6cc42d595"
+        },
+        {
+          "path": "apps/web/public/art/city/citadel.webp",
+          "bytes": 91260,
+          "sha256": "d11926a278876055cad9aadb5e28efb7415b4ea8b6f6c0e46ddf09ae3dd903a4"
+        },
+        {
+          "path": "apps/web/public/art/city/distillery.webp",
+          "bytes": 99024,
+          "sha256": "a8bd03ffde417ab17271ac28336cdbf3fec41ff959005eb2bb913a6517bf9028"
+        },
+        {
+          "path": "apps/web/public/art/city/fortressArmory.webp",
+          "bytes": 185498,
+          "sha256": "592a766da33606837316753410d7a072c23e9716174b7fa3709dd663b1e1e225"
+        },
+        {
+          "path": "apps/web/public/art/city/garrisonHall.webp",
+          "bytes": 161642,
+          "sha256": "360c51145cbf9fb58a50bbc9cea50966d255e850e98d24476ccb3f296a8fce91"
+        },
+        {
+          "path": "apps/web/public/art/city/grandArsenal.webp",
+          "bytes": 197404,
+          "sha256": "b1484ae8a1a57a78c02aac4c5d7006c65743eb4565e87a1fb2935e7d97b832b8"
+        },
+        {
+          "path": "apps/web/public/art/city/ironmine.webp",
+          "bytes": 90286,
+          "sha256": "9b30a80ac79222f4292d4e284e56e973b2821faaaec2a5443313cf0db05f6c5a"
+        },
+        {
+          "path": "apps/web/public/art/city/palisade.webp",
+          "bytes": 75388,
+          "sha256": "cf4274b7106e9aac827cbf45b3d0c23cd69ce6e463b28b3a63ed4b5e1e2747d3"
+        },
+        {
+          "path": "apps/web/public/art/city/sawmill.webp",
+          "bytes": 104330,
+          "sha256": "64bc14d5ab303555bc8a0d7afa8ed1db8a7ea8a8e9b10856175e7401380d3a50"
+        },
+        {
+          "path": "apps/web/public/art/city/shipyard.webp",
+          "bytes": 141246,
+          "sha256": "c29693b722862b383923a493b6435a1c54e45205eb8135fdd0d4c17fe4505847"
+        },
+        {
+          "path": "apps/web/public/art/city/stoneWall.webp",
+          "bytes": 73984,
+          "sha256": "b7b5b048109d8c7d0b8fd38eadc08b1ef03a163464d8863340c8111d44864540"
+        },
+        {
+          "path": "apps/web/public/art/city/tavern.webp",
+          "bytes": 119156,
+          "sha256": "f476687761a68ee13811bd56d893d391a8e36ec49659ba5f2952b8c52c06085e"
+        },
+        {
+          "path": "apps/web/public/art/city/townhall.webp",
+          "bytes": 203636,
+          "sha256": "9228c6a739e80d89685cb71c3a5bd0f860007a9893477910300f66d53428156f"
+        },
+        {
+          "path": "apps/web/public/art/city/tradehouse.webp",
+          "bytes": 122652,
+          "sha256": "7da3ac5b485df534e356d85f924eed67f75a7ebc12e0adcd098f7034d12fdbca"
+        },
+        {
+          "path": "apps/web/public/art/factions/british/flag.png",
+          "bytes": 10804,
+          "sha256": "51b1686e7cfbe5f2e304337d0b45ee29ae4fba05db35b91b3ec00dba5a1979bb"
+        },
+        {
+          "path": "apps/web/public/art/factions/dutch/flag.png",
+          "bytes": 5843,
+          "sha256": "3f21fbbf96f15051f31fdfb0f70b2264bbc5ee9707f7111c05d19d60f76d531a"
+        },
+        {
+          "path": "apps/web/public/art/factions/french/flag.png",
+          "bytes": 15953,
+          "sha256": "94a8467effd2c4d40aeef05531181aa054c20850461267d6ec6ff3b10b0ccb91"
+        },
+        {
+          "path": "apps/web/public/art/factions/pirates/flag.png",
+          "bytes": 22910,
+          "sha256": "23bb5e4a2563633ab586c8f5cf110ef90cfa586bc4726b09726b66c9efe03296"
+        },
+        {
+          "path": "apps/web/public/art/factions/spanish/flag.png",
+          "bytes": 17034,
+          "sha256": "02e518bc4b01a1310fa2a9a90285f52e6426bc97284c84852001325ceaa6545c"
+        },
+        {
+          "path": "apps/web/public/art/resources/gold.png",
+          "bytes": 6885,
+          "sha256": "a33b424ca44602beffeeafcfabd49a089cc01aae851cc4deca3ec01cab3ca6db"
+        },
+        {
+          "path": "apps/web/public/art/resources/iron.png",
+          "bytes": 11192,
+          "sha256": "90b0f2e521b9e8c405e566eb8e671179ea72eaadb9868160ad5700aadf2dc394"
+        },
+        {
+          "path": "apps/web/public/art/resources/rum.png",
+          "bytes": 2033,
+          "sha256": "6478faf5c0a42dba0e6058ae375483953eb618e0dceea92b4c172b5992650eca"
+        },
+        {
+          "path": "apps/web/public/art/resources/timber.png",
+          "bytes": 6678,
+          "sha256": "e20e5735b26e4e352670cc9748a22ed9addf8a7acab72c9ff89fe1371a876b4b"
+        },
+        {
+          "path": "apps/web/public/art/ui/build.png",
+          "bytes": 3142,
+          "sha256": "bb0406ef0ff40f2dd5d34dc48d847ae19628fc135a083fba128e9416d6d07206"
+        },
+        {
+          "path": "apps/web/public/fonts/cabin-latin.woff2",
+          "bytes": 28228,
+          "sha256": "3912b808ba0a5888e70ec69585dc500bfd241929c58f073ff7789b12179c3843"
+        },
+        {
+          "path": "apps/web/public/fonts/pirata-one-latin.woff2",
+          "bytes": 8824,
+          "sha256": "37d289e4600f084545a6def9ca145a547fff4ce7ceca7847a08d598a23c8d6cb"
+        }
+      ],
+      "stylesheet_scope": "e49aeef940ee82d4cc8cc50ae7da513b390b06b9b211001f5cb9788e1da6c864"
+    }
+  },
+  "captures": [
+    {
+      "id": "phone-world",
+      "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-phone-world-375x812.png",
+      "bytes": 184381,
+      "sha256": "06e830d837b0112c0612ca8e7aa9f9c990907f7628132ce0ebbdc6616fa13bb1",
+      "dimensions": [375, 812],
+      "source_set": "phone-world"
+    },
+    {
+      "id": "city-inspector",
+      "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-city-inspector-1440x900.png",
+      "bytes": 228700,
+      "sha256": "15d83da5c065cad5a5b9363d50b2bac11fe830b274d19d11fcb5fb2853fcae13",
+      "dimensions": [1440, 900],
+      "source_set": "city-inspector"
+    },
+    {
+      "id": "interaction-states",
+      "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-interaction-states-1440x960.png",
+      "bytes": 279832,
+      "sha256": "9dc5f8aace3163724a87f534677efa2201347155ff27bfe3cf48ff1e4460cdbe",
+      "dimensions": [1440, 960],
+      "source_set": "interaction-states"
+    }
+  ]
+}
