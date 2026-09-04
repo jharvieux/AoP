@@ -16,7 +16,7 @@ workflow, or asset-allowlist change is part of this batch.
 
 | Property           | Production candidate                                                                                                               |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Scene              | 16:11; 6144×4224 authored backdrop; 24 shipping 1024×1056 tiles                                                                    |
+| Scene              | 16:11; 6144×4224 authored backdrop; 24 shipping 1024×1056 tiles with 2 px codec bleed                                              |
 | Constructed art    | 14 separate building cutouts plus separate citadel tower                                                                           |
 | Cutout size        | 921–1580 px maximum edge; genuine-alpha WebP                                                                                       |
 | Camera/light       | weak-orthographic 55° view; northwest light; cool water bounce                                                                     |
@@ -28,8 +28,8 @@ workflow, or asset-allowlist change is part of this batch.
 | Asset ceiling      | every runtime file ≤300 KiB                                                                                                        |
 | First-open ceiling | backdrop + 14 buildings + tower + largest faction flag ≤3 MiB                                                                      |
 
-Measured candidate transfer is 3,005,278 bytes of city art plus the 22,910-byte largest
-faction flag, or 3,028,188 bytes (2.89 MiB) total. The largest individual runtime file is
+Measured candidate transfer is 3,012,646 bytes of city art plus the 22,910-byte largest
+faction flag, or 3,035,556 bytes (2.90 MiB) total. The largest individual runtime file is
 `townhall.webp` at 203,636 bytes; the largest retained review proof is 291,700 bytes.
 
 The final backdrop is a deterministic authoring composite. P10 supplies all fourteen
@@ -37,6 +37,11 @@ unoccupied foundation regions; a feathered lower-right terrain patch from the pr
 approved P8 corrected-shore source restores the immutable shipyard relationship that P10
 partially receded. The shipyard slot and anchor do not move: its short landward gangway
 meets dry sand/limestone while its drydock, slipway, and pilings remain over luminous water.
+
+Each compressed tile carries a deterministic two-pixel bleed. Runtime and proof consumers
+crop that codec edge and expand the 1020×1052 interior into its fixed layout cell. The 24
+cells are persistent and explicitly positioned, so one or several failed images expose
+only their own transparent cells over the CSS fallback without reflowing later tiles.
 
 ## Production source inventory
 
@@ -81,6 +86,8 @@ subject touched its source canvas.
   or internal matte;
 - missing magenta/dark-teal stress, state, faction, phone, or zoom evidence;
 - shipyard art that does not occupy both the dry-shore and water witness regions;
+- any of the 38 shipping tile joins whose mean or p99 delta exceeds both its absolute
+  visibility limit and twice the adjacent within-tile gradient;
 - source/proof/runtime files above 300 KiB or a fully built transfer above 3 MiB;
 - provenance hash drift or non-deterministic recomposition.
 
@@ -95,7 +102,8 @@ Primary native files:
 - `proofs/phone-scene-375x258.webp` — actual narrow scene size;
 - `proofs/zoom-2x-evidence-1600x1040.webp` — whole-city 1× and current 3× close crops from
   the 6144×4224 shipping tile composition;
-- `proofs/backdrop-seam-census-1600x920.webp` — four runtime tile joins sampled at 1:1;
+- `proofs/backdrop-seam-census-1600x920.webp` — four runtime joins sampled at 1:1, backed
+  by the all-38-join validator census;
 - `proofs/production-layer-contact-1800x1180.webp` — empty layer plus all fifteen cutouts;
 - fifteen `proofs/stress/*-magenta-1024.webp` files — native alpha/matte review;
 - `proofs/baseline-current-states-1600x620.webp` — pre-replacement PNG behavior.
@@ -105,13 +113,15 @@ The fallback/theme evidence is executable rather than illustrative:
 WebP to existing placeholder for buildings, and override to local for the backdrop, flag,
 and citadel tower. `apps/web/src/cityArtAssets.test.ts` binds exact content URLs, files,
 dimensions, alpha, metadata, per-file budgets, full first-open transfer, and the full
-375/1440/1920 DPR2 resolution census across every approved zoom stop.
+375/1440/1920 DPR2 resolution census across every approved zoom stop. The CityScene tests
+also fail the first, middle, last, and multiple default tiles and prove all wrapper
+positions and surviving URLs remain stable.
 
 ## Known boundary
 
 The 6144×4224 backdrop is a deterministic synthesis of 24 separately generated detail
 edits over the approved low-frequency geography, not an enlarged flattened city. The
-worst 1920×1080 DPR2 3× ratios are 1.051× for the backdrop, 1.022× for town hall, and
+two-pixel codec bleed leaves a conservative 6120×4208 unique runtime interior. The worst
+1920×1080 DPR2 3× ratios are 1.047× for that backdrop interior, 1.022× for town hall, and
 1.066× for shipyard; `RESOLUTION-CENSUS.json` contains every viewport/zoom/asset result.
-This is finite raster coverage for the approved 3× stop, not a vector or infinite-zoom
-claim.
+This is finite raster coverage for the approved 3× stop, not a vector or infinite-zoom claim.

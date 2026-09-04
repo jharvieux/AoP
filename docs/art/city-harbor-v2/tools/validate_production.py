@@ -227,6 +227,8 @@ def validate_runtime() -> None:
         assert f'"src": "/art/city/{path.name}"' in LAYOUT_PATH.read_text()
     assert "citySceneLayout.backdrop.tiles" in scene
     assert "spriteCandidates" in scene and "FallbackImage" in scene
+    assert "city-scene__backdrop-cell" in scene and "data-backdrop-tile" in scene
+    assert "BACKDROP_TILE_BLEED = 2" in scene
     assert "contact-shadows" not in scene
 
 
@@ -258,28 +260,76 @@ def validate_layout_resolution_flags_and_seams() -> None:
         ).convert("RGBA")
         assert image.getchannel("A").getbbox() is not None
 
-    tiles = {
-        (column, row): np.asarray(
-            Image.open(RUNTIME_CITY / f"backdrop-c{column}r{row}.webp").convert("RGB"),
-            dtype=np.int16,
+    module = compositor()
+    bleed = module.BACKDROP_TILE_BLEED
+    tile_size = module.BACKDROP_TILE_SIZE
+    tiles = {}
+    for row in range(1, 5):
+        for column in range(1, 7):
+            image = Image.open(
+                RUNTIME_CITY / f"backdrop-c{column}r{row}.webp"
+            ).convert("RGB")
+            image = image.crop(
+                (bleed, bleed, image.width - bleed, image.height - bleed)
+            ).resize(tile_size, Image.Resampling.BILINEAR)
+            tiles[column, row] = np.asarray(image, dtype=np.int16)
+
+    seam_metrics = []
+
+    def record(label: str, seam: np.ndarray, inside_a: np.ndarray, inside_b: np.ndarray) -> None:
+        seam_mean = float(seam.mean())
+        adjacent_mean = float((inside_a.mean() + inside_b.mean()) / 2)
+        seam_p99 = float(np.quantile(seam, 0.99))
+        adjacent_p99 = float(
+            (np.quantile(inside_a, 0.99) + np.quantile(inside_b, 0.99)) / 2
         )
-        for row in range(1, 5)
-        for column in range(1, 7)
-    }
-    seam_means = []
-    seam_p99 = []
+        seam_metrics.append(
+            {
+                "label": label,
+                "mean": seam_mean,
+                "adjacent_mean": adjacent_mean,
+                "mean_ratio": seam_mean / max(adjacent_mean, 0.01),
+                "p99": seam_p99,
+                "adjacent_p99": adjacent_p99,
+                "p99_ratio": seam_p99 / max(adjacent_p99, 0.01),
+            }
+        )
+
     for row in range(1, 5):
         for column in range(1, 6):
-            delta = np.abs(tiles[column, row][:, -1] - tiles[column + 1, row][:, 0])
-            seam_means.append(float(delta.mean()))
-            seam_p99.append(float(np.quantile(delta, 0.99)))
+            left = tiles[column, row]
+            right = tiles[column + 1, row]
+            record(
+                f"vertical c{column}/c{column + 1} r{row}",
+                np.abs(left[:, -1] - right[:, 0]),
+                np.abs(left[:, -1] - left[:, -2]),
+                np.abs(right[:, 1] - right[:, 0]),
+            )
     for row in range(1, 4):
         for column in range(1, 7):
-            delta = np.abs(tiles[column, row][-1] - tiles[column, row + 1][0])
-            seam_means.append(float(delta.mean()))
-            seam_p99.append(float(np.quantile(delta, 0.99)))
-    assert max(seam_means) < 20, f"visible mean tile seam: {max(seam_means)}"
-    assert max(seam_p99) < 80, f"visible p99 tile seam: {max(seam_p99)}"
+            upper = tiles[column, row]
+            lower = tiles[column, row + 1]
+            record(
+                f"horizontal c{column} r{row}/r{row + 1}",
+                np.abs(upper[-1] - lower[0]),
+                np.abs(upper[-1] - upper[-2]),
+                np.abs(lower[1] - lower[0]),
+            )
+
+    assert len(seam_metrics) == 38
+    failures = [
+        metric
+        for metric in seam_metrics
+        if (
+            metric["mean"] > 4.5
+            and metric["mean_ratio"] > 2
+        )
+        or (
+            metric["p99"] > 20
+            and metric["p99_ratio"] > 2
+        )
+    ]
+    assert not failures, f"visible backdrop joins versus adjacent gradients: {failures}"
 
 
 def validate_proofs_and_shipyard() -> None:

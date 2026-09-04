@@ -18,6 +18,7 @@ ASSET_FILES = {
     content_id: f"{'stoneWall' if content_id == 'stoneWall' else content_id}.webp"
     for content_id in LAYOUT["slots"]
 }
+BACKDROP_TILE_BLEED = 2
 
 
 def rounded(value: float) -> float:
@@ -35,6 +36,12 @@ def build() -> dict[str, object]:
         for content_id, filename in ASSET_FILES.items()
     }
     sources["citadel-tower"] = source_size(RUNTIME / "citadel-tower.webp")
+    first_tile = RUNTIME / Path(LAYOUT["backdrop"]["tiles"][0]["src"]).name
+    tile_width, tile_height = source_size(first_tile)
+    backdrop_source = (
+        (tile_width - 2 * BACKDROP_TILE_BLEED) * LAYOUT["backdrop"]["columns"],
+        (tile_height - 2 * BACKDROP_TILE_BLEED) * LAYOUT["backdrop"]["rows"],
+    )
     records: list[dict[str, object]] = []
     worst: dict[str, dict[str, object]] = {}
 
@@ -47,8 +54,8 @@ def build() -> dict[str, object]:
             device_width = base_width * zoom * 2
             device_height = device_width * 11 / 16
             backdrop_ratio = min(
-                LAYOUT["backdrop"]["authoredWidth"] / device_width,
-                LAYOUT["backdrop"]["authoredHeight"] / device_height,
+                backdrop_source[0] / device_width,
+                backdrop_source[1] / device_height,
             )
             assets: dict[str, object] = {}
             for content_id, slot in LAYOUT["slots"].items():
@@ -106,12 +113,14 @@ def build() -> dict[str, object]:
     worst_backdrop = min(records, key=lambda record: record["backdrop_ratio"])
     return {
         "schema": 1,
-        "date": "2026-09-03",
+        "date": "2026-09-04",
         "contract": "No source is enlarged at any approved zoom stop in the representative DPR2 viewport census.",
-        "backdrop_source": [
+        "backdrop_source": list(backdrop_source),
+        "backdrop_physical_source": [
             LAYOUT["backdrop"]["authoredWidth"],
             LAYOUT["backdrop"]["authoredHeight"],
         ],
+        "backdrop_codec_bleed_px": BACKDROP_TILE_BLEED,
         "worst_backdrop": {
             "ratio": worst_backdrop["backdrop_ratio"],
             "viewport": worst_backdrop["viewport"],

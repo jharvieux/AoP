@@ -34,7 +34,7 @@ def main() -> None:
     output = PACKAGE / "PRODUCTION-OUTPUT-HASHES.json"
     payload = {
         "schema": 1,
-        "date": "2026-09-03",
+        "date": "2026-09-04",
         "files": [
             {
                 "path": str(path.relative_to(REPOSITORY)),

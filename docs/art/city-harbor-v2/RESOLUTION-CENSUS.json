@@ -1,10 +1,12 @@
 {
   "schema": 1,
-  "date": "2026-09-03",
+  "date": "2026-09-04",
   "contract": "No source is enlarged at any approved zoom stop in the representative DPR2 viewport census.",
-  "backdrop_source": [6144, 4224],
+  "backdrop_source": [6120, 4208],
+  "backdrop_physical_source": [6144, 4224],
+  "backdrop_codec_bleed_px": 2,
   "worst_backdrop": {
-    "ratio": 1.051374,
+    "ratio": 1.047267,
     "viewport": [1920, 1080],
     "zoom": 3
   },
@@ -91,7 +93,7 @@
       "dpr": 2,
       "zoom": 1,
       "device_scene": [750, 515.625],
-      "backdrop_ratio": 8.192,
+      "backdrop_ratio": 8.16,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -175,7 +177,7 @@
       "dpr": 2,
       "zoom": 1.5,
       "device_scene": [1125.0, 773.4375],
-      "backdrop_ratio": 5.461333,
+      "backdrop_ratio": 5.44,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -259,7 +261,7 @@
       "dpr": 2,
       "zoom": 2,
       "device_scene": [1500, 1031.25],
-      "backdrop_ratio": 4.096,
+      "backdrop_ratio": 4.08,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -343,7 +345,7 @@
       "dpr": 2,
       "zoom": 3,
       "device_scene": [2250, 1546.875],
-      "backdrop_ratio": 2.730667,
+      "backdrop_ratio": 2.72,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -427,7 +429,7 @@
       "dpr": 2,
       "zoom": 1,
       "device_scene": [1623.272727, 1116.0],
-      "backdrop_ratio": 3.784946,
+      "backdrop_ratio": 3.770161,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -511,7 +513,7 @@
       "dpr": 2,
       "zoom": 1.5,
       "device_scene": [2434.909091, 1674.0],
-      "backdrop_ratio": 2.523297,
+      "backdrop_ratio": 2.513441,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -595,7 +597,7 @@
       "dpr": 2,
       "zoom": 2,
       "device_scene": [3246.545455, 2232.0],
-      "backdrop_ratio": 1.892473,
+      "backdrop_ratio": 1.885081,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -679,7 +681,7 @@
       "dpr": 2,
       "zoom": 3,
       "device_scene": [4869.818182, 3348.0],
-      "backdrop_ratio": 1.261649,
+      "backdrop_ratio": 1.25672,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -763,7 +765,7 @@
       "dpr": 2,
       "zoom": 1,
       "device_scene": [1947.927273, 1339.2],
-      "backdrop_ratio": 3.154122,
+      "backdrop_ratio": 3.141801,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -847,7 +849,7 @@
       "dpr": 2,
       "zoom": 1.5,
       "device_scene": [2921.890909, 2008.8],
-      "backdrop_ratio": 2.102748,
+      "backdrop_ratio": 2.094534,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -931,7 +933,7 @@
       "dpr": 2,
       "zoom": 2,
       "device_scene": [3895.854545, 2678.4],
-      "backdrop_ratio": 1.577061,
+      "backdrop_ratio": 1.570901,
       "assets": {
         "townhall": {
           "source": [1580, 1478],
@@ -1015,7 +1017,7 @@
       "dpr": 2,
       "zoom": 3,
       "device_scene": [5843.781818, 4017.6],
-      "backdrop_ratio": 1.051374,
+      "backdrop_ratio": 1.047267,
       "assets": {
         "townhall": {
           "source": [1580, 1478],

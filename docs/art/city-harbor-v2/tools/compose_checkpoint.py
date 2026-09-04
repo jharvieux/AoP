@@ -32,6 +32,8 @@ HIGH_BACKDROP_SIZE = (
     LAYOUT["backdrop"]["authoredWidth"],
     LAYOUT["backdrop"]["authoredHeight"],
 )
+BACKDROP_TILE_SIZE = (1024, 1056)
+BACKDROP_TILE_BLEED = 2
 
 INK = "#20150e"
 WOOD = "#2c190f"
@@ -421,7 +423,7 @@ def render_seam_evidence(backdrop: Image.Image) -> Image.Image:
     canvas = Image.new("RGB", (1600, 920), "#ead5a2")
     draw = ImageDraw.Draw(canvas)
     draw.text((42, 24), "SHIPPING BACKDROP TILES · NATIVE SEAM CENSUS", font=font(30, display=True), fill=INK)
-    draw.text((44, 67), "Four joins sampled 1:1 from the 24 compressed runtime tiles; center ticks mark each join.", font=font(15, bold=True), fill=RUST)
+    draw.text((44, 67), "All 38 joins pass the adjacent-gradient census; four 1:1 samples shown, with center ticks at each join.", font=font(15, bold=True), fill=RUST)
     samples = (
         ("VERTICAL · C1/C2 · UPLAND ROAD", (644, 540, 1404, 900), "vertical"),
         ("HORIZONTAL · R1/R2 · CIVIC PLOTS", (2320, 876, 3080, 1236), "horizontal"),
@@ -687,7 +689,7 @@ def render_zoom_evidence(full_master: Image.Image) -> Image.Image:
         y += 292
     draw.text((42, 714), "SOURCE / DISPLAY CLAIM", font=font(18, display=True), fill=INK)
     claim = (
-        "The shipping tile assembly is at least 1.05× the largest 1920×1080 DPR2 device footprint.",
+        "The shipping tile interior is 1.047× the largest 1920×1080 DPR2 device footprint.",
         "The live UI retains its approved 3× stop; no flattened-composite upscale is used.",
     )
     draw.text((48, 758), claim[0], font=font(14, bold=True), fill=INK)
@@ -720,17 +722,26 @@ def write_runtime_assets(
         save_webp(art, output / f"{runtime_name}.webp", 68, exact=False)
     tile_width = backdrop.width // LAYOUT["backdrop"]["columns"]
     tile_height = backdrop.height // LAYOUT["backdrop"]["rows"]
+    assert (tile_width, tile_height) == BACKDROP_TILE_SIZE
+    bleed = BACKDROP_TILE_BLEED
+    padded = Image.fromarray(
+        np.pad(
+            np.asarray(backdrop),
+            ((bleed, bleed), (bleed, bleed), (0, 0)),
+            mode="edge",
+        )
+    )
     for tile in LAYOUT["backdrop"]["tiles"]:
         column = int(tile["id"][1]) - 1
         row = int(tile["id"][3]) - 1
-        crop = backdrop.crop(
+        crop = padded.crop(
             (
                 column * tile_width,
                 row * tile_height,
-                (column + 1) * tile_width,
-                (row + 1) * tile_height,
+                (column + 1) * tile_width + 2 * bleed,
+                (row + 1) * tile_height + 2 * bleed,
             )
-        )
+        ).resize(BACKDROP_TILE_SIZE, Image.Resampling.LANCZOS)
         save_webp(crop, output / Path(tile["src"]).name, 20, exact=False)
     save_webp(
         backdrop.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS),
@@ -755,6 +766,10 @@ def load_runtime_assets(root: Path) -> tuple[dict[str, Image.Image], Image.Image
         column = int(tile["id"][1]) - 1
         row = int(tile["id"][3]) - 1
         image = Image.open(root / Path(tile["src"]).name).convert("RGB")
+        bleed = BACKDROP_TILE_BLEED
+        image = image.crop(
+            (bleed, bleed, image.width - bleed, image.height - bleed)
+        ).resize(BACKDROP_TILE_SIZE, Image.Resampling.BILINEAR)
         backdrop.paste(image, (column * tile_width, row * tile_height))
     return cutouts, backdrop
 

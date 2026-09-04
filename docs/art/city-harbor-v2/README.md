@@ -58,6 +58,11 @@ approval set.
 Open these at 100%. The contact sheet is a summary, not a substitute for native-size
 inspection.
 
+The shipping backdrop uses persistent, explicitly positioned cells and a two-pixel codec
+bleed/interior crop. A failed tile therefore leaves only its own cell transparent over the
+CSS fallback, while the all-38-join validator compares every visible boundary with its
+neighboring within-tile gradients.
+
 ## What checkpoint one proved
 
 - The harbor is an opaque, building-free 16:11 terrain/coast/road/foundation layer.

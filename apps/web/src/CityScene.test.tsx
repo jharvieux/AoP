@@ -13,6 +13,29 @@ vi.mock('./theme/ThemeContext', () => ({
   useTheme: () => ({ spriteUrl: theme.spriteUrl }),
 }))
 
+function expectStableBackdropCells(container: HTMLElement, missing: readonly number[] = []) {
+  const cells = [...container.querySelectorAll<HTMLElement>('.city-scene__backdrop-cell')]
+  expect(cells).toHaveLength(citySceneLayout.backdrop.tiles.length)
+  for (const [index, tile] of citySceneLayout.backdrop.tiles.entries()) {
+    const cell = cells[index]!
+    expect(cell.dataset.backdropTile).toBe(tile.id)
+    expect(cell.style.position).toBe('absolute')
+    expect(cell.style.overflow).toBe('hidden')
+    expect(cell.style.left).toBe(`${tile.left}%`)
+    expect(cell.style.top).toBe(`${tile.top}%`)
+    expect(cell.style.width).toBe(`${tile.width}%`)
+    expect(cell.style.height).toBe(`${tile.height}%`)
+    const image = cell.querySelector<HTMLImageElement>('.city-scene__backdrop-tile')
+    if (missing.includes(index)) {
+      expect(image).toBeNull()
+      expect(cell.childElementCount).toBe(0)
+      expect(cell.style.background).toBe('')
+    } else {
+      expect(image?.getAttribute('src')).toBe(tile.src)
+    }
+  }
+}
+
 describe('CityScene production art consumer', () => {
   beforeEach(() => {
     theme.spriteUrl.mockReset()
@@ -128,5 +151,36 @@ describe('CityScene production art consumer', () => {
     expect(tower.style.width).toBe(`${citySceneLayout.tower.widthPercent}%`)
     expect(tower.style.right).toBe(`${citySceneLayout.tower.rightPercent}%`)
     expect(container.querySelectorAll('.city-scene__backdrop-tile')).toHaveLength(24)
+  })
+
+  it.each([
+    ['first', 0],
+    ['middle', 11],
+    ['last', 23],
+  ])('keeps every backdrop cell fixed when the %s tile fails', async (_position, failedIndex) => {
+    const { container } = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    expectStableBackdropCells(container)
+
+    const failedCell = container.querySelectorAll<HTMLElement>('.city-scene__backdrop-cell')[
+      failedIndex
+    ]!
+    fireEvent.error(failedCell.querySelector<HTMLImageElement>('.city-scene__backdrop-tile')!)
+
+    await waitFor(() => expectStableBackdropCells(container, [failedIndex]))
+  })
+
+  it('keeps positions and surviving URLs stable across multiple backdrop failures', async () => {
+    const { container } = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    const failedIndices = [0, 12, 23]
+    const cells = container.querySelectorAll<HTMLElement>('.city-scene__backdrop-cell')
+    for (const index of failedIndices) {
+      fireEvent.error(cells[index]!.querySelector<HTMLImageElement>('.city-scene__backdrop-tile')!)
+    }
+
+    await waitFor(() => expectStableBackdropCells(container, failedIndices))
   })
 })

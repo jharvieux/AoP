@@ -29,9 +29,20 @@ interface SceneSlot {
 
 const SCENE_SLOTS = citySceneLayout.slots as Record<string, SceneSlot>
 const BACKDROP_TILES = citySceneLayout.backdrop.tiles
+const BACKDROP_TILE_WIDTH = 1024
+const BACKDROP_TILE_HEIGHT = 1056
+const BACKDROP_TILE_BLEED = 2
 const SHADOW = citySceneLayout.shadow
 const FLAG = citySceneLayout.flag
 const TOWER = citySceneLayout.tower
+
+const BACKDROP_TILE_IMAGE_STYLE = {
+  position: 'absolute',
+  left: `${(-BACKDROP_TILE_BLEED / (BACKDROP_TILE_WIDTH - 2 * BACKDROP_TILE_BLEED)) * 100}%`,
+  top: `${(-BACKDROP_TILE_BLEED / (BACKDROP_TILE_HEIGHT - 2 * BACKDROP_TILE_BLEED)) * 100}%`,
+  width: `${(BACKDROP_TILE_WIDTH / (BACKDROP_TILE_WIDTH - 2 * BACKDROP_TILE_BLEED)) * 100}%`,
+  height: `${(BACKDROP_TILE_HEIGHT / (BACKDROP_TILE_HEIGHT - 2 * BACKDROP_TILE_BLEED)) * 100}%`,
+} satisfies React.CSSProperties
 
 /**
  * Fixed scene layout: town hall centered at the top, economy to the left,
@@ -254,22 +265,27 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
               onExhausted={() => setFailedBackdropOverride(backdropOverride)}
             />
           ) : (
-            <span
-              className="city-scene__backdrop-tiles"
-              aria-hidden
-              style={
-                {
-                  '--city-backdrop-columns': citySceneLayout.backdrop.columns,
-                  '--city-backdrop-rows': citySceneLayout.backdrop.rows,
-                } as React.CSSProperties
-              }
-            >
+            <span className="city-scene__backdrop-tiles" aria-hidden style={{ display: 'block' }}>
               {BACKDROP_TILES.map((tile) => (
-                <FallbackImage
+                <span
                   key={tile.id}
-                  className="city-scene__backdrop-tile"
-                  candidates={[tile.src]}
-                />
+                  className="city-scene__backdrop-cell"
+                  data-backdrop-tile={tile.id}
+                  style={{
+                    position: 'absolute',
+                    overflow: 'hidden',
+                    left: `${tile.left}%`,
+                    top: `${tile.top}%`,
+                    width: `${tile.width}%`,
+                    height: `${tile.height}%`,
+                  }}
+                >
+                  <FallbackImage
+                    className="city-scene__backdrop-tile"
+                    candidates={[tile.src]}
+                    style={BACKDROP_TILE_IMAGE_STYLE}
+                  />
+                </span>
               ))}
             </span>
           )}
