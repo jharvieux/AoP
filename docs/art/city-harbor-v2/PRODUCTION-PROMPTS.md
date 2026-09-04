@@ -145,3 +145,15 @@ Composition/framing: isolated square source canvas; subject fills about 48% widt
 Transparency: genuinely transparent background with straight clean alpha; preserve fine parapet, rope rail, cap, masonry, and timber edges; at least 8% transparent safety margin.
 Hard constraints: exactly one corner tower only; no attached wall segment, gate, terrain island, ground tile, road, grass, water, sky, scenery, cannon, weapon, giant keep, people, flags, banners, insignia, signs, letters, numbers, UI, selection ring, logo, signature, or watermark. No detached floor shadow.
 ```
+
+## H01–H26 — high-resolution production pass
+
+All 26 exact prompts, per-call input roles and hashes, selected output hashes,
+service/tool details, and unexposed model/seed fields are recorded in
+`HIGH-RES-PROVENANCE.json`. H01–H24 are the distinct 6×4 backdrop-tile edits;
+H25 and H26 are the distinct overlapping town-hall detail edits. The JSON stores
+the fully expanded prompt for every call, not only a shorthand template.
+
+Six earlier pilot tile calls were rejected because their five-column grid
+provided only 0.858× source/device coverage at the approved worst-case 3× stop.
+They were discarded rather than retained as project-bound art.

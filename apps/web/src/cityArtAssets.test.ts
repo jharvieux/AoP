@@ -4,6 +4,7 @@ import { readFileSync, statSync } from 'node:fs'
 // @ts-expect-error Vitest supplies Node built-ins; the browser app intentionally omits Node types.
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import citySceneLayout from './citySceneLayout.json'
 
 const PUBLIC_ART_URL = new URL('../public/art/', import.meta.url)
 const MAX_ASSET_BYTES = 300 * 1024
@@ -54,7 +55,8 @@ function webpDimensions(bytes: Uint8Array): readonly [number, number] {
 describe('city production art assets', () => {
   const buildingUrls = Object.values(BUILDINGS).map((building) => building.spriteUrl!)
   const towerUrl = BUILDINGS.citadel!.cornerTowerSpriteUrl!
-  const runtimeUrls = ['/art/city/backdrop.webp', ...buildingUrls, towerUrl]
+  const backdropUrls = citySceneLayout.backdrop.tiles.map((tile) => tile.src)
+  const runtimeUrls = [...backdropUrls, ...buildingUrls, towerUrl]
 
   it('ships one WebP for every exact building id and the citadel tower pseudo-id', () => {
     expect(Object.keys(BUILDINGS)).toHaveLength(14)
@@ -76,12 +78,12 @@ describe('city production art assets', () => {
       expect(includesAscii(bytes, 'XMP '), `${url} XMP`).toBe(false)
       expect(includesAscii(bytes, 'ICCP'), `${url} ICC`).toBe(false)
       const [width, height] = webpDimensions(bytes)
-      if (url.endsWith('/backdrop.webp')) {
-        expect([width, height]).toEqual([1024, 704])
+      if (backdropUrls.includes(url)) {
+        expect([width, height]).toEqual([1024, 1056])
         expect(includesAscii(bytes, 'ALPH')).toBe(false)
       } else {
-        expect(Math.max(width, height), url).toBeGreaterThanOrEqual(850)
-        expect(Math.max(width, height), url).toBeLessThanOrEqual(900)
+        expect(Math.max(width, height), url).toBeGreaterThanOrEqual(900)
+        expect(Math.max(width, height), url).toBeLessThanOrEqual(1600)
         expect(includesAscii(bytes, 'ALPH'), `${url} lacks alpha`).toBe(true)
       }
     }
@@ -98,5 +100,61 @@ describe('city production art assets', () => {
       ),
     )
     expect(cityBytes + largestFlag).toBeLessThanOrEqual(MAX_FULLY_BUILT_BYTES)
+  })
+
+  it('covers every approved zoom stop at representative DPR2 viewports without undersampling', () => {
+    const assetDimensions = new Map<string, readonly [number, number]>()
+    for (const url of [...buildingUrls, towerUrl]) {
+      assetDimensions.set(url, webpDimensions(readFileSync(cityAssetPath(url))))
+    }
+    const viewports = [
+      [375, 812],
+      [1440, 900],
+      [1920, 1080],
+    ] as const
+
+    for (const [viewportWidth, viewportHeight] of viewports) {
+      const baseWidth = Math.min(
+        viewportWidth,
+        (viewportHeight * citySceneLayout.scene.maxBaseHeightVh * 0.01 * 16) / 11,
+      )
+      for (const zoom of citySceneLayout.zoomStops) {
+        const deviceWidth = baseWidth * zoom * 2
+        const deviceHeight = (deviceWidth * 11) / 16
+        const backdropRatio = Math.min(
+          citySceneLayout.backdrop.authoredWidth / deviceWidth,
+          citySceneLayout.backdrop.authoredHeight / deviceHeight,
+        )
+        expect(
+          backdropRatio,
+          `backdrop ${viewportWidth}×${viewportHeight} at ${zoom}×`,
+        ).toBeGreaterThanOrEqual(1)
+
+        for (const [contentId, slot] of Object.entries(citySceneLayout.slots)) {
+          const building = BUILDINGS[contentId as keyof typeof BUILDINGS]!
+          const [sourceWidth, sourceHeight] = assetDimensions.get(building.spriteUrl!)!
+          const ratio = Math.min(
+            sourceWidth / (deviceWidth * slot.width * 0.01),
+            sourceHeight / (deviceHeight * slot.height * 0.01),
+          )
+          expect(
+            ratio,
+            `${contentId} ${viewportWidth}×${viewportHeight} at ${zoom}×`,
+          ).toBeGreaterThanOrEqual(1)
+        }
+
+        const citadelSlot = citySceneLayout.slots.citadel
+        const [towerWidth, towerHeight] = assetDimensions.get(towerUrl)!
+        const towerRatio = Math.min(
+          towerWidth /
+            (deviceWidth * citadelSlot.width * 0.01 * citySceneLayout.tower.widthPercent * 0.01),
+          towerHeight / (deviceHeight * citadelSlot.height * 0.01),
+        )
+        expect(
+          towerRatio,
+          `citadel tower ${viewportWidth}×${viewportHeight} at ${zoom}×`,
+        ).toBeGreaterThanOrEqual(1)
+      }
+    }
   })
 })

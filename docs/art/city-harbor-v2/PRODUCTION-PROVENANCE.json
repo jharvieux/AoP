@@ -200,10 +200,10 @@
     "tool": "rembg isnet-general-use followed by reviewed-mask hardening",
     "model_sha256": "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
     "applies_to": "all fifteen constructed sources, including the two sources delivered in RGBA containers",
-    "recipe": "alpha-128 core; largest connected subject without filling holes; sigma-0.65 anti-aliased edge; alpha-240 interior color extension; 26-source-pixel trim; 850–900 px maximum retained edge",
+    "recipe": "alpha-128 core; largest connected subject without filling holes; sigma-0.65 anti-aliased edge; alpha-240 interior color extension; 26-source-pixel trim; 1220 px maximum retained edge, with a separately detailed 1570 px town-hall exception",
     "mask_directory": "masks/",
     "stress_directory": "proofs/stress/"
   },
   "rejected_outputs": [],
-  "prior_checkpoint_rejections": "Three P2-P4 background-extraction retries remain recorded in PROVENANCE.json; no P10-P20 production generation was rejected."
+  "prior_checkpoint_rejections": "Three P2-P4 background-extraction retries remain recorded in PROVENANCE.json; no P10-P20 production generation was rejected. High-resolution pass acceptance and rejection records are in HIGH-RES-PROVENANCE.json."
 }

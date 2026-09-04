@@ -29,6 +29,7 @@ the complete contract, inventory, evidence, budgets, and known boundary.
 - [Five-faction contact, 1600×748](proofs/faction-contact-1600x748.webp)
 - [Phone scene, 375×258](proofs/phone-scene-375x258.webp)
 - [1× / current max-zoom evidence, 1600×1040](proofs/zoom-2x-evidence-1600x1040.webp)
+- [Native compressed-tile seam census, 1600×920](proofs/backdrop-seam-census-1600x920.webp)
 - [All production layers, 1800×1180](proofs/production-layer-contact-1800x1180.webp)
 - [Pre-replacement behavior, 1600×620](proofs/baseline-current-states-1600x620.webp)
 - Fifteen native 1024×1024 alpha stress proofs under `proofs/stress/`
@@ -42,8 +43,8 @@ approval set.
 - [Desktop composite, 1440×900](proofs/desktop-1440x900.webp)
 - [Phone composite, 375×812](proofs/phone-375x812.webp) — includes the actual 375×258 city
   scene size
-- [Maximum-zoom crop, 1024×704](proofs/max-zoom-1024x704.webp) — one viewport into the
-  current 3× zoom, centered on tavern and trade house
+- [Maximum-zoom crop, 1024×704](proofs/max-zoom-1024x704.webp) — one native-pixel viewport
+  into the current 3× zoom, centered on town-hall architectural detail
 - [Layer / depth / anchor sheet, 1600×1000](proofs/layer-separation-1600x1000.webp)
 - Native 1024×1024 saturated alpha stress: [town hall](proofs/stress/townhall-magenta-1024.webp),
   [tavern](proofs/stress/tavern-magenta-1024.webp),
@@ -93,14 +94,17 @@ provenance and limitations.
 ## Rebuild and validate
 
 Mask regeneration uses the repository's separate `rembg` environment and cached
-`isnet-general-use` model. Proof composition needs Pillow, NumPy, and SciPy from the
-existing ComfyUI venv. Neither is a runtime dependency.
+`isnet-general-use` model. Source normalization, proof composition, and validation use
+Pillow, NumPy, and SciPy from the same existing art-tools environment. None is a runtime
+dependency.
 
 ```bash
-NUMBA_DISABLE_JIT=1 ~/aop-ai-tools/venv/bin/python3 \
+NUMBA_DISABLE_JIT=1 ~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/build_subject_masks.py
-~/aop-ai-tools/ComfyUI/venv/bin/python \
+~/aop-ai-tools/venv/bin/python \
+  docs/art/city-harbor-v2/tools/prepare_high_resolution_sources.py
+~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/compose_checkpoint.py
-~/aop-ai-tools/ComfyUI/venv/bin/python \
+~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/validate_production.py
 ```

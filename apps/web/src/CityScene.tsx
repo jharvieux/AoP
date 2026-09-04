@@ -1,6 +1,7 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
 import { useState } from 'react'
+import citySceneLayout from './citySceneLayout.json'
 import { buildingContentId, cityBackdropContentId, factionFlagContentId } from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
 
@@ -16,8 +17,6 @@ import { useTheme } from './theme/ThemeContext'
 /** The backdrop image behind the whole scene (#447). Falls back to the
  * existing sky/ground/water CSS gradient (see `.city-scene` in styles.css)
  * if the sprite 404s or a theme pack clears it without supplying its own. */
-const BACKDROP_URL = '/art/city/backdrop.webp'
-
 interface SceneSlot {
   /** Position and size in % of the scene box. Tap targets get a 44px CSS floor regardless. */
   left: number
@@ -28,11 +27,17 @@ interface SceneSlot {
   depth: 0 | 1 | 2 | 3
 }
 
+const SCENE_SLOTS = citySceneLayout.slots as Record<string, SceneSlot>
+const BACKDROP_TILES = citySceneLayout.backdrop.tiles
+const SHADOW = citySceneLayout.shadow
+const FLAG = citySceneLayout.flag
+const TOWER = citySceneLayout.tower
+
 /**
  * Fixed scene layout: town hall centered at the top, economy to the left,
  * the recruitment chain to the right, walls across the front. Tuned against
- * art/city/backdrop.webp (#608): land buildings stay
- * on the meadow, walls sit above the shoreline. The shipyard sits at the
+ * the tiled art/city backdrop (#608): land buildings stay on the meadow,
+ * walls sit above the shoreline. The shipyard sits at the
  * bottom-right where the production backdrop's corrected shore reaches the
  * slot (#608: the shipyard WebP is a real transparent cutout, no baked-in
  * water; its landward gangway meets dry coast while the drydock and pilings
@@ -40,23 +45,6 @@ interface SceneSlot {
  * slot change. A building with no slot (future content) falls back
  * to the overflow strip below the scene so it never loses its tap target.
  */
-const SCENE_SLOTS: Record<string, SceneSlot> = {
-  townhall: { left: 37, top: 6, width: 26, height: 36, depth: 0 },
-  tavern: { left: 4, top: 24, width: 14, height: 20, depth: 2 },
-  tradehouse: { left: 19, top: 28, width: 14, height: 18, depth: 2 },
-  sawmill: { left: 2, top: 48, width: 13, height: 16, depth: 2 },
-  ironmine: { left: 16, top: 50, width: 13, height: 16, depth: 2 },
-  distillery: { left: 30, top: 50, width: 13, height: 16, depth: 2 },
-  barracks: { left: 47, top: 46, width: 13, height: 17, depth: 2 },
-  garrisonHall: { left: 62, top: 46, width: 13, height: 18, depth: 2 },
-  fortressArmory: { left: 64, top: 24, width: 13, height: 19, depth: 2 },
-  grandArsenal: { left: 80, top: 20, width: 15, height: 22, depth: 2 },
-  palisade: { left: 4, top: 66, width: 17, height: 12, depth: 3 },
-  stoneWall: { left: 24, top: 66, width: 17, height: 12, depth: 3 },
-  citadel: { left: 44, top: 62, width: 16, height: 16, depth: 3 },
-  shipyard: { left: 80, top: 75, width: 19, height: 24, depth: 1 },
-}
-
 function spriteCandidates(
   themeSpriteUrl: (contentId: string) => string | undefined,
   contentId: string,
@@ -70,24 +58,35 @@ function spriteCandidates(
 interface FallbackImageProps {
   candidates: readonly string[]
   className?: string
+  style?: React.CSSProperties
   onLoad?: () => void
   onAttemptError?: () => void
+  onExhausted?: () => void
 }
 
 /** Try a theme override first, then the shipping local asset, then disappear. */
-function FallbackImage({ candidates, className, onLoad, onAttemptError }: FallbackImageProps) {
+function FallbackImage({
+  candidates,
+  className,
+  style,
+  onLoad,
+  onAttemptError,
+  onExhausted,
+}: FallbackImageProps) {
   const [candidateIndex, setCandidateIndex] = useState(0)
   const src = candidates[candidateIndex]
   if (!src) return null
   return (
     <img
       className={className}
+      style={style}
       src={src}
       alt=""
       aria-hidden
       onLoad={onLoad}
       onError={() => {
         onAttemptError?.()
+        if (candidateIndex + 1 >= candidates.length) onExhausted?.()
         setCandidateIndex((index) => index + 1)
       }}
     />
@@ -108,7 +107,21 @@ function FactionFlag({ faction }: { faction: FactionId }) {
     def.flagSpriteUrl,
   )
   return (
-    <span className="city-scene__flagpole" aria-hidden>
+    <span
+      className="city-scene__flagpole"
+      aria-hidden
+      style={
+        {
+          '--city-flag-top': `${FLAG.poleTopPercent}%`,
+          '--city-flag-left': `${FLAG.poleLeftPercent}%`,
+          '--city-flag-width': `${FLAG.poleWidthPercent}%`,
+          '--city-flag-height': `${FLAG.poleHeightPercent}%`,
+          '--city-flag-mast-width': `${FLAG.mastWidthPx}px`,
+          '--city-flag-cloth-left': `${FLAG.clothLeftPx}px`,
+          '--city-flag-cloth-width': `${FLAG.clothWidthPercent}%`,
+        } as React.CSSProperties
+      }
+    >
       <span className="city-scene__flagpole-mast" />
       <span className="city-scene__flag" style={{ backgroundColor: def.primaryColor }}>
         <FallbackImage key={flagCandidates.join('|')} candidates={flagCandidates} />
@@ -147,12 +160,21 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
       className={`city-scene__building city-scene__building--${def.category}${
         artLoaded ? ' city-scene__building--art' : ''
       }`}
-      style={{
-        left: `${slot.left}%`,
-        top: `${slot.top}%`,
-        width: `${slot.width}%`,
-        height: `${slot.height}%`,
-      }}
+      style={
+        {
+          left: `${slot.left}%`,
+          top: `${slot.top}%`,
+          width: `${slot.width}%`,
+          height: `${slot.height}%`,
+          '--city-shadow-left': `${SHADOW.leftPercent}%`,
+          '--city-shadow-bottom': `${SHADOW.bottomPercent}%`,
+          '--city-shadow-width': `${SHADOW.widthPercent}%`,
+          '--city-shadow-height': `${SHADOW.heightPercent}%`,
+          '--city-shadow-blur': `${SHADOW.blurSceneWidthPercent}cqw`,
+          '--city-shadow-opacity': SHADOW.opacity,
+          '--city-shadow-color': SHADOW.color.join(' '),
+        } as React.CSSProperties
+      }
       onClick={() => onOpenBuilding(id)}
     >
       {spriteUrls.length > 0 && (
@@ -169,6 +191,11 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
           key={towerUrls.join('|')}
           className="city-scene__sprite city-scene__sprite--tower"
           candidates={towerUrls}
+          style={{
+            width: `${TOWER.widthPercent}%`,
+            right: `${TOWER.rightPercent}%`,
+            bottom: `${TOWER.bottomPercent}%`,
+          }}
         />
       )}
       {id === 'townhall' && <FactionFlag faction={faction} />}
@@ -187,11 +214,12 @@ interface CitySceneProps {
  * 1 = the whole city fits the sheet without scrolling (see `.city-scene`
  * sizing in styles.css); higher stops enlarge the scene inside the
  * scrollable viewport, so panning is ordinary scroll/drag. */
-const ZOOM_STOPS = [1, 1.5, 2, 3]
+const ZOOM_STOPS = citySceneLayout.zoomStops
 
 export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps) {
   const { spriteUrl: themeSpriteUrl } = useTheme()
   const [zoomIndex, setZoomIndex] = useState(0)
+  const [failedBackdropOverride, setFailedBackdropOverride] = useState<string>()
   const known = buildings.filter((id) => BUILDINGS[id])
   const placed = known
     .filter((id) => SCENE_SLOTS[id])
@@ -205,7 +233,9 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
       )
     })
   const overflow = known.filter((id) => !SCENE_SLOTS[id])
-  const backdropUrls = spriteCandidates(themeSpriteUrl, cityBackdropContentId(), BACKDROP_URL)
+  const backdropOverride = themeSpriteUrl(cityBackdropContentId())
+  const showBackdropOverride =
+    Boolean(backdropOverride) && backdropOverride !== failedBackdropOverride
   const zoom = ZOOM_STOPS[zoomIndex]!
   return (
     <>
@@ -216,12 +246,32 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
           aria-label="City buildings"
           style={{ '--city-zoom': zoom } as React.CSSProperties}
         >
-          {backdropUrls.length > 0 && (
+          {showBackdropOverride && backdropOverride ? (
             <FallbackImage
-              key={backdropUrls.join('|')}
+              key={backdropOverride}
               className="city-scene__backdrop"
-              candidates={backdropUrls}
+              candidates={[backdropOverride]}
+              onExhausted={() => setFailedBackdropOverride(backdropOverride)}
             />
+          ) : (
+            <span
+              className="city-scene__backdrop-tiles"
+              aria-hidden
+              style={
+                {
+                  '--city-backdrop-columns': citySceneLayout.backdrop.columns,
+                  '--city-backdrop-rows': citySceneLayout.backdrop.rows,
+                } as React.CSSProperties
+              }
+            >
+              {BACKDROP_TILES.map((tile) => (
+                <FallbackImage
+                  key={tile.id}
+                  className="city-scene__backdrop-tile"
+                  candidates={[tile.src]}
+                />
+              ))}
+            </span>
           )}
           {placed.map((id) => (
             <SceneBuilding

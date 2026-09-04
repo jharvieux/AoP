@@ -1212,6 +1212,23 @@ button.primary.secondary {
   transition: filter 150ms ease;
 }
 
+/* One soft ground-contact shadow per constructed slot. It is part of the
+   shipping layout contract and therefore appears only when that building is
+   present in city.buildings; the empty backdrop never bakes future shadows. */
+.city-scene__building::before {
+  content: '';
+  position: absolute;
+  left: var(--city-shadow-left);
+  bottom: var(--city-shadow-bottom);
+  width: var(--city-shadow-width);
+  height: var(--city-shadow-height);
+  border-radius: 50%;
+  background: rgb(var(--city-shadow-color) / var(--city-shadow-opacity));
+  filter: blur(var(--city-shadow-blur));
+  pointer-events: none;
+  z-index: 0;
+}
+
 .city-scene__building:active {
   filter: brightness(1.2);
 }
@@ -1258,6 +1275,7 @@ button.primary.secondary {
   object-fit: contain;
   object-position: bottom;
   pointer-events: none;
+  z-index: 1;
 }
 
 .city-scene__sprite--tower {
@@ -1280,6 +1298,24 @@ button.primary.secondary {
   pointer-events: none;
 }
 
+.city-scene__backdrop-tiles {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--city-backdrop-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--city-backdrop-rows), minmax(0, 1fr));
+  pointer-events: none;
+}
+
+.city-scene__backdrop-tile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: fill;
+}
+
 /* Name chip pinned to the slot base (operator feedback: labels floated below
    / vanished into / hid under the art). The dark pill keeps it readable over
    any sprite or backdrop. */
@@ -1299,6 +1335,7 @@ button.primary.secondary {
   line-height: 1.15;
   text-align: center;
   white-space: nowrap;
+  z-index: 2;
 }
 
 /* Town-hall faction flag: flies from the RIGHT turret (replacing its baked-in
@@ -1306,11 +1343,12 @@ button.primary.secondary {
    Positions are % of the town-hall slot, tuned to the trimmed townhall.png. */
 .city-scene__flagpole {
   position: absolute;
-  top: -20%;
-  left: 68%;
-  width: 38%;
-  height: 34%;
+  top: var(--city-flag-top);
+  left: var(--city-flag-left);
+  width: var(--city-flag-width);
+  height: var(--city-flag-height);
   pointer-events: none;
+  z-index: 2;
 }
 
 .city-scene__flagpole-mast {
@@ -1318,15 +1356,15 @@ button.primary.secondary {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 3px;
+  width: var(--city-flag-mast-width);
   background: var(--color-border);
 }
 
 .city-scene__flag {
   position: absolute;
   top: 0;
-  left: 3px;
-  width: 78%;
+  left: var(--city-flag-cloth-left);
+  width: var(--city-flag-cloth-width);
   aspect-ratio: 1 / 1;
   border: 1px solid rgb(0 0 0 / 45%);
   overflow: hidden;

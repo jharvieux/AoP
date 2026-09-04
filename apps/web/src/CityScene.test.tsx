@@ -3,6 +3,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CityScene } from './CityScene'
+import citySceneLayout from './citySceneLayout.json'
 
 const theme = vi.hoisted(() => ({
   spriteUrl: vi.fn<(contentId: string) => string | undefined>(),
@@ -83,9 +84,13 @@ describe('CityScene production art consumer', () => {
     fireEvent.error(tower)
 
     await waitFor(() => {
-      expect(
-        container.querySelector<HTMLImageElement>('.city-scene__backdrop')!.getAttribute('src'),
-      ).toBe('/art/city/backdrop.webp')
+      const backdropTiles = [
+        ...container.querySelectorAll<HTMLImageElement>('.city-scene__backdrop-tile'),
+      ]
+      expect(backdropTiles).toHaveLength(24)
+      expect(backdropTiles.map((tile) => tile.getAttribute('src'))).toEqual(
+        citySceneLayout.backdrop.tiles.map((tile) => tile.src),
+      )
       expect(
         container.querySelector<HTMLImageElement>('.city-scene__flag img')!.getAttribute('src'),
       ).toBe('/art/factions/british/flag.png')
@@ -95,5 +100,33 @@ describe('CityScene production art consumer', () => {
           .getAttribute('src'),
       ).toBe('/art/city/citadel-tower.webp')
     })
+  })
+
+  it('drives active shadows, flag, tower, and backdrop tiles from the shipping layout', () => {
+    const { container } = render(
+      <CityScene
+        buildings={['townhall', 'citadel', 'shipyard']}
+        faction="spanish"
+        onOpenBuilding={() => undefined}
+      />,
+    )
+
+    const buildings = [...container.querySelectorAll<HTMLButtonElement>('.city-scene__building')]
+    expect(buildings).toHaveLength(3)
+    expect(container.textContent).not.toContain('Grog House')
+    for (const building of buildings) {
+      expect(building.style.getPropertyValue('--city-shadow-opacity')).toBe(
+        String(citySceneLayout.shadow.opacity),
+      )
+    }
+
+    const flagpole = container.querySelector<HTMLElement>('.city-scene__flagpole')!
+    expect(flagpole.style.getPropertyValue('--city-flag-top')).toBe(
+      `${citySceneLayout.flag.poleTopPercent}%`,
+    )
+    const tower = container.querySelector<HTMLImageElement>('.city-scene__sprite--tower')!
+    expect(tower.style.width).toBe(`${citySceneLayout.tower.widthPercent}%`)
+    expect(tower.style.right).toBe(`${citySceneLayout.tower.rightPercent}%`)
+    expect(container.querySelectorAll('.city-scene__backdrop-tile')).toHaveLength(24)
   })
 })

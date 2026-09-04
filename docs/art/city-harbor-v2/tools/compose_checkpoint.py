@@ -26,6 +26,12 @@ PUBLIC_ART = REPOSITORY / "apps" / "web" / "public" / "art"
 RUNTIME_CITY = PUBLIC_ART / "city"
 MASTER_SIZE = (2048, 1408)
 RUNTIME_SIZE = (1024, 704)
+LAYOUT_PATH = REPOSITORY / "apps" / "web" / "src" / "citySceneLayout.json"
+LAYOUT = json.loads(LAYOUT_PATH.read_text())
+HIGH_BACKDROP_SIZE = (
+    LAYOUT["backdrop"]["authoredWidth"],
+    LAYOUT["backdrop"]["authoredHeight"],
+)
 
 INK = "#20150e"
 WOOD = "#2c190f"
@@ -40,6 +46,7 @@ WHITE = "#f7e9c7"
 
 @dataclass(frozen=True)
 class Slot:
+    content_id: str
     asset: str
     label: str
     role: str
@@ -50,27 +57,24 @@ class Slot:
     depth: str
 
 
-# Exact values copied from CityScene.tsx at base 29ce63e0. Only this proof uses
-# the table; issue #608 has not changed runtime placement yet.
-SLOTS = (
-    Slot("townhall", "Town hall", "civic anchor", 37, 6, 26, 36, "P0"),
-    Slot("shipyard", "Shipyard", "shoreline", 80, 75, 19, 24, "P1"),
-    Slot("tavern", "Tavern", "hospitality", 4, 24, 14, 20, "P2"),
-    Slot("tradehouse", "Trade house", "economy", 19, 28, 14, 18, "P2"),
-    Slot("sawmill", "Sawmill", "wood economy", 2, 48, 13, 16, "P2"),
-    Slot("ironmine", "Iron mine", "ore economy", 16, 50, 13, 16, "P2"),
-    Slot("distillery", "Distillery", "rum economy", 30, 50, 13, 16, "P2"),
-    Slot("barracks", "Barracks", "recruitment", 47, 46, 13, 17, "P2"),
-    Slot("garrisonHall", "Garrison hall", "recruitment", 62, 46, 13, 18, "P2"),
-    Slot("fortressArmory", "Fortress armory", "recruitment", 64, 24, 13, 19, "P2"),
-    Slot("grandArsenal", "Grand arsenal", "recruitment", 80, 20, 15, 22, "P2"),
-    Slot("palisade", "Palisade", "fortification", 4, 66, 17, 12, "P3"),
-    Slot("stonewall", "Stone wall", "fortification", 24, 66, 17, 12, "P3"),
-    Slot("citadel", "Citadel", "fortification", 44, 62, 16, 16, "P3"),
+ASSET_ALIASES = {"stoneWall": "stonewall"}
+SLOTS = tuple(
+    Slot(
+        content_id,
+        ASSET_ALIASES.get(content_id, content_id),
+        values["label"],
+        values["role"],
+        values["left"],
+        values["top"],
+        values["width"],
+        values["height"],
+        f"P{values['depth']}",
+    )
+    for content_id, values in LAYOUT["slots"].items()
 )
 
 SOURCE_NAMES = {
-    "townhall": "townhall-source-r1.webp",
+    "townhall": "townhall-source-r3.webp",
     "tavern": "tavern-source-r1.webp",
     "tradehouse": "tradehouse-source-r1.webp",
     "sawmill": "sawmill-source-r1.webp",
@@ -87,6 +91,9 @@ SOURCE_NAMES = {
     "shipyard": "shipyard-source-r2.webp",
 }
 
+MASK_NAMES = {asset: f"{asset}-mask.png" for asset in SOURCE_NAMES}
+MASK_NAMES["townhall"] = "townhall-detail-mask.png"
+
 STARTING_STATE = ("townhall", "barracks")
 MIDGAME_STATE = (
     "townhall",
@@ -98,14 +105,14 @@ MIDGAME_STATE = (
     "palisade",
     "shipyard",
 )
-FULL_STATE = tuple(slot.asset for slot in SLOTS)
+FULL_STATE = tuple(slot.content_id for slot in SLOTS)
 FACTION_IDS = ("pirates", "british", "spanish", "french", "dutch")
 
 
 def paint_order(slot: Slot) -> tuple[int, float, str]:
     """Match CityScene's depth, bottom-baseline, and content-id ordering."""
 
-    return int(slot.depth[1:]), slot.top + slot.height, slot.asset
+    return int(slot.depth[1:]), slot.top + slot.height, slot.content_id
 
 
 def font(size: int, bold: bool = False, display: bool = False) -> ImageFont.FreeTypeFont:
@@ -137,7 +144,89 @@ def fit_cover(image: Image.Image, size: tuple[int, int], align_x: float = 0.5) -
     return resized.crop((left, top, left + size[0], top + size[1]))
 
 
-def apply_subject_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
+def base_backdrop() -> Image.Image:
+    """Rebuild the approved foundation/shore composite before detail synthesis."""
+
+    raw = Image.open(PACKAGE / "sources" / "empty-harbor-source-r3.webp").convert("RGB")
+    backdrop = fit_cover(raw, MASTER_SIZE, align_x=0.48)
+    shore_source = Image.open(PACKAGE / "sources" / "empty-harbor-source-r2.webp").convert("RGB")
+    shore = fit_cover(shore_source, MASTER_SIZE, align_x=0.48)
+    shore_mask = Image.new("L", MASTER_SIZE, 0)
+    ImageDraw.Draw(shore_mask).polygon(
+        ((1540, 710), (2048, 640), (2048, 1408), (1330, 1408), (1440, 1030)),
+        fill=255,
+    )
+    shore_mask = shore_mask.filter(ImageFilter.GaussianBlur(38))
+    backdrop = Image.composite(shore, backdrop, shore_mask)
+    shore_shifted = Image.new("RGB", MASTER_SIZE)
+    shore_shifted.paste(shore.crop((0, 0, MASTER_SIZE[0], MASTER_SIZE[1] - 96)), (0, 96))
+    shore_shifted.paste(shore.crop((0, 0, MASTER_SIZE[0], 96)), (0, 0))
+    shore_extension_mask = Image.new("L", MASTER_SIZE, 0)
+    ImageDraw.Draw(shore_extension_mask).polygon(
+        ((1780, 780), (2048, 730), (2048, 1270), (1860, 1230), (1800, 1000)),
+        fill=255,
+    )
+    shore_extension_mask = shore_extension_mask.filter(ImageFilter.GaussianBlur(28))
+    backdrop = Image.composite(shore_shifted, backdrop, shore_extension_mask)
+    backdrop = ImageEnhance.Color(backdrop).enhance(0.94)
+    return ImageEnhance.Contrast(backdrop).enhance(1.03)
+
+
+def build_high_resolution_backdrop() -> Image.Image:
+    """Add generator-authored surface detail while preserving base geography."""
+
+    backdrop = base_backdrop().resize(HIGH_BACKDROP_SIZE, Image.Resampling.LANCZOS)
+    source = LAYOUT["backdrop"]["detailSource"]
+    patch_size = source["inputSize"] * source["scale"]
+    feather = 132
+    for row, top in enumerate(source["yPositions"], 1):
+        for column, left in enumerate(source["xPositions"], 1):
+            x = left * source["scale"]
+            y = top * source["scale"]
+            generated = Image.open(
+                PACKAGE
+                / "sources"
+                / "backdrop-detail-tiles"
+                / f"backdrop-detail-c{column}r{row}-r2.webp"
+            ).convert("RGB").resize((patch_size, patch_size), Image.Resampling.LANCZOS)
+            authority = backdrop.crop((x, y, x + patch_size, y + patch_size))
+
+            generated_gray = np.asarray(generated.convert("L"), dtype=np.float32)
+            generated_low_gray = np.asarray(
+                generated.convert("L").filter(ImageFilter.GaussianBlur(12)), dtype=np.float32
+            )
+            detail = generated_gray - generated_low_gray
+            generated_low = np.asarray(
+                generated.filter(ImageFilter.GaussianBlur(18)), dtype=np.float32
+            )
+            authority_low = np.asarray(
+                authority.filter(ImageFilter.GaussianBlur(18)), dtype=np.float32
+            )
+            difference = np.mean(np.abs(generated_low - authority_low), axis=2)
+            similarity = np.exp(-np.square(difference / 52))
+
+            horizontal = np.ones(patch_size, dtype=np.float32)
+            vertical = np.ones(patch_size, dtype=np.float32)
+            if x > 0:
+                horizontal[:feather] = np.linspace(0, 1, feather, dtype=np.float32)
+            if x + patch_size < HIGH_BACKDROP_SIZE[0]:
+                horizontal[-feather:] = np.linspace(1, 0, feather, dtype=np.float32)
+            if y > 0:
+                vertical[:feather] = np.linspace(0, 1, feather, dtype=np.float32)
+            if y + patch_size < HIGH_BACKDROP_SIZE[1]:
+                vertical[-feather:] = np.linspace(1, 0, feather, dtype=np.float32)
+            weight = similarity * vertical[:, None] * horizontal[None, :] * 0.82
+
+            authority_array = np.asarray(authority, dtype=np.float32)
+            candidate = np.clip(authority_array + detail[:, :, None] * 0.68, 0, 255).astype(np.uint8)
+            mask = Image.fromarray(np.clip(weight * 255, 0, 255).astype(np.uint8), "L")
+            backdrop.paste(Image.fromarray(candidate, "RGB"), (x, y), mask)
+    return backdrop
+
+
+def apply_subject_mask(
+    image: Image.Image, mask: Image.Image, max_subject_edge: int = 1220
+) -> Image.Image:
     """Apply a retained semantic subject mask without a pale edge matte."""
 
     rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
@@ -172,7 +261,6 @@ def apply_subject_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
     # Reserve a real transparent edge in the retained file even when the
     # semantic subject touched its generated source canvas. This is stronger
     # than relying on the generator's requested margin.
-    max_subject_edge = 876
     if max(result.size) > max_subject_edge:
         scale = max_subject_edge / max(result.size)
         result = result.resize(
@@ -181,9 +269,9 @@ def apply_subject_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
     return ImageOps.expand(result, border=12, fill=(0, 0, 0, 0))
 
 
-def save_webp(image: Image.Image, path: Path, quality: int = 84) -> None:
+def save_webp(image: Image.Image, path: Path, quality: int = 84, exact: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, "WEBP", quality=quality, method=6, exact=True)
+    image.save(path, "WEBP", quality=quality, method=6, exact=exact)
 
 
 def render_assets(root: Path) -> dict[str, Image.Image]:
@@ -193,10 +281,10 @@ def render_assets(root: Path) -> dict[str, Image.Image]:
     cutouts: dict[str, Image.Image] = {}
     for asset, filename in SOURCE_NAMES.items():
         source = Image.open(source_root / filename)
-        mask = Image.open(mask_root / f"{asset}-mask.png")
-        cutout = apply_subject_mask(source, mask)
+        mask = Image.open(mask_root / MASK_NAMES[asset])
+        cutout = apply_subject_mask(source, mask, 1570 if asset == "townhall" else 1220)
         cutouts[asset] = cutout
-        save_webp(cutout, cutout_root / f"{asset}.webp", 90)
+        save_webp(cutout, cutout_root / f"{asset}.webp", 76 if asset == "townhall" else 82)
     return cutouts
 
 
@@ -224,66 +312,34 @@ def contained(image: Image.Image, box: tuple[int, int, int, int]) -> tuple[Image
 
 def shadow_layer(slot: Slot, size: tuple[int, int]) -> Image.Image:
     box = slot_box(slot, size)
+    spec = LAYOUT["shadow"]
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     width = box[2] - box[0]
     height = box[3] - box[1]
     ellipse = (
-        box[0] + round(width * 0.12),
-        box[3] - round(height * 0.18),
-        box[2] + round(width * 0.08),
-        box[3] + round(height * 0.07),
+        box[0] + round(width * spec["leftPercent"] / 100),
+        box[3] - round(height * (spec["heightPercent"] + spec["bottomPercent"]) / 100),
+        box[0] + round(width * (spec["leftPercent"] + spec["widthPercent"]) / 100),
+        box[3] - round(height * spec["bottomPercent"] / 100),
     )
-    draw.ellipse(ellipse, fill=(18, 22, 17, 82))
-    return layer.filter(ImageFilter.GaussianBlur(max(3, round(size[0] * 0.006))))
+    color = tuple(spec["color"]) + (round(spec["opacity"] * 255),)
+    draw.ellipse(ellipse, fill=color)
+    return layer.filter(
+        ImageFilter.GaussianBlur(max(3, round(size[0] * spec["blurSceneWidthPercent"] / 100)))
+    )
 
 
-def render_scene(root: Path, cutouts: dict[str, Image.Image]) -> None:
-    raw_backdrop = Image.open(PACKAGE / "sources" / "empty-harbor-source-r3.webp").convert("RGB")
-    backdrop = fit_cover(raw_backdrop, MASTER_SIZE, align_x=0.48)
-    # P10 supplies the complete fourteen-foundation production terrain. Retain
-    # P8's deliberately extended lower-right natural coast so the immutable
-    # shipyard slot still spans dry shore and open water. The two built-in
-    # edits share the same camera and source composition; a broad feather keeps
-    # this deterministic local merge free of a visible seam.
-    shore_source = Image.open(PACKAGE / "sources" / "empty-harbor-source-r2.webp").convert("RGB")
-    shore = fit_cover(shore_source, MASTER_SIZE, align_x=0.48)
-    shore_mask = Image.new("L", MASTER_SIZE, 0)
-    ImageDraw.Draw(shore_mask).polygon(
-        ((1540, 710), (2048, 640), (2048, 1408), (1330, 1408), (1440, 1030)),
-        fill=255,
-    )
-    shore_mask = shore_mask.filter(ImageFilter.GaussianBlur(38))
-    backdrop = Image.composite(shore, backdrop, shore_mask)
-    shore_shifted = Image.new("RGB", MASTER_SIZE)
-    shore_shifted.paste(shore.crop((0, 0, MASTER_SIZE[0], MASTER_SIZE[1] - 96)), (0, 96))
-    shore_shifted.paste(shore.crop((0, 0, MASTER_SIZE[0], 96)), (0, 0))
-    shore_extension_mask = Image.new("L", MASTER_SIZE, 0)
-    ImageDraw.Draw(shore_extension_mask).polygon(
-        ((1780, 780), (2048, 730), (2048, 1270), (1860, 1230), (1800, 1000)),
-        fill=255,
-    )
-    shore_extension_mask = shore_extension_mask.filter(ImageFilter.GaussianBlur(28))
-    backdrop = Image.composite(shore_shifted, backdrop, shore_extension_mask)
-    backdrop = ImageEnhance.Color(backdrop).enhance(0.94)
-    backdrop = ImageEnhance.Contrast(backdrop).enhance(1.03)
-    save_webp(backdrop, root / "layers" / "empty-backdrop-2048x1408.webp", 60)
+def render_scene(root: Path, cutouts: dict[str, Image.Image]) -> Image.Image:
+    high_resolution_backdrop = build_high_resolution_backdrop()
+    backdrop = high_resolution_backdrop.resize(MASTER_SIZE, Image.Resampling.LANCZOS)
+    save_webp(backdrop, root / "layers" / "empty-backdrop-2048x1408.webp", 24)
 
-    scene = backdrop.convert("RGBA")
     shadow_group = Image.new("RGBA", MASTER_SIZE, (0, 0, 0, 0))
     for slot in SLOTS:
         shadow_group = Image.alpha_composite(shadow_group, shadow_layer(slot, MASTER_SIZE))
     save_webp(shadow_group, root / "layers" / "contact-shadows.webp", 88)
-    scene = Image.alpha_composite(scene, shadow_group)
-
-    for slot in sorted(SLOTS, key=paint_order):
-        rendered, x, y = contained(cutouts[slot.asset], slot_box(slot, MASTER_SIZE))
-        scene.alpha_composite(rendered, (x, y))
-
-    runtime = scene.convert("RGB").resize(RUNTIME_SIZE, Image.Resampling.LANCZOS)
-    save_webp(runtime, root / "proofs" / "scene-runtime-1024x704.webp", 84)
-    empty_runtime = backdrop.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS)
-    save_webp(empty_runtime, root / "proofs" / "empty-runtime-1024x704.webp", 82)
+    return high_resolution_backdrop
 
 
 def framed_panel(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], radius: int = 12) -> None:
@@ -354,12 +410,38 @@ def render_phone(root: Path, scene: Image.Image) -> Image.Image:
 
 
 def render_zoom(root: Path, scene: Image.Image) -> Image.Image:
-    runtime = scene.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS)
-    zoomed = runtime.resize((RUNTIME_SIZE[0] * 3, RUNTIME_SIZE[1] * 3), Image.Resampling.LANCZOS)
-    # This is one real 1024×704 viewport into the current 3× city scene. The
-    # left district fits both the tavern and trade house, making edge quality
-    # and role separation easier to judge than an arbitrary center crop.
-    return zoomed.crop((0, 300, 1024, 1004))
+    # Native 1024×704 device-pixel crop from the authored 6144×4224 scene,
+    # corresponding to the existing 3× stop at DPR2 without interpolation.
+    return scene.crop((2200, 700, 3224, 1404))
+
+
+def render_seam_evidence(backdrop: Image.Image) -> Image.Image:
+    """Show representative shipping tile joins at native source pixels."""
+
+    canvas = Image.new("RGB", (1600, 920), "#ead5a2")
+    draw = ImageDraw.Draw(canvas)
+    draw.text((42, 24), "SHIPPING BACKDROP TILES · NATIVE SEAM CENSUS", font=font(30, display=True), fill=INK)
+    draw.text((44, 67), "Four joins sampled 1:1 from the 24 compressed runtime tiles; center ticks mark each join.", font=font(15, bold=True), fill=RUST)
+    samples = (
+        ("VERTICAL · C1/C2 · UPLAND ROAD", (644, 540, 1404, 900), "vertical"),
+        ("HORIZONTAL · R1/R2 · CIVIC PLOTS", (2320, 876, 3080, 1236), "horizontal"),
+        ("VERTICAL · C4/C5 · SHORE APPROACH", (2692, 2360, 3452, 2720), "vertical"),
+        ("HORIZONTAL · R3/R4 · HARBOR WATER", (4520, 2988, 5280, 3348), "horizontal"),
+    )
+    for index, (label, box, orientation) in enumerate(samples):
+        x = 42 + (index % 2) * 790
+        y = 116 + (index // 2) * 398
+        crop = backdrop.crop(box)
+        canvas.paste(crop, (x, y))
+        draw.rectangle((x - 1, y - 1, x + 761, y + 361), outline=WOOD, width=2)
+        if orientation == "vertical":
+            draw.line((x + 380, y, x + 380, y + 13), fill=BRASS, width=3)
+            draw.line((x + 380, y + 347, x + 380, y + 360), fill=BRASS, width=3)
+        else:
+            draw.line((x, y + 180, x + 13, y + 180), fill=BRASS, width=3)
+            draw.line((x + 747, y + 180, x + 760, y + 180), fill=BRASS, width=3)
+        draw.text((x, y + 370), label, font=font(14, bold=True), fill=INK)
+    return canvas
 
 
 def stress_background(size: tuple[int, int]) -> Image.Image:
@@ -380,11 +462,12 @@ def render_stress_proofs(root: Path, cutouts: dict[str, Image.Image]) -> None:
         draw.text((28, 19), f"{slot.label.upper()} · ALPHA STRESS", font=font(26, display=True), fill=WHITE)
         draw.text(
             (30, 61),
-            "Native 900 px cutout · magenta / dark-teal backgrounds",
+            "Whole shipping cutout · magenta / dark-teal backgrounds",
             font=font(14, bold=True),
             fill=BRASS,
         )
-        art = cutouts[slot.asset]
+        art = cutouts[slot.asset].copy()
+        art.thumbnail((900, 900), Image.Resampling.LANCZOS)
         x = (canvas.width - art.width) // 2
         y = 112 + (900 - art.height) // 2
         canvas.paste(art, (x, y), art)
@@ -415,7 +498,7 @@ def render_contact_sheet(root: Path) -> Image.Image:
     zoom_thumb = zoom.resize((344, 237), Image.Resampling.LANCZOS)
     canvas.paste(zoom_thumb, (1214, 116))
     draw.rectangle((1213, 115, 1559, 354), outline=WOOD, width=2)
-    draw.text((1214, 367), "MAX ZOOM · TAVERN + TRADE", font=font(15, bold=True), fill=INK)
+    draw.text((1214, 367), "MAX ZOOM · NATIVE CIVIC DETAIL", font=font(15, bold=True), fill=INK)
 
     layers_thumb = layers.resize((344, 215), Image.Resampling.LANCZOS)
     canvas.paste(layers_thumb, (1214, 413))
@@ -451,34 +534,55 @@ def compose_state(
     scene = backdrop.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     active = set(building_ids)
     for slot in sorted(SLOTS, key=paint_order):
-        if slot.asset not in active:
+        if slot.content_id not in active:
             continue
         scene = Image.alpha_composite(scene, shadow_layer(slot, size))
         rendered, x, y = contained(cutouts[slot.asset], slot_box(slot, size))
         scene.alpha_composite(rendered, (x, y))
-        if slot.asset == "citadel":
+        if slot.content_id == LAYOUT["tower"]["slotId"]:
+            tower_spec = LAYOUT["tower"]
             box = slot_box(slot, size)
             slot_width = box[2] - box[0]
             tower_box = (
-                round(box[2] - slot_width * 0.44),
+                round(
+                    box[2]
+                    - slot_width * tower_spec["rightPercent"] / 100
+                    - slot_width * tower_spec["widthPercent"] / 100
+                ),
                 box[1],
-                round(box[2] - slot_width * 0.06),
+                round(box[2] - slot_width * tower_spec["rightPercent"] / 100),
                 box[3],
             )
             tower, tx, ty = contained(cutouts["citadel-tower"], tower_box)
             scene.alpha_composite(tower, (tx, ty))
 
-    if faction and "townhall" in active:
-        hall = slot_box(next(slot for slot in SLOTS if slot.asset == "townhall"), size)
+    if faction and LAYOUT["flag"]["slotId"] in active:
+        flag_spec = LAYOUT["flag"]
+        hall = slot_box(
+            next(slot for slot in SLOTS if slot.content_id == flag_spec["slotId"]), size
+        )
         flag_path = PUBLIC_ART / "factions" / faction / "flag.png"
         flag = Image.open(flag_path).convert("RGBA")
-        flag_size = max(16, round((hall[2] - hall[0]) * 0.19))
+        hall_width = hall[2] - hall[0]
+        hall_height = hall[3] - hall[1]
+        pole_x = hall[0] + hall_width * flag_spec["poleLeftPercent"] / 100
+        pole_y = hall[1] + hall_height * flag_spec["poleTopPercent"] / 100
+        pole_width = hall_width * flag_spec["poleWidthPercent"] / 100
+        pole_height = hall_height * flag_spec["poleHeightPercent"] / 100
+        flag_size = max(16, round(pole_width * flag_spec["clothWidthPercent"] / 100))
         flag.thumbnail((flag_size, flag_size), Image.Resampling.LANCZOS)
-        mast_x = round(hall[0] + (hall[2] - hall[0]) * 0.67)
-        mast_y = round(hall[1] - (hall[3] - hall[1]) * 0.06)
+        mast_x = round(pole_x)
+        mast_y = round(pole_y)
+        pixel_scale = size[0] / RUNTIME_SIZE[0]
+        mast_width = max(1, round(flag_spec["mastWidthPx"] * pixel_scale))
+        cloth_left = round(flag_spec["clothLeftPx"] * pixel_scale)
         draw = ImageDraw.Draw(scene)
-        draw.line((mast_x, mast_y, mast_x, mast_y + flag.height * 2), fill=(62, 43, 25, 255), width=max(2, size[0] // 512))
-        scene.alpha_composite(flag, (mast_x + 2, mast_y))
+        draw.line(
+            (mast_x, mast_y, mast_x, round(mast_y + pole_height)),
+            fill=(62, 43, 25, 255),
+            width=mast_width,
+        )
+        scene.alpha_composite(flag, (mast_x + cloth_left, mast_y))
     return scene.convert("RGB")
 
 
@@ -561,17 +665,17 @@ def render_production_layer_sheet(
 def render_zoom_evidence(full_master: Image.Image) -> Image.Image:
     canvas = Image.new("RGB", (1600, 1040), "#ead5a2")
     draw = ImageDraw.Draw(canvas)
-    draw.text((42, 24), "1× / CURRENT MAX-ZOOM · 2×-EQUIVALENT SOURCE", font=font(30, display=True), fill=INK)
-    draw.text((44, 67), "The full scene is sampled from the retained 2048×1408 master; close crops expose source edge quality.", font=font(15, bold=True), fill=RUST)
+    draw.text((42, 24), "1× / CURRENT MAX-ZOOM · DPR2 SOURCE", font=font(30, display=True), fill=INK)
+    draw.text((44, 67), "The full scene is sampled from the authored 6144×4224 tile assembly; close crops are never upscaled.", font=font(15, bold=True), fill=RUST)
     full = full_master.resize((760, 523), Image.Resampling.LANCZOS)
     canvas.paste(full, (42, 114))
     draw.rectangle((41, 113, 803, 638), outline=WOOD, width=2)
     draw.text((42, 653), "1× WHOLE CITY", font=font(16, bold=True), fill=INK)
 
     crop_specs = (
-        ("CIVIC + TAVERN", (80, 40, 1120, 920)),
-        ("RECRUITMENT TIERS", (850, 330, 1950, 743)),
-        ("FORTIFICATION + SHORE", (520, 760, 2048, 1408)),
+        ("CIVIC + TAVERN", (240, 120, 3360, 2760)),
+        ("RECRUITMENT TIERS", (2550, 990, 5850, 2229)),
+        ("FORTIFICATION + SHORE", (1560, 2280, 6144, 4224)),
     )
     y = 114
     for label, box in crop_specs:
@@ -583,8 +687,8 @@ def render_zoom_evidence(full_master: Image.Image) -> Image.Image:
         y += 292
     draw.text((42, 714), "SOURCE / DISPLAY CLAIM", font=font(18, display=True), fill=INK)
     claim = (
-        "This proves the production direction and shipping-layer resolution at 2×-equivalent capture.",
-        "It does not claim vector detail or infinite zoom; the live UI still caps at its existing 3× stop.",
+        "The shipping tile assembly is at least 1.05× the largest 1920×1080 DPR2 device footprint.",
+        "The live UI retains its approved 3× stop; no flattened-composite upscale is used.",
     )
     draw.text((48, 758), claim[0], font=font(14, bold=True), fill=INK)
     draw.text((48, 791), claim[1], font=font(14), fill=RUST)
@@ -608,18 +712,62 @@ def capture_legacy_baseline(root: Path) -> None:
     save_webp(render_state_contact(root, scenes), root / "proofs" / "baseline-current-states-1600x620.webp", 78)
 
 
-def write_runtime_assets(cutouts: dict[str, Image.Image], backdrop: Image.Image) -> None:
+def write_runtime_assets(
+    cutouts: dict[str, Image.Image], backdrop: Image.Image, output: Path
+) -> None:
     for asset, art in cutouts.items():
         runtime_name = "stoneWall" if asset == "stonewall" else asset
-        save_webp(art, RUNTIME_CITY / f"{runtime_name}.webp", 88)
-    save_webp(backdrop.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS), RUNTIME_CITY / "backdrop.webp", 80)
+        save_webp(art, output / f"{runtime_name}.webp", 68, exact=False)
+    tile_width = backdrop.width // LAYOUT["backdrop"]["columns"]
+    tile_height = backdrop.height // LAYOUT["backdrop"]["rows"]
+    for tile in LAYOUT["backdrop"]["tiles"]:
+        column = int(tile["id"][1]) - 1
+        row = int(tile["id"][3]) - 1
+        crop = backdrop.crop(
+            (
+                column * tile_width,
+                row * tile_height,
+                (column + 1) * tile_width,
+                (row + 1) * tile_height,
+            )
+        )
+        save_webp(crop, output / Path(tile["src"]).name, 20, exact=False)
+    save_webp(
+        backdrop.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS),
+        output / "backdrop.webp",
+        76,
+    )
+
+
+def load_runtime_assets(root: Path) -> tuple[dict[str, Image.Image], Image.Image]:
+    cutouts = {
+        asset: Image.open(root / f"{'stoneWall' if asset == 'stonewall' else asset}.webp").convert(
+            "RGBA"
+        )
+        for asset in SOURCE_NAMES
+    }
+    columns = LAYOUT["backdrop"]["columns"]
+    rows = LAYOUT["backdrop"]["rows"]
+    tile_width = HIGH_BACKDROP_SIZE[0] // columns
+    tile_height = HIGH_BACKDROP_SIZE[1] // rows
+    backdrop = Image.new("RGB", HIGH_BACKDROP_SIZE)
+    for tile in LAYOUT["backdrop"]["tiles"]:
+        column = int(tile["id"][1]) - 1
+        row = int(tile["id"][3]) - 1
+        image = Image.open(root / Path(tile["src"]).name).convert("RGB")
+        backdrop.paste(image, (column * tile_width, row * tile_height))
+    return cutouts, backdrop
 
 
 def build_production(root: Path, write_runtime: bool) -> dict[str, str]:
     root.mkdir(parents=True, exist_ok=True)
-    cutouts = render_assets(root)
-    render_scene(root, cutouts)
-    backdrop_master = Image.open(root / "layers" / "empty-backdrop-2048x1408.webp").convert("RGB")
+    source_cutouts = render_assets(root)
+    authored_backdrop = render_scene(root, source_cutouts)
+    runtime_root = RUNTIME_CITY if write_runtime else root / "runtime"
+    write_runtime_assets(source_cutouts, authored_backdrop, runtime_root)
+    cutouts, high_resolution_backdrop = load_runtime_assets(runtime_root)
+    backdrop_master = high_resolution_backdrop.resize(MASTER_SIZE, Image.Resampling.LANCZOS)
+    save_webp(backdrop_master.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS), root / "proofs" / "empty-runtime-1024x704.webp", 82)
     states_master = {
         "starting": compose_state(backdrop_master, cutouts, STARTING_STATE, "pirates"),
         "midgame": compose_state(backdrop_master, cutouts, MIDGAME_STATE, "pirates"),
@@ -640,31 +788,37 @@ def build_production(root: Path, write_runtime: bool) -> dict[str, str]:
     save_webp(faction_contact, root / "proofs" / "faction-contact-1600x748.webp", 76)
 
     full_master = states_master["fully constructed"]
-    save_webp(render_zoom_evidence(full_master), root / "proofs" / "zoom-2x-evidence-1600x1040.webp", 76)
+    save_webp(full_master.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS), root / "proofs" / "scene-runtime-1024x704.webp", 84)
+    full_high_resolution = compose_state(
+        high_resolution_backdrop,
+        cutouts,
+        FULL_STATE,
+        "pirates",
+        HIGH_BACKDROP_SIZE,
+    )
+    save_webp(render_zoom_evidence(full_high_resolution), root / "proofs" / "zoom-2x-evidence-1600x1040.webp", 76)
+    save_webp(render_seam_evidence(high_resolution_backdrop), root / "proofs" / "backdrop-seam-census-1600x920.webp", 72)
     save_webp(render_production_layer_sheet(backdrop_master, cutouts), root / "proofs" / "production-layer-contact-1800x1180.webp", 76)
     save_webp(full_master.resize((375, 258), Image.Resampling.LANCZOS), root / "proofs" / "phone-scene-375x258.webp", 84)
     # Preserve the checkpoint-one review paths while promoting the complete
     # batch to the more explicit production evidence above.
     save_webp(render_desktop(root, full_master), root / "proofs" / "desktop-1440x900.webp", 82)
     save_webp(render_phone(root, full_master), root / "proofs" / "phone-375x812.webp", 84)
-    save_webp(render_zoom(root, full_master), root / "proofs" / "max-zoom-1024x704.webp", 84)
+    save_webp(render_zoom(root, full_high_resolution), root / "proofs" / "max-zoom-1024x704.webp", 84)
     legacy_layer_path = root / "proofs" / "layer-separation-1600x1000.webp"
     production_layers = render_production_layer_sheet(backdrop_master, cutouts)
     save_webp(production_layers.resize((1600, 1000), Image.Resampling.LANCZOS), legacy_layer_path, 80)
     save_webp(render_contact_sheet(root), root / "proofs" / "checkpoint-contact-sheet-1600x1120.webp", 80)
     render_stress_proofs(root, cutouts)
-    tower_slot = Slot("citadel-tower", "Citadel tower", "fortification accessory", 0, 0, 0, 0, "P3")
     canvas = stress_background((1024, 1024))
     draw = ImageDraw.Draw(canvas)
     draw.rectangle((0, 0, 1023, 103), fill=INK)
     draw.text((28, 19), "CITADEL TOWER · ALPHA STRESS", font=font(26, display=True), fill=WHITE)
     draw.text((30, 61), "Native cutout · magenta / dark-teal backgrounds", font=font(14, bold=True), fill=BRASS)
-    tower = cutouts[tower_slot.asset]
+    tower = cutouts["citadel-tower"].copy()
+    tower.thumbnail((900, 900), Image.Resampling.LANCZOS)
     canvas.paste(tower, ((1024 - tower.width) // 2, 112 + (900 - tower.height) // 2), tower)
     save_webp(canvas, root / "proofs" / "stress" / "citadel-tower-magenta-1024.webp", 84)
-
-    if write_runtime:
-        write_runtime_assets(cutouts, backdrop_master)
 
     generated = sorted(
         path
@@ -690,12 +844,8 @@ def main() -> None:
             candidate = Path(temp)
             candidate_hashes = build_production(candidate, write_runtime=False)
             current_hashes = {
-                str(path.relative_to(args.output)): sha256(path)
-                for directory in (args.output / "cutouts", args.output / "layers", args.output / "proofs")
-                for path in directory.rglob("*.webp")
-                if path.name != "baseline-current-states-1600x620.webp"
+                relative: sha256(args.output / relative) for relative in candidate_hashes
             }
-            candidate_hashes.pop("proofs/baseline-current-states-1600x620.webp", None)
             if candidate_hashes != current_hashes:
                 print(json.dumps({"expected": current_hashes, "rendered": candidate_hashes}, indent=2))
                 raise SystemExit("rendered checkpoint differs from retained files")

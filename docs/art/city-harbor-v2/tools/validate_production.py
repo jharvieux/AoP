@@ -18,6 +18,8 @@ from scipy import ndimage
 PACKAGE = Path(__file__).resolve().parents[1]
 REPOSITORY = PACKAGE.parents[2]
 RUNTIME_CITY = REPOSITORY / "apps" / "web" / "public" / "art" / "city"
+LAYOUT_PATH = REPOSITORY / "apps" / "web" / "src" / "citySceneLayout.json"
+LAYOUT = json.loads(LAYOUT_PATH.read_text())
 MAX_BYTES = 300 * 1024
 MAX_FULLY_BUILT_BYTES = 3 * 1024 * 1024
 ASSETS = (
@@ -51,6 +53,8 @@ OPEN_STRUCTURE_ASSETS = {
     "citadel-tower",
     "shipyard",
 }
+MASK_FILES = {asset: f"{asset}-mask.png" for asset in ASSETS}
+MASK_FILES["townhall"] = "townhall-detail-mask.png"
 
 
 def sha256(path: Path) -> str:
@@ -68,39 +72,102 @@ def compositor():
     return module
 
 
+def load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"unable to load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def validate_path_hashes(value: object) -> int:
+    """Recompute every retained path/hash pair in a provenance structure."""
+
+    count = 0
+    if isinstance(value, dict):
+        path_value = value.get("path") or value.get("retained_path")
+        hash_value = value.get("sha256") or value.get("retained_sha256")
+        if isinstance(path_value, str) and isinstance(hash_value, str):
+            path = PACKAGE / path_value
+            assert path.is_file(), f"missing provenance path: {path_value}"
+            assert sha256(path) == hash_value, f"provenance hash drift: {path_value}"
+            count += 1
+        for child in value.values():
+            count += validate_path_hashes(child)
+    elif isinstance(value, list):
+        for child in value:
+            count += validate_path_hashes(child)
+    return count
+
+
 def validate_provenance() -> None:
     checkpoint = json.loads((PACKAGE / "PROVENANCE.json").read_text())
     production = json.loads((PACKAGE / "PRODUCTION-PROVENANCE.json").read_text())
-    assert checkpoint["service"] == production["service"] == "OpenAI built-in image generator"
+    high_resolution = json.loads((PACKAGE / "HIGH-RES-PROVENANCE.json").read_text())
+    assert (
+        checkpoint["service"]
+        == production["service"]
+        == high_resolution["service"]
+        == "OpenAI built-in image generator"
+    )
+    assert {item["prompt_id"] for item in checkpoint["generation"]} == {
+        f"P{number}" for number in range(1, 10)
+    }
     assert len(production["generation"]) == 11
     assert {item["prompt_id"] for item in production["generation"]} == {
         f"P{number}" for number in range(10, 21)
     }
-    assert production["rejected_outputs"] == []
-    for item in production["generation"]:
-        retained = PACKAGE / item["retained_path"]
-        assert retained.stat().st_size <= MAX_BYTES, f"{retained.name} exceeds 300 KiB"
-        assert sha256(retained) == item["retained_sha256"], f"source hash drift: {retained.name}"
-    prompt_text = (PACKAGE / "PRODUCTION-PROMPTS.md").read_text()
+    assert [item["call_id"] for item in high_resolution["accepted_calls"]] == [
+        f"H{number:02}" for number in range(1, 27)
+    ]
+    assert high_resolution["rejected_calls"]["count"] == 6
+    assert "no rejected output is project-bound" in high_resolution["rejected_calls"][
+        "disposition"
+    ].lower()
+    assert validate_path_hashes(checkpoint) >= 15
+    assert validate_path_hashes(production) >= 15
+    assert validate_path_hashes(high_resolution) >= 80
+    checkpoint_prompt_text = (PACKAGE / "PROMPTS.md").read_text()
+    production_prompt_text = (PACKAGE / "PRODUCTION-PROMPTS.md").read_text()
+    for number in range(1, 10):
+        assert f"## P{number} " in checkpoint_prompt_text, f"missing exact P{number} prompt"
     for number in range(10, 21):
-        assert f"## P{number} " in prompt_text, f"missing exact P{number} prompt"
-    assert "did not expose" in prompt_text
+        assert f"## P{number} " in production_prompt_text, f"missing exact P{number} prompt"
+    for item in high_resolution["accepted_calls"]:
+        assert item["prompt"].startswith("Use case: precise-object-edit")
+        assert len(item["input_references"]) == 2
+    assert "did not expose" in production_prompt_text
+
+    output_hashes = json.loads((PACKAGE / "PRODUCTION-OUTPUT-HASHES.json").read_text())
+    assert len(output_hashes["files"]) >= 100
+    for item in output_hashes["files"]:
+        path = REPOSITORY / item["path"]
+        assert path.is_file(), f"missing production output: {item['path']}"
+        assert item["bytes"] <= MAX_BYTES, f"retained output exceeds 300 KiB: {item['path']}"
+        assert sha256(path) == item["sha256"], f"production output hash drift: {item['path']}"
 
 
 def validate_masks_and_cutouts() -> None:
-    masks = {path.name.removesuffix("-mask.png"): path for path in (PACKAGE / "masks").glob("*.png")}
     cutouts = {path.stem: path for path in (PACKAGE / "cutouts").glob("*.webp")}
-    assert set(masks) == set(ASSETS), f"mask inventory drift: {sorted(masks)}"
     assert set(cutouts) == set(ASSETS), f"cutout inventory drift: {sorted(cutouts)}"
+    assert sha256(PACKAGE / "masks/barracks-mask-p5.png") == (
+        "b97251d90247e7a5a2a5daaebe3fe59eb93053e85f4c4c6aa7a0412b27053fed"
+    )
+    assert sha256(PACKAGE / "masks/barracks-mask.png") == (
+        "96ecb6924484c9c1aa27222c5274d1cb10bc48b970b904359056081126d095b6"
+    )
 
     for asset in ASSETS:
-        with Image.open(masks[asset]) as mask_image:
+        mask_path = PACKAGE / "masks" / MASK_FILES[asset]
+        with Image.open(mask_path) as mask_image:
             assert mask_image.format == "PNG" and mask_image.mode == "L"
             mask = np.asarray(mask_image)
         with Image.open(cutouts[asset]) as cutout_image:
             assert cutout_image.format == "WEBP" and cutout_image.mode == "RGBA"
-            assert cutout_image.width <= 900 and cutout_image.height <= 900
-            assert max(cutout_image.size) >= 850
+            assert cutout_image.width <= 1600 and cutout_image.height <= 1600
+            assert max(cutout_image.size) >= 900
             alpha = np.asarray(cutout_image.getchannel("A"))
         assert cutouts[asset].stat().st_size <= MAX_BYTES
         assert int(alpha.min()) == 0 and int(alpha.max()) == 255
@@ -131,19 +198,21 @@ def validate_masks_and_cutouts() -> None:
 
 def validate_runtime() -> None:
     runtime_names = {**{asset: asset for asset in ASSETS}, "stonewall": "stoneWall"}
-    runtime_files = [RUNTIME_CITY / "backdrop.webp"] + [
+    backdrop_files = [RUNTIME_CITY / Path(tile["src"]).name for tile in LAYOUT["backdrop"]["tiles"]]
+    constructed_files = [
         RUNTIME_CITY / f"{runtime_names[asset]}.webp" for asset in ASSETS
     ]
-    assert len(runtime_files) == 16
+    runtime_files = backdrop_files + constructed_files
+    assert len(runtime_files) == 39
     for path in runtime_files:
         assert path.is_file(), f"missing runtime asset {path.name}"
         assert path.stat().st_size <= MAX_BYTES, f"runtime asset too large: {path.name}"
         with Image.open(path) as image:
             assert image.format == "WEBP"
-            if path.name == "backdrop.webp":
-                assert image.mode == "RGB" and image.size == (1024, 704)
+            if path in backdrop_files:
+                assert image.mode == "RGB" and image.size == (1024, 1056)
             else:
-                assert image.mode == "RGBA" and max(image.size) >= 850
+                assert image.mode == "RGBA" and max(image.size) >= 900
 
     flag_root = REPOSITORY / "apps" / "web" / "public" / "art" / "factions"
     largest_flag = max((path.stat().st_size for path in flag_root.glob("*/flag.png")), default=0)
@@ -152,10 +221,65 @@ def validate_runtime() -> None:
 
     content = (REPOSITORY / "packages" / "content" / "src" / "buildings.ts").read_text()
     scene = (REPOSITORY / "apps" / "web" / "src" / "CityScene.tsx").read_text()
-    for path in runtime_files:
-        assert f"/art/city/{path.name}" in content or path.name == "backdrop.webp"
-    assert "const BACKDROP_URL = '/art/city/backdrop.webp'" in scene
+    for path in constructed_files:
+        assert f"/art/city/{path.name}" in content
+    for path in backdrop_files:
+        assert f'"src": "/art/city/{path.name}"' in LAYOUT_PATH.read_text()
+    assert "citySceneLayout.backdrop.tiles" in scene
     assert "spriteCandidates" in scene and "FallbackImage" in scene
+    assert "contact-shadows" not in scene
+
+
+def validate_layout_resolution_flags_and_seams() -> None:
+    resolution_module = load_module(
+        "city_resolution_census", PACKAGE / "tools/build_resolution_census.py"
+    )
+    retained = json.loads((PACKAGE / "RESOLUTION-CENSUS.json").read_text())
+    assert retained == resolution_module.build(), "resolution census is stale"
+    assert retained["worst_backdrop"]["ratio"] >= 1
+    for asset, values in retained["worst_assets"].items():
+        assert values["ratio"] >= 1, f"{asset} undersampled: {values}"
+
+    hall = LAYOUT["slots"][LAYOUT["flag"]["slotId"]]
+    scene_width, scene_height = 1024, 704
+    hall_x = scene_width * hall["left"] / 100
+    hall_y = scene_height * hall["top"] / 100
+    hall_width = scene_width * hall["width"] / 100
+    hall_height = scene_height * hall["height"] / 100
+    flag = LAYOUT["flag"]
+    cloth_x = hall_x + hall_width * flag["poleLeftPercent"] / 100 + flag["clothLeftPx"]
+    cloth_y = hall_y + hall_height * flag["poleTopPercent"] / 100
+    cloth_size = hall_width * flag["poleWidthPercent"] / 100 * flag["clothWidthPercent"] / 100
+    assert 0 <= cloth_x < cloth_x + cloth_size <= scene_width
+    assert 0 <= cloth_y < cloth_y + cloth_size <= scene_height
+    for faction in ("pirates", "british", "spanish", "french", "dutch"):
+        image = Image.open(
+            REPOSITORY / f"apps/web/public/art/factions/{faction}/flag.png"
+        ).convert("RGBA")
+        assert image.getchannel("A").getbbox() is not None
+
+    tiles = {
+        (column, row): np.asarray(
+            Image.open(RUNTIME_CITY / f"backdrop-c{column}r{row}.webp").convert("RGB"),
+            dtype=np.int16,
+        )
+        for row in range(1, 5)
+        for column in range(1, 7)
+    }
+    seam_means = []
+    seam_p99 = []
+    for row in range(1, 5):
+        for column in range(1, 6):
+            delta = np.abs(tiles[column, row][:, -1] - tiles[column + 1, row][:, 0])
+            seam_means.append(float(delta.mean()))
+            seam_p99.append(float(np.quantile(delta, 0.99)))
+    for row in range(1, 4):
+        for column in range(1, 7):
+            delta = np.abs(tiles[column, row][-1] - tiles[column, row + 1][0])
+            seam_means.append(float(delta.mean()))
+            seam_p99.append(float(np.quantile(delta, 0.99)))
+    assert max(seam_means) < 20, f"visible mean tile seam: {max(seam_means)}"
+    assert max(seam_p99) < 80, f"visible p99 tile seam: {max(seam_p99)}"
 
 
 def validate_proofs_and_shipyard() -> None:
@@ -199,6 +323,7 @@ def main() -> None:
     validate_provenance()
     validate_masks_and_cutouts()
     validate_runtime()
+    validate_layout_resolution_flags_and_seams()
     validate_proofs_and_shipyard()
     validate_determinism()
     print("PASS: #608 production art, alpha topology, shore placement, provenance, budgets, and deterministic proofs")
