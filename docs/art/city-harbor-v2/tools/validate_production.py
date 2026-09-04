@@ -55,6 +55,48 @@ OPEN_STRUCTURE_ASSETS = {
 }
 MASK_FILES = {asset: f"{asset}-mask.png" for asset in ASSETS}
 MASK_FILES["townhall"] = "townhall-detail-mask.png"
+RUNTIME_CAPTURES = {
+    "starting-desktop-1440x900.jpg": (
+        (1440, 900),
+        178670,
+        "7062fbff416712e62f2ca37cf4068fce50f2f6c7373a15c8f18605ec2db7faf0",
+    ),
+    "starting-phone-390x844.jpg": (
+        (390, 844),
+        48560,
+        "c4556a56c4889e87568731bb1ccbfbfb78114e494b3de9eb4ec5c7ba75f9713e",
+    ),
+    "midgame-desktop-1440x900.jpg": (
+        (1440, 900),
+        183925,
+        "356e1baf650fd28cd28d533bb9a44f7e1c83fc6da351cdc9960106b1884daaa9",
+    ),
+    "full-desktop-1440x900.jpg": (
+        (1440, 900),
+        188082,
+        "31bc5abec46bee5806308f603749ce874a4ba80531109c41c7dd3bda910e7af4",
+    ),
+    "full-phone-390x844.jpg": (
+        (390, 844),
+        54152,
+        "c5ad74adb52ff81677a8c2d1fda4357e25cd8dc7a2a9d82f2dbdb1ecd943312e",
+    ),
+    "full-phone-3x-center-390x844.jpg": (
+        (390, 844),
+        69121,
+        "88330ea3630f21661ff17b3b6d75e672d0318526bcd9f0e6f88b349d740e2da0",
+    ),
+    "full-phone-3x-shipyard-390x844.jpg": (
+        (390, 844),
+        69248,
+        "4daf1d93553edcad51667b0676ef103eeb4c29a23f7bf433ad93e1ed6d621382",
+    ),
+    "full-desktop-3x-1440x900.jpg": (
+        (1440, 900),
+        256700,
+        "890accb8553972fda3e9bee92b990257c2fcc8d2eccef74a5139455ce3912fe7",
+    ),
+}
 
 
 def sha256(path: Path) -> str:
@@ -369,6 +411,22 @@ def validate_determinism() -> None:
     assert "PASS" in result.stdout
 
 
+def validate_runtime_captures() -> None:
+    capture_root = PACKAGE / "runtime-captures"
+    captures = {path.name: path for path in capture_root.glob("*.jpg")}
+    assert set(captures) == set(RUNTIME_CAPTURES), "runtime capture inventory drift"
+    record = (PACKAGE / "RUNTIME-CAPTURES.md").read_text()
+    for name, (dimensions, byte_count, digest) in RUNTIME_CAPTURES.items():
+        path = captures[name]
+        assert path.stat().st_size == byte_count, f"runtime capture byte drift: {name}"
+        assert byte_count <= MAX_BYTES, f"runtime capture exceeds 300 KiB: {name}"
+        assert sha256(path) == digest, f"runtime capture hash drift: {name}"
+        with Image.open(path) as image:
+            assert image.format == "JPEG" and image.mode == "RGB"
+            assert image.size == dimensions, f"runtime capture dimension drift: {name}"
+        assert name in record and digest in record, f"runtime capture record drift: {name}"
+
+
 def main() -> None:
     validate_provenance()
     validate_masks_and_cutouts()
@@ -376,7 +434,11 @@ def main() -> None:
     validate_layout_resolution_flags_and_seams()
     validate_proofs_and_shipyard()
     validate_determinism()
-    print("PASS: #608 production art, alpha topology, shore placement, provenance, budgets, and deterministic proofs")
+    validate_runtime_captures()
+    print(
+        "PASS: #608 production art, alpha topology, shore placement, provenance, budgets, "
+        "deterministic proofs, and live runtime captures"
+    )
 
 
 if __name__ == "__main__":

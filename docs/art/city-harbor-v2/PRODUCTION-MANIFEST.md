@@ -3,8 +3,10 @@
 ## Status
 
 Issue #608 checkpoint 1 and the Direction B city refinement are operator-approved. This
-package is the complete runtime/capture candidate for operator checkpoint 2; it does not
-claim checkpoint-2 approval yet.
+package is the complete runtime/capture candidate for operator checkpoint 2. Live browser
+starting/midgame/full, phone, desktop, and maximum-zoom captures are retained in
+`runtime-captures/` and documented in `RUNTIME-CAPTURES.md`; checkpoint 2 does not claim
+approval until the operator explicitly accepts those results.
 
 The production batch keeps the exact existing `SCENE_SLOTS` rectangles and content IDs.
 It replaces the shipping city URLs with WebP art for the backdrop, all fourteen building
@@ -94,6 +96,9 @@ subject touched its source canvas.
 ## Review evidence
 
 Primary native files:
+
+- `RUNTIME-CAPTURES.md` and `runtime-captures/*.jpg` — live game progression and actual
+  browser layout/sampling at 1440×900 and 390×844, including the current 3× zoom;
 
 - `proofs/production-state-contact-1600x620.webp` — starting, midgame, full;
 - `proofs/state-starting-1024x704.webp`, `state-midgame-1024x704.webp`, and

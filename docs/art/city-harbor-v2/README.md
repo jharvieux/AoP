@@ -1,7 +1,8 @@
 # Gilded Harbor city art — production candidate
 
-**Status:** checkpoint 1 and Direction B refinement approved; full issue #608 runtime/capture
-candidate complete and awaiting operator checkpoint 2 approval.
+**Status:** checkpoint 1 and Direction B refinement approved; full issue #608 runtime
+candidate independently verified, with live browser starting/midgame/full, phone, desktop,
+and maximum-zoom captures complete. Awaiting operator checkpoint 2 approval.
 
 ![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
@@ -24,6 +25,12 @@ wrong; no code review is needed. See [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFES
 the complete contract, inventory, evidence, budgets, and known boundary.
 
 ## Production review files
+
+- [Live runtime capture record](RUNTIME-CAPTURES.md) — real game progression at starting,
+  midgame, and fully built states, plus phone/desktop and current 3× zoom evidence
+- [Live fully built desktop, 1440×900](runtime-captures/full-desktop-1440x900.jpg)
+- [Live fully built phone, 390×844](runtime-captures/full-phone-390x844.jpg)
+- [Live 3× shipyard detail, 390×844](runtime-captures/full-phone-3x-shipyard-390x844.jpg)
 
 - [Starting / midgame / full contact, 1600×620](proofs/production-state-contact-1600x620.webp)
 - [Five-faction contact, 1600×748](proofs/faction-contact-1600x748.webp)
