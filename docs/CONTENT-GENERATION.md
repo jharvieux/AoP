@@ -169,29 +169,25 @@ Say you want a ship sprite for the Pirates faction to replace the flat-color tri
    that won't composite over the map's flat tile colors. Keep 128×128 (a multiple of the
    32px tile grid) and re-export/trim any stray padding.
 
-3. **Place the file** using the suggested convention:
-   `apps/web/public/art/factions/pirates/ship.png`.
+3. **Place the file** using the current convention, including its gameplay class:
+   `apps/web/public/art/factions/pirates/ship_sloop_v2.webp`.
 
-4. **Wire it into content data** — add an art field so the client can look up the sprite by
-   faction id instead of hardcoding a path per component:
+4. **Register the cosmetic default in the web presentation layer** — keep art URLs out of
+   `@aop/content`, because content bytes participate in `ENGINE_VERSION` and replay
+   compatibility. Add the faction/class path to the pure registry instead:
 
    ```ts
-   // packages/content/src/factions.ts
-   export interface FactionDef {
-     id: FactionId
-     name: string
-     description: string
-     units: UnitDef[]
-     shipSpriteUrl?: string // '/art/factions/pirates/ship.png'
+   // apps/web/src/mapArtRegistry.ts
+   const DEFAULT_SHIP_URLS = {
+     'pirates:sloop': '/art/factions/pirates/ship_sloop_v2.webp',
    }
    ```
 
-5. **Integrate into rendering** — `MapCanvas.tsx` currently draws ships with
-   `entities.fill(own ? OWN_SHIP : ENEMY_SHIP)` on a `Graphics` object (~line 167). Swapping
-   in art means loading a `pixi.js` `Texture` from `FACTIONS[faction].shipSpriteUrl` and
-   drawing a `Sprite` instead of a filled shape for that entity — the flat-color fill stays
-   as the fallback for factions/units that don't have art yet, so the map degrades
-   gracefully while art is generated incrementally.
+5. **Use the shared resolver for rendering and preload** — `MapCanvas.tsx` calls
+   `resolveMapShipUrl()` for both paths, with theme overrides ahead of the registered
+   default. The procedural shape remains the decode/missing-file fallback. Do not create a
+   second URL table in the renderer or preload path.
 
-6. **Performance check**: preload faction textures once per match (when the match's
-   factions are known), not per-frame or per-tile-render.
+6. **Performance and privacy check**: build the finite preload set only from identities the
+   current player is allowed to know, wait for each winning URL to load or fail once, and
+   never derive a hidden faction/class URL merely to warm the cache.

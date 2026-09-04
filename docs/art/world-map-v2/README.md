@@ -1,6 +1,10 @@
 # World-map v2 token proof and runtime delivery
 
-**Status:** checkpoint 1 was approved with the recommended city refinement, and checkpoint 2 was approved at `63fc0fd29c9659f93901b36c1822bd7100547188`. This repair completes the Direction B ship family after the pre-PR audit found that only two of the twenty faction/class ship defaults used the new art. The audit still requires a fresh exact-head verification; this document does not claim that audit is resolved. Visibility and gameplay rules are unchanged.
+**Status:** checkpoint 1 was approved with the recommended city refinement, and checkpoint
+2 was approved at `63fc0fd29c9659f93901b36c1822bd7100547188`. The complete Direction B
+ship-family repair independently passed at `7c4c56d7a28baea8a7f176e51fadd15d70353648`.
+Fresh phone/tablet/desktop captures now show that repaired runtime and await renewed
+checkpoint-2 approval for their exact pixels. Visibility and gameplay rules are unchanged.
 
 ## Review the proof
 
@@ -20,7 +24,9 @@ The 32 px column deliberately places each token on the visible side of a fog fro
 - `tokens/` holds optimized 256 px RGBA candidates used by the sheets.
 - `asset-registry.json`, `PROMPTS.md`, and `MANIFEST.md` preserve provenance and constraints.
 - `tools/` contains deterministic preparation, composition, and fail-loud validation.
-- Checkpoint 1 approved the art direction. The later [runtime capture record](RUNTIME-CAPTURES.md) supported checkpoint-2 approval at `63fc0fd29c9659f93901b36c1822bd7100547188`.
+- Checkpoint 1 approved the art direction. The refreshed
+  [runtime capture record](RUNTIME-CAPTURES.md) is bound to the complete-fleet repair at
+  `7c4c56d7a28baea8a7f176e51fadd15d70353648` and awaits renewed checkpoint-2 approval.
 
 ## Runtime candidate
 
@@ -42,8 +48,10 @@ The six overview pages and per-identity `matte-full-footprint-512-*.webp` proofs
 
 ## Operator decision
 
-Checkpoint 2 was approved at `63fc0fd29c9659f93901b36c1822bd7100547188` using the
-[runtime capture record](RUNTIME-CAPTURES.md). This repair changes the ship-default family and
-its evidence, so a fresh verifier must still check the resulting exact head. Focused tests bind
-render and preload to the same registry winner, retain theme-override priority, preserve
-missing-asset fallback, and keep hidden identities out of preload requests.
+Checkpoint 2 was approved at `63fc0fd29c9659f93901b36c1822bd7100547188`. The later
+complete-fleet repair independently passed at
+`7c4c56d7a28baea8a7f176e51fadd15d70353648`, and the refreshed
+[runtime capture record](RUNTIME-CAPTURES.md) now pictures that repaired head. Those exact
+pixels still require renewed operator approval. Focused tests bind render and preload to the
+same registry winner, retain theme-override priority, preserve missing-asset fallback, and
+keep hidden identities out of preload requests.

@@ -66,6 +66,23 @@ FLEET_IDS = [
 REUSED_SHIP_IDS = {"ship:british:sloop", "ship:pirates:galleon"}
 GENERATED_SHIP_IDS = set(FLEET_IDS) - REUSED_SHIP_IDS
 IMAGE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
+EXPECTED_RUNTIME_CAPTURES = {
+    "desktop-1440x900.jpg": (
+        (1440, 900),
+        61817,
+        "0bb8ad71284cf9c832735d9b96ec562304bbaabf154cf3ee10ce0d96f201bc35",
+    ),
+    "tablet-768x1024.jpg": (
+        (768, 1024),
+        51000,
+        "891de6f6b71eb8fa8da0cce1b43712d7a0bb912fe14e789cb17a216c031f29e2",
+    ),
+    "phone-390x844.jpg": (
+        (390, 844),
+        30814,
+        "5e636d9e945bfa237f21a1f202c99400fe0dbbe9bbadf454d1c16d9986a9056f",
+    ),
+}
 UNRETAINED_ORIGINALS = {
     "encounter:natives": {
         "sha256": "3867d03e4393a76cce93dfc03fdf330a73b918558e2c0f7c225f4b848bac4006",
@@ -457,6 +474,24 @@ def check_referenced_image_census(
     return len(paths)
 
 
+def check_runtime_captures() -> None:
+    capture_root = ROOT / "runtime-captures"
+    captures = {path.name: path for path in capture_root.glob("*.jpg")}
+    if set(captures) != set(EXPECTED_RUNTIME_CAPTURES):
+        fail("runtime capture inventory drifted")
+    record = (ROOT / "RUNTIME-CAPTURES.md").read_text()
+    for name, (dimensions, byte_count, digest) in EXPECTED_RUNTIME_CAPTURES.items():
+        path = captures[name]
+        check_file_budget(path, PROOF_LIMIT, "runtime capture")
+        if path.stat().st_size != byte_count or sha256(path) != digest:
+            fail(f"{name}: runtime capture bytes/hash drifted")
+        with Image.open(path) as image:
+            if image.format != "JPEG" or image.mode != "RGB" or image.size != dimensions:
+                fail(f"{name}: runtime capture format/dimensions drifted")
+        if name not in record or digest not in record:
+            fail(f"{name}: runtime capture record drifted")
+
+
 def expect_negative_control(name: str, check) -> None:
     try:
         check()
@@ -686,6 +721,7 @@ def main() -> None:
     check_ship_stress_coverage(
         proof_by_path["proofs/matte-stress/ship-fleet-alpha-stress-96-all.webp"]
     )
+    check_runtime_captures()
 
     image_count = check_referenced_image_census(registry, additions, public_rows)
 

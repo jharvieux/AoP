@@ -111,4 +111,8 @@ The two additional generated PNGs initially arrived as 1,254×1,254 RGBA files a
 
 The runtime renderer preserves existing exploration and visibility gates, gives neutral cities a safe neutral default, keeps `city:own` and `city:enemy` theme overrides ahead of faction defaults, and waits for every eligible winning texture to settle as loaded or failed before revealing the interactive map. The wait is finite because failed decodes settle to the existing procedural fallback. It does not preload unseen detail art.
 
-The phone, tablet, and desktop in-game captures in `RUNTIME-CAPTURES.md` supported checkpoint-2 approval at `63fc0fd29c9659f93901b36c1822bd7100547188`. Because this repair changes the ship-default family after that checkpoint, the resulting exact head still requires fresh independent verification. This manifest does not claim the pre-PR audit is resolved.
+The complete-fleet runtime candidate independently passed at
+`7c4c56d7a28baea8a7f176e51fadd15d70353648`. The phone, tablet, and desktop
+captures in `RUNTIME-CAPTURES.md` now picture that repaired head and require renewed
+checkpoint-2 operator approval for those exact pixels. This manifest does not claim that
+approval or that the pre-PR audit is resolved.
