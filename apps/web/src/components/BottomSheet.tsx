@@ -1,5 +1,6 @@
-import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { tapFeedback } from '../audio/feedback'
+import { UiIcon } from '../uiIcons'
 
 /** Drag this far down (px) before a swipe counts as a dismiss. */
 const DISMISS_DISTANCE = 120
@@ -27,6 +28,15 @@ interface BottomSheetProps {
 export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const dragState = useRef<{ startY: number; startTime: number } | null>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    closeRef.current?.focus()
+    return () => previousFocus?.focus()
+  }, [])
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     // Never start the drag gesture from the close button: capturing the pointer
@@ -59,8 +69,14 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
     <div className="sheet-backdrop" onClick={onClose}>
       <div
         className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         style={dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+        }}
       >
         <div
           className="sheet__header sheet__drag-handle"
@@ -70,9 +86,15 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
           onPointerCancel={onPointerUp}
         >
           <span className="sheet__grip" aria-hidden="true" />
-          <h2>{title}</h2>
-          <button className="sheet__close" onClick={onClose} aria-label="Close">
-            ×
+          <h2 id={titleId}>{title}</h2>
+          <button
+            ref={closeRef}
+            type="button"
+            className="sheet__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <UiIcon name="close" />
           </button>
         </div>
         {children}

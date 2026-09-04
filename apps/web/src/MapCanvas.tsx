@@ -62,6 +62,7 @@ import { useTheme } from './theme/ThemeContext'
 import { createTextureLoader, type TextureLoader } from './textureLoader'
 import { usePixiApp } from './usePixiApp'
 import { cssToken } from './colorTokens'
+import { UiIcon } from './uiIcons'
 
 /**
  * Renders the seeded world map (#6) and captains (#8) with a pan/zoom/pinch +
@@ -92,13 +93,13 @@ export const TILE_COLOR = {
   deep: cssToken('--color-deep-water', '#1b4a6b'),
   shallows: cssToken('--map-shallows', '#2a6a8f'),
   land: cssToken('--map-land', '#4a7c3f'),
-  port: cssToken('--color-gold', '#c9a227'),
+  port: cssToken('--color-brass', '#c9a227'),
 } as const
 
 const FOG_COLOR = cssToken('--color-fog', '#0b1a26')
-const OWN_SHIP = cssToken('--color-success', '#3be2a1')
+const OWN_SHIP = cssToken('--map-own-unit', '#3be2a1')
 const ENEMY_SHIP = cssToken('--color-alert-border', '#e23b3b')
-const OWN_CITY = cssToken('--color-gold', '#c9a227')
+const OWN_CITY = cssToken('--color-brass', '#c9a227')
 const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')
 const HIGHLIGHT_COLOR = cssToken('--color-white', '#ffffff')
 const CURSOR_COLOR = cssToken('--map-cursor', '#ffe66d')
@@ -2005,7 +2006,7 @@ export function MapCanvas(props: MapCanvasProps) {
           disabled={!mapArtReady}
           onClick={() => controlsRef.current?.zoomBy(1.25)}
         >
-          +
+          <UiIcon name="zoomIn" />
         </button>
         <button
           type="button"
@@ -2014,7 +2015,7 @@ export function MapCanvas(props: MapCanvasProps) {
           disabled={!mapArtReady}
           onClick={() => controlsRef.current?.zoomBy(0.8)}
         >
-          −
+          <UiIcon name="zoomOut" />
         </button>
         <button
           type="button"
@@ -2024,7 +2025,7 @@ export function MapCanvas(props: MapCanvasProps) {
           title="Center on fleet"
           onClick={() => controlsRef.current?.centerOnFleet()}
         >
-          ⌖
+          <UiIcon name="recenterFleet" />
         </button>
         <button
           type="button"
@@ -2034,7 +2035,7 @@ export function MapCanvas(props: MapCanvasProps) {
           title="Fit whole map"
           onClick={() => controlsRef.current?.fitToMap()}
         >
-          ⛶
+          <UiIcon name="fit" />
         </button>
       </div>
 

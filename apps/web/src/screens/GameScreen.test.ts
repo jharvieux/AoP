@@ -12,6 +12,7 @@ vi.mock('../MapCanvas', () => ({
 vi.mock('../theme/ThemeContext', () => ({
   useTheme: () => ({
     factionName: (_id: string, fallback: string) => fallback,
+    spriteUrl: () => undefined,
     unitName: (_id: string, fallback: string) => fallback,
   }),
 }))
@@ -247,9 +248,58 @@ describe('GameScreen', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Age of Plunder' })).not.toBeNull()
+    expect(document.querySelector('[data-gameplay-chrome="screen"]')).not.toBeNull()
+    expect(document.querySelector('[data-gameplay-chrome="hud"]')).not.toBeNull()
+    expect(document.querySelector('[data-gameplay-chrome="command-dock"]')).not.toBeNull()
+    expect(screen.getByRole('group', { name: 'Resources' })).not.toBeNull()
     expect(screen.getByText(/Round 1.*Anne.*Pirates/)).not.toBeNull()
     expect(screen.getByRole('status').textContent).toMatch(/Autosave failing/)
-    fireEvent.click(screen.getByRole('button', { name: 'End Turn' }))
+    const endTurn = screen.getByRole('button', { name: 'End Turn' })
+    expect(endTurn.querySelector('svg')).not.toBeNull()
+    fireEvent.click(endTurn)
     expect(onAction).toHaveBeenCalledWith({ type: 'endTurn', playerId: 'player-0' })
+  })
+
+  it('marks only the current city in a multi-city roster', () => {
+    const config: GameConfig = {
+      seed: 7,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      players: [
+        { id: 'player-0', name: 'Anne', faction: 'pirates', isAI: false },
+        { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+      ],
+    }
+    const game = createGame(config)
+    const firstCity = game.cities.find((city) => city.ownerId === 'player-0')!
+    const secondCity = {
+      ...firstCity,
+      id: 'player-0-city-2',
+      name: 'Second Harbor',
+    }
+    const multiCityGame = { ...game, cities: [...game.cities, secondCity] }
+
+    render(
+      createElement(GameScreen, {
+        game: multiCityGame,
+        battleReport: null,
+        onDismissBattleReport: vi.fn(),
+        itemFound: null,
+        onAction: vi.fn(),
+        onSaveSlot: async () => undefined,
+        onLoadSlot: async () => undefined,
+        onWatchSlot: vi.fn(),
+        autosaveFailing: false,
+      }),
+    )
+
+    const firstButton = screen.getByRole('button', { name: new RegExp(firstCity.name) })
+    const secondButton = screen.getByRole('button', { name: /Second Harbor/ })
+    expect(firstButton.getAttribute('aria-current')).toBe('true')
+    expect(secondButton.getAttribute('aria-current')).toBeNull()
+
+    fireEvent.click(secondButton)
+    expect(firstButton.getAttribute('aria-current')).toBeNull()
+    expect(secondButton.getAttribute('aria-current')).toBe('true')
   })
 })

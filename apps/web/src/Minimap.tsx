@@ -34,9 +34,9 @@ import { TILE_COLOR } from './MapCanvas'
 
 const MINIMAP_W = 150
 const FOG = cssToken('--color-fog', '#0b1a26')
-const OWN_CITY = cssToken('--color-gold', '#c9a227')
+const OWN_CITY = cssToken('--color-brass', '#c9a227')
 const ENEMY_CITY = cssToken('--map-enemy-city', '#9aa0a6')
-const OWN_SHIP = cssToken('--color-success', '#3be2a1')
+const OWN_SHIP = cssToken('--map-own-unit', '#3be2a1')
 const ENEMY_SHIP = cssToken('--color-alert-border', '#e23b3b')
 
 interface MinimapProps {

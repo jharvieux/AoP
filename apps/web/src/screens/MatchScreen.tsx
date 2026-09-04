@@ -62,8 +62,8 @@ import {
   isViewerTurn,
   turnCountdown,
 } from '../multiplayer/turnTimer'
-import { ResourceHud } from '../ResourceHud'
-import { UI_ICON } from '../uiIcons'
+import { GameplayHud } from '../ResourceHud'
+import { UiIcon } from '../uiIcons'
 
 /** Slow safety-net poll behind the Realtime turn pokes (#260): catches a match
  * whose channel never connects (e.g. Realtime unavailable) at a cadence too
@@ -929,36 +929,40 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     view.players.find((p) => p.id === `seat-${seat}`)?.name ?? `Seat ${seat}`
 
   return (
-    <div className="game-screen-container">
-      <header className="hud">
-        <h1>Age of Plunder</h1>
-        <span className="turn-info">
-          Round {view.round}
-          {view.rules.setup.roundLimit !== undefined && ` / ${view.rules.setup.roundLimit}`} —{' '}
-          {view.status === 'finished'
-            ? view.winnerId
-              ? `${view.players.find((p) => p.id === view.winnerId)?.name ?? view.winnerId} wins!`
-              : view.endedByRoundLimit
-                ? 'Draw — round limit reached'
-                : 'Match finished'
-            : myTurn
-              ? 'Your move'
-              : `${currentPlayer?.name ?? '…'} is playing`}
-          {view.status === 'active' && countdown && (
-            <span className={`turn-countdown${countdown.urgent ? ' turn-countdown--urgent' : ''}`}>
-              {' '}
-              ·{' '}
-              {countdown.expired
-                ? 'auto-skip imminent'
-                : formatCountdown(countdown.remainingSeconds)}
-            </span>
-          )}
-        </span>
-        {viewer?.resources && <ResourceHud resources={viewer.resources} />}
-      </header>
+    <div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen">
+      <GameplayHud
+        status={
+          <>
+            Round {view.round}
+            {view.rules.setup.roundLimit !== undefined &&
+              ` / ${view.rules.setup.roundLimit}`} —{' '}
+            {view.status === 'finished'
+              ? view.winnerId
+                ? `${view.players.find((p) => p.id === view.winnerId)?.name ?? view.winnerId} wins!`
+                : view.endedByRoundLimit
+                  ? 'Draw — round limit reached'
+                  : 'Match finished'
+              : myTurn
+                ? 'Your move'
+                : `${currentPlayer?.name ?? '…'} is playing`}
+            {view.status === 'active' && countdown && (
+              <span
+                className={`turn-countdown${countdown.urgent ? ' turn-countdown--urgent' : ''}`}
+              >
+                {' '}
+                ·{' '}
+                {countdown.expired
+                  ? 'auto-skip imminent'
+                  : formatCountdown(countdown.remainingSeconds)}
+              </span>
+            )}
+          </>
+        }
+        resources={viewer?.resources}
+      />
 
       {actionError && (
-        <div className="autosave-failing-banner" role="status">
+        <div className="autosave-failing-banner gameplay-alert" role="status">
           {actionError}
         </div>
       )}
@@ -1031,7 +1035,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           ))}
       </div>
 
-      <div className="bottom-action-bar">
+      <div className="bottom-action-bar gameplay-command-dock" data-gameplay-chrome="command-dock">
         {/* Selected-captain/party readout (#498's ashore note + leader badge,
             mirroring GameScreen) + queued-march cancel (#482). */}
         {(selectedCaptain || selectedParty) && (
@@ -1101,9 +1105,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             }}
             disabled={!myTurn || submitting || view.status !== 'active'}
           >
-            {UI_ICON.endTurn && (
-              <img className="button-icon" src={UI_ICON.endTurn} alt="" aria-hidden />
-            )}
+            <UiIcon name="endTurn" />
             {myTurn ? 'End Turn' : 'Waiting…'}
           </button>
           {view.status === 'active' &&
@@ -1224,9 +1226,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
               No odds preview in multiplayer — their manifest is exactly what the fog hides.
             </p>
             <button className="primary" onClick={confirmAttack} disabled={submitting}>
-              {UI_ICON.attack && (
-                <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-              )}
+              <UiIcon name="attack" />
               Attack
             </button>
           </section>
@@ -1263,7 +1263,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
                         setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing - 1 }))
                       }
                     >
-                      −
+                      <UiIcon name="decrease" />
                     </button>
                     <button
                       className="secondary"
@@ -1273,7 +1273,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
                         setDisembarkCounts((c) => ({ ...c, [stack.unitId]: landing + 1 }))
                       }
                     >
-                      +
+                      <UiIcon name="increase" />
                     </button>
                   </div>
                 </div>
@@ -1319,9 +1319,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             </p>
             <div className="button-group">
               <button className="primary" onClick={confirmPartyAttack} disabled={submitting}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 Attack
               </button>
             </div>
@@ -1341,9 +1339,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             </p>
             <div className="button-group">
               <button className="primary" onClick={confirmPartyAssault} disabled={submitting}>
-                {UI_ICON.attack && (
-                  <img className="button-icon" src={UI_ICON.attack} alt="" aria-hidden />
-                )}
+                <UiIcon name="attack" />
                 Assault
               </button>
             </div>
