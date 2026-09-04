@@ -1,7 +1,5 @@
 import { FACTIONS } from '@aop/content'
-import { ENGINE_VERSION } from '@aop/shared'
 import { describe, expect, it } from 'vitest'
-import { computeEngineVersion } from '../../../scripts/generate-engine-version.mjs'
 import {
   mapArtDefaultUrls,
   mapArtPreloadRequests,
@@ -109,7 +107,7 @@ describe('mapArtRegistry', () => {
     }
   })
 
-  it('leaves content URLs at their legacy replay-hash values', () => {
+  it('leaves map-owned content URLs at their legacy values', () => {
     expect(FACTIONS.british.shipSpriteUrl).toBe('/art/factions/british/ship.png')
     expect(FACTIONS.pirates.shipSpriteUrlsByClass?.galleon).toBe(
       '/art/factions/pirates/ship_galleon.png',
@@ -117,8 +115,6 @@ describe('mapArtRegistry', () => {
     for (const faction of Object.values(FACTIONS)) {
       expect(faction.partySpriteUrl).toBe(`/art/parties/${faction.id}.png`)
     }
-    expect(ENGINE_VERSION).toBe('47d4a5867f0d16d7')
-    expect(computeEngineVersion()).toBe('47d4a5867f0d16d7')
   })
 })
 

@@ -1,0 +1,371 @@
+{
+  "schema": 1,
+  "scene": {
+    "aspectWidth": 16,
+    "aspectHeight": 11,
+    "maxBaseHeightVh": 62
+  },
+  "zoomStops": [1, 1.5, 2, 3],
+  "slots": {
+    "townhall": {
+      "label": "Town hall",
+      "role": "civic anchor",
+      "left": 37,
+      "top": 6,
+      "width": 26,
+      "height": 36,
+      "depth": 0
+    },
+    "tavern": {
+      "label": "Tavern",
+      "role": "hospitality",
+      "left": 4,
+      "top": 24,
+      "width": 14,
+      "height": 20,
+      "depth": 2
+    },
+    "tradehouse": {
+      "label": "Trade house",
+      "role": "economy",
+      "left": 19,
+      "top": 28,
+      "width": 14,
+      "height": 18,
+      "depth": 2
+    },
+    "sawmill": {
+      "label": "Sawmill",
+      "role": "wood economy",
+      "left": 2,
+      "top": 48,
+      "width": 13,
+      "height": 16,
+      "depth": 2
+    },
+    "ironmine": {
+      "label": "Iron mine",
+      "role": "ore economy",
+      "left": 16,
+      "top": 50,
+      "width": 13,
+      "height": 16,
+      "depth": 2
+    },
+    "distillery": {
+      "label": "Distillery",
+      "role": "rum economy",
+      "left": 30,
+      "top": 50,
+      "width": 13,
+      "height": 16,
+      "depth": 2
+    },
+    "barracks": {
+      "label": "Barracks",
+      "role": "recruitment",
+      "left": 47,
+      "top": 46,
+      "width": 13,
+      "height": 17,
+      "depth": 2
+    },
+    "garrisonHall": {
+      "label": "Garrison hall",
+      "role": "recruitment",
+      "left": 62,
+      "top": 46,
+      "width": 13,
+      "height": 18,
+      "depth": 2
+    },
+    "fortressArmory": {
+      "label": "Fortress armory",
+      "role": "recruitment",
+      "left": 64,
+      "top": 24,
+      "width": 13,
+      "height": 19,
+      "depth": 2
+    },
+    "grandArsenal": {
+      "label": "Grand arsenal",
+      "role": "recruitment",
+      "left": 80,
+      "top": 20,
+      "width": 15,
+      "height": 22,
+      "depth": 2
+    },
+    "palisade": {
+      "label": "Palisade",
+      "role": "fortification",
+      "left": 4,
+      "top": 66,
+      "width": 17,
+      "height": 12,
+      "depth": 3
+    },
+    "stoneWall": {
+      "label": "Stone wall",
+      "role": "fortification",
+      "left": 24,
+      "top": 66,
+      "width": 17,
+      "height": 12,
+      "depth": 3
+    },
+    "citadel": {
+      "label": "Citadel",
+      "role": "fortification",
+      "left": 44,
+      "top": 62,
+      "width": 16,
+      "height": 16,
+      "depth": 3
+    },
+    "shipyard": {
+      "label": "Shipyard",
+      "role": "shoreline",
+      "left": 80,
+      "top": 75,
+      "width": 19,
+      "height": 24,
+      "depth": 1
+    }
+  },
+  "shadow": {
+    "leftPercent": 12,
+    "bottomPercent": -7,
+    "widthPercent": 96,
+    "heightPercent": 25,
+    "blurSceneWidthPercent": 0.6,
+    "opacity": 0.32,
+    "color": [18, 22, 17]
+  },
+  "flag": {
+    "slotId": "townhall",
+    "poleTopPercent": -4,
+    "poleLeftPercent": 50.5,
+    "poleWidthPercent": 22,
+    "poleHeightPercent": 16,
+    "mastWidthPercent": 5,
+    "clothLeftPercent": 5,
+    "clothWidthPercent": 60,
+    "mountWidthPercent": 18,
+    "mountHeightPercent": 14
+  },
+  "tower": {
+    "slotId": "citadel",
+    "widthPercent": 38,
+    "rightPercent": -6,
+    "bottomPercent": 0
+  },
+  "backdrop": {
+    "authoredWidth": 6144,
+    "authoredHeight": 4224,
+    "columns": 6,
+    "rows": 4,
+    "detailSource": {
+      "inputSize": 416,
+      "outputSize": 1254,
+      "scale": 3,
+      "xPositions": [0, 326, 653, 979, 1306, 1632],
+      "yPositions": [0, 331, 661, 992]
+    },
+    "tiles": [
+      {
+        "id": "c1r1",
+        "src": "/art/city/backdrop-c1r1.webp",
+        "left": 0,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c2r1",
+        "src": "/art/city/backdrop-c2r1.webp",
+        "left": 16.6666667,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c3r1",
+        "src": "/art/city/backdrop-c3r1.webp",
+        "left": 33.3333333,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c4r1",
+        "src": "/art/city/backdrop-c4r1.webp",
+        "left": 50,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c5r1",
+        "src": "/art/city/backdrop-c5r1.webp",
+        "left": 66.6666667,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c6r1",
+        "src": "/art/city/backdrop-c6r1.webp",
+        "left": 83.3333333,
+        "top": 0,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c1r2",
+        "src": "/art/city/backdrop-c1r2.webp",
+        "left": 0,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c2r2",
+        "src": "/art/city/backdrop-c2r2.webp",
+        "left": 16.6666667,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c3r2",
+        "src": "/art/city/backdrop-c3r2.webp",
+        "left": 33.3333333,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c4r2",
+        "src": "/art/city/backdrop-c4r2.webp",
+        "left": 50,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c5r2",
+        "src": "/art/city/backdrop-c5r2.webp",
+        "left": 66.6666667,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c6r2",
+        "src": "/art/city/backdrop-c6r2.webp",
+        "left": 83.3333333,
+        "top": 25,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c1r3",
+        "src": "/art/city/backdrop-c1r3.webp",
+        "left": 0,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c2r3",
+        "src": "/art/city/backdrop-c2r3.webp",
+        "left": 16.6666667,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c3r3",
+        "src": "/art/city/backdrop-c3r3.webp",
+        "left": 33.3333333,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c4r3",
+        "src": "/art/city/backdrop-c4r3.webp",
+        "left": 50,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c5r3",
+        "src": "/art/city/backdrop-c5r3.webp",
+        "left": 66.6666667,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c6r3",
+        "src": "/art/city/backdrop-c6r3.webp",
+        "left": 83.3333333,
+        "top": 50,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c1r4",
+        "src": "/art/city/backdrop-c1r4.webp",
+        "left": 0,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c2r4",
+        "src": "/art/city/backdrop-c2r4.webp",
+        "left": 16.6666667,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c3r4",
+        "src": "/art/city/backdrop-c3r4.webp",
+        "left": 33.3333333,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c4r4",
+        "src": "/art/city/backdrop-c4r4.webp",
+        "left": 50,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c5r4",
+        "src": "/art/city/backdrop-c5r4.webp",
+        "left": 66.6666667,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      },
+      {
+        "id": "c6r4",
+        "src": "/art/city/backdrop-c6r4.webp",
+        "left": 83.3333333,
+        "top": 75,
+        "width": 16.6666667,
+        "height": 25
+      }
+    ]
+  }
+}

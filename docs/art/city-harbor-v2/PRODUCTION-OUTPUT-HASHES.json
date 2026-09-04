@@ -1,0 +1,761 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "files": [
+    {
+      "path": "apps/web/public/art/city/backdrop-c1r1.webp",
+      "sha256": "89cca01aa439d05a68f3312c4a115c559aae5e99a7b4e707a4499d276eec4856",
+      "bytes": 60378
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c1r2.webp",
+      "sha256": "3d3cbf817db1a66328d8c6cb209dc495443e6c79b68f30b43319af18a8110778",
+      "bytes": 57430
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c1r3.webp",
+      "sha256": "157d18d151d64685af2d40c0364a1b7021c27f69899f96b6ee2fd45135158ea1",
+      "bytes": 56932
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c1r4.webp",
+      "sha256": "11bbca0a8ff34edbb219146f1fda81712806c72eba8a5c0c4747083d084cff4c",
+      "bytes": 60878
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c2r1.webp",
+      "sha256": "5484034876fe6d7608ff44413f764a03043cfe66495511a23396b40a14cb1935",
+      "bytes": 50390
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c2r2.webp",
+      "sha256": "c1aa408938c98899718d78733c438bdb15e6da928e20ed51846dc658d9b8208f",
+      "bytes": 69218
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c2r3.webp",
+      "sha256": "e17d554f3e287acf4901ec761a1e3c36bbb4dd28d0385c50e782cdb2971da8f4",
+      "bytes": 58516
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c2r4.webp",
+      "sha256": "3b0943dd8ed95f8a24699472893329df7e44138a6d22d0830e4957ba48ec00eb",
+      "bytes": 58772
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c3r1.webp",
+      "sha256": "7072891f5c23a9f492a1ee6df80d06d8ff5e3c0762a5a02357099d05c401e246",
+      "bytes": 50006
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c3r2.webp",
+      "sha256": "bc26dd36c0100b4fc57e9d6181061bb967d0c8181eb3435e25fd4021959236b3",
+      "bytes": 63378
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c3r3.webp",
+      "sha256": "f5c9b43dc82df33614ddd62d6bbffed0fded854252f33d418ff88220a45c02a4",
+      "bytes": 61050
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c3r4.webp",
+      "sha256": "210466e409d5e205da328c29c98e355771d56ccf9f5a73940224f360b435ef5b",
+      "bytes": 32558
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c4r1.webp",
+      "sha256": "06bb2c5e08919855a2fe1359bc01f90486686cadcdd6f2972b193ed762ad1721",
+      "bytes": 55958
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c4r2.webp",
+      "sha256": "606b3c1fec9b5afc752dcb38ce867f118bca51f80f77d7b2b7e096b89a737ff5",
+      "bytes": 56610
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c4r3.webp",
+      "sha256": "efe8cf9ee224bc4ea9f489840d6dfa64861dfea5a6ebe833903d5735a76e5db1",
+      "bytes": 47630
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c4r4.webp",
+      "sha256": "a7cd75a1e11a1388f0fc7a94c853c5bdcaafa7005a44a55612caf776092695f8",
+      "bytes": 18996
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c5r1.webp",
+      "sha256": "7c48f1897f524bf5a209ca3e766c9f5de81e68e10e0e40c8661728725277f6f0",
+      "bytes": 57268
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c5r2.webp",
+      "sha256": "29d039ee1b7574f782a406fb0ea92d51459620ed9af35dccb9ddfd637cdd544b",
+      "bytes": 59454
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c5r3.webp",
+      "sha256": "8eefe4c370e91ec231d5d870d5741b3673d207dc26463110e16e56e61c3b7cdf",
+      "bytes": 35224
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c5r4.webp",
+      "sha256": "6ef03d17acf57601d344390d25d1ddb29f1103783e0bb04a20dc1e01674ffe62",
+      "bytes": 15760
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c6r1.webp",
+      "sha256": "b72948b51473f41fd0794242688b37983fd09161b700d6ac0dcb773024a58f57",
+      "bytes": 38326
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c6r2.webp",
+      "sha256": "57245beb51994903acbbd021678ff374dbf395d81a8ce610814f33a44bb28817",
+      "bytes": 32496
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c6r3.webp",
+      "sha256": "e4d5b6067f18b027f2d201a60b6460b0fe8495d1235004482e5bcd5ec7491f06",
+      "bytes": 44764
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop-c6r4.webp",
+      "sha256": "01c9e6141b2511ea3183633b0bd179f2fb1baf348599bbaf90da4e755f725e42",
+      "bytes": 19224
+    },
+    {
+      "path": "apps/web/public/art/city/backdrop.webp",
+      "sha256": "6f4449bd1d1926f0a8cb315ecd1400a94c69f1ff5d292ac9e6b1f0963d9d20a3",
+      "bytes": 195292
+    },
+    {
+      "path": "apps/web/public/art/city/barracks.webp",
+      "sha256": "27081eb9236dfe5484483898b942a8ad40eb9b345d99d100c07ef5eee06c2639",
+      "bytes": 115258
+    },
+    {
+      "path": "apps/web/public/art/city/citadel-tower.webp",
+      "sha256": "dc4a75efc36737df82c49b7aba1e355c8d8810dc2b66d9a55bdb05f6cc42d595",
+      "bytes": 70666
+    },
+    {
+      "path": "apps/web/public/art/city/citadel.webp",
+      "sha256": "d11926a278876055cad9aadb5e28efb7415b4ea8b6f6c0e46ddf09ae3dd903a4",
+      "bytes": 91260
+    },
+    {
+      "path": "apps/web/public/art/city/distillery.webp",
+      "sha256": "a8bd03ffde417ab17271ac28336cdbf3fec41ff959005eb2bb913a6517bf9028",
+      "bytes": 99024
+    },
+    {
+      "path": "apps/web/public/art/city/fortressArmory.webp",
+      "sha256": "592a766da33606837316753410d7a072c23e9716174b7fa3709dd663b1e1e225",
+      "bytes": 185498
+    },
+    {
+      "path": "apps/web/public/art/city/garrisonHall.webp",
+      "sha256": "360c51145cbf9fb58a50bbc9cea50966d255e850e98d24476ccb3f296a8fce91",
+      "bytes": 161642
+    },
+    {
+      "path": "apps/web/public/art/city/grandArsenal.webp",
+      "sha256": "b1484ae8a1a57a78c02aac4c5d7006c65743eb4565e87a1fb2935e7d97b832b8",
+      "bytes": 197404
+    },
+    {
+      "path": "apps/web/public/art/city/ironmine.webp",
+      "sha256": "9b30a80ac79222f4292d4e284e56e973b2821faaaec2a5443313cf0db05f6c5a",
+      "bytes": 90286
+    },
+    {
+      "path": "apps/web/public/art/city/palisade.webp",
+      "sha256": "cf4274b7106e9aac827cbf45b3d0c23cd69ce6e463b28b3a63ed4b5e1e2747d3",
+      "bytes": 75388
+    },
+    {
+      "path": "apps/web/public/art/city/sawmill.webp",
+      "sha256": "64bc14d5ab303555bc8a0d7afa8ed1db8a7ea8a8e9b10856175e7401380d3a50",
+      "bytes": 104330
+    },
+    {
+      "path": "apps/web/public/art/city/shipyard.webp",
+      "sha256": "c29693b722862b383923a493b6435a1c54e45205eb8135fdd0d4c17fe4505847",
+      "bytes": 141246
+    },
+    {
+      "path": "apps/web/public/art/city/stoneWall.webp",
+      "sha256": "b7b5b048109d8c7d0b8fd38eadc08b1ef03a163464d8863340c8111d44864540",
+      "bytes": 73984
+    },
+    {
+      "path": "apps/web/public/art/city/tavern.webp",
+      "sha256": "f476687761a68ee13811bd56d893d391a8e36ec49659ba5f2952b8c52c06085e",
+      "bytes": 119156
+    },
+    {
+      "path": "apps/web/public/art/city/townhall.webp",
+      "sha256": "9228c6a739e80d89685cb71c3a5bd0f860007a9893477910300f66d53428156f",
+      "bytes": 203636
+    },
+    {
+      "path": "apps/web/public/art/city/tradehouse.webp",
+      "sha256": "7da3ac5b485df534e356d85f924eed67f75a7ebc12e0adcd098f7034d12fdbca",
+      "bytes": 122652
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/barracks.webp",
+      "sha256": "b3c2022c2dd0c9e7740b59406bb220abf7c39d7ac83e43e1df28442f6345b6cf",
+      "bytes": 197368
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/citadel-tower.webp",
+      "sha256": "b58465ee9c4a2835a66e9b3323a92f6a9a3735e81f1932a18abd889a97c2fbc4",
+      "bytes": 115576
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/citadel.webp",
+      "sha256": "1606e33964412f7dca4a7402322d5b6873450d4e54789c8b484203457a47671c",
+      "bytes": 121040
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/distillery.webp",
+      "sha256": "f0bc1cff8d544b660cdd61269d051439d3940cc6d0a1596e27abb95cc65e30e1",
+      "bytes": 172820
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/fortressArmory.webp",
+      "sha256": "df2febfb2826774db8267c369cb46165b5bc015ac4bcedebf539964eecee7ac2",
+      "bytes": 249638
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/garrisonHall.webp",
+      "sha256": "24471a27d96dcf680974f041aeef4aba66e269619e0934b0a30fad082ea510ed",
+      "bytes": 216766
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/grandArsenal.webp",
+      "sha256": "1bb956472d338310c6640177a9a6ce38d5d474cbfae34695b3a8f23eb4ff97ea",
+      "bytes": 264394
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/ironmine.webp",
+      "sha256": "c09695a9204987c6533f74cfabbcb8687089778d596ab211e52f7b40f9c2163a",
+      "bytes": 148754
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/palisade.webp",
+      "sha256": "1291243ef62516ec9cc2036fcf5c83b46fa0dc61b894aca26d25a9b05e93e6d3",
+      "bytes": 95956
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/sawmill.webp",
+      "sha256": "4fc7c61d1ab664e87ea77c40266fd3cf7e24246682dd4c71123f0aece97d72bf",
+      "bytes": 181088
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/shipyard.webp",
+      "sha256": "abec10162bc83f8cb59fb89ecbf4e51ac9febdf87a3c39adcda13f99ef231bf7",
+      "bytes": 231678
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/stonewall.webp",
+      "sha256": "26a17779c9ebe6d22bd2d76f2841d89384465f780921e85f2b2c29f3146bc986",
+      "bytes": 129778
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/tavern.webp",
+      "sha256": "4419b0a3dac99bbcdc8d6091c0a20e2931bf6595948f3c7a7a0fb7594db00721",
+      "bytes": 204934
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/townhall.webp",
+      "sha256": "486c6c1c9d3aa00815773d2b30ea0eb646c2ff62a7aab031e8073ef7d3d3fc10",
+      "bytes": 264494
+    },
+    {
+      "path": "docs/art/city-harbor-v2/cutouts/tradehouse.webp",
+      "sha256": "f1e4b0b7eaa05ba77eab1adf26e13fc782ad30f89e87e324544847e212ef82e8",
+      "bytes": 201154
+    },
+    {
+      "path": "docs/art/city-harbor-v2/layers/contact-shadows.webp",
+      "sha256": "78fe4997b6603211bdb59ba8f45c741dfd59b3b66c6dae2ee05ca48f60842d41",
+      "bytes": 40434
+    },
+    {
+      "path": "docs/art/city-harbor-v2/layers/empty-backdrop-2048x1408.webp",
+      "sha256": "4665d56cf7d9f29655d011d62f548f6d6d07c1e65817e5065a945101c49ff9da",
+      "bytes": 260566
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/backdrop-detail-input-contact-1600x1280.webp",
+      "sha256": "81a24d556f7bf989dc44091994bfc2c51acae301f0b18f8b5e7bb39516852f56",
+      "bytes": 260518
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/backdrop-detail-output-contact-1600x1080.webp",
+      "sha256": "1e73b2caf688da8ad9d1ee70f8ce2d86c20bba14034db9c8ce41333057c6f285",
+      "bytes": 291700
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/backdrop-seam-census-1600x920.webp",
+      "sha256": "fa997a7a7c713fecb1c96cb5763159c3e5131787fc4b95ab9cdbf3ced2438146",
+      "bytes": 98782
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/baseline-current-states-1600x620.webp",
+      "sha256": "da172cd0e75e50bf06ec37988ed497a97ba779c27f8c0b2de0ceca01d8b6d245",
+      "bytes": 69578
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/checkpoint-contact-sheet-1600x1120.webp",
+      "sha256": "ccd1d2b3861c411875e64c21938c8d288f7b4b6dfd4475342330685424c90433",
+      "bytes": 191242
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/desktop-1440x900.webp",
+      "sha256": "46d77093edac37eb207294e1749b966ccf5ad53bc8fd34652dbb99622f20fcb6",
+      "bytes": 244996
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/empty-runtime-1024x704.webp",
+      "sha256": "39571c4ac363defba98e08ba40168111c200f5cd0ac2ce4b5d94527123d2a372",
+      "bytes": 230164
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/faction-contact-1600x748.webp",
+      "sha256": "ab64f36d0aae7bbda90c04a59482dd1f59d692c71495788e69fcd49ffd5d7df9",
+      "bytes": 215894
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/factions/british-full-1024x704.webp",
+      "sha256": "f1eec33bcf60e0dad486cd4ab626102710c61ff797005a6a4e39cc628679f6be",
+      "bytes": 211264
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/factions/dutch-full-1024x704.webp",
+      "sha256": "a5824e0ad906b4758f52754cb3d3915a62c34f20f0ea55c8b4509febcd34b218",
+      "bytes": 210744
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/factions/french-full-1024x704.webp",
+      "sha256": "f8070389aa564eba5e0414ed6c987e18584cace013b3a7e0e0d888bbe49eb359",
+      "bytes": 210816
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/factions/pirates-full-1024x704.webp",
+      "sha256": "a1f93913e339643c8951f41565f5ebe488d7a6aefd9a256ecf8bc4016dc5b14d",
+      "bytes": 211044
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/factions/spanish-full-1024x704.webp",
+      "sha256": "f864cd2eb09aa7986df01354770e1ba8c404ad25439f769d91b4a2a465cf4051",
+      "bytes": 210932
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/layer-separation-1600x1000.webp",
+      "sha256": "2cdb9846b914d0b3bc8a06e5b66e0374abfa8e61cd1f162df657a04145c5ca43",
+      "bytes": 187120
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/max-zoom-1024x704.webp",
+      "sha256": "b5bcda09f443e4fecc17c4f8658329ffe037b4af874853c686047afcba806fe5",
+      "bytes": 82636
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/phone-375x812.webp",
+      "sha256": "446a538a7b4188454ea68fac3e55dfbb5ef5108f82a921eabde3dc0c4f890eaa",
+      "bytes": 53308
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/phone-scene-375x258.webp",
+      "sha256": "f86960413dbd719bba56b0e77e8f9bbb623eb8b6bc41d1d9d0963061fe79551c",
+      "bytes": 40748
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/production-layer-contact-1800x1180.webp",
+      "sha256": "b56189c3f526b8db60928f77f619bb7ae7a6ffa1f959e611d6e0a4d04f7c731f",
+      "bytes": 213388
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/production-state-contact-1600x620.webp",
+      "sha256": "6dd456e0dcb2a52b5bc4d78752710860c0188923ae58ce9a3b8a76a93feddad5",
+      "bytes": 171754
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/scene-runtime-1024x704.webp",
+      "sha256": "640fc217ab01e04365445d3d20a1ca3d297ec67f67cbde4aa95325d367725d10",
+      "bytes": 259266
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/state-fully-constructed-1024x704.webp",
+      "sha256": "51aafdd91e75fdafc632ff7b4d552463ca1dd814e8a68c4d97c5fe93496d49d2",
+      "bytes": 240490
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/state-midgame-1024x704.webp",
+      "sha256": "c187b764ef851d508d75cb75da93e32ded18808bcba62c09024493b2d6c311d5",
+      "bytes": 238996
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/state-starting-1024x704.webp",
+      "sha256": "bf7ff83dd4e9e8ad12715f3b8cd36072b7ddc2a483d9147eba169c1a697a8abe",
+      "bytes": 230954
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/barracks-magenta-1024.webp",
+      "sha256": "7ff92e2f3c75c8706f907dbde669ffdc9ad3b60e4d552320981852d8f46f9d68",
+      "bytes": 115864
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/citadel-magenta-1024.webp",
+      "sha256": "0b8068c31464d943dfdced89e947b3ec4e65071d1b5a4fc8d2b011c0491f8c29",
+      "bytes": 77908
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/citadel-tower-magenta-1024.webp",
+      "sha256": "ca42728053a7d1020498c1ed4c4e1ae3f918505ea5599ec3a28071dbec78e122",
+      "bytes": 95886
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/distillery-magenta-1024.webp",
+      "sha256": "851354d98452591e6b0b04d5d25474e39d41616b1c6f975aa997c1af70b25350",
+      "bytes": 104452
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/fortressArmory-magenta-1024.webp",
+      "sha256": "3beb13e630b9169ec1477325c453ca54c98b911f8fa8d75b7b4616767a04f07a",
+      "bytes": 164964
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/garrisonHall-magenta-1024.webp",
+      "sha256": "51166c918ad60fc34b84af362edb2be0817d4e4cc15bece3dac68fc9f045f439",
+      "bytes": 136836
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/grandArsenal-magenta-1024.webp",
+      "sha256": "fd9b51408232bef31cabda1122a58bb3c171f9d105f7e43fdd786e7d629e7b03",
+      "bytes": 167044
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/ironmine-magenta-1024.webp",
+      "sha256": "2c3b0195e3c5861f18db100eeff5996cebdc657eca5166968ac507047009bfaa",
+      "bytes": 108630
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/palisade-magenta-1024.webp",
+      "sha256": "3386f2abe90487e952f1bca3803ab04892cbf2e94545bb3fb13536c2c023845c",
+      "bytes": 55654
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/sawmill-magenta-1024.webp",
+      "sha256": "7c333acd85e7d7535bbea5956c0e30a1e799965935b95c85ef12b437375ad61a",
+      "bytes": 101700
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/shipyard-magenta-1024.webp",
+      "sha256": "6286038986e0d0d029e3f92181f9eac63a526eeacdc692cc9ad127df6cbff4a2",
+      "bytes": 123020
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/stonewall-magenta-1024.webp",
+      "sha256": "7165d458d889193ce2ca20a937a8e2f5011e0930f6e67fdd75f8c38f4008dbec",
+      "bytes": 75902
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/tavern-magenta-1024.webp",
+      "sha256": "cc74e400e360a3741c21f2d93eab0dd217e7c7ba92dd79658b67d13ee20aa8cb",
+      "bytes": 128892
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/townhall-magenta-1024.webp",
+      "sha256": "51ffad93859e3f3a08d2b6e28b9d83b43f2caeaf12829d54c94f14b41b41818d",
+      "bytes": 135752
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/stress/tradehouse-magenta-1024.webp",
+      "sha256": "c7d8219cd85992fdebbb781894e108ebdf72dcc0d66aab1917faef38259acc05",
+      "bytes": 117274
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/townhall-detail-input-contact-1200x760.webp",
+      "sha256": "d0f6bdedf817e511c2eb03df7707738ca50295eabc02e85d5c9784576f1154af",
+      "bytes": 106794
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/townhall-detail-output-contact-1200x760.webp",
+      "sha256": "b1587ec8a7585ae6368bf560ab491903a3d603fcf889e4d628c61f11ad73b414",
+      "bytes": 95916
+    },
+    {
+      "path": "docs/art/city-harbor-v2/proofs/zoom-2x-evidence-1600x1040.webp",
+      "sha256": "acbf20d177fae8dcd6c556df7885ee1a1fc181b1249a9ff7f6b2ee5592dce6c1",
+      "bytes": 274408
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c1r1-input.webp",
+      "sha256": "5fc2387759dd24dcbd0daebe9d3a9c11a7cf84613dd1a78f631b74f9e94628b8",
+      "bytes": 39174
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c1r2-input.webp",
+      "sha256": "3562bc576bee4e23c2d66f675158a60dcbcdeb3ef49b3d5fc891e7d93c811d25",
+      "bytes": 56458
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c1r3-input.webp",
+      "sha256": "09ffd9018a2df5181c48b55d0e4ef647fde8d2b518bbfac51d5cbffc9405388f",
+      "bytes": 57434
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c1r4-input.webp",
+      "sha256": "bc7183ff363ecaba5e2ea182e6e242823f9a99aabd7aeee2d09a39a834d2c57f",
+      "bytes": 38820
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c2r1-input.webp",
+      "sha256": "8189f799507a5a6a69cba4b120405102e336ac000eaedd4003e261bff0989204",
+      "bytes": 55710
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c2r2-input.webp",
+      "sha256": "3ae918d8ee4dc1b77bf8944a796a34f026ec978c54212b440438604b80bbf57c",
+      "bytes": 60850
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c2r3-input.webp",
+      "sha256": "ab044ab3067b051b0520f81eb9da786b42fd1aa908b30f6fe4642e8bfcd949e1",
+      "bytes": 59902
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c2r4-input.webp",
+      "sha256": "bb0ec4a75fbe83443a447bfb28d8dbf35cbbcc4fbc5cdaf36816f709d7c1335f",
+      "bytes": 59258
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c3r1-input.webp",
+      "sha256": "6a146ef6da6d812c1f1e7f063e8ab6977fe06833c28d939f05476e51b847fa1e",
+      "bytes": 52606
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c3r2-input.webp",
+      "sha256": "297e76a721099556b9cdb7eec78c098ec134bc2d2790b2bb958a41a3dc9dbe04",
+      "bytes": 59220
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c3r3-input.webp",
+      "sha256": "35141284f2e6825827c286692ee851ae9dce901d879bdfe3e4cbfeafdfbe0364",
+      "bytes": 61118
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c3r4-input.webp",
+      "sha256": "593e7d5aee6ecd88834e0e3a720cc7fa4f3133f5c36fb26ac48b20134589a96b",
+      "bytes": 42640
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c4r1-input.webp",
+      "sha256": "9a1ad6b9bff93bf27f8d3dfd83c5e0dc95566a9d167ed0f37e99b0b35de1d09f",
+      "bytes": 47526
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c4r2-input.webp",
+      "sha256": "cab76ec8da2ab3ce90849c59e4a09be145dd56647de1fd7142b728534eaa4c64",
+      "bytes": 54100
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c4r3-input.webp",
+      "sha256": "287093240e9167199abfb30a299ef75f517bbeb55897919a918e01bf8525e6b8",
+      "bytes": 60392
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c4r4-input.webp",
+      "sha256": "fac748a7fc449a782a577c94c99df645ee087d55fcab1b63a906f049f8fb7247",
+      "bytes": 29088
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c5r1-input.webp",
+      "sha256": "f42415c17734ffac8eefc8bc505258586bfbb9283c194ecc1efed1e8b855d1d6",
+      "bytes": 55548
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c5r2-input.webp",
+      "sha256": "c3eaa28fb210bff47ff119047ae5a92628e937b1f221cd276ea6be6c445a13cd",
+      "bytes": 56190
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c5r3-input.webp",
+      "sha256": "5e0ebb5707b1b9fa1a521ca5741711857bbfb64295d9f3019b9e7080576dccd4",
+      "bytes": 47122
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c5r4-input.webp",
+      "sha256": "83c935cbc82a741822663dc6708144897890bc5ef8d2fd0ed14b758b6b818162",
+      "bytes": 20880
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c6r1-input.webp",
+      "sha256": "65d38539991d0d9e0440b40ddf3fca9fbb5665f97b76116d851bd530d471224c",
+      "bytes": 35466
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c6r2-input.webp",
+      "sha256": "39eab0ca3f3f84a6d3b66bf6ea4f02533483720e61f9410465599951e2fc3ea7",
+      "bytes": 45504
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c6r3-input.webp",
+      "sha256": "cc3e9099cd872ca39e27b25e5b996473f31a6df35cda0044a720b02d34d291f4",
+      "bytes": 42954
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c6r4-input.webp",
+      "sha256": "a4a7536d857b77b75397ba0662bfa4db04b3f05ba0c0d72f4e9ea32240474ec5",
+      "bytes": 20834
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c1r1-r2.webp",
+      "sha256": "3030da9e024df8fc062ff3e7551a580cb342ef61d6670c6cd3d235582526c793",
+      "bytes": 281734
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c1r2-r2.webp",
+      "sha256": "62f7a9cc11e5825aa686e220454e4cfbf2d96b9534ad560702be3b8a20fc0834",
+      "bytes": 249628
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c1r3-r2.webp",
+      "sha256": "82d62e0a81b585dd9679e854b35d602c1fab3e43ea47b1ebc4a9fba2d61de697",
+      "bytes": 232802
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c1r4-r2.webp",
+      "sha256": "972e104cf42f98a0b0ec66ee3ed25465a9d35c96189a51477077c08916f36945",
+      "bytes": 278838
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c2r1-r2.webp",
+      "sha256": "93d2c39a58166c829fc3631f62a4acd5ebaf59d6136e3e0c1d4ca718a327db48",
+      "bytes": 212320
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c2r2-r2.webp",
+      "sha256": "1471d9d0de7c2420076fc2b1283ac6b11b15861683eb0a755053af9938637bbd",
+      "bytes": 306964
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c2r3-r2.webp",
+      "sha256": "4837d87492e82bc70b7f2cf583063ec573c26a0afe783900b24886a267e6d5e8",
+      "bytes": 266324
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c2r4-r2.webp",
+      "sha256": "ef1aa94cc555a95fde17f6355e47b17307c744212f888f918330745088cd8658",
+      "bytes": 228032
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c3r1-r2.webp",
+      "sha256": "da20411db687fd16ca4de2e3bca5d1940a708d265d04604c9979aabef1c0e6f9",
+      "bytes": 220692
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c3r2-r2.webp",
+      "sha256": "c808d4dc4dc2d417fa0c7466e36fcf4c46644707a0fdfee94fe3337937eeb926",
+      "bytes": 257320
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c3r3-r2.webp",
+      "sha256": "2a5e54252195f0c431f68138f3e7d671358ffb03850dd9f13040081fb4054445",
+      "bytes": 275230
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c3r4-r2.webp",
+      "sha256": "22a10b1a7de5d83f3a8f703597b49ad6d9740b7932845b67b7383b7e0c791120",
+      "bytes": 148832
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c4r1-r2.webp",
+      "sha256": "af679fdbab60595d1650a6e82cfe707fdbbd7676da2cb5b74fbd97f66004b57f",
+      "bytes": 223196
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c4r2-r2.webp",
+      "sha256": "ed4cc099be831164570a98e1fd20b00b67edab4394531b5dd54c7d523b77cdf4",
+      "bytes": 256642
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c4r3-r2.webp",
+      "sha256": "e827ca0277d11d714c2e1a6a4f12b39d2acfce67c71178669c7ca24a98438efd",
+      "bytes": 186832
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c4r4-r2.webp",
+      "sha256": "b12d91c6f5eaf32654462ae227c9091971f015a46a1e19a6accda48841f8f591",
+      "bytes": 110234
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c5r1-r2.webp",
+      "sha256": "f9c45684fa3a68b1f2dd93aeda65d4251eb0ac519bf15ed2d76c2815b34959c8",
+      "bytes": 244998
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c5r2-r2.webp",
+      "sha256": "e6afa8ff3ca44657e65fe195ff1c367676caadc93322cb8587779db02372024f",
+      "bytes": 273238
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c5r3-r2.webp",
+      "sha256": "f484f7e81db1e6c8b3af5dcbe77043c08e310349a7af6d012bb55a6569e838b7",
+      "bytes": 138076
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c5r4-r2.webp",
+      "sha256": "ef11862726193efceb167c08fbf3d5b25a4dbcc4e01df77c64bff02efe067920",
+      "bytes": 117898
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c6r1-r2.webp",
+      "sha256": "cf7d7e8247b17a5349590b1417fb6d4848148c8ad4a353f76a6bac1b8a0baf49",
+      "bytes": 176252
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c6r2-r2.webp",
+      "sha256": "bc357144cd4566cded9f3bc1f1849a7647ed88e35ca6edcac65db70db9496cf1",
+      "bytes": 149030
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c6r3-r2.webp",
+      "sha256": "58ad55a79d731737f5fd4e08b52549b28481bd09be2ed772bb3e6846a9d344b7",
+      "bytes": 207994
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/backdrop-detail-tiles/backdrop-detail-c6r4-r2.webp",
+      "sha256": "19bdd5fcdef509241364fd12382f12910b5f537405498f191b2a94783fb35c96",
+      "bytes": 128658
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/townhall-detail-inputs/townhall-left-input.webp",
+      "sha256": "48c15e8974a2a7fa6f56c0d7275b177c9eb71ee962deeaa98a025e58e126bee5",
+      "bytes": 233092
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/townhall-detail-inputs/townhall-right-input.webp",
+      "sha256": "973ed99ef4745e1aa9124d3e67d87fca7f5c85d4769f3bfb369b823e2a74a437",
+      "bytes": 270602
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/townhall-detail-outputs/townhall-left-r1.webp",
+      "sha256": "e09c175bb4436d0ba905e9bc65acf57235ab3346a93dd3a21ac16f344c58c700",
+      "bytes": 282420
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/townhall-detail-outputs/townhall-right-r1.webp",
+      "sha256": "0d9d5def330de99f090148e4ff621cc3468526a713bf3b613332b63fc0d86889",
+      "bytes": 203730
+    },
+    {
+      "path": "docs/art/city-harbor-v2/sources/townhall-source-r3.webp",
+      "sha256": "e95c2144b598e52663f4110c1de8ecd1433716c2e4abbf912482885c22139658",
+      "bytes": 227530
+    }
+  ]
+}

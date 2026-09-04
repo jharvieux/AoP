@@ -64,7 +64,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     category: 'economy',
     cost: {},
     produces: { gold: 100 },
-    spriteUrl: '/art/city/townhall.png',
+    spriteUrl: '/art/city/townhall.webp',
   },
   sawmill: {
     id: 'sawmill',
@@ -74,7 +74,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 200 },
     produces: { timber: 4 },
     requires: 'townhall',
-    spriteUrl: '/art/city/sawmill.png',
+    spriteUrl: '/art/city/sawmill.webp',
   },
   ironmine: {
     id: 'ironmine',
@@ -84,7 +84,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 250, timber: 10 },
     produces: { iron: 3 },
     requires: 'townhall',
-    spriteUrl: '/art/city/ironmine.png',
+    spriteUrl: '/art/city/ironmine.webp',
   },
   distillery: {
     id: 'distillery',
@@ -94,7 +94,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 220 },
     produces: { rum: 3 },
     requires: 'townhall',
-    spriteUrl: '/art/city/distillery.png',
+    spriteUrl: '/art/city/distillery.webp',
   },
   tradehouse: {
     id: 'tradehouse',
@@ -104,7 +104,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     cost: { gold: 350, timber: 15 },
     produces: { gold: 60 },
     requires: 'townhall',
-    spriteUrl: '/art/city/tradehouse.png',
+    spriteUrl: '/art/city/tradehouse.webp',
   },
   barracks: {
     id: 'barracks',
@@ -115,7 +115,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksTier: 1,
-    spriteUrl: '/art/city/barracks.png',
+    spriteUrl: '/art/city/barracks.webp',
   },
   garrisonHall: {
     id: 'garrisonHall',
@@ -126,7 +126,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'barracks',
     unlocksTier: 2,
-    spriteUrl: '/art/city/garrisonHall.png',
+    spriteUrl: '/art/city/garrisonHall.webp',
   },
   fortressArmory: {
     id: 'fortressArmory',
@@ -137,7 +137,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'garrisonHall',
     unlocksTier: 3,
-    spriteUrl: '/art/city/fortressArmory.png',
+    spriteUrl: '/art/city/fortressArmory.webp',
   },
   grandArsenal: {
     id: 'grandArsenal',
@@ -148,7 +148,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'fortressArmory',
     unlocksTier: 4,
-    spriteUrl: '/art/city/grandArsenal.png',
+    spriteUrl: '/art/city/grandArsenal.webp',
   },
   palisade: {
     id: 'palisade',
@@ -159,7 +159,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     defenseBonus: 10,
-    spriteUrl: '/art/city/palisade.png',
+    spriteUrl: '/art/city/palisade.webp',
   },
   stoneWall: {
     id: 'stoneWall',
@@ -170,7 +170,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'palisade',
     defenseBonus: 30,
-    spriteUrl: '/art/city/stoneWall.png',
+    spriteUrl: '/art/city/stoneWall.webp',
   },
   citadel: {
     id: 'citadel',
@@ -181,8 +181,8 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'stoneWall',
     defenseBonus: 70,
-    spriteUrl: '/art/city/citadel.png',
-    cornerTowerSpriteUrl: '/art/city/citadel-tower.png',
+    spriteUrl: '/art/city/citadel.webp',
+    cornerTowerSpriteUrl: '/art/city/citadel-tower.webp',
   },
   shipyard: {
     id: 'shipyard',
@@ -194,7 +194,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksShipyard: true,
-    spriteUrl: '/art/city/shipyard.png',
+    spriteUrl: '/art/city/shipyard.webp',
   },
   tavern: {
     id: 'tavern',
@@ -206,7 +206,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     produces: {},
     requires: 'townhall',
     unlocksCaptains: true,
-    spriteUrl: '/art/city/tavern.png',
+    spriteUrl: '/art/city/tavern.webp',
   },
 }
 

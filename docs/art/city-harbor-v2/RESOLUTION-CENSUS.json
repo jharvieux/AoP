@@ -1,0 +1,1100 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "contract": "No source is enlarged at any approved zoom stop in the representative DPR2 viewport census.",
+  "backdrop_source": [6120, 4208],
+  "backdrop_physical_source": [6144, 4224],
+  "backdrop_codec_bleed_px": 2,
+  "worst_backdrop": {
+    "ratio": 1.047267,
+    "viewport": [1920, 1080],
+    "zoom": 3
+  },
+  "worst_assets": {
+    "barracks": {
+      "ratio": 1.534425,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "citadel": {
+      "ratio": 1.135628,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "citadel-tower": {
+      "ratio": 1.432758,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "distillery": {
+      "ratio": 1.522986,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "fortressArmory": {
+      "ratio": 1.625741,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "garrisonHall": {
+      "ratio": 1.382805,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "grandArsenal": {
+      "ratio": 1.280728,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "ironmine": {
+      "ratio": 1.378191,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "palisade": {
+      "ratio": 1.200966,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "sawmill": {
+      "ratio": 1.345642,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "shipyard": {
+      "ratio": 1.066142,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "stoneWall": {
+      "ratio": 1.238118,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "tavern": {
+      "ratio": 1.352798,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "townhall": {
+      "ratio": 1.021893,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    },
+    "tradehouse": {
+      "ratio": 1.303985,
+      "viewport": [1920, 1080],
+      "zoom": 3
+    }
+  },
+  "records": [
+    {
+      "viewport": [375, 812],
+      "dpr": 2,
+      "zoom": 1,
+      "device_scene": [750, 515.625],
+      "backdrop_ratio": 8.16,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [195.0, 185.625],
+          "conservative_ratio": 7.96229
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [105.0, 103.125],
+          "conservative_ratio": 10.540606
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [105.0, 92.8125],
+          "conservative_ratio": 10.160269
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [97.5, 82.5],
+          "conservative_ratio": 10.484848
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [97.5, 82.5],
+          "conservative_ratio": 10.738462
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [97.5, 82.5],
+          "conservative_ratio": 11.866667
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [97.5, 87.65625],
+          "conservative_ratio": 11.955793
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [97.5, 92.8125],
+          "conservative_ratio": 10.774411
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [97.5, 97.96875],
+          "conservative_ratio": 12.667305
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [112.5, 113.4375],
+          "conservative_ratio": 9.979063
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [127.5, 61.875],
+          "conservative_ratio": 9.357576
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [127.5, 61.875],
+          "conservative_ratio": 9.647059
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [120.0, 82.5],
+          "conservative_ratio": 8.848485
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [142.5, 123.75],
+          "conservative_ratio": 8.307071
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [45.6, 82.5],
+          "conservative_ratio": 11.163636
+        }
+      }
+    },
+    {
+      "viewport": [375, 812],
+      "dpr": 2,
+      "zoom": 1.5,
+      "device_scene": [1125.0, 773.4375],
+      "backdrop_ratio": 5.44,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [292.5, 278.4375],
+          "conservative_ratio": 5.308193
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [157.5, 154.6875],
+          "conservative_ratio": 7.027071
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [157.5, 139.21875],
+          "conservative_ratio": 6.773513
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [146.25, 123.75],
+          "conservative_ratio": 6.989899
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [146.25, 123.75],
+          "conservative_ratio": 7.158974
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [146.25, 123.75],
+          "conservative_ratio": 7.911111
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [146.25, 131.484375],
+          "conservative_ratio": 7.970529
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [146.25, 139.21875],
+          "conservative_ratio": 7.182941
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [146.25, 146.953125],
+          "conservative_ratio": 8.44487
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [168.75, 170.15625],
+          "conservative_ratio": 6.652709
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [191.25, 92.8125],
+          "conservative_ratio": 6.238384
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [191.25, 92.8125],
+          "conservative_ratio": 6.431373
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [180.0, 123.75],
+          "conservative_ratio": 5.89899
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [213.75, 185.625],
+          "conservative_ratio": 5.538047
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [68.4, 123.75],
+          "conservative_ratio": 7.442424
+        }
+      }
+    },
+    {
+      "viewport": [375, 812],
+      "dpr": 2,
+      "zoom": 2,
+      "device_scene": [1500, 1031.25],
+      "backdrop_ratio": 4.08,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [390.0, 371.25],
+          "conservative_ratio": 3.981145
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [210.0, 206.25],
+          "conservative_ratio": 5.270303
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [210.0, 185.625],
+          "conservative_ratio": 5.080135
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [195.0, 165.0],
+          "conservative_ratio": 5.242424
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [195.0, 165.0],
+          "conservative_ratio": 5.369231
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [195.0, 165.0],
+          "conservative_ratio": 5.933333
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [195.0, 175.3125],
+          "conservative_ratio": 5.977897
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [195.0, 185.625],
+          "conservative_ratio": 5.387205
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [195.0, 195.9375],
+          "conservative_ratio": 6.333652
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [225.0, 226.875],
+          "conservative_ratio": 4.989532
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [255.0, 123.75],
+          "conservative_ratio": 4.678788
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [255.0, 123.75],
+          "conservative_ratio": 4.823529
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [240.0, 165.0],
+          "conservative_ratio": 4.424242
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [285.0, 247.5],
+          "conservative_ratio": 4.153535
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [91.2, 165.0],
+          "conservative_ratio": 5.581818
+        }
+      }
+    },
+    {
+      "viewport": [375, 812],
+      "dpr": 2,
+      "zoom": 3,
+      "device_scene": [2250, 1546.875],
+      "backdrop_ratio": 2.72,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [585.0, 556.875],
+          "conservative_ratio": 2.654097
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [315.0, 309.375],
+          "conservative_ratio": 3.513535
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [315.0, 278.4375],
+          "conservative_ratio": 3.386756
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [292.5, 247.5],
+          "conservative_ratio": 3.494949
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [292.5, 247.5],
+          "conservative_ratio": 3.579487
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [292.5, 247.5],
+          "conservative_ratio": 3.955556
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [292.5, 262.96875],
+          "conservative_ratio": 3.985264
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [292.5, 278.4375],
+          "conservative_ratio": 3.59147
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [292.5, 293.90625],
+          "conservative_ratio": 4.222435
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [337.5, 340.3125],
+          "conservative_ratio": 3.326354
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [382.5, 185.625],
+          "conservative_ratio": 3.119192
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [382.5, 185.625],
+          "conservative_ratio": 3.215686
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [360.0, 247.5],
+          "conservative_ratio": 2.949495
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [427.5, 371.25],
+          "conservative_ratio": 2.769024
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [136.8, 247.5],
+          "conservative_ratio": 3.721212
+        }
+      }
+    },
+    {
+      "viewport": [1440, 900],
+      "dpr": 2,
+      "zoom": 1,
+      "device_scene": [1623.272727, 1116.0],
+      "backdrop_ratio": 3.770161,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [422.050909, 401.76],
+          "conservative_ratio": 3.678813
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [227.258182, 223.2],
+          "conservative_ratio": 4.870072
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [227.258182, 200.88],
+          "conservative_ratio": 4.694345
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [211.025455, 178.56],
+          "conservative_ratio": 4.84431
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [211.025455, 178.56],
+          "conservative_ratio": 4.961487
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [211.025455, 178.56],
+          "conservative_ratio": 5.482751
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [211.025455, 189.72],
+          "conservative_ratio": 5.52393
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [211.025455, 200.88],
+          "conservative_ratio": 4.978096
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [211.025455, 212.04],
+          "conservative_ratio": 5.852669
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [243.490909, 245.52],
+          "conservative_ratio": 4.610622
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [275.956364, 133.92],
+          "conservative_ratio": 4.323477
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [275.956364, 133.92],
+          "conservative_ratio": 4.457226
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [259.723636, 178.56],
+          "conservative_ratio": 4.088262
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [308.421818, 267.84],
+          "conservative_ratio": 3.838112
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [98.694982, 178.56],
+          "conservative_ratio": 5.15793
+        }
+      }
+    },
+    {
+      "viewport": [1440, 900],
+      "dpr": 2,
+      "zoom": 1.5,
+      "device_scene": [2434.909091, 1674.0],
+      "backdrop_ratio": 2.513441,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [633.076364, 602.64],
+          "conservative_ratio": 2.452542
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [340.887273, 334.8],
+          "conservative_ratio": 3.246714
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [340.887273, 301.32],
+          "conservative_ratio": 3.129563
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [316.538182, 267.84],
+          "conservative_ratio": 3.22954
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [316.538182, 267.84],
+          "conservative_ratio": 3.307658
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [316.538182, 267.84],
+          "conservative_ratio": 3.655167
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [316.538182, 284.58],
+          "conservative_ratio": 3.68262
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [316.538182, 301.32],
+          "conservative_ratio": 3.318731
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [316.538182, 318.06],
+          "conservative_ratio": 3.90178
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [365.236364, 368.28],
+          "conservative_ratio": 3.073748
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [413.934545, 200.88],
+          "conservative_ratio": 2.882318
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [413.934545, 200.88],
+          "conservative_ratio": 2.971484
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [389.585455, 267.84],
+          "conservative_ratio": 2.725508
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [462.632727, 401.76],
+          "conservative_ratio": 2.558742
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [148.042473, 267.84],
+          "conservative_ratio": 3.43862
+        }
+      }
+    },
+    {
+      "viewport": [1440, 900],
+      "dpr": 2,
+      "zoom": 2,
+      "device_scene": [3246.545455, 2232.0],
+      "backdrop_ratio": 1.885081,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [844.101818, 803.52],
+          "conservative_ratio": 1.839407
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [454.516364, 446.4],
+          "conservative_ratio": 2.435036
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [454.516364, 401.76],
+          "conservative_ratio": 2.347172
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [422.050909, 357.12],
+          "conservative_ratio": 2.422155
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [422.050909, 357.12],
+          "conservative_ratio": 2.480743
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [422.050909, 357.12],
+          "conservative_ratio": 2.741375
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [422.050909, 379.44],
+          "conservative_ratio": 2.761965
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [422.050909, 401.76],
+          "conservative_ratio": 2.489048
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [422.050909, 424.08],
+          "conservative_ratio": 2.926335
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [486.981818, 491.04],
+          "conservative_ratio": 2.305311
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [551.912727, 267.84],
+          "conservative_ratio": 2.161738
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [551.912727, 267.84],
+          "conservative_ratio": 2.228613
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [519.447273, 357.12],
+          "conservative_ratio": 2.044131
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [616.843636, 535.68],
+          "conservative_ratio": 1.919056
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [197.389964, 357.12],
+          "conservative_ratio": 2.578965
+        }
+      }
+    },
+    {
+      "viewport": [1440, 900],
+      "dpr": 2,
+      "zoom": 3,
+      "device_scene": [4869.818182, 3348.0],
+      "backdrop_ratio": 1.25672,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [1266.152727, 1205.28],
+          "conservative_ratio": 1.226271
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [681.774545, 669.6],
+          "conservative_ratio": 1.623357
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [681.774545, 602.64],
+          "conservative_ratio": 1.564782
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [633.076364, 535.68],
+          "conservative_ratio": 1.61477
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [633.076364, 535.68],
+          "conservative_ratio": 1.653829
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [633.076364, 535.68],
+          "conservative_ratio": 1.827584
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [633.076364, 569.16],
+          "conservative_ratio": 1.84131
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [633.076364, 602.64],
+          "conservative_ratio": 1.659365
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [633.076364, 636.12],
+          "conservative_ratio": 1.95089
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [730.472727, 736.56],
+          "conservative_ratio": 1.536874
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [827.869091, 401.76],
+          "conservative_ratio": 1.441159
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [827.869091, 401.76],
+          "conservative_ratio": 1.485742
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [779.170909, 535.68],
+          "conservative_ratio": 1.362754
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [925.265455, 803.52],
+          "conservative_ratio": 1.279371
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [296.084945, 535.68],
+          "conservative_ratio": 1.71931
+        }
+      }
+    },
+    {
+      "viewport": [1920, 1080],
+      "dpr": 2,
+      "zoom": 1,
+      "device_scene": [1947.927273, 1339.2],
+      "backdrop_ratio": 3.141801,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [506.461091, 482.112],
+          "conservative_ratio": 3.065678
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [272.709818, 267.84],
+          "conservative_ratio": 4.058393
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [272.709818, 241.056],
+          "conservative_ratio": 3.911954
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [253.230545, 214.272],
+          "conservative_ratio": 4.036925
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [253.230545, 214.272],
+          "conservative_ratio": 4.134572
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [253.230545, 214.272],
+          "conservative_ratio": 4.568959
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [253.230545, 227.664],
+          "conservative_ratio": 4.603275
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [253.230545, 241.056],
+          "conservative_ratio": 4.148414
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [253.230545, 254.448],
+          "conservative_ratio": 4.877224
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [292.189091, 294.624],
+          "conservative_ratio": 3.842185
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [331.147636, 160.704],
+          "conservative_ratio": 3.602897
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [331.147636, 160.704],
+          "conservative_ratio": 3.714355
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [311.668364, 214.272],
+          "conservative_ratio": 3.406885
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [370.106182, 321.408],
+          "conservative_ratio": 3.198427
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [118.433978, 214.272],
+          "conservative_ratio": 4.298275
+        }
+      }
+    },
+    {
+      "viewport": [1920, 1080],
+      "dpr": 2,
+      "zoom": 1.5,
+      "device_scene": [2921.890909, 2008.8],
+      "backdrop_ratio": 2.094534,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [759.691636, 723.168],
+          "conservative_ratio": 2.043785
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [409.064727, 401.76],
+          "conservative_ratio": 2.705595
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [409.064727, 361.584],
+          "conservative_ratio": 2.607969
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [379.845818, 321.408],
+          "conservative_ratio": 2.691283
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [379.845818, 321.408],
+          "conservative_ratio": 2.756382
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [379.845818, 321.408],
+          "conservative_ratio": 3.045973
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [379.845818, 341.496],
+          "conservative_ratio": 3.06885
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [379.845818, 361.584],
+          "conservative_ratio": 2.765609
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [379.845818, 381.672],
+          "conservative_ratio": 3.251483
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [438.283636, 441.936],
+          "conservative_ratio": 2.561457
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [496.721455, 241.056],
+          "conservative_ratio": 2.401932
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [496.721455, 241.056],
+          "conservative_ratio": 2.476237
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [467.502545, 321.408],
+          "conservative_ratio": 2.271256
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [555.159273, 482.112],
+          "conservative_ratio": 2.132285
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [177.650967, 321.408],
+          "conservative_ratio": 2.865517
+        }
+      }
+    },
+    {
+      "viewport": [1920, 1080],
+      "dpr": 2,
+      "zoom": 2,
+      "device_scene": [3895.854545, 2678.4],
+      "backdrop_ratio": 1.570901,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [1012.922182, 964.224],
+          "conservative_ratio": 1.532839
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [545.419636, 535.68],
+          "conservative_ratio": 2.029197
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [545.419636, 482.112],
+          "conservative_ratio": 1.955977
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [506.461091, 428.544],
+          "conservative_ratio": 2.018463
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [506.461091, 428.544],
+          "conservative_ratio": 2.067286
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [506.461091, 428.544],
+          "conservative_ratio": 2.28448
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [506.461091, 455.328],
+          "conservative_ratio": 2.301638
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [506.461091, 482.112],
+          "conservative_ratio": 2.074207
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [506.461091, 508.896],
+          "conservative_ratio": 2.438612
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [584.378182, 589.248],
+          "conservative_ratio": 1.921093
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [662.295273, 321.408],
+          "conservative_ratio": 1.801449
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [662.295273, 321.408],
+          "conservative_ratio": 1.857178
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [623.336727, 428.544],
+          "conservative_ratio": 1.703442
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [740.212364, 642.816],
+          "conservative_ratio": 1.599213
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [236.867956, 428.544],
+          "conservative_ratio": 2.149138
+        }
+      }
+    },
+    {
+      "viewport": [1920, 1080],
+      "dpr": 2,
+      "zoom": 3,
+      "device_scene": [5843.781818, 4017.6],
+      "backdrop_ratio": 1.047267,
+      "assets": {
+        "townhall": {
+          "source": [1580, 1478],
+          "required_box": [1519.383273, 1446.336],
+          "conservative_ratio": 1.021893
+        },
+        "tavern": {
+          "source": [1139, 1087],
+          "required_box": [818.129455, 803.52],
+          "conservative_ratio": 1.352798
+        },
+        "tradehouse": {
+          "source": [1237, 943],
+          "required_box": [818.129455, 723.168],
+          "conservative_ratio": 1.303985
+        },
+        "sawmill": {
+          "source": [1220, 865],
+          "required_box": [759.691636, 642.816],
+          "conservative_ratio": 1.345642
+        },
+        "ironmine": {
+          "source": [1047, 1034],
+          "required_box": [759.691636, 642.816],
+          "conservative_ratio": 1.378191
+        },
+        "distillery": {
+          "source": [1157, 1154],
+          "required_box": [759.691636, 642.816],
+          "conservative_ratio": 1.522986
+        },
+        "barracks": {
+          "source": [1217, 1048],
+          "required_box": [759.691636, 682.992],
+          "conservative_ratio": 1.534425
+        },
+        "garrisonHall": {
+          "source": [1244, 1000],
+          "required_box": [759.691636, 723.168],
+          "conservative_ratio": 1.382805
+        },
+        "fortressArmory": {
+          "source": [1244, 1241],
+          "required_box": [759.691636, 763.344],
+          "conservative_ratio": 1.625741
+        },
+        "grandArsenal": {
+          "source": [1244, 1132],
+          "required_box": [876.567273, 883.872],
+          "conservative_ratio": 1.280728
+        },
+        "palisade": {
+          "source": [1244, 579],
+          "required_box": [993.442909, 482.112],
+          "conservative_ratio": 1.200966
+        },
+        "stoneWall": {
+          "source": [1230, 692],
+          "required_box": [993.442909, 482.112],
+          "conservative_ratio": 1.238118
+        },
+        "citadel": {
+          "source": [1244, 730],
+          "required_box": [935.005091, 642.816],
+          "conservative_ratio": 1.135628
+        },
+        "shipyard": {
+          "source": [1233, 1028],
+          "required_box": [1110.318545, 964.224],
+          "conservative_ratio": 1.066142
+        },
+        "citadel-tower": {
+          "source": [816, 921],
+          "required_box": [355.301935, 642.816],
+          "conservative_ratio": 1.432758
+        }
+      }
+    }
+  ]
+}
