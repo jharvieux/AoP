@@ -58,6 +58,11 @@ class MatteSpec:
     contact_depth: int = 34
     contact_chroma: int = 30
     contact_luminance: int = 116
+    contamination_polygon: tuple[tuple[float, float], ...] | None = None
+    contamination_depth: int = 0
+    contamination_chroma: int = 0
+    contamination_luminance: int = 0
+    contamination_witnesses: tuple[tuple[int, int], ...] = ()
 
 
 # Polygons are intentionally confined to the ground/contact side of each
@@ -75,6 +80,16 @@ SPECS: dict[str, MatteSpec] = {
         boundary_depth=16,
         luminance_floor=126,
         contact_polygon=((0.18, 0.48), (0.82, 0.48), (0.78, 0.84), (0.20, 0.84)),
+        contact_chroma=40,
+        contact_luminance=85,
+        # The original checkerboard extraction left a gray contact plume around
+        # the forward figure's boots.  This second, lower-body-only mask removes
+        # low-chroma exterior pixels without reaching the red coat or tan cape.
+        contamination_polygon=((0.16, 0.66), (0.86, 0.66), (0.77, 0.94), (0.24, 0.94)),
+        contamination_depth=30,
+        contamination_chroma=35,
+        contamination_luminance=95,
+        contamination_witnesses=((243, 438), (271, 435), (265, 444), (264, 445)),
     ),
     "landSite:mine": MatteSpec(
         boundary_depth=16,
@@ -92,12 +107,26 @@ SPECS: dict[str, MatteSpec] = {
         contact_depth=22,
         contact_chroma=20,
         contact_luminance=132,
+        # Confine the more permissive test to the ground-facing edge.  It
+        # removes the cool gray extraction fringe while preserving shingles.
+        contamination_polygon=((0.15, 0.64), (0.85, 0.64), (0.75, 0.91), (0.25, 0.91)),
+        contamination_depth=6,
+        contamination_chroma=24,
+        contamination_luminance=70,
+        contamination_witnesses=((127, 367), (214, 429), (233, 440), (357, 379)),
     ),
     "encounter:nativeVillage": MatteSpec(
         boundary_depth=16,
         luminance_floor=124,
         contact_polygon=((0.08, 0.52), (0.92, 0.52), (0.91, 0.80), (0.08, 0.80)),
         contact_depth=40,
+        # The native-size source retained a neutral-gray one-pixel edge at the
+        # hut bases.  Brown authored straw/wood remains outside this chroma gate.
+        contamination_polygon=((0.06, 0.54), (0.94, 0.54), (0.92, 0.82), (0.07, 0.82)),
+        contamination_depth=8,
+        contamination_chroma=24,
+        contamination_luminance=70,
+        contamination_witnesses=((67, 352), (122, 379), (273, 383), (431, 351)),
     ),
 }
 
@@ -138,15 +167,19 @@ def normalized_polygon(points: tuple[tuple[float, float], ...]) -> np.ndarray:
     return np.asarray(image, dtype=bool)
 
 
-def polished_image(source: Image.Image, asset_id: str) -> tuple[Image.Image, dict[str, int | str]]:
+def polished_image(source: Image.Image, asset_id: str) -> tuple[Image.Image, dict[str, object]]:
     rgba = np.asarray(source.convert("RGBA")).copy()
-    alpha = rgba[:, :, 3]
+    alpha = rgba[:, :, 3].copy()
     visible = alpha >= 8
     if source.size != (SOURCE_SIZE, SOURCE_SIZE):
         raise ValueError(f"{asset_id}: source is {source.size}, expected 512x512")
 
     spec = SPECS.get(asset_id, MatteSpec())
-    maximum_depth = max(spec.boundary_depth, spec.contact_depth if spec.contact_polygon else 0)
+    maximum_depth = max(
+        spec.boundary_depth,
+        spec.contact_depth if spec.contact_polygon else 0,
+        spec.contamination_depth if spec.contamination_polygon else 0,
+    )
     depth = boundary_depth(visible, maximum_depth)
     rgb = rgba[:, :, :3].astype(np.int16)
     maximum = rgb.max(axis=2)
@@ -174,7 +207,28 @@ def polished_image(source: Image.Image, asset_id: str) -> tuple[Image.Image, dic
             & (luminance >= spec.contact_luminance)
         )
 
-    matte = boundary_matte | contact_matte
+    contamination_matte = np.zeros_like(visible)
+    if spec.contamination_polygon:
+        contamination_matte = (
+            visible
+            & normalized_polygon(spec.contamination_polygon)
+            & (depth <= spec.contamination_depth)
+            & (chroma <= spec.contamination_chroma)
+            & (luminance >= spec.contamination_luminance)
+        )
+
+    prior_matte = boundary_matte | contact_matte
+    for x, y in spec.contamination_witnesses:
+        if not visible[y, x]:
+            raise ValueError(f"{asset_id}: contamination witness {(x, y)} is not in source alpha")
+        if prior_matte[y, x]:
+            raise ValueError(
+                f"{asset_id}: contamination witness {(x, y)} is not specific to the semantic repair"
+            )
+        if not contamination_matte[y, x]:
+            raise ValueError(f"{asset_id}: contamination witness {(x, y)} escaped its mask")
+
+    matte = prior_matte | contamination_matte
     # Remove fully rather than feathering extracted background.  The remaining
     # authored edge already has antialiasing, and transparent RGB is zeroed so a
     # later scale cannot reintroduce a pale fringe.
@@ -182,10 +236,21 @@ def polished_image(source: Image.Image, asset_id: str) -> tuple[Image.Image, dic
     rgba[rgba[:, :, 3] == 0, :3] = 0
 
     result = Image.fromarray(rgba, "RGBA")
+    witnesses = [
+        {
+            "x": x,
+            "y": y,
+            "source_alpha": int(alpha[y, x]),
+            "output_alpha": int(rgba[y, x, 3]),
+        }
+        for x, y in spec.contamination_witnesses
+    ]
     return result, {
-        "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+        "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
         "boundary_pixels_removed": int(boundary_matte.sum()),
         "contact_pixels_removed": int((contact_matte & ~boundary_matte).sum()),
+        "contamination_pixels_removed": int((contamination_matte & ~prior_matte).sum()),
+        "contamination_witnesses": witnesses,
         "visible_pixels_before": int(visible.sum()),
         "visible_pixels_after": int((rgba[:, :, 3] >= 8).sum()),
     }
@@ -226,6 +291,74 @@ def normalize_generated_alpha(image: Image.Image, asset_id: str) -> Image.Image:
         ((SOURCE_SIZE - resized.width) // 2, (SOURCE_SIZE - resized.height) // 2),
     )
     return canvas
+
+
+def normalize_retained_additions() -> None:
+    """Normalize oversized generated working files in place as canonical RGBA PNGs.
+
+    The original raw hashes remain provenance-only metadata.  Once an asset has
+    retained-source metadata, this command becomes a fail-loud verification and
+    never derives a second generation from its already-normalized pixels.
+    """
+
+    additions = json.loads(ADDITIONS.read_text())
+    results: list[dict[str, object]] = []
+    for asset in additions["assets"]:
+        asset_id = str(asset["id"])
+        relative = str(asset.get("retained_source_file", asset.get("raw_file", "")))
+        if not relative:
+            raise ValueError(f"{asset_id}: no retained or raw source path")
+        path = ROOT / relative
+        if "retained_source_sha256" in asset:
+            expected_hash = str(asset["retained_source_sha256"])
+            if sha256(path) != expected_hash:
+                raise ValueError(f"{asset_id}: retained normalized source hash drifted")
+            image = Image.open(path)
+            if image.mode != "RGBA" or image.size != (SOURCE_SIZE, SOURCE_SIZE):
+                raise ValueError(f"{asset_id}: retained normalized source is not 512 px RGBA")
+            if path.stat().st_size > SOURCE_LIMIT:
+                raise ValueError(f"{asset_id}: retained source exceeds {SOURCE_LIMIT} bytes")
+            results.append(
+                {
+                    "id": asset_id,
+                    "status": "verified-retained",
+                    "path": relative,
+                    "sha256": expected_hash,
+                    "bytes": path.stat().st_size,
+                    "dimensions": list(image.size),
+                    "mode": image.mode,
+                }
+            )
+            continue
+
+        expected_hash = str(asset.get("raw_sha256", ""))
+        if not path.is_file() or sha256(path) != expected_hash:
+            raise ValueError(f"{asset_id}: original generated source hash drifted")
+        original_bytes = path.stat().st_size
+        original = Image.open(path).convert("RGBA")
+        original_bbox = original.getchannel("A").point(
+            lambda value: 255 if value >= 8 else 0
+        ).getbbox()
+        normalized = normalize_generated_alpha(original, asset_id)
+        normalized.save(path, "PNG", compress_level=9, optimize=False)
+        if path.stat().st_size > SOURCE_LIMIT:
+            raise ValueError(f"{asset_id}: normalized retained source exceeds {SOURCE_LIMIT} bytes")
+        results.append(
+            {
+                "id": asset_id,
+                "status": "normalized-original-in-place",
+                "path": relative,
+                "original_sha256": expected_hash,
+                "original_bytes": original_bytes,
+                "original_dimensions": list(original.size),
+                "original_alpha_bbox": list(original_bbox) if original_bbox else None,
+                "retained_sha256": sha256(path),
+                "retained_bytes": path.stat().st_size,
+                "retained_dimensions": list(normalized.size),
+                "retained_mode": normalized.mode,
+            }
+        )
+    print(json.dumps({"normalized_retained_sources": results}, indent=2))
 
 
 def tiled(path: Path, size: tuple[int, int]) -> Image.Image:
@@ -448,6 +581,161 @@ def compose_24_marker_sheet(images: dict[str, Image.Image], proof_dir: Path) -> 
     return path
 
 
+def compose_runtime_contact_sheet(
+    assets: list[dict[str, object]], runtime_source_dir: Path, proof_dir: Path
+) -> tuple[Path, dict[str, object]]:
+    """Bind every shipping identity to exact-size and grayscale runtime evidence."""
+
+    sizes = (24, 32, 48, 96)
+    width = 1024
+    label_width = 300
+    cell_width = 178
+    row_height = 112
+    header_height = 96
+    grayscale_height = 320
+    height = header_height + len(assets) * row_height + grayscale_height
+    sheet = Image.new("RGB", (width, height), "#130f0c")
+    draw = ImageDraw.Draw(sheet)
+    draw.text(
+        (16, 10),
+        "RUNTIME / PUBLIC CONTACT SHEET · 23 shipping identities",
+        font=ImageFont.truetype(BODY_BOLD, 21),
+        fill="#f3e5c2",
+    )
+    draw.text(
+        (16, 40),
+        "256 px runtime candidates (byte-bound to public receipt) · 32 px shown beside fog",
+        font=ImageFont.truetype(BODY_FONT, 14),
+        fill="#cbb17a",
+    )
+    for column, size in enumerate(sizes):
+        draw.text(
+            (label_width + column * cell_width + 62, 70),
+            f"{size} px",
+            font=ImageFont.truetype(BODY_BOLD, 14),
+            fill="#f3e5c2",
+        )
+
+    runtime_inputs: list[dict[str, object]] = []
+    tokens: dict[str, Image.Image] = {}
+    for row, asset in enumerate(assets):
+        asset_id = str(asset["id"])
+        token_path = runtime_source_dir / f"{asset['prompt_key']}-256.webp"
+        token = Image.open(token_path).convert("RGBA")
+        tokens[asset_id] = token
+        runtime_inputs.append(
+            {
+                "id": asset_id,
+                "source": f"sources/runtime/{asset['prompt_key']}-256.webp",
+                "sha256": sha256(token_path),
+            }
+        )
+        y = header_height + row * row_height
+        if row % 2:
+            draw.rectangle((0, y, width, y + row_height - 1), fill="#191410")
+        draw.text(
+            (14, y + 22),
+            asset_id,
+            font=ImageFont.truetype(BODY_BOLD, 14),
+            fill="#f3e5c2",
+        )
+        draw.text(
+            (14, y + 46),
+            str(asset["label"]),
+            font=ImageFont.truetype(BODY_FONT, 12),
+            fill="#cbb17a",
+        )
+        draw.text(
+            (14, y + 68),
+            f"sources/runtime/{asset['prompt_key']}-256.webp",
+            font=ImageFont.truetype(BODY_FONT, 10),
+            fill="#8f8069",
+        )
+        for column, size in enumerate(sizes):
+            x = label_width + column * cell_width + 8
+            field = full_background((160, 104), str(asset["context"]), "representative")
+            display = premultiplied_resize(token, (size, size))
+            token_x = 48 - size // 2 if size == 32 else (160 - size) // 2
+            token_y = (104 - size) // 2
+            field.alpha_composite(display, (token_x, token_y))
+            if size == 32:
+                fog = Image.new("RGBA", (64, 104), (7, 14, 18, 214))
+                field.alpha_composite(fog, (96, 0))
+                ImageDraw.Draw(field).line((95, 0, 95, 103), fill="#718484", width=1)
+            sheet.paste(field.convert("RGB"), (x, y + 4))
+            draw.rectangle((x, y + 4, x + 159, y + 107), outline="#5f4a2a", width=1)
+
+    gray_top = header_height + len(assets) * row_height
+    draw.rectangle((0, gray_top, width, height), fill="#0d1113")
+    draw.text(
+        (16, gray_top + 12),
+        "GRAYSCALE FACTION COMPARISON · 48 px city + party · exact 24 px ring/flag marker",
+        font=ImageFont.truetype(BODY_BOLD, 17),
+        fill="#f3e5c2",
+    )
+    factions = ("british", "dutch", "french", "pirates", "spanish")
+    for column, faction in enumerate(factions):
+        x = 12 + column * 202
+        draw.text(
+            (x + 8, gray_top + 46),
+            faction.title(),
+            font=ImageFont.truetype(BODY_BOLD, 14),
+            fill="#f3e5c2",
+        )
+        patch = full_background((188, 206), "land", "representative")
+        city = premultiplied_resize(grayscale_rgba(tokens[f"city:{faction}"]), (48, 48))
+        party = premultiplied_resize(grayscale_rgba(tokens[f"party:{faction}"]), (48, 48))
+        patch.alpha_composite(city, (22, 28))
+        patch.alpha_composite(party, (116, 28))
+        center = (94, 132)
+        marker = premultiplied_resize(grayscale_rgba(tokens[f"city:{faction}"]), (24, 24))
+        patch.alpha_composite(marker, (center[0] - 12, center[1] - 12))
+        patch_draw = ImageDraw.Draw(patch)
+        rgb = ImageColor.getrgb(FACTION_COLORS[faction])
+        gray = round(rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722)
+        patch_draw.ellipse(
+            (center[0] - 12, center[1] - 12, center[0] + 12, center[1] + 12),
+            outline="#14100d",
+            width=3,
+        )
+        patch_draw.ellipse(
+            (center[0] - 12, center[1] - 12, center[0] + 12, center[1] + 12),
+            outline=(gray, gray, gray),
+            width=1,
+        )
+        flag = Image.open(
+            REPO / "apps" / "web" / "public" / "art" / "factions" / faction / "flag.png"
+        ).convert("RGBA")
+        flag = premultiplied_resize(grayscale_rgba(flag), (11, 11))
+        patch.alpha_composite(flag, (center[0] + 4, center[1] - 15))
+        patch_draw.text((16, 82), "city", font=ImageFont.truetype(BODY_FONT, 11), fill="#f3e5c2")
+        patch_draw.text((112, 82), "party", font=ImageFont.truetype(BODY_FONT, 11), fill="#f3e5c2")
+        patch_draw.text(
+            (38, 158),
+            "shape + formation + flag",
+            font=ImageFont.truetype(BODY_FONT, 10),
+            fill="#f3e5c2",
+        )
+        sheet.paste(patch.convert("RGB"), (x, gray_top + 72))
+    draw.text(
+        (16, height - 24),
+        "British cross/diagonals and Spanish barbed saltire remain distinct without hue.",
+        font=ImageFont.truetype(BODY_FONT, 11),
+        fill="#cbb17a",
+    )
+
+    path = proof_dir / "runtime-public-contact-sheet-23.webp"
+    save_webp(sheet, path, PROOF_LIMIT, start=82)
+    return path, {
+        "kind": "runtime-public-contact-sheet",
+        "identity_ids": [str(asset["id"]) for asset in assets],
+        "sizes_css_px": list(sizes),
+        "grayscale_factions": list(factions),
+        "runtime_inputs": runtime_inputs,
+        "public_binding": "runtime-public-receipt.json byte identity",
+    }
+
+
 def build(runtime_source_dir: Path, proof_dir: Path, receipt_path: Path) -> None:
     registry = json.loads(REGISTRY.read_text())
     additions = json.loads(ADDITIONS.read_text())
@@ -460,10 +748,10 @@ def build(runtime_source_dir: Path, proof_dir: Path, receipt_path: Path) -> None
             source_path = ROOT / str(asset["project_source"])
             source_image = Image.open(source_path)
         else:
-            source_path = ROOT / str(asset["raw_file"])
-            if sha256(source_path) != asset["raw_sha256"]:
-                raise ValueError(f"{asset_id}: generated runtime source hash drifted")
-            source_image = normalize_generated_alpha(Image.open(source_path), asset_id)
+            source_path = ROOT / str(asset["retained_source_file"])
+            if sha256(source_path) != asset["retained_source_sha256"]:
+                raise ValueError(f"{asset_id}: retained normalized source hash drifted")
+            source_image = Image.open(source_path)
         image, metrics = polished_image(source_image, asset_id)
         source_name = f"{asset['prompt_key']}-512.webp"
         source_output = runtime_source_dir / source_name
@@ -501,21 +789,33 @@ def build(runtime_source_dir: Path, proof_dir: Path, receipt_path: Path) -> None
     proof_paths.extend(compose_full_footprint_512(assets, images, proof_dir))
     proof_paths.append(compose_full_footprint_96(assets, images, proof_dir))
     proof_paths.append(compose_24_marker_sheet(images, proof_dir))
+    runtime_sheet, runtime_coverage = compose_runtime_contact_sheet(
+        assets, runtime_source_dir, proof_dir
+    )
+    proof_paths.append(runtime_sheet)
     receipt = {
-        "schema": 1,
-        "transform": "deterministic semantic matte cleanup; no generative edit",
+        "schema": 2,
+        "transform": "deterministic semantic matte cleanup with contamination witnesses; no generative edit",
         "assets": rows,
         "proofs": [
             {
                 "path": f"proofs/matte-stress/{path.name}",
                 "sha256": sha256(path),
                 "bytes": path.stat().st_size,
+                **(runtime_coverage if path == runtime_sheet else {}),
             }
             for path in proof_paths
         ],
     }
+    receipt_text = json.dumps(receipt, indent=2) + "\n"
+    # Keep the generated receipt byte-stable with the repository's Prettier
+    # policy, which compacts these two short scalar arrays at print width 100.
+    for key in ("sizes_css_px", "grayscale_factions"):
+        values = runtime_coverage[key]
+        expanded = f'      "{key}": ' + json.dumps(values, indent=2).replace("\n", "\n      ")
+        receipt_text = receipt_text.replace(expanded, f'      "{key}": {json.dumps(values)}')
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    receipt_path.write_text(receipt_text)
     print(f"polished {len(rows)} sources; wrote {len(proof_paths)} stress proofs")
 
 
@@ -538,7 +838,13 @@ def compare_directory(expected: Path, actual: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--normalize-retained-sources", action="store_true")
     args = parser.parse_args()
+    if args.normalize_retained_sources:
+        if args.check:
+            raise ValueError("choose either --check or --normalize-retained-sources")
+        normalize_retained_additions()
+        return
     if not args.check:
         build(RUNTIME_SOURCE_DIR, PROOF_DIR, RECEIPT)
         return

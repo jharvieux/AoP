@@ -2,7 +2,7 @@
 
 ## Scope and coverage
 
-This package is the operator checkpoint for issue #609 on the approved **Direction B — Gilded Harbor Diorama** path, including the approved city refinement. It is deliberately confined to `docs/art/world-map-v2/`.
+This package records issue #609's approved **Direction B — Gilded Harbor Diorama** checkpoint, including the approved city refinement, and binds the documented candidates to their shipping public asset paths. The proof/provenance system remains under `docs/art/world-map-v2/`; runtime copies are enumerated in `runtime-public-receipt.json`.
 
 | Family          |   Required | Included | Identity/readability cue                                                                                                          |
 | --------------- | ---------: | -------: | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,24 +78,29 @@ All 21 normalized sources, all 21 token candidates, and all three final proof sh
 
 ## Runtime candidate delivery
 
-Checkpoint 1 was approved with the recommended city refinement. Runtime preparation therefore publishes the 21 approved identities plus two coherent replacements for the legacy native-canoe and settler-launch sea encounters. The latter were generated with the same Direction B contract; their exact prompts, raw hashes, interface limitations, and usage basis are recorded in `PROMPTS.md` and `runtime-additions.json`.
+Checkpoint 1 was approved with the recommended city refinement. Runtime preparation therefore publishes the 21 approved identities plus two coherent replacements for the legacy native-canoe and settler-launch sea encounters. The latter were generated with the same Direction B contract; their exact prompts, original-unretained hashes, retained normalized-source hashes, interface limitations, and usage basis are recorded in `PROMPTS.md` and `runtime-additions.json`.
 
 Before the renderer change, a cold texture request returned no texture on its first draw and initiated an unawaited decode; the procedural fallback was therefore visible until the loader marked a later frame dirty and the sprite appeared. A missing URL stayed on the procedural fallback. The baseline eligibility gates were also recorded: active sea encounters, land encounters, and sites required current visibility; another player's ship or party required current visibility; another player's city required exploration; the viewer's own cities, ships, and parties remained eligible. The runtime implementation preserves those gates while moving the finite eligible decode set ahead of the first interactive frame.
 
-`tools/polish_runtime_sources.py` retains each original source, applies deterministic semantic exterior/contact cleanup, and writes review-scale 512 px and optimized 256 px exact-alpha WebP derivatives. The named problem assets—British sloop, pirate galleon, British and Spanish parties, mine, hermit, and native village—must each report removed boundary/contact pixels. Its `--check` mode rebuilds all 23 derivatives and 30 stress proofs in a temporary directory and requires byte equality.
+The two additional generated PNGs initially arrived as 1,254×1,254 RGBA files above the repository's literal 300 KiB per-image ceiling. `tools/polish_runtime_sources.py --normalize-retained-sources` replaced those working bytes in place with project-bound 512×512 RGBA PNGs using an alpha-bounds crop, premultiplied-Lanczos scale to a 384 px maximum subject dimension, transparent centering, and deterministic PNG encoding. The native-canoe source is now 138,454 bytes (`39a00546…`), and the settler-launch source is 228,737 bytes (`f977e0fa…`). Their original byte streams are not retained; `runtime-additions.json` preserves the original hashes (`3867d03e…` and `c4333e9e…`), sizes (953,313 and 1,317,086 bytes), dimensions, and alpha bounds separately from the committed retained-file records.
+
+`tools/polish_runtime_sources.py` keeps the immutable 21 checkpoint sources and the two normalized retained sources, applies deterministic semantic exterior/contact cleanup, and writes review-scale 512 px and optimized 256 px exact-alpha WebP derivatives. The named problem assets—British sloop, pirate galleon, British and Spanish parties, mine, hermit, and native village—must each report removed pixels. The Spanish party, hermit, and native village additionally carry four explicit source-visible contamination witnesses apiece; every witness must be exactly zero alpha after cleanup. Its `--check` mode rebuilds all 23 derivatives and 31 runtime proofs in a temporary directory and requires byte equality.
 
 | Runtime evidence                                | Rule                                            | Observed                     |
 | ----------------------------------------------- | ----------------------------------------------- | ---------------------------- |
 | runtime identities                              | 21 approved + 2 coherent sea replacements       | 23/23                        |
-| optimized public tokens                         | RGBA, ≤128 KiB target and ≤300 KiB hard ceiling | 23/23; total 355,062 bytes   |
-| conservative all-family cold-cache critical set | ≤3 MiB                                          | 1,022,113 bytes              |
+| retained generated sources                      | RGBA, ≤300 KiB per committed image              | 2/2; 138,454 / 228,737 bytes |
+| optimized public tokens                         | RGBA, ≤128 KiB target and ≤300 KiB hard ceiling | 23/23; total 355,010 bytes   |
+| conservative all-family cold-cache critical set | ≤3 MiB                                          | 1,022,061 bytes              |
 | quadrant overview pages                         | 512 px source layout across all four fields     | 4/4; largest 148,760 bytes   |
-| actual-size stress sheet                        | every identity at 96 px                         | 23/23; 46,872 bytes          |
+| actual-size stress sheet                        | every identity at 96 px                         | 23/23; 46,772 bytes          |
 | full-footprint 512 px proofs                    | every identity repeated on all four fields      | 23/23; largest 115,182 bytes |
-| full-footprint 96 px proof                      | every identity repeated on all four fields      | 23/23; 138,414 bytes         |
+| full-footprint 96 px proof                      | every identity repeated on all four fields      | 23/23; 138,258 bytes         |
 | faction marker proof                            | 24 px, color and grayscale                      | 5/5; 23,116 bytes            |
+| runtime/public contact sheet                    | all 23 at 24/32/48/96 + grayscale factions      | 23/23; 154,140 bytes         |
+| committed/referenced image census               | every enumerated image ≤300 KiB                 | 155/155 pass                 |
 
-`tools/validate_runtime.py` also requires real full-range alpha, zero-alpha corner sentinels, no newly revealed pixels outside the source silhouette, byte-identical public copies, exact receipt hashes, complete prompt/provenance records, and the original checkpoint validator. Hidden-entity eligibility remains a renderer concern rather than an art-file property; the production registry tests use throwing identity lookups and an override-lookup census to prove hidden city, ship, party, encounter, and site detail is absent from preload requests.
+`tools/validate_runtime.py` also requires real full-range alpha, zero-alpha corner sentinels, no newly revealed pixels outside the source silhouette, exact-zero contamination witnesses, byte-identical public copies, exact receipt hashes, distinct retained versus original-unretained provenance, all 23 public identities in the runtime-bound 24/32/48/96 sheet, complete prompt records, and the original checkpoint validator. It enumerates all images in this package plus every external reference, proof flag/tile input, and published receipt target, applying the 300 KiB ceiling to each. Negative controls must reject an oversized retained image, a nonzero semantic witness, and an incomplete 21-only runtime sheet. Hidden-entity eligibility remains a renderer concern rather than an art-file property; the production registry tests use throwing identity lookups and an override-lookup census to prove hidden city, ship, party, encounter, and site detail is absent from preload requests.
 
 The runtime renderer preserves existing exploration and visibility gates, gives neutral cities a safe neutral default, keeps `city:own` and `city:enemy` theme overrides ahead of faction defaults, and waits for every eligible winning texture to settle as loaded or failed before revealing the interactive map. The wait is finite because failed decodes settle to the existing procedural fallback. It does not preload unseen detail art.
 

@@ -1,6 +1,6 @@
 {
-  "schema": 1,
-  "transform": "deterministic semantic matte cleanup; no generative edit",
+  "schema": 2,
+  "transform": "deterministic semantic matte cleanup with contamination witnesses; no generative edit",
   "assets": [
     {
       "id": "city:british",
@@ -14,9 +14,11 @@
       "output_256_sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7",
       "output_256_quality": 90,
       "output_256_bytes": 17936,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 3,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 93173,
       "visible_pixels_after": 93170
     },
@@ -32,9 +34,11 @@
       "output_256_sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a",
       "output_256_quality": 90,
       "output_256_bytes": 14296,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 363,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 69904,
       "visible_pixels_after": 69541
     },
@@ -50,9 +54,11 @@
       "output_256_sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f",
       "output_256_quality": 90,
       "output_256_bytes": 15984,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 93,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 67258,
       "visible_pixels_after": 67165
     },
@@ -68,9 +74,11 @@
       "output_256_sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a",
       "output_256_quality": 90,
       "output_256_bytes": 17284,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 688,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 77647,
       "visible_pixels_after": 76959
     },
@@ -86,9 +94,11 @@
       "output_256_sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97",
       "output_256_quality": 90,
       "output_256_bytes": 17978,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 606,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 86065,
       "visible_pixels_after": 85459
     },
@@ -104,9 +114,11 @@
       "output_256_sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3",
       "output_256_quality": 90,
       "output_256_bytes": 11814,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 279,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 56255,
       "visible_pixels_after": 55976
     },
@@ -122,9 +134,11 @@
       "output_256_sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c",
       "output_256_quality": 90,
       "output_256_bytes": 8798,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 4048,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 31670,
       "visible_pixels_after": 27622
     },
@@ -140,9 +154,11 @@
       "output_256_sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200",
       "output_256_quality": 90,
       "output_256_bytes": 13200,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 1064,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 55089,
       "visible_pixels_after": 54025
     },
@@ -158,9 +174,11 @@
       "output_256_sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7",
       "output_256_quality": 90,
       "output_256_bytes": 13298,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 3298,
       "contact_pixels_removed": 476,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 57320,
       "visible_pixels_after": 53546
     },
@@ -176,9 +194,11 @@
       "output_256_sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3",
       "output_256_quality": 90,
       "output_256_bytes": 16284,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 824,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 66364,
       "visible_pixels_after": 65540
     },
@@ -194,9 +214,11 @@
       "output_256_sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc",
       "output_256_quality": 90,
       "output_256_bytes": 17306,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 1288,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 79551,
       "visible_pixels_after": 78263
     },
@@ -212,9 +234,11 @@
       "output_256_sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef",
       "output_256_quality": 90,
       "output_256_bytes": 17232,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 1129,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 61449,
       "visible_pixels_after": 60320
     },
@@ -223,18 +247,45 @@
       "input": "sources/selected/party-spanish-512.webp",
       "input_sha256": "62e628cf28e862355e9cef353830154e04fa4c72ec56386d1f5205b03e13f929",
       "output_512": "sources/runtime/party-spanish-512.webp",
-      "output_512_sha256": "3f88b5ea4c2eb1e9ce6f00114d74c1447e43124cf9695e67619a7940f5ec610b",
+      "output_512_sha256": "96d5b70c78ee1efd8f70704e34b181b535e388e5e7127bc6d749c92c8653111b",
       "output_512_quality": 92,
-      "output_512_bytes": 39908,
+      "output_512_bytes": 39260,
       "output_256": "sources/runtime/party-spanish-256.webp",
-      "output_256_sha256": "1f954ee503a390295979c8dc4a4c9c9dd11c9e7eda6af547cd962d0a5fc3eb83",
+      "output_256_sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6",
       "output_256_quality": 90,
-      "output_256_bytes": 14830,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "output_256_bytes": 14882,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 2317,
-      "contact_pixels_removed": 1489,
+      "contact_pixels_removed": 3280,
+      "contamination_pixels_removed": 118,
+      "contamination_witnesses": [
+        {
+          "x": 243,
+          "y": 438,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 271,
+          "y": 435,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 265,
+          "y": 444,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 264,
+          "y": 445,
+          "source_alpha": 175,
+          "output_alpha": 0
+        }
+      ],
       "visible_pixels_before": 71090,
-      "visible_pixels_after": 67284
+      "visible_pixels_after": 65375
     },
     {
       "id": "encounter:merchant",
@@ -248,9 +299,11 @@
       "output_256_sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567",
       "output_256_quality": 90,
       "output_256_bytes": 16420,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 416,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 65556,
       "visible_pixels_after": 65140
     },
@@ -259,36 +312,90 @@
       "input": "sources/selected/encounter-native-village-512.webp",
       "input_sha256": "89d5bc88e8884a5695ad224120153b08135ea462d6fcc336fa4b28ff798af6f5",
       "output_512": "sources/runtime/encounter-native-village-512.webp",
-      "output_512_sha256": "e0e493767407dda0ed8c25653949c6fcdee427192274d6d944fc885a7f235341",
+      "output_512_sha256": "b3a93f9d2a5940c449da03956c6d3f923080cae33322bd6fccf5d6d776f49588",
       "output_512_quality": 92,
-      "output_512_bytes": 37218,
+      "output_512_bytes": 36968,
       "output_256": "sources/runtime/encounter-native-village-256.webp",
-      "output_256_sha256": "ddbeaa3036229e348275e8d3e42fbb45cdb9567f51461d4b1e4e197b30007882",
+      "output_256_sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b",
       "output_256_quality": 90,
-      "output_256_bytes": 12786,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "output_256_bytes": 12600,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 1533,
       "contact_pixels_removed": 312,
+      "contamination_pixels_removed": 385,
+      "contamination_witnesses": [
+        {
+          "x": 67,
+          "y": 352,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 122,
+          "y": 379,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 273,
+          "y": 383,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 431,
+          "y": 351,
+          "source_alpha": 255,
+          "output_alpha": 0
+        }
+      ],
       "visible_pixels_before": 61041,
-      "visible_pixels_after": 59196
+      "visible_pixels_after": 58811
     },
     {
       "id": "encounter:hermit",
       "input": "sources/selected/encounter-hermit-512.webp",
       "input_sha256": "e293c5178f9551a850909ab9a9589fbee2a7e8f315df8fe7dd97f3cda9891f38",
       "output_512": "sources/runtime/encounter-hermit-512.webp",
-      "output_512_sha256": "062ce489305b0d4ae127f3ba09251566d854fc79e86f4b524d3289c9c91a3b64",
+      "output_512_sha256": "508e799c0d89948a9badc91f84c8417b75ca5343b0752b182400792d194a77e3",
       "output_512_quality": 92,
-      "output_512_bytes": 39438,
+      "output_512_bytes": 39188,
       "output_256": "sources/runtime/encounter-hermit-256.webp",
-      "output_256_sha256": "ee38aaca41019f455e571ccbddc732b6fa4d5f111ed9ec4e74be10ded43cbde8",
+      "output_256_sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8",
       "output_256_quality": 90,
-      "output_256_bytes": 13412,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "output_256_bytes": 13494,
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 438,
       "contact_pixels_removed": 397,
+      "contamination_pixels_removed": 849,
+      "contamination_witnesses": [
+        {
+          "x": 127,
+          "y": 367,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 214,
+          "y": 429,
+          "source_alpha": 251,
+          "output_alpha": 0
+        },
+        {
+          "x": 233,
+          "y": 440,
+          "source_alpha": 255,
+          "output_alpha": 0
+        },
+        {
+          "x": 357,
+          "y": 379,
+          "source_alpha": 255,
+          "output_alpha": 0
+        }
+      ],
       "visible_pixels_before": 64686,
-      "visible_pixels_after": 63851
+      "visible_pixels_after": 63002
     },
     {
       "id": "encounter:banditCamp",
@@ -302,9 +409,11 @@
       "output_256_sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f",
       "output_256_quality": 90,
       "output_256_bytes": 12374,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 341,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 65810,
       "visible_pixels_after": 65469
     },
@@ -320,9 +429,11 @@
       "output_256_sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa",
       "output_256_quality": 90,
       "output_256_bytes": 17964,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 3930,
       "contact_pixels_removed": 794,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 104269,
       "visible_pixels_after": 99545
     },
@@ -338,9 +449,11 @@
       "output_256_sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815",
       "output_256_quality": 90,
       "output_256_bytes": 16618,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 466,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 94219,
       "visible_pixels_after": 93753
     },
@@ -356,9 +469,11 @@
       "output_256_sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba",
       "output_256_quality": 90,
       "output_256_bytes": 19190,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 663,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 88204,
       "visible_pixels_after": 87541
     },
@@ -374,16 +489,18 @@
       "output_256_sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760",
       "output_256_quality": 90,
       "output_256_bytes": 16050,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 537,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 63408,
       "visible_pixels_after": 62871
     },
     {
       "id": "encounter:natives",
       "input": "sources/openai/encounter-natives-runtime-source.png",
-      "input_sha256": "3867d03e4393a76cce93dfc03fdf330a73b918558e2c0f7c225f4b848bac4006",
+      "input_sha256": "39a00546c68422dd5609309538c3d461c3159f051a7bc220f44f1b312dc37b1f",
       "output_512": "sources/runtime/runtime-encounter-natives-512.webp",
       "output_512_sha256": "6369e5c0709cf625bbc2ce42e91772a360971947534621d9c4bcbbac3b5cdead",
       "output_512_quality": 92,
@@ -392,16 +509,18 @@
       "output_256_sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106",
       "output_256_quality": 90,
       "output_256_bytes": 13946,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 11,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 42327,
       "visible_pixels_after": 42316
     },
     {
       "id": "encounter:settlers",
       "input": "sources/openai/encounter-settlers-runtime-source.png",
-      "input_sha256": "c4333e9e6c224b4f4621d4146679b3ceb526f9f43aced398d7729fd8457fe8c2",
+      "input_sha256": "f977e0faaaa6c88d72a81ea14cfbefa521ed363818329ea77fb237ca9b5b9c0c",
       "output_512": "sources/runtime/runtime-encounter-settlers-512.webp",
       "output_512_sha256": "7d359eb876fa64a76f012b0d61212c5335d7f98b836c766d2658a6ed4ab399ce",
       "output_512_quality": 92,
@@ -410,9 +529,11 @@
       "output_256_sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb",
       "output_256_quality": 90,
       "output_256_bytes": 20062,
-      "policy": "low-chroma-exterior-plus-semantic-contact-v1",
+      "policy": "low-chroma-exterior-plus-semantic-contact-and-witness-v2",
       "boundary_pixels_removed": 92,
       "contact_pixels_removed": 0,
+      "contamination_pixels_removed": 0,
+      "contamination_witnesses": [],
       "visible_pixels_before": 73311,
       "visible_pixels_after": 73219
     }
@@ -425,13 +546,13 @@
     },
     {
       "path": "proofs/matte-stress/matte-stress-512-page-2.webp",
-      "sha256": "2d862d2690f1c2960eca7d753d7a1779aa926a95c6d0c3652fd392de251e2e32",
-      "bytes": 121598
+      "sha256": "3cd11682813c2c2c9dab05f6cbf747d6102f35579c4325621f7a1587adeb6a31",
+      "bytes": 121308
     },
     {
       "path": "proofs/matte-stress/matte-stress-512-page-3.webp",
-      "sha256": "3f2a0a704cdab1f12d499c0dbc58782dcbbc88f82713b2f73aef64e3ecc0fa64",
-      "bytes": 134948
+      "sha256": "c029cd292cecf16f2b74baa43ec91f17aba2a3c8e7c8d2074d91bcbb9bc054c7",
+      "bytes": 135080
     },
     {
       "path": "proofs/matte-stress/matte-stress-512-page-4.webp",
@@ -440,8 +561,8 @@
     },
     {
       "path": "proofs/matte-stress/matte-stress-96-all.webp",
-      "sha256": "3ac6a9aa124c256f1afc0c4de53a6082e5dce3187eb306936890857e7a58f969",
-      "bytes": 46872
+      "sha256": "db01e55b5084de1a2e47ac26ca8a7ac6920be92271a69dc8744a17d265537ff2",
+      "bytes": 46772
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-city-british.webp",
@@ -505,8 +626,8 @@
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-party-spanish.webp",
-      "sha256": "4ebf76b95af0acee094758437b586ee589fb24b70a1bbe21e4a029b97a437445",
-      "bytes": 65598
+      "sha256": "4b1905fe419ba3a0d2841eb6e68c67ec69caa7fda42e651b181bea70959dae22",
+      "bytes": 64218
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-encounter-merchant-convoy.webp",
@@ -515,13 +636,13 @@
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-encounter-native-village.webp",
-      "sha256": "d3960b5e121b6ea52682f6f64b33c62a174d7440acd9f90d7af81258e50731ea",
-      "bytes": 65432
+      "sha256": "dc479495a177b3c49707ee09320bad503100391d6a38266d7e1465216c9d3f7f",
+      "bytes": 65148
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-encounter-hermit.webp",
-      "sha256": "b49d6d66ab3507b2beb8017c9b1f1d4a7f42e5c1c97136f7796c73c1582a633b",
-      "bytes": 66474
+      "sha256": "0b8e6b6038be38942713ce45efdfeafafa18a017e7a59e151f91e752f8649978",
+      "bytes": 66072
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-512-encounter-bandit-camp.webp",
@@ -560,13 +681,164 @@
     },
     {
       "path": "proofs/matte-stress/matte-full-footprint-96-all.webp",
-      "sha256": "4634c9be25cfba754de372c27e51b55ffe852526ef9168463c081a5b0f197ce3",
-      "bytes": 138414
+      "sha256": "c26516f8ec7c29e282b188fab2ffa5de74e849ac23e4ad4d993fc43ef64f2545",
+      "bytes": 138258
     },
     {
       "path": "proofs/matte-stress/faction-marker-24-color-grayscale.webp",
       "sha256": "6b2518d6fbfd19aa7acd6399e0ebf77b46d25b9dc4cc0c3a91e0673b50a4c0d6",
       "bytes": 23116
+    },
+    {
+      "path": "proofs/matte-stress/runtime-public-contact-sheet-23.webp",
+      "sha256": "509ed83e1bec0300b99aba83acfaffbd0f176dfc0e117d28e38b700f07d66b0d",
+      "bytes": 154140,
+      "kind": "runtime-public-contact-sheet",
+      "identity_ids": [
+        "city:british",
+        "city:dutch",
+        "city:french",
+        "city:pirates",
+        "city:spanish",
+        "city:neutral",
+        "ship:british:sloop",
+        "ship:pirates:galleon",
+        "party:british",
+        "party:dutch",
+        "party:french",
+        "party:pirates",
+        "party:spanish",
+        "encounter:merchant",
+        "encounter:nativeVillage",
+        "encounter:hermit",
+        "encounter:banditCamp",
+        "landSite:mine",
+        "landSite:sawmill",
+        "landSite:lumberCamp",
+        "landSite:ruins",
+        "encounter:natives",
+        "encounter:settlers"
+      ],
+      "sizes_css_px": [24, 32, 48, 96],
+      "grayscale_factions": ["british", "dutch", "french", "pirates", "spanish"],
+      "runtime_inputs": [
+        {
+          "id": "city:british",
+          "source": "sources/runtime/city-british-256.webp",
+          "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7"
+        },
+        {
+          "id": "city:dutch",
+          "source": "sources/runtime/city-dutch-256.webp",
+          "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a"
+        },
+        {
+          "id": "city:french",
+          "source": "sources/runtime/city-french-256.webp",
+          "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f"
+        },
+        {
+          "id": "city:pirates",
+          "source": "sources/runtime/city-pirates-256.webp",
+          "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a"
+        },
+        {
+          "id": "city:spanish",
+          "source": "sources/runtime/city-spanish-256.webp",
+          "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97"
+        },
+        {
+          "id": "city:neutral",
+          "source": "sources/runtime/city-neutral-256.webp",
+          "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3"
+        },
+        {
+          "id": "ship:british:sloop",
+          "source": "sources/runtime/ship-british-sloop-256.webp",
+          "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+        },
+        {
+          "id": "ship:pirates:galleon",
+          "source": "sources/runtime/ship-pirates-galleon-256.webp",
+          "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+        },
+        {
+          "id": "party:british",
+          "source": "sources/runtime/party-british-256.webp",
+          "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7"
+        },
+        {
+          "id": "party:dutch",
+          "source": "sources/runtime/party-dutch-256.webp",
+          "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3"
+        },
+        {
+          "id": "party:french",
+          "source": "sources/runtime/party-french-256.webp",
+          "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc"
+        },
+        {
+          "id": "party:pirates",
+          "source": "sources/runtime/party-pirates-256.webp",
+          "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef"
+        },
+        {
+          "id": "party:spanish",
+          "source": "sources/runtime/party-spanish-256.webp",
+          "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6"
+        },
+        {
+          "id": "encounter:merchant",
+          "source": "sources/runtime/encounter-merchant-convoy-256.webp",
+          "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567"
+        },
+        {
+          "id": "encounter:nativeVillage",
+          "source": "sources/runtime/encounter-native-village-256.webp",
+          "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b"
+        },
+        {
+          "id": "encounter:hermit",
+          "source": "sources/runtime/encounter-hermit-256.webp",
+          "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8"
+        },
+        {
+          "id": "encounter:banditCamp",
+          "source": "sources/runtime/encounter-bandit-camp-256.webp",
+          "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f"
+        },
+        {
+          "id": "landSite:mine",
+          "source": "sources/runtime/site-mine-256.webp",
+          "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa"
+        },
+        {
+          "id": "landSite:sawmill",
+          "source": "sources/runtime/site-sawmill-256.webp",
+          "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815"
+        },
+        {
+          "id": "landSite:lumberCamp",
+          "source": "sources/runtime/site-lumber-camp-256.webp",
+          "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba"
+        },
+        {
+          "id": "landSite:ruins",
+          "source": "sources/runtime/site-ruins-256.webp",
+          "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760"
+        },
+        {
+          "id": "encounter:natives",
+          "source": "sources/runtime/runtime-encounter-natives-256.webp",
+          "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106"
+        },
+        {
+          "id": "encounter:settlers",
+          "source": "sources/runtime/runtime-encounter-settlers-256.webp",
+          "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb"
+        }
+      ],
+      "public_binding": "runtime-public-receipt.json byte identity"
     }
   ]
 }

@@ -26,13 +26,15 @@ The 32 px column deliberately places each token on the visible side of a fog fro
 
 The runtime pass adds semantic matte cleanup without overwriting the checkpoint sources, exports 512 px review sources and optimized 256 px tokens, and publishes byte-identical copies of 23 identities. The two added identities replace the legacy native-canoe and settler-launch encounter art so all production sea encounters share the approved camera, lighting, and materials.
 
+![All 23 shipping runtime identities at exact 24, 32, 48, and 96 px plus grayscale faction comparison](proofs/matte-stress/runtime-public-contact-sheet-23.webp)
+
 ![All runtime identities on full-footprint stress backgrounds at 96 px](proofs/matte-stress/matte-full-footprint-96-all.webp)
 
 ![24 px faction marker proof in color and grayscale](proofs/matte-stress/faction-marker-24-color-grayscale.webp)
 
-The four overview pages and per-identity `matte-full-footprint-512-*.webp` proofs are in `proofs/matte-stress/`. Each full-footprint proof repeats the complete 512 px alpha footprint over approved land or deep-water texture, near-black, saturated magenta, and saturated cyan. `matte-full-footprint-96-all.webp` repeats the same fields at exact 96 px. This deliberately exposes pale matte and contact remnants that representative terrain alone can hide.
+The four overview pages and per-identity `matte-full-footprint-512-*.webp` proofs are in `proofs/matte-stress/`. Each full-footprint proof repeats the complete 512 px alpha footprint over approved land or deep-water texture, near-black, saturated magenta, and saturated cyan. `matte-full-footprint-96-all.webp` repeats the same fields at exact 96 px. This deliberately exposes pale matte and contact remnants that representative terrain alone can hide. Named semantic masks now cover the Spanish party's forward and rear contact edges plus the native-village and hermit base edges; twelve source-visible witness pixels must become exactly zero alpha or validation fails.
 
-`runtime-additions.json` records the exact provenance for the two additional OpenAI generations. `sources/runtime/polish-receipt.json` records every cleaned source and proof hash. `runtime-public-receipt.json` binds each public URL to a byte-identical runtime token. `tools/validate_runtime.py` fails loud on provenance drift, dimensions, alpha/privacy sentinels, matte-cleanup omissions, budgets, public-copy drift, proof coverage, or nondeterministic recomposition.
+`runtime-additions.json` records the exact provenance for the two additional OpenAI generations. Their original 1,254 px byte streams are not retained: the original hashes and sizes remain in provenance, while the committed project-bound RGBA PNGs are deterministic 512 px normalizations at 138,454 and 228,737 bytes. `sources/runtime/polish-receipt.json` records every cleaned source, witness, and proof hash. `runtime-public-receipt.json` binds each public URL to a byte-identical runtime token. `tools/validate_runtime.py` fails loud on retained/original provenance ambiguity, dimensions, alpha/privacy sentinels, semantic-witness escape, any committed or referenced image above 300 KiB, public-copy drift, 23-identity runtime-sheet coverage, or nondeterministic recomposition. Its negative controls prove those new failure paths reject an oversized image, a nonzero witness, and checkpoint-only coverage.
 
 ## Operator decision
 

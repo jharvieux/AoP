@@ -102,8 +102,8 @@
       "source": "sources/runtime/party-spanish-256.webp",
       "public_path": "apps/web/public/art/parties/spanish.webp",
       "url": "/art/parties/spanish.webp",
-      "sha256": "1f954ee503a390295979c8dc4a4c9c9dd11c9e7eda6af547cd962d0a5fc3eb83",
-      "bytes": 14830
+      "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6",
+      "bytes": 14882
     },
     {
       "id": "encounter:merchant",
@@ -118,16 +118,16 @@
       "source": "sources/runtime/encounter-native-village-256.webp",
       "public_path": "apps/web/public/art/encounters/native-village.webp",
       "url": "/art/encounters/native-village.webp",
-      "sha256": "ddbeaa3036229e348275e8d3e42fbb45cdb9567f51461d4b1e4e197b30007882",
-      "bytes": 12786
+      "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b",
+      "bytes": 12600
     },
     {
       "id": "encounter:hermit",
       "source": "sources/runtime/encounter-hermit-256.webp",
       "public_path": "apps/web/public/art/encounters/hermit.webp",
       "url": "/art/encounters/hermit.webp",
-      "sha256": "ee38aaca41019f455e571ccbddc732b6fa4d5f111ed9ec4e74be10ded43cbde8",
-      "bytes": 13412
+      "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8",
+      "bytes": 13494
     },
     {
       "id": "encounter:banditCamp",
