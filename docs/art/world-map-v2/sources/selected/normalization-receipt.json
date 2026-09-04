@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "city:british",
+      "input": "city-british-alpha-source.png",
+      "input_sha256": "64608255afe1efe9ddf14969288674935e9d9d5879c630cca4aa5df6d1232032",
+      "output": "sources/selected/city-british-512.webp",
+      "output_sha256": "747ed242521c8e81b97cd889c7a57f03262f125168b8a6ff41e022e4cfaf6cfc",
+      "quality": 92,
+      "bytes": 61570
+    },
+    {
+      "id": "city:dutch",
+      "input": "city-dutch-source.png",
+      "input_sha256": "4925ae88a7cf23a70b557d10ad1f7567e5600ec1cb7abbc7627190d62c69dd38",
+      "output": "sources/selected/city-dutch-512.webp",
+      "output_sha256": "d155385289b8a29bf89191ef563acb56c1d5f7f213dd9536b0329fa15cda71e2",
+      "quality": 92,
+      "bytes": 46864
+    },
+    {
+      "id": "city:french",
+      "input": "city-french-alpha-source.png",
+      "input_sha256": "2923efd0f09c38e03edaa321b0f5cb05f76c19e21b7c0e1cfe8885dfe846886f",
+      "output": "sources/selected/city-french-512.webp",
+      "output_sha256": "740628917d4b564070c3e68e3719e6719e66ecc16741b72812f23973743fc28a",
+      "quality": 92,
+      "bytes": 48402
+    },
+    {
+      "id": "city:pirates",
+      "input": "city-pirates-source.png",
+      "input_sha256": "f72d9ab649dfd93b98f27d341953ec3b6b657e612c18f0cf048ca68b8e866b79",
+      "output": "sources/selected/city-pirates-512.webp",
+      "output_sha256": "8f25aec2c77d7e52cf492418170c267579677e3bb5901ef8c26c08c5eb6f0aec",
+      "quality": 92,
+      "bytes": 57652
+    },
+    {
+      "id": "city:spanish",
+      "input": "city-spanish-source.png",
+      "input_sha256": "2f914fff285e6ee047346b22cf119c52f544f00503e71acbbb6d3273906be564",
+      "output": "sources/selected/city-spanish-512.webp",
+      "output_sha256": "606dc28aef64f2702cefea9005891af1c219cda2537dd58fb48541378ef674da",
+      "quality": 92,
+      "bytes": 58834
+    },
+    {
+      "id": "city:neutral",
+      "input": "city-neutral-source.png",
+      "input_sha256": "fd9bddd1f23b1c1b71033af60b09324ae04da5ae3831c8d8e15fa46f0c87f42a",
+      "output": "sources/selected/city-neutral-512.webp",
+      "output_sha256": "69ce2f2bd4f903f15dc8674b80188aa0f3880b8d0499e063c6a190d654fbe7a0",
+      "quality": 92,
+      "bytes": 38336
+    },
+    {
+      "id": "ship:british:sloop",
+      "input": "ship-british-sloop-source.png",
+      "input_sha256": "bd1a21804f85da53f425a9f47e3e968025f3fd621cc7636d4c5551a9f78655a4",
+      "output": "sources/selected/ship-british-sloop-512.webp",
+      "output_sha256": "ce9b5716522dc09b998a9eaa587861c13c18fcd0705c07eb611059d526dccc06",
+      "quality": 92,
+      "bytes": 26676
+    },
+    {
+      "id": "ship:pirates:galleon",
+      "input": "ship-pirates-galleon-source.png",
+      "input_sha256": "cb6e238059c29f733840ef3ec15f05ed0899cb3458f247ec852936b81837f29d",
+      "output": "sources/selected/ship-pirates-galleon-512.webp",
+      "output_sha256": "5c0e8a7157f3a54f5a049c0765781e3d18c04142f4a5c635aa7eabea42990975",
+      "quality": 92,
+      "bytes": 43884
+    },
+    {
+      "id": "party:british",
+      "input": "party-british-source.png",
+      "input_sha256": "5a726f3ece8fd296e1238652b0ab92a3ec3692a371e1ffc0e16e784c01363653",
+      "output": "sources/selected/party-british-512.webp",
+      "output_sha256": "a445245b60b7bf13657b482e435bee3c67d81be777c0540edcf37b7aca58ab0e",
+      "quality": 92,
+      "bytes": 36644
+    },
+    {
+      "id": "party:dutch",
+      "input": "party-dutch-source.png",
+      "input_sha256": "6685adf24492aa6945e77fcff5eee1f566c60014c0c02f420cbfedce7e701e20",
+      "output": "sources/selected/party-dutch-512.webp",
+      "output_sha256": "940bde625b64169952b78cf965c237cf07957f5ff4fd32167cf3ed7d1829633e",
+      "quality": 92,
+      "bytes": 48178
+    },
+    {
+      "id": "party:french",
+      "input": "party-french-source.png",
+      "input_sha256": "5eec2ed4b0174a2f0c42e05fb4b952f8fa7961d0512341de716d7b9965268975",
+      "output": "sources/selected/party-french-512.webp",
+      "output_sha256": "5c60cfcf98be1a9bfa07483bfe2a8d980fc9d72dd8338a81ff16f95e867ea564",
+      "quality": 92,
+      "bytes": 50220
+    },
+    {
+      "id": "party:pirates",
+      "input": "party-pirates-source.png",
+      "input_sha256": "cdfe01cafed47bd1fad335f75ef076c432346173f86108446d6f1bfea49a2711",
+      "output": "sources/selected/party-pirates-512.webp",
+      "output_sha256": "34ec1dc09735793b11da1bf139f8c2f73ecd3d4b1979f0f5cf3ffa8e4c016de6",
+      "quality": 92,
+      "bytes": 49178
+    },
+    {
+      "id": "party:spanish",
+      "input": "party-spanish-source.png",
+      "input_sha256": "b092a659c84b4248cb6cdfd5432e0de20f311dea777b9105bd43f001cab3e1b0",
+      "output": "sources/selected/party-spanish-512.webp",
+      "output_sha256": "62e628cf28e862355e9cef353830154e04fa4c72ec56386d1f5205b03e13f929",
+      "quality": 92,
+      "bytes": 41898
+    },
+    {
+      "id": "encounter:merchant",
+      "input": "encounter-merchant-convoy-source.png",
+      "input_sha256": "056c2ae17cf9263f3badb67b0dbc2099fbb849cd56d0d160d9ecd553e0f27393",
+      "output": "sources/selected/encounter-merchant-convoy-512.webp",
+      "output_sha256": "887d82e74cf6b2f00a914a5e1d689a7b8891c3a46b060ec8853225585924edf6",
+      "quality": 92,
+      "bytes": 49794
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "input": "encounter-native-village-source.png",
+      "input_sha256": "f69fc125ce0959553d3bd3d11321c2f2c5c440bfc51cd45b15ca434e7e1fb6cb",
+      "output": "sources/selected/encounter-native-village-512.webp",
+      "output_sha256": "89d5bc88e8884a5695ad224120153b08135ea462d6fcc336fa4b28ff798af6f5",
+      "quality": 92,
+      "bytes": 39592
+    },
+    {
+      "id": "encounter:hermit",
+      "input": "encounter-hermit-source.png",
+      "input_sha256": "d9f7e92be7dfec2f6e82b0f6fd75531084890959679aca1f8ab72aa82adc63d0",
+      "output": "sources/selected/encounter-hermit-512.webp",
+      "output_sha256": "e293c5178f9551a850909ab9a9589fbee2a7e8f315df8fe7dd97f3cda9891f38",
+      "quality": 92,
+      "bytes": 41130
+    },
+    {
+      "id": "encounter:banditCamp",
+      "input": "encounter-bandit-camp-source.png",
+      "input_sha256": "212cefb3ba803aaed1c71f21efc363845c9b24a8188cfb7c54d359a9c57e85c4",
+      "output": "sources/selected/encounter-bandit-camp-512.webp",
+      "output_sha256": "cd60e654501396cc398a1a8c3363fe0a6985f62b1bb1c41f4d80ba6b71648573",
+      "quality": 92,
+      "bytes": 37272
+    },
+    {
+      "id": "landSite:mine",
+      "input": "site-mine-source.png",
+      "input_sha256": "daa94bdefa59bbe91f473e04f8a385013701d61747cdfafdbaa11f62bbf919d3",
+      "output": "sources/selected/site-mine-512.webp",
+      "output_sha256": "1b06434c1bf3462ab181a8c524e298f23ee37847f27d0d2a754947c35a54aa6d",
+      "quality": 92,
+      "bytes": 49910
+    },
+    {
+      "id": "landSite:sawmill",
+      "input": "site-sawmill-source.png",
+      "input_sha256": "96fb58036d88766c4110e08b2437e5a60e01e98abaa37738552b2297ffeb850c",
+      "output": "sources/selected/site-sawmill-512.webp",
+      "output_sha256": "d3137fadf5fae40894d26bdf6b754a5be3c31091934dc1b8c2d05f193481dba3",
+      "quality": 92,
+      "bytes": 53986
+    },
+    {
+      "id": "landSite:lumberCamp",
+      "input": "site-lumber-camp-source.png",
+      "input_sha256": "7f77ad0fea9f28b92e602f897e1f209063d45d1018dcc89d0beec8a1452de75a",
+      "output": "sources/selected/site-lumber-camp-512.webp",
+      "output_sha256": "4660574059eea55eb4b1b3419b36f45af22d3e0f30842ff9cd9718aadd39778c",
+      "quality": 92,
+      "bytes": 59608
+    },
+    {
+      "id": "landSite:ruins",
+      "input": "site-ruins-source.png",
+      "input_sha256": "cb8e3f07f0945d9e90b9e1e1ab399fee25c5d87285f27a0bfc28c625045870c2",
+      "output": "sources/selected/site-ruins-512.webp",
+      "output_sha256": "dc9b1adc5f6c8b7ff92f720831861323b501ddfb54d7e701c883b1d00ad48c51",
+      "quality": 92,
+      "bytes": 49058
+    }
+  ]
+}

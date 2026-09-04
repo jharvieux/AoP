@@ -1,0 +1,712 @@
+{
+  "schema": 1,
+  "sizes": [24, 32, 48, 96],
+  "assets": [
+    {
+      "id": "city:british",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 318]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 318]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 318]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 318]
+        }
+      ]
+    },
+    {
+      "id": "city:dutch",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 442]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 442]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 442]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 442]
+        }
+      ]
+    },
+    {
+      "id": "city:french",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 566]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 566]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 566]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 566]
+        }
+      ]
+    },
+    {
+      "id": "city:pirates",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 690]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 690]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 690]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 690]
+        }
+      ]
+    },
+    {
+      "id": "city:spanish",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 814]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 814]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 814]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 814]
+        }
+      ]
+    },
+    {
+      "id": "city:neutral",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 938]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 938]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 938]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 938]
+        }
+      ]
+    },
+    {
+      "id": "ship:british:sloop",
+      "cells": [
+        {
+          "size": 24,
+          "context": "water",
+          "token_drawn": true,
+          "center": [695, 1116]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1116]
+        },
+        {
+          "size": 48,
+          "context": "water",
+          "token_drawn": true,
+          "center": [1591, 1116]
+        },
+        {
+          "size": 96,
+          "context": "water",
+          "token_drawn": true,
+          "center": [2039, 1116]
+        }
+      ]
+    },
+    {
+      "id": "ship:pirates:galleon",
+      "cells": [
+        {
+          "size": 24,
+          "context": "water",
+          "token_drawn": true,
+          "center": [695, 1240]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1240]
+        },
+        {
+          "size": 48,
+          "context": "water",
+          "token_drawn": true,
+          "center": [1591, 1240]
+        },
+        {
+          "size": 96,
+          "context": "water",
+          "token_drawn": true,
+          "center": [2039, 1240]
+        }
+      ]
+    },
+    {
+      "id": "party:british",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 1418]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1418]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 1418]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 1418]
+        }
+      ]
+    },
+    {
+      "id": "party:dutch",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 1542]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1542]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 1542]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 1542]
+        }
+      ]
+    },
+    {
+      "id": "party:french",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 1666]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1666]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 1666]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 1666]
+        }
+      ]
+    },
+    {
+      "id": "party:pirates",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 1790]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1790]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 1790]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 1790]
+        }
+      ]
+    },
+    {
+      "id": "party:spanish",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 1914]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 1914]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 1914]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 1914]
+        }
+      ]
+    },
+    {
+      "id": "encounter:merchant",
+      "cells": [
+        {
+          "size": 24,
+          "context": "water",
+          "token_drawn": true,
+          "center": [695, 2092]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2092]
+        },
+        {
+          "size": 48,
+          "context": "water",
+          "token_drawn": true,
+          "center": [1591, 2092]
+        },
+        {
+          "size": 96,
+          "context": "water",
+          "token_drawn": true,
+          "center": [2039, 2092]
+        }
+      ]
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2216]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2216]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2216]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2216]
+        }
+      ]
+    },
+    {
+      "id": "encounter:hermit",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2340]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2340]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2340]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2340]
+        }
+      ]
+    },
+    {
+      "id": "encounter:banditCamp",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2464]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2464]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2464]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2464]
+        }
+      ]
+    },
+    {
+      "id": "landSite:mine",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2642]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2642]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2642]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2642]
+        }
+      ]
+    },
+    {
+      "id": "landSite:sawmill",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2766]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2766]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2766]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2766]
+        }
+      ]
+    },
+    {
+      "id": "landSite:lumberCamp",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 2890]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 2890]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 2890]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 2890]
+        }
+      ]
+    },
+    {
+      "id": "landSite:ruins",
+      "cells": [
+        {
+          "size": 24,
+          "context": "land",
+          "token_drawn": true,
+          "center": [695, 3014]
+        },
+        {
+          "size": 32,
+          "context": "fog-frontier-visible-side",
+          "token_drawn": true,
+          "center": [1056, 3014]
+        },
+        {
+          "size": 48,
+          "context": "land",
+          "token_drawn": true,
+          "center": [1591, 3014]
+        },
+        {
+          "size": 96,
+          "context": "land",
+          "token_drawn": true,
+          "center": [2039, 3014]
+        }
+      ]
+    }
+  ],
+  "grayscale_ids": [
+    "city:british",
+    "city:dutch",
+    "city:french",
+    "city:neutral",
+    "city:pirates",
+    "city:spanish",
+    "party:british",
+    "party:dutch",
+    "party:french",
+    "party:pirates",
+    "party:spanish",
+    "ship:british:sloop",
+    "ship:pirates:galleon"
+  ],
+  "fog_examples": [
+    {
+      "id": "city:british",
+      "state": "visible",
+      "token_drawn": true
+    },
+    {
+      "id": "city:british",
+      "state": "frontier",
+      "token_drawn": true
+    },
+    {
+      "id": "city:british",
+      "state": "hidden",
+      "token_drawn": false
+    },
+    {
+      "id": "ship:british:sloop",
+      "state": "visible",
+      "token_drawn": true
+    },
+    {
+      "id": "ship:british:sloop",
+      "state": "frontier",
+      "token_drawn": true
+    },
+    {
+      "id": "ship:british:sloop",
+      "state": "hidden",
+      "token_drawn": false
+    },
+    {
+      "id": "party:pirates",
+      "state": "visible",
+      "token_drawn": true
+    },
+    {
+      "id": "party:pirates",
+      "state": "frontier",
+      "token_drawn": true
+    },
+    {
+      "id": "party:pirates",
+      "state": "hidden",
+      "token_drawn": false
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "state": "visible",
+      "token_drawn": true
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "state": "frontier",
+      "token_drawn": true
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "state": "hidden",
+      "token_drawn": false
+    },
+    {
+      "id": "landSite:mine",
+      "state": "visible",
+      "token_drawn": true
+    },
+    {
+      "id": "landSite:mine",
+      "state": "frontier",
+      "token_drawn": true
+    },
+    {
+      "id": "landSite:mine",
+      "state": "hidden",
+      "token_drawn": false
+    }
+  ],
+  "proofs": {
+    "contact": "proofs/token-contact-sheet-2400x3108.webp",
+    "faction": "proofs/faction-color-grayscale-2200x1800.webp",
+    "fog": "proofs/fog-truth-2100x1040.webp"
+  }
+}
