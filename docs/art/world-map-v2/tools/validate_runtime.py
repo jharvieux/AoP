@@ -23,6 +23,7 @@ ADDITIONS = ROOT / "runtime-additions.json"
 PROMPTS = ROOT / "PROMPTS.md"
 POLISH_RECEIPT = ROOT / "sources" / "runtime" / "polish-receipt.json"
 PUBLIC_RECEIPT = ROOT / "runtime-public-receipt.json"
+CAPTURE_RECEIPT = ROOT / "runtime-captures" / "capture-receipt.json"
 SOURCE_LIMIT = 300 * 1024
 TOKEN_TARGET = 128 * 1024
 TOKEN_CEILING = 300 * 1024
@@ -67,22 +68,25 @@ REUSED_SHIP_IDS = {"ship:british:sloop", "ship:pirates:galleon"}
 GENERATED_SHIP_IDS = set(FLEET_IDS) - REUSED_SHIP_IDS
 IMAGE_SUFFIXES = {".png", ".webp", ".jpg", ".jpeg"}
 EXPECTED_RUNTIME_CAPTURES = {
-    "desktop-1440x900.jpg": (
-        (1440, 900),
-        61817,
-        "0bb8ad71284cf9c832735d9b96ec562304bbaabf154cf3ee10ce0d96f201bc35",
-    ),
-    "tablet-768x1024.jpg": (
-        (768, 1024),
-        51000,
-        "891de6f6b71eb8fa8da0cce1b43712d7a0bb912fe14e789cb17a216c031f29e2",
-    ),
-    "phone-390x844.jpg": (
-        (390, 844),
-        30814,
-        "5e636d9e945bfa237f21a1f202c99400fe0dbbe9bbadf454d1c16d9986a9056f",
-    ),
+    "desktop-1440x900.jpg": (1440, 900),
+    "tablet-768x1024.jpg": (768, 1024),
+    "phone-390x844.jpg": (390, 844),
 }
+STALE_RUNTIME_CAPTURE_HASHES = {
+    "0bb8ad71284cf9c832735d9b96ec562304bbaabf154cf3ee10ce0d96f201bc35",
+    "891de6f6b71eb8fa8da0cce1b43712d7a0bb912fe14e789cb17a216c031f29e2",
+    "5e636d9e945bfa237f21a1f202c99400fe0dbbe9bbadf454d1c16d9986a9056f",
+}
+CAPTURE_RUNTIME_HEAD = "09368902401310bf9a43455865f1151a6bb02d87"
+CAPTURE_RUNTIME_ART_HEAD = "7c4c56d7a28baea8a7f176e51fadd15d70353648"
+CAPTURE_GENERATED_REFERENCE = "apps/web/public/art/factions/pirates/ship_sloop_v2.webp"
+CAPTURE_GENERATED_REFERENCE_SHA256 = (
+    "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+)
+CAPTURE_LEGACY_REFERENCE = "apps/web/public/art/factions/pirates/ship.png"
+CAPTURE_LEGACY_REFERENCE_SHA256 = (
+    "d4fcd25b66b09fb0545c2c9cf38bc5534c332feeb483222270de023fd536b3d6"
+)
 UNRETAINED_ORIGINALS = {
     "encounter:natives": {
         "sha256": "3867d03e4393a76cce93dfc03fdf330a73b918558e2c0f7c225f4b848bac4006",
@@ -474,22 +478,184 @@ def check_referenced_image_census(
     return len(paths)
 
 
+def capture_reference_mae(
+    capture: Image.Image,
+    reference: Image.Image,
+    sprite_box: list[int],
+    alpha_threshold: int,
+) -> float:
+    if (
+        not isinstance(sprite_box, list)
+        or len(sprite_box) != 4
+        or any(not isinstance(value, int) for value in sprite_box)
+    ):
+        fail("runtime capture sprite box must contain four integers")
+    x, y, width, height = sprite_box
+    if width != 50 or height != 50 or x < 0 or y < 0:
+        fail("runtime capture sprite box must be a positive recorded 50x50 CSS-pixel box")
+    if x + width > capture.width or y + height > capture.height:
+        fail("runtime capture sprite box escapes its viewport")
+
+    resized = reference.convert("RGBA").resize(
+        (width, height), resample=Image.Resampling.LANCZOS
+    )
+    alpha = np.asarray(resized.getchannel("A"))
+    mask = alpha >= alpha_threshold
+    if int(mask.sum()) < 32:
+        fail("runtime capture identity reference has too few opaque comparison pixels")
+    expected = np.asarray(resized.convert("RGB"), dtype=np.float32)
+    observed = np.asarray(capture.convert("RGB"), dtype=np.float32)[
+        y : y + height, x : x + width
+    ]
+    return float(np.abs(observed[mask] - expected[mask]).mean())
+
+
+def require_capture_reference_match(
+    capture: Image.Image,
+    reference: Image.Image,
+    sprite_box: list[int],
+    alpha_threshold: int,
+    maximum_mae: float,
+    label: str,
+) -> float:
+    score = capture_reference_mae(capture, reference, sprite_box, alpha_threshold)
+    if score > maximum_mae:
+        fail(f"{label}: reference-crop MAE {score:.4f} exceeds {maximum_mae:.4f}")
+    return score
+
+
 def check_runtime_captures() -> None:
     capture_root = ROOT / "runtime-captures"
     captures = {path.name: path for path in capture_root.glob("*.jpg")}
     if set(captures) != set(EXPECTED_RUNTIME_CAPTURES):
         fail("runtime capture inventory drifted")
+
+    receipt = json.loads(CAPTURE_RECEIPT.read_text())
+    if receipt.get("schema") != 1:
+        fail("runtime capture receipt schema drifted")
+    if receipt.get("capture_tool") != "Codex in-app browser":
+        fail("runtime capture tool provenance drifted")
+    if receipt.get("runtime_head") != CAPTURE_RUNTIME_HEAD:
+        fail("runtime capture exact-head provenance drifted")
+    if receipt.get("runtime_art_head") != CAPTURE_RUNTIME_ART_HEAD:
+        fail("runtime capture art-head provenance drifted")
+    if receipt.get("server_origin") != "http://localhost:4177":
+        fail("runtime capture isolated origin drifted")
+
+    assertions = receipt.get("session_assertions", {})
+    expected_assertions = {
+        "origin_was_unused_before_capture": True,
+        "prior_origin_service_worker_cache_storage_indexeddb_excluded": True,
+        "theme_pack_ui_selection": "Default (no overrides)",
+        "theme_pack_active_button_enabled": False,
+        "expected_winning_ship_url": "/art/factions/pirates/ship_sloop_v2.webp",
+        "expected_url_basis": "exact-head web registry with no active theme override",
+        "scenario": "new Medium Hex five-player game as Pirates",
+        "settle_and_framing": "waited for eligible art to settle; zoomed in four times; centered fleet after each viewport change",
+        "native_visual_identity": "tan diagonal single-mast Pirate sloop inside the selection ring; not the legacy black-and-white three-masted side view",
+    }
+    if assertions != expected_assertions:
+        fail("runtime capture clean-session assertions drifted")
+
+    identity = receipt.get("identity_check", {})
+    generated_row = identity.get("generated_reference", {})
+    legacy_row = identity.get("known_legacy_reference", {})
+    expected_method = (
+        "mean absolute RGB error on reference pixels whose resized alpha is at least 224; "
+        "reference resized to the recorded 50x50 CSS-pixel sprite box with Pillow Lanczos"
+    )
+    if identity.get("method") != expected_method:
+        fail("runtime capture identity-check method drifted")
+    if identity.get("measurement_software") != {"pillow": "12.3.0", "numpy": "2.5.1"}:
+        fail("runtime capture identity measurement provenance drifted")
+    if generated_row != {
+        "path": CAPTURE_GENERATED_REFERENCE,
+        "sha256": CAPTURE_GENERATED_REFERENCE_SHA256,
+    }:
+        fail("runtime capture generated-sloop reference drifted")
+    if legacy_row != {
+        "path": CAPTURE_LEGACY_REFERENCE,
+        "sha256": CAPTURE_LEGACY_REFERENCE_SHA256,
+    }:
+        fail("runtime capture legacy-sloop negative reference drifted")
+    alpha_threshold = identity.get("opaque_alpha_threshold")
+    maximum_mae = identity.get("maximum_generated_mae")
+    minimum_margin = identity.get("minimum_legacy_minus_generated_margin")
+    if alpha_threshold != 224 or maximum_mae != 22.0 or minimum_margin != 40.0:
+        fail("runtime capture identity thresholds drifted")
+
+    generated_reference = REPO / CAPTURE_GENERATED_REFERENCE
+    legacy_reference = REPO / CAPTURE_LEGACY_REFERENCE
+    if sha256(generated_reference) != CAPTURE_GENERATED_REFERENCE_SHA256:
+        fail("shipping generated Pirate sloop reference hash drifted")
+    if sha256(legacy_reference) != CAPTURE_LEGACY_REFERENCE_SHA256:
+        fail("known legacy Pirate ship reference hash drifted")
+    with Image.open(generated_reference) as image:
+        generated = image.convert("RGBA")
+    with Image.open(legacy_reference) as image:
+        legacy = image.convert("RGBA")
+
+    rows = receipt.get("captures", [])
+    if not isinstance(rows, list):
+        fail("runtime capture receipt rows must be a list")
+    rows_by_name = {row.get("file"): row for row in rows if isinstance(row, dict)}
+    if set(rows_by_name) != set(EXPECTED_RUNTIME_CAPTURES) or len(rows) != len(rows_by_name):
+        fail("runtime capture receipt inventory drifted")
+
     record = (ROOT / "RUNTIME-CAPTURES.md").read_text()
-    for name, (dimensions, byte_count, digest) in EXPECTED_RUNTIME_CAPTURES.items():
+    for name, dimensions in EXPECTED_RUNTIME_CAPTURES.items():
         path = captures[name]
+        row = rows_by_name[name]
+        digest = sha256(path)
         check_file_budget(path, PROOF_LIMIT, "runtime capture")
-        if path.stat().st_size != byte_count or sha256(path) != digest:
-            fail(f"{name}: runtime capture bytes/hash drifted")
+        if digest in STALE_RUNTIME_CAPTURE_HASHES:
+            fail(f"{name}: known stale legacy-ship capture was restored")
+        if path.stat().st_size != row.get("bytes") or digest != row.get("sha256"):
+            fail(f"{name}: runtime capture bytes/hash drifted from its receipt")
+        if row.get("viewport") != list(dimensions):
+            fail(f"{name}: runtime capture viewport receipt drifted")
         with Image.open(path) as image:
             if image.format != "JPEG" or image.mode != "RGB" or image.size != dimensions:
                 fail(f"{name}: runtime capture format/dimensions drifted")
+            capture = image.copy()
+        generated_score = require_capture_reference_match(
+            capture,
+            generated,
+            row.get("ship_sprite_box", []),
+            alpha_threshold,
+            maximum_mae,
+            f"{name} generated Pirate sloop",
+        )
+        legacy_score = capture_reference_mae(
+            capture, legacy, row.get("ship_sprite_box", []), alpha_threshold
+        )
+        if legacy_score - generated_score < minimum_margin:
+            fail(
+                f"{name}: generated/legacy identity margin "
+                f"{legacy_score - generated_score:.4f} is below {minimum_margin:.4f}"
+            )
+        recorded_generated_score = row.get("generated_reference_mae")
+        recorded_legacy_score = row.get("legacy_reference_mae")
+        if not isinstance(recorded_generated_score, (int, float)) or not isinstance(
+            recorded_legacy_score, (int, float)
+        ):
+            fail(f"{name}: recorded reference scores must be numeric")
+        if abs(generated_score - float(recorded_generated_score)) > 0.05:
+            fail(f"{name}: recorded generated-reference score drifted")
+        if abs(legacy_score - float(recorded_legacy_score)) > 0.05:
+            fail(f"{name}: recorded legacy-reference score drifted")
         if name not in record or digest not in record:
             fail(f"{name}: runtime capture record drifted")
+
+    required_record_tokens = [
+        CAPTURE_RUNTIME_HEAD,
+        "/art/factions/pirates/ship_sloop_v2.webp",
+        "Default (no overrides)",
+        "previously unused",
+        "capture-receipt.json",
+    ]
+    if any(token not in record for token in required_record_tokens):
+        fail("runtime capture record lacks clean-session or identity-check evidence")
 
 
 def expect_negative_control(name: str, check) -> None:
@@ -510,6 +676,24 @@ def run_negative_controls() -> None:
             "literal per-image budget",
             lambda: check_file_budget(oversized, SOURCE_LIMIT, "negative oversized image"),
         )
+
+    capture_receipt = json.loads(CAPTURE_RECEIPT.read_text())
+    capture_row = capture_receipt["captures"][0]
+    with Image.open(ROOT / "runtime-captures" / capture_row["file"]) as image:
+        capture = image.copy()
+    with Image.open(REPO / CAPTURE_LEGACY_REFERENCE) as image:
+        legacy_reference = image.convert("RGBA")
+    expect_negative_control(
+        "legacy Pirate ship cannot satisfy generated-sloop capture identity",
+        lambda: require_capture_reference_match(
+            capture,
+            legacy_reference,
+            capture_row["ship_sprite_box"],
+            capture_receipt["identity_check"]["opaque_alpha_threshold"],
+            capture_receipt["identity_check"]["maximum_generated_mae"],
+            "negative legacy Pirate ship",
+        ),
+    )
 
     input_alpha = np.full((2, 2), 255, dtype=np.uint8)
     output_alpha = input_alpha.copy()
@@ -581,8 +765,9 @@ def run_negative_controls() -> None:
         ),
     )
     print(
-        "PASS: negative controls reject oversized images, nonzero witnesses, incomplete "
-        "runtime sheets, checkpoint-only evidence, and incomplete ship matrices"
+        "PASS: negative controls reject oversized images, the legacy Pirate ship capture, "
+        "nonzero witnesses, incomplete runtime sheets, checkpoint-only evidence, and "
+        "incomplete ship matrices"
     )
 
 

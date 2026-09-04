@@ -5,40 +5,48 @@ the tool-level setup guide (`docs/AI-TOOLS-GUIDE.md`) with the parts that are re
 where generated files live, what "done" looks like, and which files in this codebase they
 hook into.
 
-**Status as of this writing**: the tooling to generate NPC dialogue clips (issue #75,
-script at `~/aop-ai-tools/`) exists and works, but the 10 predefined `.wav` files have not
-yet been committed to `main` (they live on a still-open PR, #78). Background music
-(MusicGen) and generic gameplay SFX (procedural synthesis) are generated and wired in —
-see `docs/runbooks/music-sfx-generation.md`. Art generation (Stable Diffusion WebUI) is
-installed but unused — the map still renders as flat-color PixiJS shapes (see
-`MapCanvas.tsx`), matching decision D-008 ("stylized 2D sprites") as a not-yet-built
-target. The two worked examples below show the integration as it would be built today,
-using the code patterns already in the repo.
+**Status as of this writing**: background music (MusicGen) and generic gameplay SFX
+(procedural synthesis) are generated and wired in; see
+`docs/runbooks/music-sfx-generation.md`. NPC dialogue generation tooling also exists under
+`~/aop-ai-tools/`, although dialogue playback is not yet a production integration point.
+The world map now ships authored raster land/port tiles, cities, ships, parties,
+encounters, and sites over procedural terrain, water, fog, markers, and decode-failure
+fallbacks. Its
+approved visual north star is Direction B — Gilded Harbor Diorama (D-049), which builds on
+the stylized 2D sprite choice in D-008 and the Weathered Parchment & Rope application
+palette in D-023. The examples below describe the current separation between presentation
+art and deterministic game data.
 
 ## Pipeline: generate → curate → integrate
 
 ```
- ┌──────────┐      ┌───────────┐      ┌─────────────┐      ┌──────────────────┐
- │  Prompt  │ ───▶ │ Generate  │ ───▶ │   Curate    │ ───▶ │     Integrate     │
- │ (text /  │      │ (Piper /  │      │ (listen /   │      │ (commit asset +   │
- │  dialogue│      │  Stable   │      │  eyeball,   │      │  wire into code   │
- │  line)   │      │ Diffusion)│      │  discard    │      │  or content data) │
- └──────────┘      └───────────┘      │  bad takes) │      └──────────────────┘
-                                       └─────────────┘
+┌────────────┐   ┌────────────┐   ┌──────────────┐   ┌────────────────────┐
+│   Prompt   │ → │  Generate  │ → │ Curate/prove │ → │     Integrate      │
+│ text/line  │   │ Piper /    │   │ inspect,     │   │ normalize, publish │
+│ + refs     │   │ OpenAI /   │   │ compare,     │   │ + bind to the      │
+│            │   │ local tools│   │ reject       │   │ right consumer     │
+└────────────┘   └────────────┘   └──────────────┘   └────────────────────┘
 ```
 
-1. **Generate** — run a script or the Stable Diffusion WebUI locally. Nothing here touches
-   the repo; output lands in a scratch or `public/` directory on disk.
-2. **Curate** — a human (or an agent instructed to) listens/looks at every generated
-   candidate and throws away anything that fails the quality bar below. Generation is cheap
-   and non-deterministic; regenerate rather than accept a mediocre take.
-3. **Integrate** — the surviving asset gets a stable filename, is placed under
-   `apps/web/public/`, and is either referenced directly from a component (audio) or wired
-   through `@aop/content` (anything that varies by faction/unit/encounter, so balance/content
-   changes don't require code changes).
+1. **Generate** — use the tool appropriate to the medium. Current Direction B map batches
+   may use the built-in OpenAI image generator when it materially improves the result, as
+   authorized by D-049. ComfyUI remains available for evaluated local workflows under
+   D-041; it is neither the production style authority nor a required fallback. Keep raw
+   output in scratch space until it has been selected and normalized.
+2. **Curate and prove** — inspect every candidate at native size and at its actual runtime
+   sizes. Reject off-model work and record useful rejects. For generated art, preserve the
+   exact prompt, service/tool/date, input-reference roles and hashes, original and retained
+   hashes, normalization receipt, usage basis, and truthful `null` values when the interface
+   does not expose model or seed.
+3. **Integrate** — publish only optimized, stable filenames under `apps/web/public/` and
+   bind them to their presentation consumer. Cosmetic world-map defaults and theme
+   overrides belong in the web presentation layer (`mapArtRegistry.ts` and `mapSprites.ts`),
+   not `@aop/content`: changing content package bytes changes `ENGINE_VERSION` and replay
+   compatibility. Put data in `@aop/content` only when it actually defines gameplay or
+   semantic content rather than an art URL.
 
 Nothing in `@aop/engine` ever touches generated assets — per the engine invariants in
-`CLAUDE.md`, the engine is pure data in/data out. Audio and art are strictly presentation,
+`AGENTS.md`, the engine is pure data in/data out. Audio and art are strictly presentation,
 selected by the client from IDs the engine already emits (faction id, encounter kind, etc).
 
 ## Quality standards
@@ -55,32 +63,49 @@ selected by the client from IDs the engine already emits (faction id, encounter 
 - File format: mono 16-bit PCM `.wav` (what Piper emits by default) is fine for now; revisit
   compression (Opus/AAC) only if asset size becomes a real problem.
 
-**Art (Stable Diffusion)**
+**Art (Direction B — Gilded Harbor Diorama)**
 
-- Style: stylized 2D (per D-008), not photoreal — matches the flat-color/vector look the
-  map already has in `MapCanvas.tsx`.
-- Resolution: generate at a size that maps cleanly onto the tile/sprite grid the client
-  uses (`TILE = 32` px in `MapCanvas.tsx`; export sprites as a multiple of that, e.g.
-  64×64 or 128×128, then downscale — upscaling a small generation looks worse than
-  generating larger and shrinking).
-- Consistent style _within_ a faction: reuse the same prompt template/seed family for all
-  assets of one faction so ships/units/banners don't look like they came from different
-  games.
-- Background: transparent PNG for anything composited over the map or UI (ships, unit
-  portraits, banners); no baked-in drop shadows or matte color that won't match the map's
-  palette.
+- Style: hand-painted, stylized 2D strategy-game miniatures (D-008 and D-049), not
+  photorealism, flat-vector badges, or isolated 3D renders. Preserve the approved
+  near-overhead camera, northwest light, warm material depth, quiet ornament, optical
+  baseline, and broad silhouette hierarchy across the whole family.
+- Identity: faction and class must remain readable without hue. Use architecture,
+  formation, hull/sail plan, kit, pattern, and silhouette cues; verify faction comparisons
+  in both color and grayscale.
+- Source and export: generate large enough to inspect cleanly (the current map-token
+  pipeline normalizes selected sources to 512 px RGBA), then use premultiplied-alpha,
+  aspect-ratio-preserving resizing to export a 256 px WebP runtime token. Evaluate every
+  token at exact 24, 32, 48, and 96 CSS px instead of assuming a nominal tile multiple
+  guarantees clarity.
+- Transparency: map tokens need genuine alpha with zero RGB under fully transparent pixels.
+  Do not ship pale mattes, checkerboards, baked terrain, contact plates, drop shadows,
+  selection rings, flags, text, signatures, or watermarks. Inspect the complete native and
+  96 px footprint over representative terrain, near-black, saturated magenta, and cyan.
+- Provenance and reproducibility: issue one distinct generation request per asset or
+  variant; record the exact request and every input's role/hash. Deterministic local tools
+  own crop, matte cleanup, premultiplied resize, optical alignment, optimization, contact
+  sheets, byte receipts, and rebuild checks. A shared style reference is useful, but a seed
+  or prompt-family label is not evidence that separately generated assets are coherent.
 
-**Performance**
+**Performance, readiness, and privacy**
 
-- Asset loading must never block a turn or a render frame. Preload during idle time
-  (menu screens, between-turn AI "thinking" delay — see `AI_STEP_MS` in `GameScreen.tsx`),
-  not synchronously on first use.
-- Keep per-asset file size small: audio clips a few seconds long, sprites sized per the
-  resolution guidance above. This is a client-side PWA (`docs/ARCHITECTURE.md` §4) —
-  everything ships in the bundle or is fetched over the network to a phone.
-- Curate aggressively before committing. Every asset that lands in `apps/web/public/` ships
-  to every player forever (or until someone notices and deletes it) — don't commit
-  generation experiments.
+- A selected world-map texture may gate the first interactive, art-bearing frame until it
+  either loads or definitively fails. That finite readiness gate prevents a procedural
+  placeholder from visibly popping into a sprite; a failed decode settles to the permanent
+  procedural fallback instead of hanging the map.
+- Build the critical preload set only from entities the current viewer is already eligible
+  to know under the existing visibility/exploration rules. Never derive, request, or warm a
+  hidden faction, class, encounter, or site URL. Defer unseen and detail-only art.
+- Rendering and preload must resolve the same winning URL: theme override first, registered
+  web default second, procedural fallback on missing or failed art. A separate preload URL
+  table will drift and can reintroduce both pop and privacy defects.
+- Keep per-asset files small and bind budgets to a complete file census. The current map
+  proof uses a 128 KiB ordinary-token target, 300 KiB hard per-image ceiling, and a measured
+  cold-cache critical set. This is a client-side PWA (`docs/ARCHITECTURE.md` §4), so every
+  published byte matters on phones.
+- Curate aggressively before committing. Preserve hashes and metadata for meaningful
+  unretained originals/rejects, but do not place generation experiments in public runtime
+  directories.
 
 ## Integration points in the codebase
 
@@ -88,12 +113,14 @@ selected by the client from IDs the engine already emits (faction id, encounter 
 | ----------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Encounter flavor text/choices | `packages/content/src/encounters.ts`                                 | Pure data — no dialogue audio hook exists yet (see Example 1).                                                                                                                                                                                                                                                                |
 | Encounter dialogue _display_  | `apps/web/src/screens/GameScreen.tsx` (`encounter` modal, ~line 324) | Currently a static per-kind title string; this is where an audio cue would be triggered.                                                                                                                                                                                                                                      |
-| Faction names/rosters         | `packages/content/src/factions.ts`                                   | No art field on `FactionDef` yet; would need one to reference generated art by faction id (see Example 2).                                                                                                                                                                                                                    |
-| Map/entity rendering          | `apps/web/src/MapCanvas.tsx`                                         | Currently `pixi.js` `Graphics` with flat-color fills (`TILE_COLOR`, `OWN_SHIP`, `ENEMY_SHIP`, `ENCOUNTER_COLOR`, …). This is where `Sprite`/`Texture` would replace `Graphics.fill()` calls once art exists.                                                                                                                  |
+| Faction names/rosters         | `packages/content/src/factions.ts`                                   | Gameplay/content data. Legacy art URLs may remain for existing consumers, but new world-map cosmetic defaults do not belong here.                                                                                                                                                                                             |
+| World-map art defaults        | `apps/web/src/mapArtRegistry.ts`                                     | Pure presentation registry for tiles, six city identities, five-by-four ship variants, faction parties, sea/land encounters, and sites. It is testable without Pixi.                                                                                                                                                          |
+| Theme sprite overrides        | `apps/web/src/mapSprites.ts`                                         | Resolves the active presentation theme ahead of the web default. Render and preload share this resolver contract.                                                                                                                                                                                                             |
+| Map/entity rendering          | `apps/web/src/MapCanvas.tsx`                                         | Hybrid Pixi renderer: authored `Sprite`/`Texture` assets are composed with procedural terrain, water, fog, markers, overlays, and stable decode-failure shapes. Eligible winning URLs settle before the interactive world is revealed.                                                                                        |
 | Generated audio files         | `apps/web/public/audio/generated/*.wav`                              | Written directly by `~/aop-ai-tools/generate-game-audio-piper.py`. Scripts and tooling exist (issue #75); new/regenerated clips need an explicit `git add` (not the whole directory) before commit.                                                                                                                           |
 | Background music              | `apps/web/public/audio/music/*.{wav,ogg,m4a}`                        | `.wav` master written by `~/aop-ai-tools/generate_game_music.py` (MusicGen); `.ogg`/`.m4a` are the shipped formats, produced by `apps/web/scripts/encode-music.mjs` (#253). Selected by `apps/web/src/audio/musicClips.ts`'s `selectGameplayMusicContext()`/`pickMusicSource()`; see `docs/runbooks/music-sfx-generation.md`. |
 | Generic gameplay SFX          | `apps/web/public/audio/sfx/*.wav`                                    | Written by `~/aop-ai-tools/generate_game_sfx.py` (procedural synthesis, no model). Played via `apps/web/src/audio/feedback.ts`; see `docs/runbooks/music-sfx-generation.md`.                                                                                                                                                  |
-| Generated art files (future)  | `apps/web/public/art/...` (convention, doesn't exist yet)            | Suggested split: `art/factions/<factionId>/`, `art/units/<unitId>.png`.                                                                                                                                                                                                                                                       |
+| Generated world-map art       | `apps/web/public/art/{cities,factions,parties,encounters,sites}/...` | Shipping, optimized presentation assets. Source/provenance, actual-size sheets, alpha-stress proofs, public byte receipts, and deterministic validators live under `docs/art/world-map-v2/`.                                                                                                                                  |
 
 ## Example: add a new NPC dialogue line
 
@@ -153,21 +180,24 @@ it, similar to how `battle_charge`/`battle_taunt` were pre-generated.
 
 ## Example: generate and integrate faction art
 
-Say you want a ship sprite for the Pirates faction to replace the flat-color triangle
-`MapCanvas.tsx` currently draws for `OWN_SHIP`/`ENEMY_SHIP`.
+Say you need a new faction/class ship variant that belongs beside the shipping Direction B
+fleet.
 
-1. **Prompt in the established style** (stylized 2D, per D-008) via Stable Diffusion WebUI
-   at `http://localhost:7860` (start with `python ~/aop-ai-tools/stable-diffusion-webui/launch.py`):
+1. **Review the approved references and write one concept request for this identity.** Use
+   the Direction B map proof for camera, light, palette, and material language; use approved
+   small- and heavy-class ships for finish and optical-baseline reference. Ask the built-in
+   OpenAI image generator for a genuine transparent cutout with the specific faction and
+   class silhouette. Explicitly forbid text, signatures, watermarks, baked terrain or water,
+   selection rings, flags, and contact plates. One request must not silently supply several
+   class/faction variants.
 
-   > "top-down stylized 2D pirate sloop, flat colors, clean outlines, game asset, transparent
-   > background, no shadow, 128x128"
-
-   Generate several seeds from the same prompt template — you'll want the same template
-   reused for every Pirates unit so the faction reads as one visual family.
-
-2. **Curate**: reject anything photoreal, off-model, or with a baked-in background/shadow
-   that won't composite over the map's flat tile colors. Keep 128×128 (a multiple of the
-   32px tile grid) and re-export/trim any stray padding.
+2. **Curate and normalize**: inspect the raw output at native size, record its exact prompt,
+   inputs, service/tool/date, hashes, and whether the interface exposed model or seed.
+   Reject an incoherent class silhouette rather than relabeling it. Normalize the selected
+   source to a 512×512 RGBA review canvas, remove matte/contact contamination with documented
+   semantic masks, preserve aspect ratio and the shared optical baseline, then produce the
+   optimized 256 px exact-alpha WebP. Prove it on terrain, near-black, magenta, and cyan at
+   native 512 and exact 96 px, and compare it at 24/32/48/96 in color and grayscale.
 
 3. **Place the file** using the current convention, including its gameplay class:
    `apps/web/public/art/factions/pirates/ship_sloop_v2.webp`.
@@ -190,4 +220,6 @@ Say you want a ship sprite for the Pirates faction to replace the flat-color tri
 
 6. **Performance and privacy check**: build the finite preload set only from identities the
    current player is allowed to know, wait for each winning URL to load or fail once, and
-   never derive a hidden faction/class URL merely to warm the cache.
+   never derive a hidden faction/class URL merely to warm the cache. Validate the public
+   file against its receipt, confirm render/preload URL parity and theme precedence, and
+   reproduce the missing-file procedural fallback before shipping.
