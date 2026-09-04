@@ -7,6 +7,9 @@ This directory contains the approved visual contract and deterministic review pa
 - [Phone world map — 375 × 812](mockups/phone-world-map-375x812.svg)
 - [City inspector — 1440 × 900](mockups/city-inspector-desktop-1440x900.svg)
 - [Token, type, icon, and state sheet — 1440 × 960](mockups/token-type-icon-sheet-1440x960.svg)
+- [Exact-source phone runtime — 375 × 812](runtime-captures/runtime-phone-world-375x812.png)
+- [Exact-source city inspector runtime — 1440 × 900](runtime-captures/runtime-city-inspector-1440x900.png)
+- [Exact-source runtime interaction states — 1440 × 960](runtime-captures/runtime-interaction-states-1440x960.png)
 
 Open each at 100%. The approved Direction B map/city review sources are embedded only as non-runtime backdrop evidence. All chrome, labels, selection rings, icon marks, numeric values, and panels are locally authored deterministic SVG geometry/text; there are no platform glyph controls, third-party logos, signatures, watermarks, or generated UI art.
 
@@ -95,7 +98,7 @@ City uses the same HUD/dock type and panel grammar as map. Its selected-building
 - `validate.mjs` checks proof dimensions, embedded backdrop evidence, geometry, asset size and contract language, then checks runtime token parity, icon markers, glyph removal, control states, and local/multiplayer parity; it exits nonzero on failure.
 - The final review files are self-contained SVG. They are intentionally not copied into `apps/web/public` and must not be treated as shippable runtime assets.
 
-Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only; #608 must deliver the approved city amendment before any runtime art ships.
+Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only. Issue #608 has since delivered the approved layered city amendment; exact-head runtime captures, not this historical checkpoint backdrop, verify the shipping city art.
 
 Run `node compose.mjs && node validate.mjs` from this directory to recreate and validate the package.
 

@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "date": "2026-09-04",
   "shipping_sources": [
     {
@@ -11,58 +11,382 @@
       "sha256": "c7a6f599f27e6548db237667ac9cd99abf60e398427babad23f318bddf25385f"
     },
     {
-      "path": "apps/web/src/styles.css",
-      "sha256": "60adda64e64fd379c2ee90dc1a9e47e347a884a15260a45099d84cf7bab11e52"
+      "path": "packages/content/src/buildings.ts",
+      "sha256": "5b37fe64f4cb3b7ea6d22d5ebc61c98a300b81fd080f880168550a016499fdbf"
+    },
+    {
+      "path": "packages/content/src/factions.ts",
+      "sha256": "123145d63d8066401f111e42d72b4d4d03129a64f91de3bf88bb2c34ac6cad09"
+    },
+    {
+      "path": "apps/web/src/mapSprites.ts",
+      "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
     }
   ],
+  "stylesheet_source": {
+    "path": "apps/web/src/styles.css",
+    "diagnostic_full_sha256": "25adbef0255380fa49ecd8f182bf0817c7eb192194a6e21e1e8b206e8d2a6006",
+    "scope": {
+      "kind": "city-scene-selector-token-closure-v1",
+      "sha256": "2f023b946b02ac837ced000ecbdf495d044b7733f6f41188219ebacf6f4f30d4",
+      "rules": [
+        {
+          "at_rules": [],
+          "selector": "button"
+        },
+        {
+          "at_rules": [],
+          "selector": "button:disabled"
+        },
+        {
+          "at_rules": [],
+          "selector": "button:disabled::after"
+        },
+        {
+          "at_rules": [],
+          "selector": "button:focus-visible, .checkbox-row input:focus-visible, .map-canvas-root:focus-visible, .map-minimap:focus-visible"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-section"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-viewport"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building::before"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building:active"
+        },
+        {
+          "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+          "selector": ".city-scene__building:hover"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building--economy"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building--recruitment"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building--fortification"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building--shipyard"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building--art"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__sprite"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__sprite--tower"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__backdrop"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__backdrop-tiles"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__backdrop-tile"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__label"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole-mast"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole-mount"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole-mount::before, .city-scene__flagpole-mount::after"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole-mount::before"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flagpole-mount::after"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flag"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__flag img"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-zoom"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-zoom button"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-zoom button:disabled"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-zoom button:not(:disabled):active"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__overflow"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-nav"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-nav:active"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-nav--left"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-nav--right"
+        },
+        {
+          "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+          "selector": ".city-scene-zoom button:not(:disabled):hover, .city-scene-nav:hover, .info-toggle:hover"
+        }
+      ],
+      "root_custom_properties": [
+        {
+          "name": "--city-building-economy",
+          "value": "#8a6d3b"
+        },
+        {
+          "name": "--city-building-fortification",
+          "value": "#6e7681"
+        },
+        {
+          "name": "--city-building-recruitment",
+          "value": "#a33c2e"
+        },
+        {
+          "name": "--city-building-shipyard",
+          "value": "#2e5da3"
+        },
+        {
+          "name": "--city-ground",
+          "value": "#6b7a3f"
+        },
+        {
+          "name": "--city-ground-low",
+          "value": "#55632f"
+        },
+        {
+          "name": "--city-sky",
+          "value": "#7fa8c9"
+        },
+        {
+          "name": "--city-sky-low",
+          "value": "#b5cbdd"
+        },
+        {
+          "name": "--city-water",
+          "value": "#2a6a8f"
+        },
+        {
+          "name": "--color-highlight",
+          "value": "#f0cb66"
+        },
+        {
+          "name": "--ease-standard",
+          "value": "cubic-bezier(0.2, 0, 0, 1)"
+        },
+        {
+          "name": "--elevation-2",
+          "value": "0 6px 18px rgb(0 0 0 / 42%)"
+        },
+        {
+          "name": "--font-body",
+          "value": "Cabin, system-ui, -apple-system, sans-serif"
+        },
+        {
+          "name": "--motion-fast",
+          "value": "120ms"
+        },
+        {
+          "name": "--motion-standard",
+          "value": "180ms"
+        },
+        {
+          "name": "--radius-1",
+          "value": "4px"
+        },
+        {
+          "name": "--radius-2",
+          "value": "8px"
+        },
+        {
+          "name": "--radius-3",
+          "value": "12px"
+        },
+        {
+          "name": "--space-2",
+          "value": "8px"
+        },
+        {
+          "name": "--stroke-disabled",
+          "value": "#796f61"
+        },
+        {
+          "name": "--stroke-emphasized",
+          "value": "#cbb17a"
+        },
+        {
+          "name": "--stroke-focus",
+          "value": "#c8962c"
+        },
+        {
+          "name": "--stroke-standard",
+          "value": "#725838"
+        },
+        {
+          "name": "--surface-canvas",
+          "value": "#17100a"
+        },
+        {
+          "name": "--surface-disabled",
+          "value": "#33291f"
+        },
+        {
+          "name": "--surface-inset",
+          "value": "#21150d"
+        },
+        {
+          "name": "--surface-overlay",
+          "value": "rgb(45 27 16 / 92%)"
+        },
+        {
+          "name": "--surface-raised",
+          "value": "#3a2416"
+        },
+        {
+          "name": "--text-disabled",
+          "value": "#b4aa9a"
+        },
+        {
+          "name": "--text-primary",
+          "value": "#f3e5c2"
+        }
+      ],
+      "local_custom_properties": [
+        {
+          "name": "--city-zoom",
+          "value": "1"
+        }
+      ],
+      "component_custom_properties": [
+        "--city-flag-cloth-left",
+        "--city-flag-cloth-width",
+        "--city-flag-height",
+        "--city-flag-left",
+        "--city-flag-mast-width",
+        "--city-flag-mount-height",
+        "--city-flag-mount-width",
+        "--city-flag-top",
+        "--city-flag-width",
+        "--city-shadow-blur",
+        "--city-shadow-bottom",
+        "--city-shadow-color",
+        "--city-shadow-height",
+        "--city-shadow-left",
+        "--city-shadow-opacity",
+        "--city-shadow-width"
+      ]
+    }
+  },
   "captures": [
     {
       "path": "runtime-captures/full-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 185565,
-      "sha256": "b40c949c9030f5a9ef257b737fcbffcd5885867609fe8aa4e29c2efa95a515ba"
+      "bytes": 196088,
+      "sha256": "a6d14c8099daef3f66c06a11e3dd5227f883db39fa6b0a61055726c472adb1b6"
     },
     {
       "path": "runtime-captures/full-desktop-3x-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 244147,
-      "sha256": "3241b61b354be9a7704f22e113edea7754a1aae221c2ca0e5088dea78d16df1d"
+      "bytes": 265635,
+      "sha256": "4aa7a84647c413a353394f731ff68a07dcd7aad0cecead926cd0ca801ed47913"
     },
     {
       "path": "runtime-captures/full-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 53462,
-      "sha256": "13172dd8ecfb18eed671cab105035bb0bbb4f0cda1f4fdc44de4afba25300c09"
+      "bytes": 57466,
+      "sha256": "c8189037a52f4c56d8b6d8a3e9db658d62538d6a5dc42bb8dc1180a89cfa5274"
     },
     {
       "path": "runtime-captures/full-phone-3x-center-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 81271,
-      "sha256": "bc842cc1049edc505c57d8c8062c3787bbd3af3f430200c902ceeb4cf2680d29"
+      "bytes": 78785,
+      "sha256": "3213ad4bc81e89f4978c29a820198662e5be2d2bc9634bae99a5199725ca8fd7"
     },
     {
       "path": "runtime-captures/full-phone-3x-shipyard-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 68294,
-      "sha256": "b658c7e0e5450c9ad5c83e655f8adc8f52edfbbdd0913c60b3df39929eb1c53d"
+      "bytes": 61349,
+      "sha256": "9498bd55a5f77be3ee74614d65f0bba122ca3a9b358e9b0f83bd237d4be4dc2f"
     },
     {
       "path": "runtime-captures/midgame-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 181841,
-      "sha256": "66f109101f63db133862cbd8996ab04d6c4521c9175e31d9fc43b762f007da30"
+      "bytes": 191844,
+      "sha256": "8aefcb4f27a51c4bc5da17fe65146ccedec86ccd0b63d4142fb6b41899333616"
     },
     {
       "path": "runtime-captures/starting-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 176357,
-      "sha256": "89de7ba00a0a5e6705322c903f92c8fade60bfbf53ab23750d802e4e6a712c78"
+      "bytes": 188959,
+      "sha256": "cf3ea9749f47e62cdacd8403771af885bf4fe2cc846dd9bcf7a8b0fa2329c648"
     },
     {
       "path": "runtime-captures/starting-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 47855,
-      "sha256": "bc6d8e52326bc9d05210248308ab8db808c43314b83aa6a9477e1918fa536be8"
+      "bytes": 52150,
+      "sha256": "3278040cb365b79728a00adcd61cb212f3b853fefad53fe5ccd24839e5cab8a0"
     }
   ]
 }

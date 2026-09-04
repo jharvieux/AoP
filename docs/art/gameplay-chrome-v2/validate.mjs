@@ -1,5 +1,6 @@
 /** Fail-loud validation for the #610 review package. Usage: node validate.mjs */
-import { readFileSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -9,6 +10,11 @@ const required = [
   ['mockups/phone-world-map-375x812.svg', 375, 812],
   ['mockups/city-inspector-desktop-1440x900.svg', 1440, 900],
   ['mockups/token-type-icon-sheet-1440x960.svg', 1440, 960],
+]
+const runtimeCaptureSpecs = [
+  ['runtime-phone-world-375x812.png', 375, 812],
+  ['runtime-city-inspector-1440x900.png', 1440, 900],
+  ['runtime-interaction-states-1440x960.png', 1440, 960],
 ]
 let failures = 0
 for (const [rel, w, h] of required) {
@@ -35,6 +41,43 @@ for (const [rel, w, h] of required) {
     }
   }
   console.log(`PASS ${rel}: ${w}×${h}, ${bytes.toLocaleString()} bytes`)
+}
+const runtimeCaptureRoot = join(root, 'runtime-captures')
+const runtimeCaptureNames = readdirSync(runtimeCaptureRoot)
+if (
+  runtimeCaptureNames.length !== runtimeCaptureSpecs.length ||
+  runtimeCaptureSpecs.some(([name]) => !runtimeCaptureNames.includes(name))
+) {
+  console.error(`FAIL runtime capture inventory: ${runtimeCaptureNames.join(', ')}`)
+  failures++
+}
+const runtimeReport = readFileSync(join(root, 'RUNTIME-VERIFICATION.md'), 'utf8')
+for (const [name, width, height] of runtimeCaptureSpecs) {
+  const relative = `runtime-captures/${name}`
+  const file = join(root, relative)
+  const source = readFileSync(file)
+  const bytes = source.byteLength
+  const png = source.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  const dimensions = png && source.readUInt32BE(16) === width && source.readUInt32BE(20) === height
+  const rgb = png && [2, 6].includes(source[25])
+  const budget = bytes <= 300 * 1024
+  const digest = createHash('sha256').update(source).digest('hex')
+  const recorded = runtimeReport.includes(name) && runtimeReport.includes(digest)
+  for (const [label, pass] of [
+    ['PNG payload', png],
+    ['dimensions', dimensions],
+    ['RGB/RGBA pixels', rgb],
+    ['300 KiB review budget', budget],
+    ['runtime report binding', recorded],
+  ]) {
+    if (!pass) {
+      console.error(`FAIL ${relative}: ${label}`)
+      failures++
+    }
+  }
+  console.log(
+    `PASS ${relative}: ${width}×${height}, ${bytes.toLocaleString()} bytes, sha256 ${digest}`,
+  )
 }
 const spec = readFileSync(join(root, 'README.md'), 'utf8')
 const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')

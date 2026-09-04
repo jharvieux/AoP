@@ -419,17 +419,94 @@ def validate_determinism() -> None:
     assert "PASS" in result.stdout
 
 
+def validate_stylesheet_scope_guardrails(binding_builder) -> dict[str, object]:
+    styles_path = REPOSITORY / binding_builder.STYLESHEET_PATH
+    scene_path = REPOSITORY / "apps/web/src/CityScene.tsx"
+    styles = styles_path.read_text()
+    scene = scene_path.read_text()
+    scope = binding_builder.build_stylesheet_scope(styles, scene)
+
+    unrelated = styles + "\n.capture-binding-unrelated { color: #fff; }\n"
+    assert binding_builder.build_stylesheet_scope(unrelated, scene) == scope, (
+        "unrelated CSS changed the city capture dependency closure"
+    )
+
+    selected_marker = ".city-scene {\n  --city-zoom: 1;"
+    assert selected_marker in styles
+    selected_change = styles.replace(
+        selected_marker,
+        ".city-scene {\n  --city-zoom: 1.01;",
+        1,
+    )
+    assert binding_builder.build_stylesheet_scope(selected_change, scene) != scope, (
+        "city selector drift did not change the capture dependency closure"
+    )
+
+    def expect_failure(candidate_styles: str, candidate_scene: str, message: str) -> None:
+        try:
+            binding_builder.build_stylesheet_scope(candidate_styles, candidate_scene)
+        except AssertionError as error:
+            assert message in str(error), f"unexpected scope failure: {error}"
+        else:
+            raise AssertionError(f"city stylesheet scope accepted {message}")
+
+    stroke = "  --stroke-standard: #725838;\n"
+    assert stroke in styles
+    expect_failure(styles.replace(stroke, "", 1), scene, "unresolved")
+
+    emphasized = "  --stroke-emphasized: #cbb17a;\n"
+    assert emphasized in styles
+    cyclic = styles.replace(
+        stroke,
+        "  --stroke-standard: var(--stroke-emphasized);\n",
+        1,
+    ).replace(
+        emphasized,
+        "  --stroke-emphasized: var(--stroke-standard);\n",
+        1,
+    )
+    expect_failure(cyclic, scene, "cyclic")
+
+    component_marker = "'--city-shadow-left':"
+    assert component_marker in scene
+    expect_failure(
+        styles,
+        scene.replace(component_marker, "'--removed-city-shadow-left':", 1),
+        "unresolved",
+    )
+    return scope
+
+
 def validate_runtime_captures() -> None:
     capture_root = PACKAGE / "runtime-captures"
     captures = {path.name: path for path in capture_root.glob("*.jpg")}
     assert set(captures) == set(RUNTIME_CAPTURE_NAMES), "runtime capture inventory drift"
     binding = json.loads((PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json").read_text())
-    assert binding["schema"] == 1
+    assert binding["schema"] == 2
+    binding_builder = load_module(
+        "city_runtime_capture_binding",
+        PACKAGE / "tools" / "build_runtime_capture_bindings.py",
+    )
+    assert tuple(item["path"] for item in binding["shipping_sources"]) == (
+        binding_builder.FULL_SHIPPING_SOURCES
+    ), "runtime capture full-source inventory drift"
     for source in binding["shipping_sources"]:
         path = REPOSITORY / source["path"]
         assert sha256(path) == source["sha256"], (
             f"runtime captures are stale for shipping source: {source['path']}"
         )
+    expected_scope = validate_stylesheet_scope_guardrails(binding_builder)
+    stylesheet_binding = binding["stylesheet_source"]
+    assert set(stylesheet_binding) == {"path", "diagnostic_full_sha256", "scope"}, (
+        "runtime capture stylesheet binding inventory drift"
+    )
+    assert stylesheet_binding["path"] == binding_builder.STYLESHEET_PATH
+    full_hash = stylesheet_binding["diagnostic_full_sha256"]
+    assert isinstance(full_hash, str) and len(full_hash) == 64
+    int(full_hash, 16)
+    assert stylesheet_binding["scope"] == expected_scope, (
+        "runtime captures are stale for the city stylesheet dependency closure"
+    )
     bound_captures = {Path(item["path"]).name: item for item in binding["captures"]}
     assert set(bound_captures) == set(RUNTIME_CAPTURE_NAMES), (
         "runtime capture binding inventory drift"

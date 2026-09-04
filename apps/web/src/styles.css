@@ -1665,8 +1665,6 @@ button.primary.secondary {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(var(--city-backdrop-columns), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--city-backdrop-rows), minmax(0, 1fr));
   pointer-events: none;
 }
 

@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — runtime verification
 
-This report binds the #610 runtime implementation to the approved Direction B checkpoint. It deliberately does **not** claim the final capture gate: the supervisor will capture and inspect the exact rebased commit in the in-app browser after fonts and art assets finish loading.
+This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded. The captures and native-size inspection are complete; explicit operator acceptance remains a separate gate and is not claimed here.
 
 ## Implemented contract
 
@@ -58,8 +58,8 @@ Production build output from this worktree:
 
 | Chunk                       |        Raw |       Gzip |         Limit |
 | --------------------------- | ---------: | ---------: | ------------: |
-| CSS                         |  47.29 KiB |   9.35 KiB | 850 / 260 KiB |
-| App entry                   | 641.78 KiB | 187.06 KiB | 850 / 260 KiB |
+| CSS                         |  48.82 KiB |   9.65 KiB | 850 / 260 KiB |
+| App entry                   | 652.69 KiB | 190.06 KiB | 850 / 260 KiB |
 | Pixi vendor                 | 537.84 KiB | 155.60 KiB | 850 / 260 KiB |
 | Largest remaining app chunk | 447.01 KiB | 146.56 KiB | 850 / 260 KiB |
 
@@ -70,19 +70,29 @@ No static asset was added. Existing `apps/web/public/art/ui` totals **161,783 by
 - Web focused chrome tests: 6 files, 33 tests passed.
 - Shared tests: 5 files, 57 tests passed.
 - Engine tests: 37 files, 765 tests passed.
-- Web tests: 98 files, 828 tests passed.
+- Web tests: 101 files, 865 tests passed.
 - All package and web TypeScript projects passed.
 - Web production build passed and emitted the budget values above.
 - `node compose.mjs` followed by `node validate.mjs` validates deterministic proof regeneration, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.
 
 The literal `pnpm verify` wrapper was attempted, but pnpm rejected the isolated worktree's read-only dependency links with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`. Equivalent repository-owned formatter, TypeScript, Vitest and Vite commands then passed against the existing lockfile installation. The integration owner must run the literal wrapper again after rebase and before push.
 
-## Final runtime capture gate — pending
+## Final runtime capture evidence — captured, operator acceptance pending
 
-Capture these from the exact integrated head, not from this writer's dirty worktree:
+The supervisor rebuilt the production preview after the source freeze, waited for the runtime to settle, and native-inspected every frame for font fallback or incomplete or missing imagery before acceptance. These are the resulting real runtime frames:
 
-1. `runtime-phone-world-375x812.png`: 375 × 812, selected fleet and course, resources, minimap and full command dock visible.
-2. `runtime-city-inspector-1440x900.png`: 1440 × 900, city open with a selected building inspector and command chrome visible.
-3. `runtime-interaction-states-1440x960.png`: keyboard focus plus representative hover, pressed, selected and disabled states.
+| File                                                                                                  | Dimensions |   Bytes | SHA-256                                                            |
+| ----------------------------------------------------------------------------------------------------- | ---------: | ------: | ------------------------------------------------------------------ |
+| [`runtime-phone-world-375x812.png`](runtime-captures/runtime-phone-world-375x812.png)                 |  375 × 812 | 184,381 | `06e830d837b0112c0612ca8e7aa9f9c990907f7628132ce0ebbdc6616fa13bb1` |
+| [`runtime-city-inspector-1440x900.png`](runtime-captures/runtime-city-inspector-1440x900.png)         | 1440 × 900 | 228,700 | `15d83da5c065cad5a5b9363d50b2bac11fe830b274d19d11fcb5fb2853fcae13` |
+| [`runtime-interaction-states-1440x960.png`](runtime-captures/runtime-interaction-states-1440x960.png) | 1440 × 960 | 279,832 | `9dc5f8aace3163724a87f534677efa2201347155ff27bfe3cf48ff1e4460cdbe` |
 
-Before each capture, await `document.fonts.ready` and every visible image's `complete` state. Record exact viewport dimensions, map/city playable-art rectangle, and the union of opaque chrome rectangles. The acceptance measurement is `(opaque chrome union − required DOM rows) / playable-art rectangle`; inspect that compact overlays remain restrained and that no panel unintentionally covers a selectable entity. Native-size legibility and all 44 px targets must be checked from the resulting pixels. Final capture approval remains operator-owned.
+All three are true RGB PNGs. They total **692,913 bytes**; the largest is 279,832 bytes, so every review capture remains below 300 KiB and no byte belongs to the shipping runtime bundle.
+
+### Measured composition and states
+
+- **Phone world map:** the viewport is 375 × 812 and the playable map rectangle is approximately `[0, 104, 375, 644]`, or 241,500 px². The 104 px HUD and the status/command-dock region at `[0, 724, 375, 88]` are required rows. Non-required in-map chrome consists of the event feed near `[12, 117, 114, 137]`, four 44 × 44 navigation controls within `[319, 117, 44, 200]`, and the minimap near `[212, 582, 151, 129]`. Their measured union is approximately 42,600 px², or **17.6%** of playable map area. The frame shows current Direction B art, the selected flagship and hex, traveled dotted course, resources, minimap, and the complete command dock. The smallest direct target is 44 × 44.
+- **City inspector:** the viewport is 1440 × 900. The city art layer behind the selected Shipyard task is approximately `[306, 181, 812, 488]`; the required building-inspector BottomSheet begins near y=205 and extends to the bottom. The real implementation uses the existing full-width task sheet rather than the checkpoint's aspirational right rail, so the capture demonstrates the shipped inspector surface honestly without claiming that later city-shell layout. Its close and action targets are at least 44 × 44.
+- **Interaction evidence:** the viewport is 1440 × 960 and the required Town Hall BottomSheet occupies y=193–960. The capture freezes a 52 × 52 keyboard-focused close control, a 44 × 44 hovered info control, the open/selected Town Hall context, and disabled Build controls with their non-color slash, all at least 44 px high. Pressed is inherently transient and is verified by the runtime `:active` rules/tests plus the approved static state sheet; it is not falsely claimed as frozen in this frame.
+
+Native-size inspection found no font fallback, missing image, clipped label, control below 44 × 44, or unintended opaque panel over a selectable map entity. Final visual approval remains operator-owned.
