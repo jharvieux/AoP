@@ -67,11 +67,10 @@ the material saving is the eliminated 9,216-cell Pixi reconstruction and empty a
 
 ## Browser smoke limitation
 
-The retained pre-repair browser session successfully exercised the phone's largest map across all
-three bands with 22 pan drags, 12 zoom actions, and two recenters, and logged no warning or error.
-The repair environment exposed no browser backend and could not recapture changed pixels, so
-`RUNTIME-CAPTURES.md` marks that evidence stale and the asset checker rejects its digest. The earlier
-browser backend did not expose Performance Timeline entries, so this evidence deliberately does not
-claim browser FPS or frame-time percentiles. A supervisor may add a device/DevTools trace without
-changing the runtime candidate; the checked-in draw-work and CPU trace remains the fail-loud
-evidence available here.
+The repaired browser session exercised the phone's largest map across all three bands with 22 pan
+drags, 12 zoom actions, and two recenters, and logged no warning or error. Its six phone/desktop
+captures and exact repaired renderer/art digest are bound in `runtime-capture-receipt.json` and pass
+the asset checker. The browser backend did not expose Performance Timeline entries, so this evidence
+deliberately does not claim browser FPS or frame-time percentiles. A device/DevTools trace may be
+added later without changing the runtime candidate; the checked-in draw-work and CPU trace remains
+the fail-loud performance evidence available here.
