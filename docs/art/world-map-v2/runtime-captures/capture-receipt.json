@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "capture_date": "2026-09-04",
+  "capture_tool": "Codex in-app browser",
+  "runtime_head": "09368902401310bf9a43455865f1151a6bb02d87",
+  "runtime_art_head": "7c4c56d7a28baea8a7f176e51fadd15d70353648",
+  "server_origin": "http://localhost:4177",
+  "session_assertions": {
+    "origin_was_unused_before_capture": true,
+    "prior_origin_service_worker_cache_storage_indexeddb_excluded": true,
+    "theme_pack_ui_selection": "Default (no overrides)",
+    "theme_pack_active_button_enabled": false,
+    "expected_winning_ship_url": "/art/factions/pirates/ship_sloop_v2.webp",
+    "expected_url_basis": "exact-head web registry with no active theme override",
+    "scenario": "new Medium Hex five-player game as Pirates",
+    "settle_and_framing": "waited for eligible art to settle; zoomed in four times; centered fleet after each viewport change",
+    "native_visual_identity": "tan diagonal single-mast Pirate sloop inside the selection ring; not the legacy black-and-white three-masted side view"
+  },
+  "identity_check": {
+    "method": "mean absolute RGB error on reference pixels whose resized alpha is at least 224; reference resized to the recorded 50x50 CSS-pixel sprite box with Pillow Lanczos",
+    "measurement_software": {
+      "pillow": "12.3.0",
+      "numpy": "2.5.1"
+    },
+    "generated_reference": {
+      "path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+      "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+    },
+    "known_legacy_reference": {
+      "path": "apps/web/public/art/factions/pirates/ship.png",
+      "sha256": "d4fcd25b66b09fb0545c2c9cf38bc5534c332feeb483222270de023fd536b3d6"
+    },
+    "opaque_alpha_threshold": 224,
+    "maximum_generated_mae": 22.0,
+    "minimum_legacy_minus_generated_margin": 40.0
+  },
+  "captures": [
+    {
+      "file": "desktop-1440x900.jpg",
+      "viewport": [1440, 900],
+      "bytes": 61088,
+      "sha256": "cc30c6ad1a7308386880f2f1907f018d3bbd5d2571d494655ec7514394c284e2",
+      "ship_sprite_box": [695, 398, 50, 50],
+      "generated_reference_mae": 14.5958,
+      "legacy_reference_mae": 77.3851
+    },
+    {
+      "file": "tablet-768x1024.jpg",
+      "viewport": [768, 1024],
+      "bytes": 51218,
+      "sha256": "0e4b914dd95757a6abeac3b20139225160c249ecf0d802393bca67d582c894e8",
+      "ship_sprite_box": [359, 462, 50, 50],
+      "generated_reference_mae": 14.2021,
+      "legacy_reference_mae": 76.8194
+    },
+    {
+      "file": "phone-390x844.jpg",
+      "viewport": [390, 844],
+      "bytes": 33323,
+      "sha256": "e1902d49e2cf038931d180329d416178233672582461edee4952c533c18ba777",
+      "ship_sprite_box": [170, 376, 50, 50],
+      "generated_reference_mae": 13.9578,
+      "legacy_reference_mae": 77.7315
+    }
+  ]
+}

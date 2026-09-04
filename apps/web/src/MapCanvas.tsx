@@ -5,13 +5,10 @@ import {
   tileIndex,
   type Captain,
   type CityState,
-  type EncounterKind,
   type EncounterState,
   type GameMap,
-  type LandEncounterKind,
   type LandEncounterState,
   type LandingParty,
-  type LandSiteKind,
   type LandSiteState,
 } from '@aop/engine'
 import { FACTIONS } from '@aop/content'
@@ -41,9 +38,19 @@ import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { fleetCaptains } from './fleetVisibility'
 import { Minimap } from './Minimap'
 import {
+  mapArtPreloadRequests,
+  mapArtRegistry,
+  resolveMapPartyUrl,
+  resolveMapShipUrl,
+  unsettledMapArtUrls,
+} from './mapArtRegistry'
+import {
   cityContentId,
   encounterContentId,
-  partyContentId,
+  factionFlagContentId,
+  factionMarkerPattern,
+  fitSpriteDimensions,
+  landSiteContentId,
   resolveSpriteUrl,
   tileContentId,
 } from './mapSprites'
@@ -115,30 +122,12 @@ export const ENCOUNTER_COLOR = {
   settlers: cssToken('--map-encounter-settlers', '#c98bdb'),
 } as const
 
-// Generated art (#26). All four tile types now have usable art (#108's retry pass shipped
-// `deep`/`port` after two prior attempts drifted into repeating decorative motifs and a
-// baked-in watermark — see #108 for the full history). The switch that finally worked for
-// `deep`: the DreamShaper checkpoint instead of sd-v1.5, plus dropping "isolated
-// object/product shot" framing that had been pushing that checkpoint toward an app-icon
-// composition. `TILE_COLOR` below is kept as the fallback for any tile type whose art
-// fails to load.
-const TILE_SPRITE_URL: Partial<Record<keyof typeof TILE_COLOR, string>> = {
-  shallows: '/art/tiles/shallows.png',
-  land: '/art/tiles/land.png',
-  port: '/art/tiles/port.png',
-  deep: '/art/tiles/deep.png',
-}
-const CITY_SPRITE_URL = {
-  own: '/art/cities/own.png',
-  enemy: '/art/cities/enemy.png',
-} as const
-const ENCOUNTER_SPRITE_URL: Record<EncounterKind, string> = {
-  merchant: '/art/encounters/merchant.png',
-  natives: '/art/encounters/natives.png',
-  settlers: '/art/encounters/settlers.png',
-}
-// Land content (#466): tokens over land tiles. Sprite URLs follow the #458
-// pattern — they 404-fall-back to the flat-color token until art ships.
+// Static URLs live in the pure registry so completeness can be verified without Pixi.
+const TILE_SPRITE_URL = mapArtRegistry.tiles
+const CITY_SPRITE_URL = mapArtRegistry.cities
+const ENCOUNTER_SPRITE_URL = mapArtRegistry.seaEncounters
+// Land content (#466): tokens over land tiles. Graphics colors remain the
+// decode/WebGL failure fallback; shipped defaults come from the pure registry.
 const LAND_ENCOUNTER_COLOR = {
   nativeVillage: cssToken('--map-land-encounter-village', '#7fae5a'),
   hermit: cssToken('--map-land-encounter-hermit', '#8f7fd0'),
@@ -150,17 +139,8 @@ const LAND_SITE_COLOR = {
   lumberCamp: cssToken('--map-land-site-lumber', '#6f8f4a'),
   ruins: cssToken('--map-land-site-ruins', '#b8a98f'),
 } as const
-const LAND_ENCOUNTER_SPRITE_URL: Record<LandEncounterKind, string> = {
-  nativeVillage: '/art/encounters/native-village.png',
-  hermit: '/art/encounters/hermit.png',
-  banditCamp: '/art/encounters/bandit-camp.png',
-}
-const LAND_SITE_SPRITE_URL: Record<LandSiteKind, string> = {
-  mine: '/art/sites/mine.png',
-  sawmill: '/art/sites/sawmill.png',
-  lumberCamp: '/art/sites/lumber-camp.png',
-  ruins: '/art/sites/ruins.png',
-}
+const LAND_ENCOUNTER_SPRITE_URL = mapArtRegistry.landEncounters
+const LAND_SITE_SPRITE_URL = mapArtRegistry.landSites
 
 // Ship sprites scale a little by class (#26/#89) so a galleon visibly reads bigger than a
 // sloop on the map, not just a different paint job. Keyed by SHIP_CLASSES id in @aop/content;
@@ -183,28 +163,6 @@ const PARTY_SPRITE_SCALE = 0.6
 // longer than this is a fogged-reappearance or a state snapshot, not a move to animate
 // (#297) — sail the ordinary case, snap instantly for anything this large.
 const MAX_ANIMATED_PATH_TILES = 40
-
-/** Every default (non-theme-pack-override) sprite URL the map can draw, so they can be
- * warmed into the texture cache before first paint (#300) instead of popping in tile by
- * tile as the camera first reaches them. Theme-pack overrides are `data:` URLs decided at
- * runtime and are out of scope here — they're already in memory, just not yet decoded. */
-function defaultArtUrls(): string[] {
-  const urls = new Set<string>()
-  for (const url of Object.values(TILE_SPRITE_URL)) {
-    if (url) urls.add(url)
-  }
-  urls.add(CITY_SPRITE_URL.own)
-  urls.add(CITY_SPRITE_URL.enemy)
-  for (const url of Object.values(ENCOUNTER_SPRITE_URL)) urls.add(url)
-  for (const faction of Object.values(FACTIONS)) {
-    if (faction.shipSpriteUrl) urls.add(faction.shipSpriteUrl)
-    for (const url of Object.values(faction.shipSpriteUrlsByClass ?? {})) {
-      if (url) urls.add(url)
-    }
-    if (faction.partySpriteUrl) urls.add(faction.partySpriteUrl)
-  }
-  return [...urls]
-}
 
 // Painted-world rendering (#392/#393): all rendering-only — a deterministic
 // hash of integer tile coords drives every per-cell variation, so two paints of
@@ -428,10 +386,9 @@ interface MapCanvasProps {
   /**
    * City ownerId -> faction id, or `undefined` for the `'neutral'` sentinel
    * inland settlements are seeded with (`packages/engine/src/game.ts:198`) —
-   * the one ownerId in the game that isn't a real player. Optional: falls
-   * back to {@link factionOf} when omitted, for read-only board consumers
-   * (replay, multiplayer) that predate neutral cities and don't yet
-   * special-case them.
+   * the one ownerId in the game that isn't a real player. Optional: delegates
+   * non-neutral owners to {@link factionOf} while keeping the neutral sentinel
+   * safe for read-only board consumers that predate neutral cities.
    */
   cityFactionOf?: (ownerId: string) => FactionId | undefined
   /** Filled with the live camera controls (#346/#373) so the parent can recenter. */
@@ -466,6 +423,11 @@ export function MapCanvas(props: MapCanvasProps) {
   // Shared with the pack-switch effect below so it can release the previous
   // pack's decoded textures without tearing down the whole Pixi scene (#245).
   const textureLoaderRef = useRef<TextureLoader<Texture> | null>(null)
+  // The first art-bearing frame is held until every currently eligible map
+  // texture has either decoded or failed. A failed URL then renders its normal
+  // Graphics fallback; a successful URL never visibly pops over that fallback.
+  const [mapArtReady, setMapArtReady] = useState(false)
+  const mapArtReadyRef = useRef(false)
   // Living map (#298): sprites and their "rest" position/kind recorded during
   // the last full draw(), so the always-on ambient tick below can nudge
   // alpha/position every frame — cheap property writes, no Graphics rebuild —
@@ -529,6 +491,10 @@ export function MapCanvas(props: MapCanvasProps) {
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (!mapArtReadyRef.current) {
+      e.preventDefault()
+      return
+    }
     const { map } = props
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -603,6 +569,7 @@ export function MapCanvas(props: MapCanvasProps) {
     const landEncounterSprites = new Container()
     const shipSprites = new Container()
     const partySprites = new Container()
+    const factionMarkerSprites = new Container()
     const fog = new Graphics() // Feathered fog overlay (#299/#394)
     // Dotted course preview (#375), above fog so it reads clearly over dimmed
     // explored-but-not-visible water — the preview is a planning aid, not
@@ -630,6 +597,7 @@ export function MapCanvas(props: MapCanvasProps) {
       landEncounterSprites,
       shipSprites,
       partySprites,
+      factionMarkerSprites,
       fog,
       pathPreview,
       highlight,
@@ -708,10 +676,6 @@ export function MapCanvas(props: MapCanvasProps) {
       dirtyRef.current = true
     })
     textureLoaderRef.current = textureLoader
-    // Warm the whole default art set up front (#300) so the common case — panning into a
-    // tile/city/encounter/ship whose texture was never requested before — is already a
-    // cache hit instead of a flat-color-then-pop.
-    void textureLoader.preload(defaultArtUrls())
     const getTexture = textureLoader.getTexture
     const tilePool = new SpritePool(tileSprites)
     const glintPool = new SpritePool(glintSprites)
@@ -722,6 +686,64 @@ export function MapCanvas(props: MapCanvasProps) {
     const landEncounterPool = new SpritePool(landEncounterSprites)
     const shipPool = new SpritePool(shipSprites)
     const partyPool = new SpritePool(partySprites)
+    const factionMarkerPool = new SpritePool(factionMarkerSprites)
+
+    let readinessGeneration = 0
+    let readinessKey = ''
+    let disposed = false
+    mapArtReadyRef.current = false
+    setMapArtReady(false)
+
+    /**
+     * Gate the first interactive/art-bearing frame on only the textures this
+     * viewer is currently entitled to see. When fog later reveals a genuinely
+     * new identity, that finite addition settles before the world is shown
+     * again; hidden detail art is never requested as a side effect.
+     */
+    function ensureMapArtReady(): boolean {
+      const current = propsRef.current
+      const requests = mapArtPreloadRequests({
+        captains: current.captains,
+        cities: current.cities,
+        encounters: current.encounters,
+        landSites: current.landSites ?? [],
+        landEncounters: current.landEncounters ?? [],
+        parties: current.parties ?? [],
+        viewerId: current.viewerId,
+        visibleKeys: current.visibleKeys,
+        exploredKeys: current.exploredKeys,
+        factionOf: current.factionOf,
+        cityFactionOf:
+          current.cityFactionOf ??
+          ((ownerId) => (ownerId === 'neutral' ? undefined : current.factionOf(ownerId))),
+        spriteUrl: themeSpriteUrlRef.current,
+      })
+      const unsettled = unsettledMapArtUrls(requests, textureLoader.getStatus)
+
+      if (unsettled.length === 0) {
+        if (!mapArtReadyRef.current) {
+          mapArtReadyRef.current = true
+          setMapArtReady(true)
+        }
+        return true
+      }
+
+      const nextKey = unsettled.join('\n')
+      if (nextKey !== readinessKey) {
+        readinessKey = nextKey
+        const generation = ++readinessGeneration
+        mapArtReadyRef.current = false
+        setMapArtReady(false)
+        void textureLoader.preload(unsettled).then(() => {
+          if (disposed || generation !== readinessGeneration) return
+          readinessKey = ''
+          mapArtReadyRef.current = true
+          setMapArtReady(true)
+          dirtyRef.current = true
+        })
+      }
+      return false
+    }
 
     const view = viewRef.current
     const pointers = new Map<number, Point>()
@@ -832,8 +854,13 @@ export function MapCanvas(props: MapCanvasProps) {
         selectedPartyId,
         rangeOverlay,
         factionOf,
-        cityFactionOf = factionOf,
+        cityFactionOf: configuredCityFactionOf,
       } = propsRef.current
+      const cityFactionOf =
+        configuredCityFactionOf ??
+        ((ownerId: string) => (ownerId === 'neutral' ? undefined : factionOf(ownerId)))
+      const artReady = ensureMapArtReady()
+      world.visible = artReady
       world.position.set(view.x, view.y)
       world.scale.set(view.scale)
 
@@ -851,6 +878,11 @@ export function MapCanvas(props: MapCanvasProps) {
       const strokeCell = (g: Graphics, x: number, y: number, style: StrokeInput) => {
         if (topology === 'hex') g.poly(cellPolygon('hex', x, y, TILE)).stroke(style)
         else g.rect(x * TILE, y * TILE, TILE, TILE).stroke(style)
+      }
+      const fitTexture = (sprite: Sprite, texture: Texture, width: number, height: number) => {
+        const fitted = fitSpriteDimensions(texture.width, texture.height, width, height)
+        sprite.width = fitted.width
+        sprite.height = fitted.height
       }
 
       const w = pixiApp.renderer.width
@@ -1078,6 +1110,97 @@ export function MapCanvas(props: MapCanvasProps) {
       }
 
       entities.clear()
+      factionMarkerPool.begin()
+      const drawFactionMarker = (key: string, c: Point, factionId: FactionId) => {
+        const faction = FACTIONS[factionId]
+        // 24 px at the authored 1x map scale. The ring sits outside the token
+        // source and keeps ownership legible in grayscale via the flag's
+        // authored geometry (not color alone).
+        const ringRadius = 12
+        entities.circle(c.x, c.y, ringRadius).stroke({
+          width: 3,
+          color: 0x14100d,
+          alpha: 0.72,
+        })
+        entities.circle(c.x, c.y, ringRadius).stroke({
+          width: 1.5,
+          color: faction.primaryColor,
+          alpha: 0.95,
+        })
+
+        const marker = { x: c.x + TILE * 0.3, y: c.y - TILE * 0.3 }
+        const flagUrl = resolveSpriteUrl(
+          themeSpriteUrlRef.current,
+          factionFlagContentId(factionId),
+          faction.flagSpriteUrl,
+        )
+        const flagTexture = flagUrl ? getTexture(flagUrl) : undefined
+        if (flagTexture) {
+          const sprite = factionMarkerPool.get(key)
+          sprite.texture = flagTexture
+          fitTexture(sprite, flagTexture, TILE * 0.34, TILE * 0.34)
+          sprite.position.set(marker.x, marker.y)
+          return
+        }
+
+        // Decode-failure fallback still has a non-color cue. In particular,
+        // British uses a plus while Spanish uses a saltire, so those two never
+        // collapse to the same gray ring.
+        const radius = TILE * 0.12
+        entities.circle(marker.x, marker.y, radius).fill(0x18130f)
+        const stroke = { width: 1.5, color: 0xffffff, alpha: 0.95 }
+        const pattern = factionMarkerPattern(factionId)
+        if (pattern === 'cross') {
+          entities
+            .moveTo(marker.x - radius, marker.y)
+            .lineTo(marker.x + radius, marker.y)
+            .stroke(stroke)
+          entities
+            .moveTo(marker.x, marker.y - radius)
+            .lineTo(marker.x, marker.y + radius)
+            .stroke(stroke)
+        } else if (pattern === 'saltire') {
+          entities
+            .moveTo(marker.x - radius, marker.y - radius)
+            .lineTo(marker.x + radius, marker.y + radius)
+            .stroke(stroke)
+          entities
+            .moveTo(marker.x + radius, marker.y - radius)
+            .lineTo(marker.x - radius, marker.y + radius)
+            .stroke(stroke)
+        } else if (pattern === 'horizontal-bars') {
+          entities
+            .moveTo(marker.x - radius, marker.y - radius * 0.35)
+            .lineTo(marker.x + radius, marker.y - radius * 0.35)
+            .stroke(stroke)
+          entities
+            .moveTo(marker.x - radius, marker.y + radius * 0.35)
+            .lineTo(marker.x + radius, marker.y + radius * 0.35)
+            .stroke(stroke)
+        } else if (pattern === 'vertical-bars') {
+          entities
+            .moveTo(marker.x - radius * 0.35, marker.y - radius)
+            .lineTo(marker.x - radius * 0.35, marker.y + radius)
+            .stroke(stroke)
+          entities
+            .moveTo(marker.x + radius * 0.35, marker.y - radius)
+            .lineTo(marker.x + radius * 0.35, marker.y + radius)
+            .stroke(stroke)
+        } else {
+          entities
+            .poly([
+              marker.x,
+              marker.y - radius,
+              marker.x + radius,
+              marker.y,
+              marker.x,
+              marker.y + radius,
+              marker.x - radius,
+              marker.y,
+            ])
+            .stroke(stroke)
+        }
+      }
       encounterPool.begin()
       // Encounters (#23): art sprite when available, a flat diamond otherwise —
       // only where currently in view, so fog hides them.
@@ -1103,8 +1226,7 @@ export function MapCanvas(props: MapCanvasProps) {
         if (texture) {
           const sprite = encounterPool.get(enc.id)
           sprite.texture = texture
-          sprite.width = TILE * 0.75
-          sprite.height = TILE * 0.75
+          fitTexture(sprite, texture, TILE * 0.75, TILE * 0.75)
           sprite.position.set(cx, cy)
           continue
         }
@@ -1125,27 +1247,23 @@ export function MapCanvas(props: MapCanvasProps) {
         const c = centerOf(s.position.x, s.position.y)
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
-          `landSite:${s.kind}`,
+          landSiteContentId(s.kind),
           LAND_SITE_SPRITE_URL[s.kind],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
         // A site's claimant is always a real player (reducer.ts only ever sets
         // `claimedBy: action.playerId`) — never the city-only neutral sentinel.
-        const ring = s.claimedBy ? FACTIONS[factionOf(s.claimedBy)].primaryColor : undefined
+        const claimantFactionId = s.claimedBy ? factionOf(s.claimedBy) : undefined
         if (texture) {
           const sprite = landSitePool.get(s.id)
           sprite.texture = texture
-          sprite.width = TILE * 0.7
-          sprite.height = TILE * 0.7
+          fitTexture(sprite, texture, TILE * 0.7, TILE * 0.7)
           sprite.position.set(c.x, c.y)
         } else {
           const r = TILE / 3.2
           entities.rect(c.x - r, c.y - r, r * 2, r * 2).fill(LAND_SITE_COLOR[s.kind])
         }
-        if (ring) {
-          const rr = TILE / 2.6
-          entities.rect(c.x - rr, c.y - rr, rr * 2, rr * 2).stroke({ width: 2, color: ring })
-        }
+        if (claimantFactionId) drawFactionMarker(`site:${s.id}`, c, claimantFactionId)
       }
       landSitePool.end()
 
@@ -1166,8 +1284,7 @@ export function MapCanvas(props: MapCanvasProps) {
         if (texture) {
           const sprite = landEncounterPool.get(enc.id)
           sprite.texture = texture
-          sprite.width = TILE * 0.7
-          sprite.height = TILE * 0.7
+          fitTexture(sprite, texture, TILE * 0.7, TILE * 0.7)
           sprite.position.set(c.x, c.y)
         } else {
           const r = TILE / 3
@@ -1185,10 +1302,11 @@ export function MapCanvas(props: MapCanvasProps) {
         const cc = centerOf(city.position.x, city.position.y)
         const cx = cc.x
         const cy = cc.y
+        const cityFactionId = cityFactionOf(city.ownerId)
         const spriteUrl = resolveSpriteUrl(
           themeSpriteUrlRef.current,
           cityContentId(own),
-          own ? CITY_SPRITE_URL.own : CITY_SPRITE_URL.enemy,
+          CITY_SPRITE_URL[cityFactionId ?? 'neutral'],
         )
         const texture = spriteUrl ? getTexture(spriteUrl) : undefined
         // Grounding shadow (#394), drawn whether art or fallback renders above.
@@ -1196,13 +1314,13 @@ export function MapCanvas(props: MapCanvasProps) {
           color: 0x000000,
           alpha: 0.28,
         })
+        if (cityFactionId) drawFactionMarker(`city:${city.id}`, cc, cityFactionId)
         if (texture) {
           const sprite = cityPool.get(city.id)
           sprite.texture = texture
           // Sized up (#394) so a settlement reads as a landmark, not another
           // terrain cell; anchored center like every pooled sprite.
-          sprite.width = TILE * 1.05
-          sprite.height = TILE * 1.05
+          fitTexture(sprite, texture, TILE * 1.05, TILE * 1.05)
           sprite.position.set(cx, cy)
           continue
         }
@@ -1211,7 +1329,6 @@ export function MapCanvas(props: MapCanvasProps) {
         // when two factions' colors are close. City owners may be the 'neutral' sentinel
         // (inland settlements), which falls through to the plain own/enemy swatch below —
         // the same muted gray a neutral city rendered as before #428 added faction colors.
-        const cityFactionId = cityFactionOf(city.ownerId)
         const cityFaction = cityFactionId ? FACTIONS[cityFactionId] : undefined
         entities.rect(cx - (TILE - 12) / 2, cy - (TILE - 12) / 2, TILE - 12, TILE - 12)
         entities.fill(cityFaction?.primaryColor ?? (own ? OWN_CITY : ENEMY_CITY))
@@ -1270,15 +1387,14 @@ export function MapCanvas(props: MapCanvasProps) {
         const cx = center.x
         const cy = center.y
         const faction = FACTIONS[factionOf(cap.ownerId)]
-        const defaultShipSpriteUrl =
-          faction?.shipSpriteUrlsByClass?.[cap.shipClassId] ?? faction?.shipSpriteUrl
+        const factionId = faction.id
         // Ship overrides are keyed by ship class id, same content id the Theme
         // Packs editor already uses for ship name/sprite overrides — not
         // faction-specific, since ThemePack has no per-faction ship art slot.
-        const shipSpriteUrl = resolveSpriteUrl(
+        const shipSpriteUrl = resolveMapShipUrl(
           themeSpriteUrlRef.current,
+          factionId,
           cap.shipClassId,
-          defaultShipSpriteUrl,
         )
         const texture = shipSpriteUrl ? getTexture(shipSpriteUrl) : undefined
         // Anchored (#498): this captain is ashore leading a landing party —
@@ -1291,6 +1407,7 @@ export function MapCanvas(props: MapCanvasProps) {
           color: 0x000000,
           alpha: 0.25,
         })
+        drawFactionMarker(`ship:${cap.id}`, center, factionId)
         if (anchored) {
           entities
             .ellipse(cx, cy + TILE * 0.24, TILE * 0.36, TILE * 0.13)
@@ -1300,8 +1417,7 @@ export function MapCanvas(props: MapCanvasProps) {
           const sprite = shipPool.get(cap.id)
           const size = TILE * (SHIP_CLASS_SCALE[cap.shipClassId] ?? 0.75)
           sprite.texture = texture
-          sprite.width = size
-          sprite.height = size
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(cx, cy)
           sprite.alpha = anchored ? 0.55 : 1
           shipSpritesRef.current.set(cap.id, { sprite, baseX: cx, baseY: cy })
@@ -1349,18 +1465,14 @@ export function MapCanvas(props: MapCanvasProps) {
         // parties from action.playerId) — never the city-only neutral sentinel.
         const partyFactionId = factionOf(party.ownerId)
         const partyFaction = FACTIONS[partyFactionId]
-        const partySpriteUrl = resolveSpriteUrl(
-          themeSpriteUrlRef.current,
-          partyContentId(partyFactionId),
-          partyFaction?.partySpriteUrl,
-        )
+        drawFactionMarker(`party:${party.id}`, pc, partyFactionId)
+        const partySpriteUrl = resolveMapPartyUrl(themeSpriteUrlRef.current, partyFactionId)
         const texture = partySpriteUrl ? getTexture(partySpriteUrl) : undefined
         if (texture) {
           const sprite = partyPool.get(party.id)
           const size = TILE * PARTY_SPRITE_SCALE
           sprite.texture = texture
-          sprite.width = size
-          sprite.height = size
+          fitTexture(sprite, texture, size, size)
           sprite.position.set(pc.x, pc.y)
           continue
         }
@@ -1374,6 +1486,7 @@ export function MapCanvas(props: MapCanvasProps) {
         }
       }
       partyPool.end()
+      factionMarkerPool.end()
 
       pathPreview.clear()
       highlight.clear()
@@ -1569,6 +1682,7 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function selectTileAt(screenX: number, screenY: number) {
+      if (!mapArtReadyRef.current) return
       const cell = cellAtPoint(screenX, screenY)
       if (cell) propsRef.current.onTileClick(cell.x, cell.y)
     }
@@ -1649,6 +1763,7 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function onPointerDown(e: PointerEvent) {
+      if (!mapArtReadyRef.current) return
       canvas.setPointerCapture(e.pointerId)
       pointers.set(e.pointerId, toCanvasPoint(e))
       moved = false
@@ -1668,6 +1783,7 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function onPointerMove(e: PointerEvent) {
+      if (!mapArtReadyRef.current) return
       if (!pointers.has(e.pointerId)) {
         // Plain hover (#375): no pointer is down, so this can't be a drag or
         // pinch — mouse only, since touch never fires pointermove without a
@@ -1712,6 +1828,11 @@ export function MapCanvas(props: MapCanvasProps) {
     }
 
     function onPointerUp(e: PointerEvent) {
+      if (!mapArtReadyRef.current) {
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId)
+        pointers.delete(e.pointerId)
+        return
+      }
       if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId)
       const wasTap = pointers.size === 1 && !moved
       const point = pointers.get(e.pointerId)
@@ -1728,6 +1849,7 @@ export function MapCanvas(props: MapCanvasProps) {
 
     function onWheel(e: WheelEvent) {
       e.preventDefault()
+      if (!mapArtReadyRef.current) return
       const rect = canvas.getBoundingClientRect()
       zoomAt(e.clientX - rect.left, e.clientY - rect.top, view.scale * Math.exp(-e.deltaY * 0.001))
     }
@@ -1806,6 +1928,9 @@ export function MapCanvas(props: MapCanvasProps) {
     pixiApp.ticker.add(tick)
 
     return () => {
+      disposed = true
+      readinessGeneration++
+      mapArtReadyRef.current = false
       // usePixiApp's own cleanup effect is registered before this one (it
       // runs first inside the component), so on unmount it destroys the Pixi
       // Application before this cleanup runs. `Application.destroy()`
@@ -1826,6 +1951,7 @@ export function MapCanvas(props: MapCanvasProps) {
       vignette.destroy()
       lightTexture.destroy(true)
       controlsRef.current = null
+      if (textureLoaderRef.current === textureLoader) textureLoaderRef.current = null
     }
   }, [app])
 
@@ -1853,9 +1979,11 @@ export function MapCanvas(props: MapCanvasProps) {
       style={{ width: '100%', height: '100%', position: 'relative' }}
       role="application"
       aria-label="World map. Use arrow keys to move the tile cursor and Enter to act on it."
+      aria-busy={!mapArtReady}
       tabIndex={0}
       onKeyDown={onKeyDown}
       onFocus={() => {
+        if (!mapArtReadyRef.current) return
         hasFocusRef.current = true
         dirtyRef.current = true
         announceTile(cursor)
@@ -1874,6 +2002,7 @@ export function MapCanvas(props: MapCanvasProps) {
           type="button"
           className="map-nav-button"
           aria-label="Zoom in"
+          disabled={!mapArtReady}
           onClick={() => controlsRef.current?.zoomBy(1.25)}
         >
           +
@@ -1882,6 +2011,7 @@ export function MapCanvas(props: MapCanvasProps) {
           type="button"
           className="map-nav-button"
           aria-label="Zoom out"
+          disabled={!mapArtReady}
           onClick={() => controlsRef.current?.zoomBy(0.8)}
         >
           −
@@ -1890,6 +2020,7 @@ export function MapCanvas(props: MapCanvasProps) {
           type="button"
           className="map-nav-button"
           aria-label="Center on fleet"
+          disabled={!mapArtReady}
           title="Center on fleet"
           onClick={() => controlsRef.current?.centerOnFleet()}
         >
@@ -1899,6 +2030,7 @@ export function MapCanvas(props: MapCanvasProps) {
           type="button"
           className="map-nav-button"
           aria-label="Fit to map"
+          disabled={!mapArtReady}
           title="Fit whole map"
           onClick={() => controlsRef.current?.fitToMap()}
         >
@@ -1917,7 +2049,9 @@ export function MapCanvas(props: MapCanvasProps) {
         cameraRef={viewRef}
         containerRef={containerRef}
         tileSize={TILE}
-        onJump={(tile) => controlsRef.current?.centerOn(tile)}
+        onJump={(tile) => {
+          if (mapArtReadyRef.current) controlsRef.current?.centerOn(tile)
+        }}
       />
 
       {touchPreviewHint && (

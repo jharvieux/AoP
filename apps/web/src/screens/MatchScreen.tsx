@@ -990,6 +990,9 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             }
           }}
           factionOf={board.factionOf}
+          cityFactionOf={(ownerId) =>
+            ownerId === 'neutral' ? undefined : board.factionOf(ownerId)
+          }
         />
         {/* Item find (#502) — the multiplayer twin of GameScreen's turn-event
             feed entry, reusing its styling for one transient line. */}

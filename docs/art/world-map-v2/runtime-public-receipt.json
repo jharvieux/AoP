@@ -1,0 +1,333 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "city:british",
+      "source": "sources/runtime/city-british-256.webp",
+      "public_path": "apps/web/public/art/cities/british.webp",
+      "url": "/art/cities/british.webp",
+      "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7",
+      "bytes": 17936
+    },
+    {
+      "id": "city:dutch",
+      "source": "sources/runtime/city-dutch-256.webp",
+      "public_path": "apps/web/public/art/cities/dutch.webp",
+      "url": "/art/cities/dutch.webp",
+      "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a",
+      "bytes": 14296
+    },
+    {
+      "id": "city:french",
+      "source": "sources/runtime/city-french-256.webp",
+      "public_path": "apps/web/public/art/cities/french.webp",
+      "url": "/art/cities/french.webp",
+      "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f",
+      "bytes": 15984
+    },
+    {
+      "id": "city:pirates",
+      "source": "sources/runtime/city-pirates-256.webp",
+      "public_path": "apps/web/public/art/cities/pirates.webp",
+      "url": "/art/cities/pirates.webp",
+      "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a",
+      "bytes": 17284
+    },
+    {
+      "id": "city:spanish",
+      "source": "sources/runtime/city-spanish-256.webp",
+      "public_path": "apps/web/public/art/cities/spanish.webp",
+      "url": "/art/cities/spanish.webp",
+      "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97",
+      "bytes": 17978
+    },
+    {
+      "id": "city:neutral",
+      "source": "sources/runtime/city-neutral-256.webp",
+      "public_path": "apps/web/public/art/cities/neutral.webp",
+      "url": "/art/cities/neutral.webp",
+      "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3",
+      "bytes": 11814
+    },
+    {
+      "id": "ship:british:sloop",
+      "source": "sources/runtime/ship-british-sloop-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_sloop.webp",
+      "url": "/art/factions/british/ship_sloop.webp",
+      "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c",
+      "bytes": 8798
+    },
+    {
+      "id": "ship:pirates:galleon",
+      "source": "sources/runtime/ship-pirates-galleon-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_galleon_v2.webp",
+      "url": "/art/factions/pirates/ship_galleon_v2.webp",
+      "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200",
+      "bytes": 13200
+    },
+    {
+      "id": "party:british",
+      "source": "sources/runtime/party-british-256.webp",
+      "public_path": "apps/web/public/art/parties/british.webp",
+      "url": "/art/parties/british.webp",
+      "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7",
+      "bytes": 13298
+    },
+    {
+      "id": "party:dutch",
+      "source": "sources/runtime/party-dutch-256.webp",
+      "public_path": "apps/web/public/art/parties/dutch.webp",
+      "url": "/art/parties/dutch.webp",
+      "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3",
+      "bytes": 16284
+    },
+    {
+      "id": "party:french",
+      "source": "sources/runtime/party-french-256.webp",
+      "public_path": "apps/web/public/art/parties/french.webp",
+      "url": "/art/parties/french.webp",
+      "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc",
+      "bytes": 17306
+    },
+    {
+      "id": "party:pirates",
+      "source": "sources/runtime/party-pirates-256.webp",
+      "public_path": "apps/web/public/art/parties/pirates.webp",
+      "url": "/art/parties/pirates.webp",
+      "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef",
+      "bytes": 17232
+    },
+    {
+      "id": "party:spanish",
+      "source": "sources/runtime/party-spanish-256.webp",
+      "public_path": "apps/web/public/art/parties/spanish.webp",
+      "url": "/art/parties/spanish.webp",
+      "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6",
+      "bytes": 14882
+    },
+    {
+      "id": "encounter:merchant",
+      "source": "sources/runtime/encounter-merchant-convoy-256.webp",
+      "public_path": "apps/web/public/art/encounters/merchant-v2.webp",
+      "url": "/art/encounters/merchant-v2.webp",
+      "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567",
+      "bytes": 16420
+    },
+    {
+      "id": "encounter:nativeVillage",
+      "source": "sources/runtime/encounter-native-village-256.webp",
+      "public_path": "apps/web/public/art/encounters/native-village.webp",
+      "url": "/art/encounters/native-village.webp",
+      "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b",
+      "bytes": 12600
+    },
+    {
+      "id": "encounter:hermit",
+      "source": "sources/runtime/encounter-hermit-256.webp",
+      "public_path": "apps/web/public/art/encounters/hermit.webp",
+      "url": "/art/encounters/hermit.webp",
+      "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8",
+      "bytes": 13494
+    },
+    {
+      "id": "encounter:banditCamp",
+      "source": "sources/runtime/encounter-bandit-camp-256.webp",
+      "public_path": "apps/web/public/art/encounters/bandit-camp.webp",
+      "url": "/art/encounters/bandit-camp.webp",
+      "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f",
+      "bytes": 12374
+    },
+    {
+      "id": "landSite:mine",
+      "source": "sources/runtime/site-mine-256.webp",
+      "public_path": "apps/web/public/art/sites/mine.webp",
+      "url": "/art/sites/mine.webp",
+      "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa",
+      "bytes": 17964
+    },
+    {
+      "id": "landSite:sawmill",
+      "source": "sources/runtime/site-sawmill-256.webp",
+      "public_path": "apps/web/public/art/sites/sawmill.webp",
+      "url": "/art/sites/sawmill.webp",
+      "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815",
+      "bytes": 16618
+    },
+    {
+      "id": "landSite:lumberCamp",
+      "source": "sources/runtime/site-lumber-camp-256.webp",
+      "public_path": "apps/web/public/art/sites/lumber-camp.webp",
+      "url": "/art/sites/lumber-camp.webp",
+      "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba",
+      "bytes": 19190
+    },
+    {
+      "id": "landSite:ruins",
+      "source": "sources/runtime/site-ruins-256.webp",
+      "public_path": "apps/web/public/art/sites/ruins.webp",
+      "url": "/art/sites/ruins.webp",
+      "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760",
+      "bytes": 16050
+    },
+    {
+      "id": "encounter:natives",
+      "source": "sources/runtime/runtime-encounter-natives-256.webp",
+      "public_path": "apps/web/public/art/encounters/natives-v2.webp",
+      "url": "/art/encounters/natives-v2.webp",
+      "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106",
+      "bytes": 13946
+    },
+    {
+      "id": "encounter:settlers",
+      "source": "sources/runtime/runtime-encounter-settlers-256.webp",
+      "public_path": "apps/web/public/art/encounters/settlers-v2.webp",
+      "url": "/art/encounters/settlers-v2.webp",
+      "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb",
+      "bytes": 20062
+    },
+    {
+      "id": "ship:british:brigantine",
+      "source": "sources/runtime/ship-british-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_brigantine_v2.webp",
+      "url": "/art/factions/british/ship_brigantine_v2.webp",
+      "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490",
+      "bytes": 14960
+    },
+    {
+      "id": "ship:british:frigate",
+      "source": "sources/runtime/ship-british-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_frigate_v2.webp",
+      "url": "/art/factions/british/ship_frigate_v2.webp",
+      "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c",
+      "bytes": 14140
+    },
+    {
+      "id": "ship:british:galleon",
+      "source": "sources/runtime/ship-british-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/british/ship_galleon_v2.webp",
+      "url": "/art/factions/british/ship_galleon_v2.webp",
+      "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723",
+      "bytes": 15502
+    },
+    {
+      "id": "ship:dutch:sloop",
+      "source": "sources/runtime/ship-dutch-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_sloop_v2.webp",
+      "url": "/art/factions/dutch/ship_sloop_v2.webp",
+      "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de",
+      "bytes": 12402
+    },
+    {
+      "id": "ship:dutch:brigantine",
+      "source": "sources/runtime/ship-dutch-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_brigantine_v2.webp",
+      "url": "/art/factions/dutch/ship_brigantine_v2.webp",
+      "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79",
+      "bytes": 16866
+    },
+    {
+      "id": "ship:dutch:frigate",
+      "source": "sources/runtime/ship-dutch-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_frigate_v2.webp",
+      "url": "/art/factions/dutch/ship_frigate_v2.webp",
+      "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e",
+      "bytes": 15072
+    },
+    {
+      "id": "ship:dutch:galleon",
+      "source": "sources/runtime/ship-dutch-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/dutch/ship_galleon_v2.webp",
+      "url": "/art/factions/dutch/ship_galleon_v2.webp",
+      "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2",
+      "bytes": 15734
+    },
+    {
+      "id": "ship:french:sloop",
+      "source": "sources/runtime/ship-french-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_sloop_v2.webp",
+      "url": "/art/factions/french/ship_sloop_v2.webp",
+      "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c",
+      "bytes": 10748
+    },
+    {
+      "id": "ship:french:brigantine",
+      "source": "sources/runtime/ship-french-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_brigantine_v2.webp",
+      "url": "/art/factions/french/ship_brigantine_v2.webp",
+      "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306",
+      "bytes": 14868
+    },
+    {
+      "id": "ship:french:frigate",
+      "source": "sources/runtime/ship-french-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_frigate_v2.webp",
+      "url": "/art/factions/french/ship_frigate_v2.webp",
+      "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf",
+      "bytes": 12904
+    },
+    {
+      "id": "ship:french:galleon",
+      "source": "sources/runtime/ship-french-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/french/ship_galleon_v2.webp",
+      "url": "/art/factions/french/ship_galleon_v2.webp",
+      "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b",
+      "bytes": 14852
+    },
+    {
+      "id": "ship:pirates:sloop",
+      "source": "sources/runtime/ship-pirates-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+      "url": "/art/factions/pirates/ship_sloop_v2.webp",
+      "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a",
+      "bytes": 10808
+    },
+    {
+      "id": "ship:pirates:brigantine",
+      "source": "sources/runtime/ship-pirates-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_brigantine_v2.webp",
+      "url": "/art/factions/pirates/ship_brigantine_v2.webp",
+      "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193",
+      "bytes": 16568
+    },
+    {
+      "id": "ship:pirates:frigate",
+      "source": "sources/runtime/ship-pirates-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/pirates/ship_frigate_v2.webp",
+      "url": "/art/factions/pirates/ship_frigate_v2.webp",
+      "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786",
+      "bytes": 13762
+    },
+    {
+      "id": "ship:spanish:sloop",
+      "source": "sources/runtime/ship-spanish-sloop-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_sloop_v2.webp",
+      "url": "/art/factions/spanish/ship_sloop_v2.webp",
+      "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94",
+      "bytes": 10114
+    },
+    {
+      "id": "ship:spanish:brigantine",
+      "source": "sources/runtime/ship-spanish-brigantine-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_brigantine_v2.webp",
+      "url": "/art/factions/spanish/ship_brigantine_v2.webp",
+      "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310",
+      "bytes": 13086
+    },
+    {
+      "id": "ship:spanish:frigate",
+      "source": "sources/runtime/ship-spanish-frigate-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_frigate_v2.webp",
+      "url": "/art/factions/spanish/ship_frigate_v2.webp",
+      "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1",
+      "bytes": 13526
+    },
+    {
+      "id": "ship:spanish:galleon",
+      "source": "sources/runtime/ship-spanish-galleon-runtime-256.webp",
+      "public_path": "apps/web/public/art/factions/spanish/ship_galleon_v2.webp",
+      "url": "/art/factions/spanish/ship_galleon_v2.webp",
+      "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f",
+      "bytes": 16318
+    }
+  ]
+}

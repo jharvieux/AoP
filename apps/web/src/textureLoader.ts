@@ -26,6 +26,7 @@ function isThemeDataUrl(url: string): boolean {
 
 export interface TextureLoader<Texture> {
   getTexture(url: string): Texture | undefined
+  getStatus(url: string): 'idle' | 'pending' | 'loaded' | 'failed'
   /**
    * Warms the cache for a known, finite set of URLs up front (#300) — e.g. the map's
    * default tile/city/encounter/ship art — so by the time `getTexture` is first asked for
@@ -44,6 +45,7 @@ export function createTextureLoader<Texture>(
 ): TextureLoader<Texture> {
   const cache = new Map<string, Texture>()
   const pending = new Map<string, Promise<void>>()
+  const failed = new Set<string>()
   // Bumped by unloadThemeTextures so an in-flight load for a data: URL that's
   // already been unloaded doesn't resurrect it in the cache when it resolves.
   let epoch = 0
@@ -60,11 +62,15 @@ export function createTextureLoader<Texture>(
       .load(url)
       .then((texture) => {
         if (isThemeDataUrl(url) && loadEpoch !== epoch) return
+        failed.delete(url)
         cache.set(url, texture)
         markDirty()
       })
       .catch(() => {
-        // Leave unresolved; the flat-color fallback keeps rendering this asset's slot.
+        if (isThemeDataUrl(url) && loadEpoch !== epoch) return
+        // Record a settled failure; the flat-color fallback keeps rendering this slot.
+        failed.add(url)
+        markDirty()
       })
     pending.set(url, promise)
     return promise
@@ -78,7 +84,14 @@ export function createTextureLoader<Texture>(
   }
 
   function preload(urls: string[]): Promise<void> {
-    return Promise.all(urls.map((url) => load(url))).then(() => undefined)
+    return Promise.all([...new Set(urls)].map((url) => load(url))).then(() => undefined)
+  }
+
+  function getStatus(url: string): 'idle' | 'pending' | 'loaded' | 'failed' {
+    if (cache.has(url)) return 'loaded'
+    if (failed.has(url)) return 'failed'
+    if (pending.has(url)) return 'pending'
+    return 'idle'
   }
 
   function unloadThemeTextures(): void {
@@ -87,16 +100,19 @@ export function createTextureLoader<Texture>(
       if (!isThemeDataUrl(url)) continue
       cache.delete(url)
       pending.delete(url)
+      failed.delete(url)
       void assets.unload(url).catch(() => undefined)
     }
     // Also clear any not-yet-resolved data: URL loads so a later re-request
     // (e.g. switching back to a previously-used pack) triggers a fresh load
     // instead of silently deduping against an abandoned one.
     for (const url of [...pending.keys()]) {
-      if (isThemeDataUrl(url)) pending.delete(url)
+      if (!isThemeDataUrl(url)) continue
+      pending.delete(url)
+      failed.delete(url)
     }
     markDirty()
   }
 
-  return { getTexture, preload, unloadThemeTextures }
+  return { getTexture, getStatus, preload, unloadThemeTextures }
 }

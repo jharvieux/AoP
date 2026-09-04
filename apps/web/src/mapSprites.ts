@@ -13,7 +13,7 @@
  * get a namespaced id here to avoid ever colliding with a faction/unit/ship id.
  */
 
-import type { EncounterKind, LandEncounterKind } from '@aop/engine'
+import type { EncounterKind, LandEncounterKind, LandSiteKind } from '@aop/engine'
 import type { FactionId } from '@aop/shared'
 
 /**
@@ -76,6 +76,11 @@ export function encounterContentId(kind: string): string {
   return `encounter:${kind}`
 }
 
+/** Theme-pack content id for a land resource site's map token. */
+export function landSiteContentId(kind: LandSiteKind): string {
+  return `landSite:${kind}`
+}
+
 /** Theme-pack content id for a city building's sprite override (#447). */
 export function buildingContentId(buildingId: string): string {
   return `building:${buildingId}`
@@ -111,6 +116,25 @@ export function factionFlagContentId(factionId: FactionId): string {
   return factionId
 }
 
+export type FactionMarkerPattern =
+  'cross' | 'saltire' | 'horizontal-bars' | 'vertical-bars' | 'diamond'
+
+/** Non-color fallback geometry for a faction's 24 px ownership badge. */
+export function factionMarkerPattern(factionId: FactionId): FactionMarkerPattern {
+  switch (factionId) {
+    case 'british':
+      return 'cross'
+    case 'spanish':
+      return 'saltire'
+    case 'dutch':
+      return 'horizontal-bars'
+    case 'french':
+      return 'vertical-bars'
+    case 'pirates':
+      return 'diamond'
+  }
+}
+
 /**
  * Theme-pack content id for a landing party's map-token sprite override (#482).
  * Namespaced (unlike `factionFlagContentId`) because a faction's flag and its party
@@ -133,4 +157,22 @@ export function resolveSpriteUrl(
   defaultUrl: string | undefined,
 ): string | undefined {
   return spriteUrl(contentId) ?? defaultUrl
+}
+
+/**
+ * Fit an intrinsic raster size inside a render box without changing aspect
+ * ratio. Transparent padding in the source continues to carry its authored
+ * optical baseline; callers only scale, never crop or stretch it.
+ */
+export function fitSpriteDimensions(
+  sourceWidth: number,
+  sourceHeight: number,
+  maxWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  if (sourceWidth <= 0 || sourceHeight <= 0 || maxWidth <= 0 || maxHeight <= 0) {
+    return { width: 0, height: 0 }
+  }
+  const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight)
+  return { width: sourceWidth * scale, height: sourceHeight * scale }
 }
