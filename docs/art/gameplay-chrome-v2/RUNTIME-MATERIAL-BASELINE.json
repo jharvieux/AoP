@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "kind": "gameplay-runtime-material-baseline",
+  "captured_on": "2026-09-04",
+  "capture_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
+  "capture_record_sha256": "db5803719e18c5e180aba2fe916aca63b88dfb79034fde8701c450d143f5da1d",
+  "material": {
+    "projection": "schema-v3-material-projection-v1",
+    "algorithm": "sha256",
+    "sha256": "02c350403ca423110ce3fa32de4fe917e778e7e9f6e7fcb2ede85eba07718116",
+    "bytes": 59164,
+    "counts": {
+      "shipping_sources": 212,
+      "build_inputs": 22,
+      "runtime_assets": 96,
+      "captures": 3,
+      "canvas_tokens": 28
+    }
+  }
+}

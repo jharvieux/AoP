@@ -8,12 +8,17 @@ const packageRoot = dirname(fileURLToPath(import.meta.url))
 export const repoRoot = join(packageRoot, '..', '..', '..')
 export const bindingPath = join(packageRoot, 'RUNTIME-CAPTURE-BINDINGS.json')
 export const stylesheetPath = 'apps/web/src/styles.css'
+export const materialBaselineRelativePath =
+  'docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json'
+export const materialBaselinePath = join(repoRoot, materialBaselineRelativePath)
+
+const retainedMaterialBaseline = JSON.parse(readFileSync(materialBaselinePath, 'utf8'))
 
 export const captureBaseline = {
-  captured_on: '2026-09-04',
-  source_head: 'f1dea84d0d489ef52db3944c47748a708ba40004',
+  captured_on: retainedMaterialBaseline.captured_on,
+  source_head: retainedMaterialBaseline.capture_head,
   policy:
-    'This evidence baseline carries across evidence-only commits only while the complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact.',
+    'This evidence baseline carries across evidence-only commits only while the immutable material-baseline anchor and complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact.',
 }
 
 export const frozenCaptureState = {
@@ -49,7 +54,7 @@ export const frozenCaptureState = {
       selected_building: 'Town Hall',
       selected_unit: null,
       visible_state:
-        'Town Hall sheet open; close focused; info hovered and expanded; Build controls disabled with slash',
+        'Town Hall sheet open; close focused; info hovered but collapsed; Build controls disabled with slash',
     },
   },
 }
@@ -239,6 +244,36 @@ const v2BoundCanvasTokens = new Set(['--color-brass', '--color-deep-water'])
 const sha256 = (value) => createHash('sha256').update(value).digest('hex')
 const normalise = (value) => value.replace(/\s+/g, ' ').trim()
 const stripComments = (value) => value.replace(/\/\*[\s\S]*?\*\//g, '')
+
+export function materialProjection(binding) {
+  return {
+    binding_boundary: binding.binding_boundary,
+    frozen_capture_state: binding.frozen_capture_state,
+    shipping_sources: binding.shipping_sources,
+    build_inputs: binding.build_inputs,
+    stylesheet_source: binding.stylesheet_source,
+    canvas_token_census: binding.canvas_token_census,
+    runtime_assets: binding.runtime_assets,
+    captures: binding.captures,
+  }
+}
+
+function materialDescriptor(binding) {
+  const serialised = JSON.stringify(materialProjection(binding))
+  return {
+    projection: 'schema-v3-material-projection-v1',
+    algorithm: 'sha256',
+    sha256: sha256(serialised),
+    bytes: Buffer.byteLength(serialised),
+    counts: {
+      shipping_sources: binding.shipping_sources.length,
+      build_inputs: binding.build_inputs.length,
+      runtime_assets: binding.runtime_assets.files.length,
+      captures: binding.captures.length,
+      canvas_tokens: binding.canvas_token_census.unique_token_count,
+    },
+  }
+}
 
 function readBuffer(path, overrides) {
   const override = overrides.get(path)
@@ -562,10 +597,14 @@ function assetsFor(spec, overrides) {
   return [...new Set([...commonAssets, ...surfaceAssets])].sort()
 }
 
-export function buildRuntimeCaptureBindings({
-  overrides = new Map(),
-  additionalShippingSourcePaths = [],
-} = {}) {
+function computeRuntimeCaptureBindings(
+  {
+    overrides = new Map(),
+    additionalShippingSourcePaths = [],
+    frozenCaptureStateOverride = frozenCaptureState,
+  } = {},
+  baseline = captureBaseline,
+) {
   const stylesheet = readText(stylesheetPath, overrides)
   const scopes = captureSpecs.map((spec) =>
     buildStylesheetScope(
@@ -580,7 +619,7 @@ export function buildRuntimeCaptureBindings({
   const runtimeAssetPaths = [...new Set(Object.values(assetSets).flat())].sort()
   return {
     schema: 3,
-    capture_baseline: captureBaseline,
+    capture_baseline: baseline,
     binding_boundary: {
       kind: 'conservative-shipping-tree-manifest-v3',
       policy:
@@ -591,7 +630,7 @@ export function buildRuntimeCaptureBindings({
         policy,
       })),
     },
-    frozen_capture_state: frozenCaptureState,
+    frozen_capture_state: frozenCaptureStateOverride,
     shipping_sources: shippingSourcePaths(additionalShippingSourcePaths).map((path) =>
       record(path, overrides),
     ),
@@ -615,6 +654,87 @@ export function buildRuntimeCaptureBindings({
     diagnostics: {
       legacy_scoped_stylesheet_projections: scopes,
     },
+  }
+}
+
+function assertMaterialBaseline(binding) {
+  if (
+    retainedMaterialBaseline.schema !== 1 ||
+    retainedMaterialBaseline.kind !== 'gameplay-runtime-material-baseline' ||
+    retainedMaterialBaseline.capture_head !== binding.capture_baseline.source_head ||
+    retainedMaterialBaseline.captured_on !== binding.capture_baseline.captured_on ||
+    !/^[0-9a-f]{64}$/.test(retainedMaterialBaseline.capture_record_sha256)
+  ) {
+    throw new Error('runtime material-baseline identity is invalid')
+  }
+  const actual = materialDescriptor(binding)
+  if (JSON.stringify(actual) !== JSON.stringify(retainedMaterialBaseline.material)) {
+    throw new Error(
+      `runtime material baseline drift: expected ${retainedMaterialBaseline.material.sha256}, got ${actual.sha256}; the normal builder cannot renew capture evidence`,
+    )
+  }
+  return {
+    ...binding,
+    material_baseline: {
+      ...record(materialBaselineRelativePath, new Map()),
+      capture_head: retainedMaterialBaseline.capture_head,
+      capture_record_sha256: retainedMaterialBaseline.capture_record_sha256,
+      material_sha256: actual.sha256,
+    },
+  }
+}
+
+export function buildRuntimeCaptureBindings(options = {}) {
+  return assertMaterialBaseline(computeRuntimeCaptureBindings(options))
+}
+
+export function prepareRuntimeCaptureBaselineRenewal({
+  sourceHead,
+  captureRecord,
+  capturedOn,
+  confirmation,
+}) {
+  if (confirmation !== 'RENEW_CAPTURE_APPROVAL') {
+    throw new Error('baseline renewal requires the exact RENEW_CAPTURE_APPROVAL confirmation')
+  }
+  if (!/^[0-9a-f]{40}$/.test(sourceHead) || sourceHead === retainedMaterialBaseline.capture_head) {
+    throw new Error('baseline renewal requires a new exact 40-character capture source head')
+  }
+  if (
+    !/^https:\/\/github\.com\/jharvieux\/AoP\/issues\/610#issuecomment-\d+$/.test(captureRecord) ||
+    sha256(captureRecord) === retainedMaterialBaseline.capture_record_sha256
+  ) {
+    throw new Error('baseline renewal requires a new issue #610 capture-record URL')
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(capturedOn)) {
+    throw new Error('baseline renewal requires capturedOn in YYYY-MM-DD form')
+  }
+  for (const path of [
+    'docs/art/gameplay-chrome-v2/README.md',
+    'docs/art/gameplay-chrome-v2/RUNTIME-VERIFICATION.md',
+  ]) {
+    const source = readText(path, new Map())
+    if (
+      !source.includes(sourceHead) ||
+      !source.includes(captureRecord) ||
+      !source.includes(capturedOn)
+    ) {
+      throw new Error(`baseline renewal identity is not recorded in ${path}`)
+    }
+  }
+  const nextBaseline = {
+    captured_on: capturedOn,
+    source_head: sourceHead,
+    policy: captureBaseline.policy,
+  }
+  const binding = computeRuntimeCaptureBindings({}, nextBaseline)
+  return {
+    schema: 1,
+    kind: 'gameplay-runtime-material-baseline',
+    captured_on: capturedOn,
+    capture_head: sourceHead,
+    capture_record_sha256: sha256(captureRecord),
+    material: materialDescriptor(binding),
   }
 }
 

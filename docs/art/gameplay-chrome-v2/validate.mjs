@@ -10,6 +10,9 @@ import {
   buildRuntimeCaptureBindings,
   captureSpecs,
   frozenCaptureState,
+  materialBaselineRelativePath,
+  materialProjection,
+  prepareRuntimeCaptureBaselineRenewal,
   receiptPaths,
   sourceTreePolicies,
   stylesheetPath,
@@ -107,6 +110,7 @@ const expectedTopLevelKeys = [
   'captures',
   'diagnostics',
   'frozen_capture_state',
+  'material_baseline',
   'runtime_assets',
   'schema',
   'shipping_sources',
@@ -121,6 +125,8 @@ const exactInventory =
   JSON.stringify(retainedBinding.runtime_assets.receipts.map((item) => item.path)) ===
     JSON.stringify(receiptPaths) &&
   JSON.stringify(retainedBinding.frozen_capture_state) === JSON.stringify(frozenCaptureState) &&
+  retainedBinding.material_baseline.path === materialBaselineRelativePath &&
+  retainedBinding.material_baseline.capture_head === retainedBinding.capture_baseline.source_head &&
   JSON.stringify(retainedBinding.binding_boundary.source_tree_policies) ===
     JSON.stringify(sourceTreePolicies.map(({ id, root, policy }) => ({ id, root, policy })))
 if (!exactInventory) {
@@ -129,6 +135,30 @@ if (!exactInventory) {
 }
 if (!bindingMatches(retainedBinding) || !exactBindingMatches(retainedBinding)) {
   console.error('FAIL runtime captures are stale for their schema-v3 bound inventory or bytes')
+  failures++
+}
+const materialBaselineBuffer = readFileSync(join(repoRoot, materialBaselineRelativePath))
+const retainedMaterialBaseline = JSON.parse(materialBaselineBuffer.toString('utf8'))
+const materialSerialised = JSON.stringify(materialProjection(retainedBinding))
+const materialDigest = createHash('sha256').update(materialSerialised).digest('hex')
+const captureRecord = runtimeReport.match(
+  /https:\/\/github\.com\/jharvieux\/AoP\/issues\/610#issuecomment-\d+/,
+)?.[0]
+if (
+  retainedMaterialBaseline.schema !== 1 ||
+  retainedMaterialBaseline.kind !== 'gameplay-runtime-material-baseline' ||
+  retainedMaterialBaseline.material.sha256 !== materialDigest ||
+  retainedMaterialBaseline.material.bytes !== Buffer.byteLength(materialSerialised) ||
+  retainedBinding.material_baseline.sha256 !==
+    createHash('sha256').update(materialBaselineBuffer).digest('hex') ||
+  retainedBinding.material_baseline.material_sha256 !== materialDigest ||
+  retainedMaterialBaseline.capture_head !== retainedBinding.capture_baseline.source_head ||
+  retainedMaterialBaseline.captured_on !== retainedBinding.capture_baseline.captured_on ||
+  !captureRecord ||
+  retainedMaterialBaseline.capture_record_sha256 !==
+    createHash('sha256').update(captureRecord).digest('hex')
+) {
+  console.error('FAIL immutable runtime material-baseline anchor')
   failures++
 }
 if (
@@ -168,19 +198,19 @@ function driftedBuffer(path, suffix = '\nsource-drift') {
 }
 
 function expectBindingDrift(label, options) {
-  let drifted
   try {
-    drifted = buildRuntimeCaptureBindings(options)
-  } catch {
-    console.log(`PASS runtime source binding negative control: ${label} rejected`)
+    buildRuntimeCaptureBindings(options)
+  } catch (error) {
+    if (!String(error).includes('runtime material baseline drift')) {
+      console.error(`FAIL material-baseline negative control: ${label} failed for ${error}`)
+      failures++
+      return
+    }
+    console.log(`PASS material-baseline negative control: ${label} blocked before regeneration`)
     return
   }
-  if (projectBinding(drifted) === projectBinding(retainedBinding)) {
-    console.error(`FAIL runtime source binding negative control: ${label} escaped`)
-    failures++
-  } else {
-    console.log(`PASS runtime source binding negative control: ${label} rejected`)
-  }
+  console.error(`FAIL material-baseline negative control: ${label} was re-blessed by the builder`)
+  failures++
 }
 
 function replacedSource(path, marker, replacement) {
@@ -188,17 +218,6 @@ function replacedSource(path, marker, replacement) {
   if (!source.includes(marker))
     throw new Error(`negative-control marker missing in ${path}: ${marker}`)
   return source.replace(marker, replacement)
-}
-
-function expectManifestDrift(label, mutate) {
-  const candidate = structuredClone(retainedBinding)
-  mutate(candidate)
-  if (bindingMatches(candidate)) {
-    console.error(`FAIL runtime source binding negative control: ${label} escaped`)
-    failures++
-  } else {
-    console.log(`PASS runtime source binding negative control: ${label} rejected`)
-  }
 }
 
 const staleBinding = structuredClone(retainedBinding)
@@ -245,6 +264,12 @@ const sourceMutations = [
     'apps/web/src/App.tsx',
     '<div className="app">',
     '<div className="app" style={{ display: \'none\' }}>',
+  ],
+  [
+    'GameScreen hidden',
+    'apps/web/src/screens/GameScreen.tsx',
+    '<div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen">',
+    '<div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen" style={{ display: \'none\' }}>',
   ],
   [
     'theme resolver URL changed',
@@ -301,29 +326,80 @@ expectBindingDrift('receipt drift', {
     ],
   ]),
 })
-expectManifestDrift('frozen capture state drift', (candidate) => {
-  candidate.frozen_capture_state.theme.override = 'custom theme pack'
+const driftedFrozenCaptureState = structuredClone(frozenCaptureState)
+driftedFrozenCaptureState.theme.override = 'custom theme pack'
+expectBindingDrift('frozen capture state drift', {
+  frozenCaptureStateOverride: driftedFrozenCaptureState,
 })
 
 const alterHex = (value) => `${value.slice(0, -1)}${value.endsWith('0') ? '1' : '0'}`
 for (const name of retainedBinding.canvas_token_census.schema_v2_escape_tokens) {
   const token = retainedBinding.canvas_token_census.tokens.find((item) => item.name === name)
-  const marker = `${name}: ${token.css_value};`
-  if (!stylesheet.includes(marker)) throw new Error(`Canvas-token marker missing: ${marker}`)
+  const nextValue = alterHex(token.css_value)
+  const cssMarker = `${name}: ${token.css_value};`
+  const fallbackPath = 'apps/web/src/colorTokens.ts'
+  const fallbackSource = readFileSync(join(repoRoot, fallbackPath), 'utf8')
+  const fallbackMarker = `'${name}': '${token.typed_fallback}'`
+  if (!stylesheet.includes(cssMarker) || !fallbackSource.includes(fallbackMarker)) {
+    throw new Error(`Canvas-token marker missing: ${name}`)
+  }
+  const overrides = new Map([
+    [stylesheetPath, stylesheet.replace(cssMarker, `${name}: ${nextValue};`)],
+    [fallbackPath, fallbackSource.replace(fallbackMarker, `'${name}': '${nextValue}'`)],
+  ])
+  let callSiteCount = 0
+  for (const path of ['apps/web/src/MapCanvas.tsx', 'apps/web/src/Minimap.tsx']) {
+    const source = readFileSync(join(repoRoot, path), 'utf8')
+    const callMarker = `cssToken('${name}', '${token.fallback}')`
+    if (!source.includes(callMarker)) continue
+    callSiteCount += source.split(callMarker).length - 1
+    overrides.set(path, source.replaceAll(callMarker, `cssToken('${name}', '${nextValue}')`))
+  }
+  if (!callSiteCount) throw new Error(`Canvas-token call marker missing: ${name}`)
   expectBindingDrift(`schema-v2 escaped Canvas token ${name}`, {
-    overrides: new Map([
-      [stylesheetPath, stylesheet.replace(marker, `${name}: ${alterHex(token.css_value)};`)],
-    ]),
+    overrides,
   })
 }
+
+function expectRenewalFailure(label, options) {
+  try {
+    prepareRuntimeCaptureBaselineRenewal(options)
+  } catch {
+    console.log(`PASS material-baseline renewal negative control: ${label} rejected`)
+    return
+  }
+  console.error(`FAIL material-baseline renewal negative control: ${label} escaped`)
+  failures++
+}
+
+const renewalDefaults = {
+  capturedOn: retainedMaterialBaseline.captured_on,
+  confirmation: 'RENEW_CAPTURE_APPROVAL',
+}
+expectRenewalFailure('current capture head reused', {
+  ...renewalDefaults,
+  sourceHead: retainedMaterialBaseline.capture_head,
+  captureRecord: 'https://github.com/jharvieux/AoP/issues/610#issuecomment-9999999999',
+})
+expectRenewalFailure('current capture record reused', {
+  ...renewalDefaults,
+  sourceHead: 'a'.repeat(40),
+  captureRecord: captureRecord ?? '',
+})
+expectRenewalFailure('explicit confirmation omitted', {
+  ...renewalDefaults,
+  sourceHead: 'a'.repeat(40),
+  captureRecord: 'https://github.com/jharvieux/AoP/issues/610#issuecomment-9999999999',
+  confirmation: '',
+})
 const spec = readFileSync(join(root, 'README.md'), 'utf8')
 const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
 const approvalMarkers = [
-  '2026-09-04',
+  retainedMaterialBaseline.captured_on,
   'operator approved all three exact-source runtime frames',
-  'f1dea84d0d489ef52db3944c47748a708ba40004',
-  'issuecomment-5544612671',
+  retainedMaterialBaseline.capture_head,
+  captureRecord,
   'docs/evidence-only commits only while',
   'complete schema-v3',
   'full stylesheet',
@@ -335,13 +411,57 @@ for (const [name, source] of [
   ['RUNTIME-VERIFICATION.md', runtimeReport],
 ]) {
   for (const marker of approvalMarkers) {
-    if (!source.includes(marker)) {
+    if (!marker || !source.includes(marker)) {
       console.error(`FAIL ${name}: missing operator-approval binding marker ${marker}`)
       failures++
     }
   }
 }
 console.log('PASS operator approval is bound to exact runtime-source and capture bytes')
+const builderSource = readFileSync(join(root, 'build-runtime-capture-bindings.mjs'), 'utf8')
+const builderComputeIndex = builderSource.indexOf('const binding = buildRuntimeCaptureBindings()')
+const builderWriteIndex = builderSource.indexOf('writeFileSync(')
+if (
+  builderComputeIndex < 0 ||
+  builderWriteIndex < 0 ||
+  builderComputeIndex > builderWriteIndex ||
+  builderSource.includes('materialBaselinePath') ||
+  builderSource.includes('prepareRuntimeCaptureBaselineRenewal')
+) {
+  console.error(
+    'FAIL normal capture builder can write before anchor validation or renew the anchor',
+  )
+  failures++
+}
+const renewalSource = readFileSync(join(root, 'renew-runtime-capture-baseline.mjs'), 'utf8')
+for (const marker of [
+  "'--source-head'",
+  "'--capture-record'",
+  "'--captured-on'",
+  "'--confirmation'",
+  'RENEW_CAPTURE_APPROVAL',
+  "execFileSync('git', ['rev-parse', 'HEAD']",
+  'writeFileSync(materialBaselinePath, priorBaseline)',
+  'writeFileSync(bindingPath, priorBinding)',
+]) {
+  if (!renewalSource.includes(marker)) {
+    console.error(`FAIL capture-baseline renewal contract: missing ${marker}`)
+    failures++
+  }
+}
+for (const marker of [
+  'RUNTIME-MATERIAL-BASELINE.json',
+  'builder recomputes and compares that projection before writing',
+  'it cannot update the anchor',
+  'renew-runtime-capture-baseline.mjs',
+  'new 40-character capture head',
+  'require builder rejection',
+]) {
+  if (!runtimeReport.includes(marker)) {
+    console.error(`FAIL RUNTIME-VERIFICATION.md: missing material-anchor contract ${marker}`)
+    failures++
+  }
+}
 for (const marker of [
   '212 shipping source files',
   '146 non-test files',

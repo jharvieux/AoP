@@ -3,7 +3,7 @@
   "capture_baseline": {
     "captured_on": "2026-09-04",
     "source_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
-    "policy": "This evidence baseline carries across evidence-only commits only while the complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact."
+    "policy": "This evidence baseline carries across evidence-only commits only while the immutable material-baseline anchor and complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact."
   },
   "binding_boundary": {
     "kind": "conservative-shipping-tree-manifest-v3",
@@ -47,7 +47,7 @@
         "building_inspector": "Town Hall",
         "selected_building": "Town Hall",
         "selected_unit": null,
-        "visible_state": "Town Hall sheet open; close focused; info hovered and expanded; Build controls disabled with slash"
+        "visible_state": "Town Hall sheet open; close focused; info hovered but collapsed; Build controls disabled with slash"
       }
     }
   },
@@ -4155,5 +4155,13 @@
         ]
       }
     ]
+  },
+  "material_baseline": {
+    "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+    "bytes": 612,
+    "sha256": "5c3e951224a4daee942d09d258a71cc2239660fc18012a7f00916fca59dc0da1",
+    "capture_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
+    "capture_record_sha256": "db5803719e18c5e180aba2fe916aca63b88dfb79034fde8701c450d143f5da1d",
+    "material_sha256": "02c350403ca423110ce3fa32de4fe917e778e7e9f6e7fcb2ede85eba07718116"
   }
 }
