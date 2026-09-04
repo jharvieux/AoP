@@ -309,13 +309,13 @@
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/checkpoint-contact-sheet-1600x1120.webp",
-      "sha256": "1110458a6c0b2decc302c7281fa0029af8c080ecb382c1e172fd55fdab8807d7",
-      "bytes": 198384
+      "sha256": "ccd1d2b3861c411875e64c21938c8d288f7b4b6dfd4475342330685424c90433",
+      "bytes": 191242
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/desktop-1440x900.webp",
-      "sha256": "a2ee879292cbf01a601321200491fcdf92af9cd2b282204f9f3ee85a4bda717c",
-      "bytes": 244440
+      "sha256": "46d77093edac37eb207294e1749b966ccf5ad53bc8fd34652dbb99622f20fcb6",
+      "bytes": 244996
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/empty-runtime-1024x704.webp",
@@ -324,33 +324,33 @@
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/faction-contact-1600x748.webp",
-      "sha256": "7c5bbfb17cd99b1175677ff4803eb0f59148f4c8b44b64b17296cb06665832ce",
-      "bytes": 215542
+      "sha256": "ab64f36d0aae7bbda90c04a59482dd1f59d692c71495788e69fcd49ffd5d7df9",
+      "bytes": 215894
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/factions/british-full-1024x704.webp",
-      "sha256": "027d1db5ec57483606df92e617f7f51d0fc923ed56e88586e09ad19c24aaa5d8",
-      "bytes": 209702
+      "sha256": "f1eec33bcf60e0dad486cd4ab626102710c61ff797005a6a4e39cc628679f6be",
+      "bytes": 211264
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/factions/dutch-full-1024x704.webp",
-      "sha256": "c86048f53772a6e24d396453a4c43f74161171477a1e3bd6b55e879801fe84b6",
-      "bytes": 209354
+      "sha256": "a5824e0ad906b4758f52754cb3d3915a62c34f20f0ea55c8b4509febcd34b218",
+      "bytes": 210744
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/factions/french-full-1024x704.webp",
-      "sha256": "5e26b694ecb977af5167f5ff6260467861a6879b1ae46bb00519f70a03ef7334",
-      "bytes": 210042
+      "sha256": "f8070389aa564eba5e0414ed6c987e18584cace013b3a7e0e0d888bbe49eb359",
+      "bytes": 210816
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/factions/pirates-full-1024x704.webp",
-      "sha256": "268c3b883140906fa829c90ef344d72675dbbdc0e3e07f0ea516dcc7208aae1a",
-      "bytes": 210368
+      "sha256": "a1f93913e339643c8951f41565f5ebe488d7a6aefd9a256ecf8bc4016dc5b14d",
+      "bytes": 211044
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/factions/spanish-full-1024x704.webp",
-      "sha256": "7bf04b87a975d3f45015f3f4a9d3d339c5695faeef6d6c35aa6f58ad79b93b61",
-      "bytes": 210786
+      "sha256": "f864cd2eb09aa7986df01354770e1ba8c404ad25439f769d91b4a2a465cf4051",
+      "bytes": 210932
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/layer-separation-1600x1000.webp",
@@ -359,18 +359,18 @@
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/max-zoom-1024x704.webp",
-      "sha256": "5c53c068f74cec69b62cbb9a18d45b27087190e61e9a1fc75e8fce0d55ae6507",
-      "bytes": 147224
+      "sha256": "b5bcda09f443e4fecc17c4f8658329ffe037b4af874853c686047afcba806fe5",
+      "bytes": 82636
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/phone-375x812.webp",
-      "sha256": "2bbe20d31a5c506aeba5ec4c96ee636103c747c7cfa62b0e6a7dcac9c7a8da90",
-      "bytes": 53336
+      "sha256": "446a538a7b4188454ea68fac3e55dfbb5ef5108f82a921eabde3dc0c4f890eaa",
+      "bytes": 53308
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/phone-scene-375x258.webp",
-      "sha256": "6623f3b8dc60e2fcaeb81929c939f967910d03cba90acee97236394e4be88197",
-      "bytes": 40612
+      "sha256": "f86960413dbd719bba56b0e77e8f9bbb623eb8b6bc41d1d9d0963061fe79551c",
+      "bytes": 40748
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/production-layer-contact-1800x1180.webp",
@@ -379,28 +379,28 @@
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/production-state-contact-1600x620.webp",
-      "sha256": "f52f42b1e1c8bb4ab4c18daeee7653cbb7b7710036a74b3f7bf6049d8f3419a8",
-      "bytes": 171744
+      "sha256": "6dd456e0dcb2a52b5bc4d78752710860c0188923ae58ce9a3b8a76a93feddad5",
+      "bytes": 171754
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/scene-runtime-1024x704.webp",
-      "sha256": "494b81eb7b6939deb2ba748874e0b74fa10ca96c5de4ed0e7179645af8e74deb",
-      "bytes": 255668
+      "sha256": "640fc217ab01e04365445d3d20a1ca3d297ec67f67cbde4aa95325d367725d10",
+      "bytes": 259266
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/state-fully-constructed-1024x704.webp",
-      "sha256": "cdd43a861910b66d8b3bc8b10fc5830b9996cffb37084176198776fae3fa2998",
-      "bytes": 239776
+      "sha256": "51aafdd91e75fdafc632ff7b4d552463ca1dd814e8a68c4d97c5fe93496d49d2",
+      "bytes": 240490
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/state-midgame-1024x704.webp",
-      "sha256": "9bfa9d2545d0ae7c38015f2811d9466f42536a6822ecae30b54c59235baa7a59",
-      "bytes": 237974
+      "sha256": "c187b764ef851d508d75cb75da93e32ded18808bcba62c09024493b2d6c311d5",
+      "bytes": 238996
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/state-starting-1024x704.webp",
-      "sha256": "08cdbe318e7d797381b5948bf69fcfebd62177bff0233bb25204d887f04c9e88",
-      "bytes": 229974
+      "sha256": "bf7ff83dd4e9e8ad12715f3b8cd36072b7ddc2a483d9147eba169c1a697a8abe",
+      "bytes": 230954
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/stress/barracks-magenta-1024.webp",
@@ -489,8 +489,8 @@
     },
     {
       "path": "docs/art/city-harbor-v2/proofs/zoom-2x-evidence-1600x1040.webp",
-      "sha256": "12ba14f6f75a0700959b4b2d400fbf23ee43ffabca89f3a98ffb2d43153ff281",
-      "bytes": 271602
+      "sha256": "acbf20d177fae8dcd6c556df7885ee1a1fc181b1249a9ff7f6b2ee5592dce6c1",
+      "bytes": 274408
     },
     {
       "path": "docs/art/city-harbor-v2/sources/backdrop-detail-inputs/backdrop-detail-c1r1-input.webp",

@@ -1,8 +1,9 @@
 # Gilded Harbor city art — production candidate
 
-**Status:** checkpoint 1 and Direction B refinement approved; full issue #608 runtime
-candidate independently verified, with live browser starting/midgame/full, phone, desktop,
-and maximum-zoom captures complete. Awaiting operator checkpoint 2 approval.
+**Status:** checkpoint 1 and Direction B refinement approved; the issue #608 runtime
+candidate now includes the requested Town Hall flag mount. Deterministic evidence is
+complete and refreshed live captures are bound to the shipping sources; independent
+re-verification remains before operator checkpoint 2.
 
 ![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
@@ -15,9 +16,9 @@ working-district silhouettes.
 
 ## Approval question
 
-**Does the complete starting-to-full city feel ready to ship—especially the smaller phone
-read, recruitment progression, low fortification perimeter, and connected shoreline
-shipyard?**
+**Does the complete starting-to-full city feel ready to ship—especially the Town Hall’s
+mounted faction flag, smaller phone read, recruitment progression, low fortification
+perimeter, and connected shoreline shipyard?**
 
 This is the checkpoint-2 approval question, not a claim that checkpoint 2 is already
 approved. Requested changes should name the visual role or overall balance that feels
@@ -117,6 +118,8 @@ NUMBA_DISABLE_JIT=1 ~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/prepare_high_resolution_sources.py
 ~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/compose_checkpoint.py
+~/aop-ai-tools/venv/bin/python \
+  docs/art/city-harbor-v2/tools/build_runtime_capture_bindings.py
 ~/aop-ai-tools/venv/bin/python \
   docs/art/city-harbor-v2/tools/validate_production.py
 ```

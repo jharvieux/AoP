@@ -145,13 +145,15 @@
   },
   "flag": {
     "slotId": "townhall",
-    "poleTopPercent": -14,
-    "poleLeftPercent": 64,
-    "poleWidthPercent": 35,
-    "poleHeightPercent": 30,
-    "mastWidthPx": 3,
-    "clothLeftPx": 3,
-    "clothWidthPercent": 78
+    "poleTopPercent": -4,
+    "poleLeftPercent": 50.5,
+    "poleWidthPercent": 22,
+    "poleHeightPercent": 16,
+    "mastWidthPercent": 5,
+    "clothLeftPercent": 5,
+    "clothWidthPercent": 60,
+    "mountWidthPercent": 18,
+    "mountHeightPercent": 14
   },
   "tower": {
     "slotId": "citadel",

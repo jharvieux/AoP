@@ -127,13 +127,16 @@ function FactionFlag({ faction }: { faction: FactionId }) {
           '--city-flag-left': `${FLAG.poleLeftPercent}%`,
           '--city-flag-width': `${FLAG.poleWidthPercent}%`,
           '--city-flag-height': `${FLAG.poleHeightPercent}%`,
-          '--city-flag-mast-width': `${FLAG.mastWidthPx}px`,
-          '--city-flag-cloth-left': `${FLAG.clothLeftPx}px`,
+          '--city-flag-mast-width': `${FLAG.mastWidthPercent}%`,
+          '--city-flag-cloth-left': `${FLAG.clothLeftPercent}%`,
           '--city-flag-cloth-width': `${FLAG.clothWidthPercent}%`,
+          '--city-flag-mount-width': `${FLAG.mountWidthPercent}%`,
+          '--city-flag-mount-height': `${FLAG.mountHeightPercent}%`,
         } as React.CSSProperties
       }
     >
       <span className="city-scene__flagpole-mast" />
+      <span className="city-scene__flagpole-mount" />
       <span className="city-scene__flag" style={{ backgroundColor: def.primaryColor }}>
         <FallbackImage key={flagCandidates.join('|')} candidates={flagCandidates} />
       </span>

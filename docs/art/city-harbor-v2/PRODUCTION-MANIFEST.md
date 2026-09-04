@@ -3,10 +3,11 @@
 ## Status
 
 Issue #608 checkpoint 1 and the Direction B city refinement are operator-approved. This
-package is the complete runtime/capture candidate for operator checkpoint 2. Live browser
-starting/midgame/full, phone, desktop, and maximum-zoom captures are retained in
-`runtime-captures/` and documented in `RUNTIME-CAPTURES.md`; checkpoint 2 does not claim
-approval until the operator explicitly accepts those results.
+package is the complete runtime/capture candidate for operator checkpoint 2, including
+the requested faction mast, pin, and V-brace physically mounted to Town Hall’s central
+dome. Refreshed live starting/midgame/full, phone, desktop, and maximum-zoom captures are
+bound to the exact shipping sources in `RUNTIME-CAPTURE-BINDINGS.json`; checkpoint 2 does
+not claim approval until independent re-verification and explicit operator acceptance.
 
 The production batch keeps the exact existing `SCENE_SLOTS` rectangles and content IDs.
 It replaces the shipping city URLs with WebP art for the backdrop, all fourteen building
@@ -88,10 +89,12 @@ subject touched its source canvas.
   or internal matte;
 - missing magenta/dark-teal stress, state, faction, phone, or zoom evidence;
 - shipyard art that does not occupy both the dry-shore and water witness regions;
+- a faction cloth that clips, or a mast base and V-brace that miss Town Hall subject alpha
+  at phone/desktop and every supported zoom stop;
 - any of the 38 shipping tile joins whose mean or p99 delta exceeds both its absolute
   visibility limit and twice the adjacent within-tile gradient;
 - source/proof/runtime files above 300 KiB or a fully built transfer above 3 MiB;
-- provenance hash drift or non-deterministic recomposition.
+- provenance hash drift, stale live-capture bindings, or non-deterministic recomposition.
 
 ## Review evidence
 
@@ -99,7 +102,8 @@ Primary native files:
 
 - `RUNTIME-CAPTURES.md` and `runtime-captures/*.jpg` — live game progression and actual
   browser layout/sampling at 1440×900 and 390×844, including the current 3× zoom;
-
+- `RUNTIME-CAPTURE-BINDINGS.json` — exact hashes binding every live JPEG to the shipping
+  `CityScene`, shared layout, and city-scene CSS sources;
 - `proofs/production-state-contact-1600x620.webp` — starting, midgame, full;
 - `proofs/state-starting-1024x704.webp`, `state-midgame-1024x704.webp`, and
   `state-fully-constructed-1024x704.webp` — unframed 1× states;

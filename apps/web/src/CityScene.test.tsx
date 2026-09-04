@@ -147,11 +147,51 @@ describe('CityScene production art consumer', () => {
     expect(flagpole.style.getPropertyValue('--city-flag-top')).toBe(
       `${citySceneLayout.flag.poleTopPercent}%`,
     )
+    expect(flagpole.style.getPropertyValue('--city-flag-left')).toBe(
+      `${citySceneLayout.flag.poleLeftPercent}%`,
+    )
+    expect(flagpole.style.getPropertyValue('--city-flag-mast-width')).toBe(
+      `${citySceneLayout.flag.mastWidthPercent}%`,
+    )
+    expect(flagpole.style.getPropertyValue('--city-flag-cloth-left')).toBe(
+      `${citySceneLayout.flag.clothLeftPercent}%`,
+    )
+    expect(flagpole.style.getPropertyValue('--city-flag-mount-width')).toBe(
+      `${citySceneLayout.flag.mountWidthPercent}%`,
+    )
+    expect(flagpole.style.getPropertyValue('--city-flag-mount-height')).toBe(
+      `${citySceneLayout.flag.mountHeightPercent}%`,
+    )
+    expect(flagpole.querySelector('.city-scene__flagpole-mount')).not.toBeNull()
     const tower = container.querySelector<HTMLImageElement>('.city-scene__sprite--tower')!
     expect(tower.style.width).toBe(`${citySceneLayout.tower.widthPercent}%`)
     expect(tower.style.right).toBe(`${citySceneLayout.tower.rightPercent}%`)
     expect(container.querySelectorAll('.city-scene__backdrop-tile')).toHaveLength(24)
   })
+
+  it.each(['pirates', 'british', 'spanish', 'french', 'dutch'] as const)(
+    'mounts the %s flag on Town Hall without changing its tap target or label',
+    (faction) => {
+      const onOpenBuilding = vi.fn()
+      const { container } = render(
+        <CityScene buildings={['townhall']} faction={faction} onOpenBuilding={onOpenBuilding} />,
+      )
+
+      const townHall = container.querySelector<HTMLButtonElement>('.city-scene__building')!
+      const flagpole = townHall.querySelector<HTMLElement>('.city-scene__flagpole')!
+      expect(flagpole.getAttribute('aria-hidden')).toBe('true')
+      expect(flagpole.querySelector('.city-scene__flagpole-mast')).not.toBeNull()
+      expect(flagpole.querySelector('.city-scene__flagpole-mount')).not.toBeNull()
+      expect(flagpole.querySelector<HTMLImageElement>('.city-scene__flag img')?.src).toContain(
+        `/art/factions/${faction}/flag.png`,
+      )
+      expect(townHall.querySelector('.city-scene__label')?.textContent).toBe('Town Hall')
+
+      fireEvent.click(townHall)
+      expect(onOpenBuilding).toHaveBeenCalledOnce()
+      expect(onOpenBuilding).toHaveBeenCalledWith('townhall')
+    },
+  )
 
   it.each([
     ['first', 0],

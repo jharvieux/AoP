@@ -55,48 +55,16 @@ OPEN_STRUCTURE_ASSETS = {
 }
 MASK_FILES = {asset: f"{asset}-mask.png" for asset in ASSETS}
 MASK_FILES["townhall"] = "townhall-detail-mask.png"
-RUNTIME_CAPTURES = {
-    "starting-desktop-1440x900.jpg": (
-        (1440, 900),
-        178670,
-        "7062fbff416712e62f2ca37cf4068fce50f2f6c7373a15c8f18605ec2db7faf0",
-    ),
-    "starting-phone-390x844.jpg": (
-        (390, 844),
-        48560,
-        "c4556a56c4889e87568731bb1ccbfbfb78114e494b3de9eb4ec5c7ba75f9713e",
-    ),
-    "midgame-desktop-1440x900.jpg": (
-        (1440, 900),
-        183925,
-        "356e1baf650fd28cd28d533bb9a44f7e1c83fc6da351cdc9960106b1884daaa9",
-    ),
-    "full-desktop-1440x900.jpg": (
-        (1440, 900),
-        188082,
-        "31bc5abec46bee5806308f603749ce874a4ba80531109c41c7dd3bda910e7af4",
-    ),
-    "full-phone-390x844.jpg": (
-        (390, 844),
-        54152,
-        "c5ad74adb52ff81677a8c2d1fda4357e25cd8dc7a2a9d82f2dbdb1ecd943312e",
-    ),
-    "full-phone-3x-center-390x844.jpg": (
-        (390, 844),
-        69121,
-        "88330ea3630f21661ff17b3b6d75e672d0318526bcd9f0e6f88b349d740e2da0",
-    ),
-    "full-phone-3x-shipyard-390x844.jpg": (
-        (390, 844),
-        69248,
-        "4daf1d93553edcad51667b0676ef103eeb4c29a23f7bf433ad93e1ed6d621382",
-    ),
-    "full-desktop-3x-1440x900.jpg": (
-        (1440, 900),
-        256700,
-        "890accb8553972fda3e9bee92b990257c2fcc8d2eccef74a5139455ce3912fe7",
-    ),
-}
+RUNTIME_CAPTURE_NAMES = (
+    "starting-desktop-1440x900.jpg",
+    "starting-phone-390x844.jpg",
+    "midgame-desktop-1440x900.jpg",
+    "full-desktop-1440x900.jpg",
+    "full-phone-390x844.jpg",
+    "full-phone-3x-center-390x844.jpg",
+    "full-phone-3x-shipyard-390x844.jpg",
+    "full-desktop-3x-1440x900.jpg",
+)
 
 
 def sha256(path: Path) -> str:
@@ -263,6 +231,7 @@ def validate_runtime() -> None:
 
     content = (REPOSITORY / "packages" / "content" / "src" / "buildings.ts").read_text()
     scene = (REPOSITORY / "apps" / "web" / "src" / "CityScene.tsx").read_text()
+    styles = (REPOSITORY / "apps" / "web" / "src" / "styles.css").read_text()
     for path in constructed_files:
         assert f"/art/city/{path.name}" in content
     for path in backdrop_files:
@@ -272,6 +241,10 @@ def validate_runtime() -> None:
     assert "city-scene__backdrop-cell" in scene and "data-backdrop-tile" in scene
     assert "BACKDROP_TILE_BLEED = 2" in scene
     assert "contact-shadows" not in scene
+    assert "city-scene__flagpole-mount" in scene
+    assert "--city-flag-mount-width" in scene and "--city-flag-mount-height" in scene
+    assert ".city-scene__flagpole-mount::before" in styles
+    assert ".city-scene__flagpole-mount::after" in styles
 
 
 def validate_layout_resolution_flags_and_seams() -> None:
@@ -284,25 +257,60 @@ def validate_layout_resolution_flags_and_seams() -> None:
     for asset, values in retained["worst_assets"].items():
         assert values["ratio"] >= 1, f"{asset} undersampled: {values}"
 
-    hall = LAYOUT["slots"][LAYOUT["flag"]["slotId"]]
-    scene_width, scene_height = 1024, 704
-    hall_x = scene_width * hall["left"] / 100
-    hall_y = scene_height * hall["top"] / 100
-    hall_width = scene_width * hall["width"] / 100
-    hall_height = scene_height * hall["height"] / 100
-    flag = LAYOUT["flag"]
-    cloth_x = hall_x + hall_width * flag["poleLeftPercent"] / 100 + flag["clothLeftPx"]
-    cloth_y = hall_y + hall_height * flag["poleTopPercent"] / 100
-    cloth_size = hall_width * flag["poleWidthPercent"] / 100 * flag["clothWidthPercent"] / 100
-    assert 0 <= cloth_x < cloth_x + cloth_size <= scene_width
-    assert 0 <= cloth_y < cloth_y + cloth_size <= scene_height
+    module = compositor()
+    hall_slot = next(
+        slot for slot in module.SLOTS if slot.content_id == LAYOUT["flag"]["slotId"]
+    )
+    hall_cutout = Image.open(PACKAGE / "cutouts" / "townhall.webp").convert("RGBA")
+    for device, fitted_size in (("phone", (375, 258)), ("desktop", (1024, 704))):
+        for zoom in LAYOUT["zoomStops"]:
+            size = (
+                round(fitted_size[0] * zoom),
+                round(fitted_size[1] * zoom),
+            )
+            geometry = module.flag_geometry(size)
+            cloth_right = geometry["cloth_x"] + geometry["cloth_size"]
+            cloth_bottom = geometry["cloth_y"] + geometry["cloth_size"]
+            assert 0 <= geometry["cloth_x"] < cloth_right <= size[0], (
+                f"{device} {zoom}x flag clips horizontally: {geometry}"
+            )
+            assert 0 <= geometry["cloth_y"] < cloth_bottom <= size[1], (
+                f"{device} {zoom}x flag clips vertically: {geometry}"
+            )
+            assert (
+                0 <= geometry["mount_left"] < geometry["mount_right"] <= size[0]
+                and 0 <= geometry["mount_top"] < geometry["mount_bottom"] <= size[1]
+            ), f"{device} {zoom}x flag mount clips: {geometry}"
+
+            rendered, hall_x, hall_y = module.contained(
+                hall_cutout, module.slot_box(hall_slot, size)
+            )
+            alpha = np.asarray(rendered.getchannel("A"))
+            base_x = geometry["mast_center_x"] - hall_x
+            base_y = geometry["mast_base_y"] - hall_y
+            assert 0 <= base_x < alpha.shape[1] and 0 <= base_y < alpha.shape[0], (
+                f"{device} {zoom}x mast base misses the Town Hall cutout bounds: "
+                f"base=({geometry['mast_center_x']}, {geometry['mast_base_y']})"
+            )
+            assert int(alpha[base_y, base_x]) >= 128, (
+                f"{device} {zoom}x mast base floats outside Town Hall subject alpha: "
+                f"base=({geometry['mast_center_x']}, {geometry['mast_base_y']})"
+            )
+            radius = max(1, geometry["mast_width"])
+            mount_left = max(0, geometry["mount_left"] - hall_x)
+            mount_right = min(alpha.shape[1], geometry["mount_right"] - hall_x + 1)
+            mount_top = max(0, geometry["mount_top"] - hall_y)
+            mount_bottom = min(alpha.shape[0], geometry["mount_bottom"] - hall_y + 1)
+            mount_region = alpha[mount_top:mount_bottom, mount_left:mount_right]
+            assert mount_region.size and int((mount_region >= 128).sum()) >= radius, (
+                f"{device} {zoom}x V-brace misses Town Hall subject alpha"
+            )
     for faction in ("pirates", "british", "spanish", "french", "dutch"):
         image = Image.open(
             REPOSITORY / f"apps/web/public/art/factions/{faction}/flag.png"
         ).convert("RGBA")
-        assert image.getchannel("A").getbbox() is not None
+        assert image.getchannel("A").getbbox() == (0, 0, *image.size)
 
-    module = compositor()
     bleed = module.BACKDROP_TILE_BLEED
     tile_size = module.BACKDROP_TILE_SIZE
     tiles = {}
@@ -414,9 +422,24 @@ def validate_determinism() -> None:
 def validate_runtime_captures() -> None:
     capture_root = PACKAGE / "runtime-captures"
     captures = {path.name: path for path in capture_root.glob("*.jpg")}
-    assert set(captures) == set(RUNTIME_CAPTURES), "runtime capture inventory drift"
+    assert set(captures) == set(RUNTIME_CAPTURE_NAMES), "runtime capture inventory drift"
+    binding = json.loads((PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json").read_text())
+    assert binding["schema"] == 1
+    for source in binding["shipping_sources"]:
+        path = REPOSITORY / source["path"]
+        assert sha256(path) == source["sha256"], (
+            f"runtime captures are stale for shipping source: {source['path']}"
+        )
+    bound_captures = {Path(item["path"]).name: item for item in binding["captures"]}
+    assert set(bound_captures) == set(RUNTIME_CAPTURE_NAMES), (
+        "runtime capture binding inventory drift"
+    )
     record = (PACKAGE / "RUNTIME-CAPTURES.md").read_text()
-    for name, (dimensions, byte_count, digest) in RUNTIME_CAPTURES.items():
+    for name in RUNTIME_CAPTURE_NAMES:
+        item = bound_captures[name]
+        dimensions = tuple(item["dimensions"])
+        byte_count = item["bytes"]
+        digest = item["sha256"]
         path = captures[name]
         assert path.stat().st_size == byte_count, f"runtime capture byte drift: {name}"
         assert byte_count <= MAX_BYTES, f"runtime capture exceeds 300 KiB: {name}"

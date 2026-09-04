@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "date": "2026-09-04",
+  "shipping_sources": [
+    {
+      "path": "apps/web/src/CityScene.tsx",
+      "sha256": "02735501ccb30d7ab8e794dc9432acdb5605167f04ea0590d9a63c1933d62876"
+    },
+    {
+      "path": "apps/web/src/citySceneLayout.json",
+      "sha256": "c7a6f599f27e6548db237667ac9cd99abf60e398427babad23f318bddf25385f"
+    },
+    {
+      "path": "apps/web/src/styles.css",
+      "sha256": "60adda64e64fd379c2ee90dc1a9e47e347a884a15260a45099d84cf7bab11e52"
+    }
+  ],
+  "captures": [
+    {
+      "path": "runtime-captures/full-desktop-1440x900.jpg",
+      "dimensions": [1440, 900],
+      "bytes": 185565,
+      "sha256": "b40c949c9030f5a9ef257b737fcbffcd5885867609fe8aa4e29c2efa95a515ba"
+    },
+    {
+      "path": "runtime-captures/full-desktop-3x-1440x900.jpg",
+      "dimensions": [1440, 900],
+      "bytes": 244147,
+      "sha256": "3241b61b354be9a7704f22e113edea7754a1aae221c2ca0e5088dea78d16df1d"
+    },
+    {
+      "path": "runtime-captures/full-phone-390x844.jpg",
+      "dimensions": [390, 844],
+      "bytes": 53462,
+      "sha256": "13172dd8ecfb18eed671cab105035bb0bbb4f0cda1f4fdc44de4afba25300c09"
+    },
+    {
+      "path": "runtime-captures/full-phone-3x-center-390x844.jpg",
+      "dimensions": [390, 844],
+      "bytes": 81271,
+      "sha256": "bc842cc1049edc505c57d8c8062c3787bbd3af3f430200c902ceeb4cf2680d29"
+    },
+    {
+      "path": "runtime-captures/full-phone-3x-shipyard-390x844.jpg",
+      "dimensions": [390, 844],
+      "bytes": 68294,
+      "sha256": "b658c7e0e5450c9ad5c83e655f8adc8f52edfbbdd0913c60b3df39929eb1c53d"
+    },
+    {
+      "path": "runtime-captures/midgame-desktop-1440x900.jpg",
+      "dimensions": [1440, 900],
+      "bytes": 181841,
+      "sha256": "66f109101f63db133862cbd8996ab04d6c4521c9175e31d9fc43b762f007da30"
+    },
+    {
+      "path": "runtime-captures/starting-desktop-1440x900.jpg",
+      "dimensions": [1440, 900],
+      "bytes": 176357,
+      "sha256": "89de7ba00a0a5e6705322c903f92c8fade60bfbf53ab23750d802e4e6a712c78"
+    },
+    {
+      "path": "runtime-captures/starting-phone-390x844.jpg",
+      "dimensions": [390, 844],
+      "bytes": 47855,
+      "sha256": "bc6d8e52326bc9d05210248308ab8db808c43314b83aa6a9477e1918fa536be8"
+    }
+  ]
+}

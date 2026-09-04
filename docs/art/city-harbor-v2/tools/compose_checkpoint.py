@@ -414,7 +414,7 @@ def render_phone(root: Path, scene: Image.Image) -> Image.Image:
 def render_zoom(root: Path, scene: Image.Image) -> Image.Image:
     # Native 1024×704 device-pixel crop from the authored 6144×4224 scene,
     # corresponding to the existing 3× stop at DPR2 without interpolation.
-    return scene.crop((2200, 700, 3224, 1404))
+    return scene.crop((2450, 0, 3474, 704))
 
 
 def render_seam_evidence(backdrop: Image.Image) -> Image.Image:
@@ -500,7 +500,7 @@ def render_contact_sheet(root: Path) -> Image.Image:
     zoom_thumb = zoom.resize((344, 237), Image.Resampling.LANCZOS)
     canvas.paste(zoom_thumb, (1214, 116))
     draw.rectangle((1213, 115, 1559, 354), outline=WOOD, width=2)
-    draw.text((1214, 367), "MAX ZOOM · NATIVE CIVIC DETAIL", font=font(15, bold=True), fill=INK)
+    draw.text((1214, 367), "MAX ZOOM · NATIVE FLAG MOUNT", font=font(15, bold=True), fill=INK)
 
     layers_thumb = layers.resize((344, 215), Image.Resampling.LANCZOS)
     canvas.paste(layers_thumb, (1214, 413))
@@ -514,7 +514,7 @@ def render_contact_sheet(root: Path) -> Image.Image:
         "2  Reduced fortress dominance: a low perimeter wall supports the city instead of swallowing it.",
         "3  Clear silhouettes: all economy and recruitment tiers read as different jobs.",
         "4  Reviewed masks: all fifteen cutouts clear enclosed checker, matte, and detached-island defects.",
-        "5  Responsive proof: the complete city remains legible at 375×258 and the existing 3× zoom.",
+        "5  Mounted faction standard: mast and V-brace meet the Town Hall dome at phone, desktop, and 3×.",
     )
     y = 812
     for line in notes:
@@ -522,6 +522,44 @@ def render_contact_sheet(root: Path) -> Image.Image:
         y += 46
     draw.text((72, 1040), "Production candidate · checkpoint 2 is not yet approved", font=font(14, bold=True), fill=RUST)
     return canvas
+
+
+def flag_geometry(size: tuple[int, int]) -> dict[str, int]:
+    """Resolve the shared Town Hall flag percentages into scene pixels."""
+
+    spec = LAYOUT["flag"]
+    hall = slot_box(
+        next(slot for slot in SLOTS if slot.content_id == spec["slotId"]), size
+    )
+    hall_width = hall[2] - hall[0]
+    hall_height = hall[3] - hall[1]
+    pole_width = hall_width * spec["poleWidthPercent"] / 100
+    pole_height = hall_height * spec["poleHeightPercent"] / 100
+    mast_width = max(1, round(pole_width * spec["mastWidthPercent"] / 100))
+    mount_width = max(3, round(pole_width * spec["mountWidthPercent"] / 100))
+    mount_height = max(2, round(pole_height * spec["mountHeightPercent"] / 100))
+    pole_x = round(hall[0] + hall_width * spec["poleLeftPercent"] / 100)
+    pole_y = round(hall[1] + hall_height * spec["poleTopPercent"] / 100)
+    mast_base_y = round(pole_y + pole_height)
+    mast_center_x = round(pole_x + mast_width / 2)
+    return {
+        "pole_x": pole_x,
+        "pole_y": pole_y,
+        "mast_width": mast_width,
+        "mast_base_y": mast_base_y,
+        "mast_center_x": mast_center_x,
+        "cloth_x": round(
+            pole_x + pole_width * spec["clothLeftPercent"] / 100
+        ),
+        "cloth_y": pole_y,
+        "cloth_size": max(
+            1, round(pole_width * spec["clothWidthPercent"] / 100)
+        ),
+        "mount_left": round(mast_center_x - mount_width / 2),
+        "mount_top": round(mast_base_y - mount_height / 2),
+        "mount_right": round(mast_center_x + mount_width / 2),
+        "mount_bottom": round(mast_base_y + mount_height / 2),
+    }
 
 
 def compose_state(
@@ -559,32 +597,49 @@ def compose_state(
             scene.alpha_composite(tower, (tx, ty))
 
     if faction and LAYOUT["flag"]["slotId"] in active:
-        flag_spec = LAYOUT["flag"]
-        hall = slot_box(
-            next(slot for slot in SLOTS if slot.content_id == flag_spec["slotId"]), size
-        )
         flag_path = PUBLIC_ART / "factions" / faction / "flag.png"
         flag = Image.open(flag_path).convert("RGBA")
-        hall_width = hall[2] - hall[0]
-        hall_height = hall[3] - hall[1]
-        pole_x = hall[0] + hall_width * flag_spec["poleLeftPercent"] / 100
-        pole_y = hall[1] + hall_height * flag_spec["poleTopPercent"] / 100
-        pole_width = hall_width * flag_spec["poleWidthPercent"] / 100
-        pole_height = hall_height * flag_spec["poleHeightPercent"] / 100
-        flag_size = max(16, round(pole_width * flag_spec["clothWidthPercent"] / 100))
+        geometry = flag_geometry(size)
+        flag_size = geometry["cloth_size"]
         flag.thumbnail((flag_size, flag_size), Image.Resampling.LANCZOS)
-        mast_x = round(pole_x)
-        mast_y = round(pole_y)
-        pixel_scale = size[0] / RUNTIME_SIZE[0]
-        mast_width = max(1, round(flag_spec["mastWidthPx"] * pixel_scale))
-        cloth_left = round(flag_spec["clothLeftPx"] * pixel_scale)
         draw = ImageDraw.Draw(scene)
-        draw.line(
-            (mast_x, mast_y, mast_x, round(mast_y + pole_height)),
+        mast_x = geometry["pole_x"]
+        mast_y = geometry["pole_y"]
+        mast_width = geometry["mast_width"]
+        draw.rectangle(
+            (
+                mast_x,
+                mast_y,
+                mast_x + mast_width - 1,
+                geometry["mast_base_y"],
+            ),
             fill=(62, 43, 25, 255),
+        )
+        draw.line(
+            (
+                geometry["mount_left"],
+                geometry["mount_bottom"],
+                geometry["mast_center_x"],
+                geometry["mount_top"],
+                geometry["mount_right"],
+                geometry["mount_bottom"],
+            ),
+            fill=(53, 35, 21, 255),
             width=mast_width,
         )
-        scene.alpha_composite(flag, (mast_x + cloth_left, mast_y))
+        pin_radius = max(1, mast_width)
+        draw.ellipse(
+            (
+                geometry["mast_center_x"] - pin_radius,
+                geometry["mount_top"] - pin_radius,
+                geometry["mast_center_x"] + pin_radius,
+                geometry["mount_top"] + pin_radius,
+            ),
+            fill=(211, 174, 101, 255),
+            outline=(53, 35, 21, 255),
+            width=max(1, mast_width // 2),
+        )
+        scene.alpha_composite(flag, (geometry["cloth_x"], geometry["cloth_y"]))
     return scene.convert("RGB")
 
 
@@ -609,7 +664,7 @@ def render_faction_contact(root: Path, scenes: dict[str, Image.Image]) -> Image.
     canvas = Image.new("RGB", (1600, 748), "#ead5a2")
     draw = ImageDraw.Draw(canvas)
     draw.text((42, 24), "FIVE FACTIONS · SAME CITY ART CONTRACT", font=font(31, display=True), fill=INK)
-    draw.text((44, 68), "Only the town-hall flag changes; buildings remain content-ID driven and theme-overridable.", font=font(15, bold=True), fill=RUST)
+    draw.text((44, 68), "Every faction mast terminates in the same central-dome V-brace; buildings remain content-ID driven.", font=font(15, bold=True), fill=RUST)
     positions = ((42, 116), (552, 116), (1062, 116), (297, 406), (807, 406))
     for (faction, scene), (x, y) in zip(scenes.items(), positions, strict=True):
         thumb = scene.resize((468, 322), Image.Resampling.LANCZOS)
@@ -675,7 +730,7 @@ def render_zoom_evidence(full_master: Image.Image) -> Image.Image:
     draw.text((42, 653), "1× WHOLE CITY", font=font(16, bold=True), fill=INK)
 
     crop_specs = (
-        ("CIVIC + TAVERN", (240, 120, 3360, 2760)),
+        ("TAVERN + MOUNTED CIVIC FLAG", (0, 0, 3840, 1440)),
         ("RECRUITMENT TIERS", (2550, 990, 5850, 2229)),
         ("FORTIFICATION + SHORE", (1560, 2280, 6144, 4224)),
     )
@@ -774,13 +829,18 @@ def load_runtime_assets(root: Path) -> tuple[dict[str, Image.Image], Image.Image
     return cutouts, backdrop
 
 
-def build_production(root: Path, write_runtime: bool) -> dict[str, str]:
+def build_production(
+    root: Path, write_runtime: bool, use_shipping_runtime: bool = False
+) -> dict[str, str]:
     root.mkdir(parents=True, exist_ok=True)
-    source_cutouts = render_assets(root)
-    authored_backdrop = render_scene(root, source_cutouts)
-    runtime_root = RUNTIME_CITY if write_runtime else root / "runtime"
-    write_runtime_assets(source_cutouts, authored_backdrop, runtime_root)
-    cutouts, high_resolution_backdrop = load_runtime_assets(runtime_root)
+    if use_shipping_runtime:
+        cutouts, high_resolution_backdrop = load_runtime_assets(RUNTIME_CITY)
+    else:
+        source_cutouts = render_assets(root)
+        authored_backdrop = render_scene(root, source_cutouts)
+        runtime_root = RUNTIME_CITY if write_runtime else root / "runtime"
+        write_runtime_assets(source_cutouts, authored_backdrop, runtime_root)
+        cutouts, high_resolution_backdrop = load_runtime_assets(runtime_root)
     backdrop_master = high_resolution_backdrop.resize(MASTER_SIZE, Image.Resampling.LANCZOS)
     save_webp(backdrop_master.resize(RUNTIME_SIZE, Image.Resampling.LANCZOS), root / "proofs" / "empty-runtime-1024x704.webp", 82)
     states_master = {
@@ -848,6 +908,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=PACKAGE)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--capture-baseline", action="store_true")
+    parser.add_argument("--proofs-only", action="store_true")
     args = parser.parse_args()
 
     if args.capture_baseline:
@@ -855,6 +916,8 @@ def main() -> None:
         print("captured pre-replacement starting/midgame/full runtime states")
         return
     if args.check:
+        if args.proofs_only:
+            parser.error("--proofs-only cannot be combined with --check")
         with tempfile.TemporaryDirectory(prefix="aop-city-checkpoint-") as temp:
             candidate = Path(temp)
             candidate_hashes = build_production(candidate, write_runtime=False)
@@ -866,7 +929,11 @@ def main() -> None:
                 raise SystemExit("rendered checkpoint differs from retained files")
             print(f"PASS: deterministic recomposition matched {len(current_hashes)} files")
     else:
-        hashes = build_production(args.output, write_runtime=True)
+        hashes = build_production(
+            args.output,
+            write_runtime=not args.proofs_only,
+            use_shipping_runtime=args.proofs_only,
+        )
         print(json.dumps(hashes, indent=2, sort_keys=True))
 
 

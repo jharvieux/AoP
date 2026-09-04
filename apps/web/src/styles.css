@@ -1338,9 +1338,9 @@ button.primary.secondary {
   z-index: 2;
 }
 
-/* Town-hall faction flag: flies from the RIGHT turret (replacing its baked-in
-   pennant), square like the 512² flag art so the emblem is never cropped.
-   Positions are % of the town-hall slot, tuned to the trimmed townhall.png. */
+/* Town-hall faction flag: the mast terminates in a visible V-brace on the
+   central dome's finial. Geometry is relative to the town-hall slot so the
+   physical attachment survives fitted phone scenes and every zoom stop. */
 .city-scene__flagpole {
   position: absolute;
   top: var(--city-flag-top);
@@ -1357,7 +1357,39 @@ button.primary.secondary {
   bottom: 0;
   left: 0;
   width: var(--city-flag-mast-width);
-  background: var(--color-border);
+  background: linear-gradient(to right, #352315, #d3ae65 48%, #4c3119);
+  box-shadow: 0 0 0 1px rgb(20 12 7 / 65%);
+}
+
+.city-scene__flagpole-mount {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--city-flag-mast-width) / 2);
+  width: var(--city-flag-mount-width);
+  height: var(--city-flag-mount-height);
+  transform: translate(-50%, 50%);
+  background: radial-gradient(circle at 50% 12%, #d3ae65 0 18%, #352315 20% 34%, transparent 36%);
+}
+
+.city-scene__flagpole-mount::before,
+.city-scene__flagpole-mount::after {
+  position: absolute;
+  bottom: 0;
+  width: var(--city-flag-mast-width);
+  height: 88%;
+  background: #352315;
+  content: '';
+  transform-origin: 50% 100%;
+}
+
+.city-scene__flagpole-mount::before {
+  left: 18%;
+  transform: rotate(31deg);
+}
+
+.city-scene__flagpole-mount::after {
+  right: 18%;
+  transform: rotate(-31deg);
 }
 
 .city-scene__flag {
@@ -1367,6 +1399,7 @@ button.primary.secondary {
   width: var(--city-flag-cloth-width);
   aspect-ratio: 1 / 1;
   border: 1px solid rgb(0 0 0 / 45%);
+  box-shadow: 0 1px 2px rgb(20 12 7 / 35%);
   overflow: hidden;
 }
 
