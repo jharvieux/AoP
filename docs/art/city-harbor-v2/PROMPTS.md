@@ -6,15 +6,17 @@ size switch, so none is invented here. Source dimensions are recorded in `MANIFE
 
 ## Reference images and roles
 
-- **Image 1 for every call:**
-  `../commercial-visual-v2/sources/b-gilded-harbor-diorama-full-r3.webp`, style/material/
-  camera/light reference only; SHA-256
+- `../commercial-visual-v2/sources/b-gilded-harbor-diorama-full-r3.webp` was the
+  style/material/camera/light reference in P1–P9; it was never an edit target. SHA-256:
   `eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`.
-- **Image 2 for the six building calls:** the original lossless empty-harbor output from
-  P1, spatial reference only; SHA-256
+- The original lossless P1 empty-harbor output was the spatial-only Image 2 reference in
+  P2–P7 and the edit target in P8. SHA-256:
   `67ad1ce86995f1b6dd9737aa6f25a0065de9a58163dfb8c229ced339fb476154`.
-
-Neither reference was an edit target in P1–P7.
+- The retained P7 shipyard source was the edit target in P9. Retained SHA-256:
+  `e190306b2a2ee3d03f2489244fedc5a10ea383e1c8b727f8f3110ed22d97fec9`.
+- The original lossless P8 corrected-empty-harbor output was the spatial-only Image 2
+  reference in P9. SHA-256:
+  `3addd21de1c4968e9b61388577f009deeae5cac38b997fb5adef78c997db8ad3`.
 
 ## P1 — empty harbor
 
@@ -118,6 +120,35 @@ Composition/framing: isolated square source canvas; subject fills about 84% of w
 
 P7 used the same two exact common-block substitutions printed under P6.
 
+## P8 — corrected empty harbor
+
+```text
+Use case: edit-image
+Asset type: corrected empty modular 2D strategy-game city backdrop
+Input images: Image 1 is the edit target. Image 2 is style/material/camera/light reference only and is not an edit target.
+Primary request: Preserve Image 1 exactly except for one narrowly localized correction to the lower-right shoreline. Extend the existing pale sand-and-warm-limestone coast and the nearby EMPTY shipyard foundation footing diagonally downward/right into the normalized current shipyard slot region x 80%–99%, y 75%–99%, so a separately composited shipyard jetty placed in that slot can visibly begin on dry shore and extend over water with no open-water gap. The natural shore/footing should reach approximately x 82%, y 78% and taper into luminous water; it must look geologically continuous with the existing coast, not like a rectangular island. Keep luminous turquoise/deep-teal water around the waterward side.
+Preservation: Keep the same 16:11 landscape intent, exact horizonless high-angle three-quarter camera, scene scale, northwest light, layered gouache/oil-brush finish, roads, all six empty plot clearings, vegetation, rocks, and every non-target region. Do not move, add, remove, redesign, or repaint any other plot or terrain feature.
+Hard constraints: the result must remain a genuinely EMPTY opaque terrain/coast/road/foundation layer. Absolutely no buildings, houses, huts, walls, gates, docks, piers, planks, pilings, cranes, boats, ships, sails, flags, signs, people, animals, text, numbers, UI, selection rings, logos, signatures, or watermarks. The extended shipyard footing is unoccupied natural sand/limestone only.
+```
+
+P8 became the active backdrop source after native compositing confirmed that P1's lower-right
+coast did not reach the unchanged shipyard slot.
+
+## P9 — corrected shoreline shipyard
+
+```text
+Use case: edit-image
+Asset type: corrected modular city building cutout — shoreline shipyard
+Input images: Image 1 is the edit target. Image 2 is a spatial reference showing the corrected lower-right shore and immutable shipyard-slot relationship. Image 3 is style/material/camera/light reference only. Images 2 and 3 are not edit targets.
+Primary request: Preserve Image 1's shipwright shed, partial sloop hull and ribs, drydock cradle, pier decks, pilings, stacked spars, winch, ropes, and tall slender shear-leg crane. Add one clear, narrow, raised timber shore-access gangway from the rear/right (upper-right) deck, running diagonally toward and reaching the upper-right edge of the subject canvas. It must read as the landward connection into Image 2's nearby pale sand-and-limestone coast when the asset is bottom-anchored inside the current lower-right shipyard slot. Keep the existing lower-left inclined slipway as the waterward launch side. The new upper-right gangway needs visible planks, two slim support posts, and simple rope rails; it must be shorter and visually quieter than the drydock/crane.
+Composition: keep the same horizonless 55-degree high-angle three-quarter camera and northwest light. Keep the complete subject inside a square source canvas with the upper-right gangway reaching approximately 96% of canvas width and 18% of canvas height. Preserve strong phone-scale drydock, hull-rib, shed, crane, and landward-gangway silhouettes. Do not rotate or mirror the whole shipyard.
+Transparency: genuinely transparent background with straight clean alpha; preserve fine timber, rope, rigging, hook, rail, and piling edges; at least 3% transparent safety margin.
+Hard constraints: one isolated constructed element only; no terrain island, no rectangular or oval base, no road, no painted water, no sea, no waves, no sky, no scenery, no people, no completed or floating vessel, no flags, no banners, no letters, no numbers, no UI, no selection ring, no logo, no signature, no watermark. Do not remove the structural half-built hull.
+```
+
+P9 became the active shipyard source. It preserves the drydock/waterward slip and adds the
+short upper-right gangway that crosses onto P8's dry shore within the exact current slot.
+
 ## Rejected transparency correction
 
 P2–P7 requested genuine alpha, but the service rendered a pale checker into RGB. A second
@@ -134,6 +165,8 @@ Transparency: actual RGBA transparency, not a painted checkerboard, not white, n
 Constraints: change only background and detached floor shadow; do not redesign, crop, rotate, resize, relight, simplify, add, or remove any part of the building; no terrain, no base, no text, no flag, no UI, no logo, no signature, no watermark.
 ```
 
-The retained cutouts instead use the deterministic border-connected neutral-background
-extraction in `tools/compose_checkpoint.py`, followed by a one-pixel erosion/feather and
-edge-color dilation.
+The retained cutouts instead use the repository's `rembg` IS-Net semantic-mask workflow,
+followed by largest-subject-component hardening, a narrow soft-edge reconstruction, and
+interior-color extension through that edge. The reviewed masks are retained under
+`masks/`; `tools/build_subject_masks.py` and `tools/compose_checkpoint.py` reproduce the
+process.

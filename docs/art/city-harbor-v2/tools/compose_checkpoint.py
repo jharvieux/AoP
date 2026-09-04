@@ -64,7 +64,7 @@ SOURCE_NAMES = {
     "tradehouse": "tradehouse-source-r1.webp",
     "barracks": "barracks-source-r1.webp",
     "stonewall": "stonewall-source-r1.webp",
-    "shipyard": "shipyard-source-r1.webp",
+    "shipyard": "shipyard-source-r2.webp",
 }
 
 
@@ -97,46 +97,25 @@ def fit_cover(image: Image.Image, size: tuple[int, int], align_x: float = 0.5) -
     return resized.crop((left, top, left + size[0], top + size[1]))
 
 
-def extract_checkerboard(image: Image.Image) -> Image.Image:
-    """Recover alpha from the generator's rendered checkerboard artifact.
+def apply_subject_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
+    """Apply a retained semantic subject mask without a pale edge matte."""
 
-    The requested cutouts arrived as RGB files whose only backdrop is a pale,
-    nearly neutral checker. Flooding only border-connected neutral pixels keeps
-    enclosed limestone highlights while discarding the checker and its shadow.
-    """
+    rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    alpha = np.asarray(mask.convert("L"), dtype=np.uint8)
+    if rgb.shape[:2] != alpha.shape:
+        raise ValueError(f"source/mask size mismatch: {image.size} vs {mask.size}")
 
-    rgb = np.asarray(image.convert("RGB"), dtype=np.float32)
-    lightness = rgb.mean(axis=2)
-    chroma = rgb.max(axis=2) - rgb.min(axis=2)
-    candidate = (lightness >= 205) & (chroma <= 18)
-    labels, _ = ndimage.label(candidate)
-    edge_labels = np.unique(
-        np.concatenate((labels[0, :], labels[-1, :], labels[:, 0], labels[:, -1]))
-    )
-    background = np.isin(labels, edge_labels[edge_labels != 0])
-
-    foreground = ~background
-    foreground = ndimage.binary_closing(foreground, iterations=1)
-    components, count = ndimage.label(foreground)
-    if count:
-        sizes = np.bincount(components.ravel())
-        keep = np.flatnonzero(sizes >= 80)
-        keep = keep[keep != 0]
-        foreground = np.isin(components, keep)
-
-    # Erode a fraction of a source pixel to remove pale checker contamination,
-    # then feather one pixel for clean downsampling.
-    core = ndimage.binary_erosion(foreground, iterations=1)
-    alpha = ndimage.gaussian_filter(core.astype(np.float32), sigma=0.8)
-    alpha = np.clip((alpha - 0.08) / 0.84, 0, 1)
-
-    # Propagate subject-edge RGB beneath transparency so future bilinear
-    # sampling cannot reveal a white matte.
-    _, indices = ndimage.distance_transform_edt(~core, return_indices=True)
+    # The reviewed mask already owns subject/background classification. Extend
+    # trustworthy interior color through its soft edge so resampling cannot
+    # blend in the generator's painted white checker.
+    interior = alpha >= 240
+    if not interior.any():
+        raise ValueError("subject mask has no opaque interior")
+    _, indices = ndimage.distance_transform_edt(~interior, return_indices=True)
     filled = rgb.copy()
-    outside = ~core
-    filled[outside] = rgb[indices[0][outside], indices[1][outside]]
-    rgba = np.dstack((np.clip(filled, 0, 255).astype(np.uint8), (alpha * 255).astype(np.uint8)))
+    edge = alpha < 240
+    filled[edge] = rgb[indices[0][edge], indices[1][edge]]
+    rgba = np.dstack((filled, alpha))
     result = Image.fromarray(rgba, "RGBA")
 
     bbox = result.getchannel("A").getbbox()
@@ -165,10 +144,13 @@ def save_webp(image: Image.Image, path: Path, quality: int = 84) -> None:
 
 def render_assets(root: Path) -> dict[str, Image.Image]:
     source_root = PACKAGE / "sources"
+    mask_root = PACKAGE / "masks"
     cutout_root = root / "cutouts"
     cutouts: dict[str, Image.Image] = {}
     for asset, filename in SOURCE_NAMES.items():
-        cutout = extract_checkerboard(Image.open(source_root / filename))
+        source = Image.open(source_root / filename)
+        mask = Image.open(mask_root / f"{asset}-mask.png")
+        cutout = apply_subject_mask(source, mask)
         cutouts[asset] = cutout
         save_webp(cutout, cutout_root / f"{asset}.webp", 90)
     return cutouts
@@ -213,11 +195,11 @@ def shadow_layer(slot: Slot, size: tuple[int, int]) -> Image.Image:
 
 
 def render_scene(root: Path, cutouts: dict[str, Image.Image]) -> tuple[Image.Image, Image.Image]:
-    raw_backdrop = Image.open(PACKAGE / "sources" / "empty-harbor-source-r1.webp").convert("RGB")
+    raw_backdrop = Image.open(PACKAGE / "sources" / "empty-harbor-source-r2.webp").convert("RGB")
     backdrop = fit_cover(raw_backdrop, MASTER_SIZE, align_x=0.48)
     backdrop = ImageEnhance.Color(backdrop).enhance(0.94)
     backdrop = ImageEnhance.Contrast(backdrop).enhance(1.03)
-    save_webp(backdrop, root / "layers" / "empty-backdrop-2048x1408.webp", 69)
+    save_webp(backdrop, root / "layers" / "empty-backdrop-2048x1408.webp", 63)
 
     scene = backdrop.convert("RGBA")
     shadow_group = Image.new("RGBA", MASTER_SIZE, (0, 0, 0, 0))
@@ -306,14 +288,33 @@ def render_zoom(root: Path, scene: Image.Image) -> Image.Image:
     return zoomed.crop((0, 300, 1024, 1004))
 
 
-def checkerboard(size: tuple[int, int], cell: int = 18) -> Image.Image:
-    image = Image.new("RGB", size, "#f3f0e8")
+def stress_background(size: tuple[int, int]) -> Image.Image:
+    """Use saturated fields that cannot conceal pale checker or matte art."""
+
+    image = Image.new("RGB", size, "#ff00ff")
     draw = ImageDraw.Draw(image)
-    for y in range(0, size[1], cell):
-        for x in range(0, size[0], cell):
-            if (x // cell + y // cell) % 2:
-                draw.rectangle((x, y, x + cell - 1, y + cell - 1), fill="#d7d2c8")
+    draw.rectangle((size[0] // 2, 0, size[0] - 1, size[1] - 1), fill="#00383f")
+    draw.line((size[0] // 2, 0, size[0] // 2, size[1] - 1), fill=WHITE, width=2)
     return image
+
+
+def render_stress_proofs(root: Path, cutouts: dict[str, Image.Image]) -> None:
+    for slot in SLOTS:
+        canvas = stress_background((1024, 1024))
+        draw = ImageDraw.Draw(canvas)
+        draw.rectangle((0, 0, 1023, 103), fill=INK)
+        draw.text((28, 19), f"{slot.label.upper()} · ALPHA STRESS", font=font(26, display=True), fill=WHITE)
+        draw.text(
+            (30, 61),
+            "Native 900 px cutout · magenta / dark-teal backgrounds",
+            font=font(14, bold=True),
+            fill=BRASS,
+        )
+        art = cutouts[slot.asset]
+        x = (canvas.width - art.width) // 2
+        y = 112 + (900 - art.height) // 2
+        canvas.paste(art, (x, y), art)
+        save_webp(canvas, root / "proofs" / "stress" / f"{slot.asset}-magenta-1024.webp", 86)
 
 
 def render_layer_sheet(root: Path, scene: Image.Image, empty: Image.Image, cutouts: dict[str, Image.Image]) -> Image.Image:
@@ -330,8 +331,8 @@ def render_layer_sheet(root: Path, scene: Image.Image, empty: Image.Image, cutou
 
     # Alpha cutouts.
     draw.rounded_rectangle((816, 128, 1552, 604), 12, fill="#fff3d3", outline=WOOD, width=3)
-    draw.text((838, 148), "2 · INDEPENDENT RGBA CONSTRUCTED ELEMENTS", font=font(16, bold=True), fill=INK)
-    board = checkerboard((690, 390), 16)
+    draw.text((838, 148), "2 · RGBA CUTOUTS / SATURATED ALPHA STRESS", font=font(16, bold=True), fill=INK)
+    board = stress_background((690, 390))
     for index, slot in enumerate(SLOTS):
         col = index % 3
         row = index // 3
@@ -419,7 +420,7 @@ def render_contact_sheet(root: Path) -> Image.Image:
         "1  One authored harbor: luminous water, warm limestone, weathered timber, coherent northwest light.",
         "2  Reduced fortress dominance: a low perimeter wall supports the city instead of swallowing it.",
         "3  Clear silhouettes: town hall, tavern, economy, recruitment, and shipyard read as different jobs.",
-        "4  Modular construction: empty backdrop + six alpha cutouts + separate shadow layer, using current slots.",
+        "4  Reviewed masks: enclosed gaps clear; no detached pale floor mattes or checker islands.",
         "5  Responsive proof: roles remain legible in the actual 375×258 phone scene and at the existing 3× zoom.",
     )
     y = 812
@@ -438,6 +439,7 @@ def build(root: Path) -> dict[str, str]:
     save_webp(render_desktop(root, scene), root / "proofs" / "desktop-1440x900.webp", 82)
     save_webp(render_phone(root, scene), root / "proofs" / "phone-375x812.webp", 84)
     save_webp(render_zoom(root, scene), root / "proofs" / "max-zoom-1024x704.webp", 84)
+    render_stress_proofs(root, cutouts)
     save_webp(
         render_layer_sheet(root, scene, empty, cutouts),
         root / "proofs" / "layer-separation-1600x1000.webp",
@@ -448,7 +450,7 @@ def build(root: Path) -> dict[str, str]:
     generated = sorted(
         path
         for directory in (root / "cutouts", root / "layers", root / "proofs")
-        for path in directory.glob("*.webp")
+        for path in directory.rglob("*.webp")
     )
     return {str(path.relative_to(root)): sha256(path) for path in generated}
 
@@ -466,7 +468,7 @@ def main() -> None:
             current_hashes = {
                 str(path.relative_to(args.output)): sha256(path)
                 for directory in (args.output / "cutouts", args.output / "layers", args.output / "proofs")
-                for path in directory.glob("*.webp")
+                for path in directory.rglob("*.webp")
             }
             if candidate_hashes != current_hashes:
                 print(json.dumps({"expected": current_hashes, "rendered": candidate_hashes}, indent=2))

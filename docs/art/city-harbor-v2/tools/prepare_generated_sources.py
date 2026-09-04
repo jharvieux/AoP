@@ -17,12 +17,14 @@ from PIL import Image
 
 NAMES = (
     "empty-harbor-source-r1",
+    "empty-harbor-source-r2",
     "townhall-source-r1",
     "tavern-source-r1",
     "tradehouse-source-r1",
     "barracks-source-r1",
     "stonewall-source-r1",
     "shipyard-source-r1",
+    "shipyard-source-r2",
 )
 
 
@@ -40,8 +42,17 @@ def main() -> None:
     for stem in NAMES:
         source = args.input / f"{stem}.png"
         target = args.output / f"{stem}.webp"
+        if not source.exists():
+            continue
         image = Image.open(source).convert("RGB")
-        quality = 80 if stem == "empty-harbor-source-r1" else 88
+        if stem == "empty-harbor-source-r2":
+            quality = 76
+        elif stem.startswith("empty-harbor-source-"):
+            quality = 80
+        elif stem == "shipyard-source-r2":
+            quality = 86
+        else:
+            quality = 88
         image.save(target, "WEBP", quality=quality, method=6, exact=True)
         print(f"{stem}: png={digest(source)} webp={digest(target)} bytes={target.stat().st_size}")
 

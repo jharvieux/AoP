@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "checkpoint": "issue-608-city-art-checkpoint-1",
   "date": "2026-09-03",
   "service": "OpenAI built-in image generator",
@@ -13,6 +13,15 @@
     "quality control",
     "size control"
   ],
+  "active_sources": {
+    "backdrop": "sources/empty-harbor-source-r2.webp",
+    "shipyard": "sources/shipyard-source-r2.webp",
+    "townhall": "sources/townhall-source-r1.webp",
+    "tavern": "sources/tavern-source-r1.webp",
+    "tradehouse": "sources/tradehouse-source-r1.webp",
+    "barracks": "sources/barracks-source-r1.webp",
+    "stonewall": "sources/stonewall-source-r1.webp"
+  },
   "references": [
     {
       "id": "direction-b-r3",
@@ -26,6 +35,20 @@
       "role": "spatial reference for P2-P7; not an edit target; retained as an optimized WebP",
       "original_png_sha256": "67ad1ce86995f1b6dd9737aa6f25a0065de9a58163dfb8c229ced339fb476154",
       "retained_sha256": "cfea5e996e61cbeb84cd7b9a309b1517f9e0bfa357a24515cccbdf753b4305e5"
+    },
+    {
+      "id": "empty-harbor-r2-lossless-output",
+      "path": "sources/empty-harbor-source-r2.webp",
+      "role": "active corrected backdrop and P9 spatial reference; P8 output, not a P9 edit target",
+      "original_png_sha256": "3addd21de1c4968e9b61388577f009deeae5cac38b997fb5adef78c997db8ad3",
+      "retained_sha256": "39f3e74076db87b37aab8c8588278baa7c6a750af5984d4e8760e0a6e39fc463"
+    },
+    {
+      "id": "shipyard-r1-output",
+      "path": "sources/shipyard-source-r1.webp",
+      "role": "P9 edit target; retained as superseded source evidence",
+      "original_png_sha256": "ebbbf9129ec6d6fccc6390bca08d4e5cea42cf50fa1cc40890bd0fe2235e3355",
+      "retained_sha256": "e190306b2a2ee3d03f2489244fedc5a10ea383e1c8b727f8f3110ed22d97fec9"
     }
   ],
   "generation": [
@@ -40,7 +63,8 @@
       "retained_path": "sources/empty-harbor-source-r1.webp",
       "retained_sha256": "cfea5e996e61cbeb84cd7b9a309b1517f9e0bfa357a24515cccbdf753b4305e5",
       "transparent_requested": false,
-      "service_alpha_delivered": false
+      "service_alpha_delivered": false,
+      "disposition": "superseded as active backdrop by P8 after integrated shoreline review"
     },
     {
       "asset": "townhall",
@@ -54,7 +78,7 @@
       "retained_sha256": "a4a66aad11387afbe919661993f06f01436189d00fda9be1394395b2b49f40b4",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask"
     },
     {
       "asset": "tavern",
@@ -68,7 +92,7 @@
       "retained_sha256": "bf87156203270b169eb15ec6c156735e8222b4afe3ff886a7d324c8ebf5120c6",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask"
     },
     {
       "asset": "tradehouse",
@@ -82,7 +106,7 @@
       "retained_sha256": "6561ce57f80bab15a50b5c82fe4189026e3da10c5e360f171798f2c9d6b92eb5",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask"
     },
     {
       "asset": "barracks",
@@ -96,7 +120,7 @@
       "retained_sha256": "059720e79f8f48a2bc88d056bd07d9b7b6c50c2c995b63c59ca0eef2ceb9301d",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask"
     },
     {
       "asset": "stonewall",
@@ -110,7 +134,7 @@
       "retained_sha256": "51f140a4b3cf3aa1882af39126c9511428f95d6e8062b2c4c19f27a3a31c74b6",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask"
     },
     {
       "asset": "shipyard",
@@ -124,9 +148,84 @@
       "retained_sha256": "e190306b2a2ee3d03f2489244fedc5a10ea383e1c8b727f8f3110ed22d97fec9",
       "transparent_requested": true,
       "service_alpha_delivered": false,
-      "local_alpha_recovery": "tools/compose_checkpoint.py:extract_checkerboard"
+      "disposition": "superseded as active shipyard by P9 after integrated shoreline review"
+    },
+    {
+      "asset": "corrected empty harbor",
+      "prompt_id": "P8",
+      "use_case": "edit-image",
+      "input_references": ["empty-harbor-lossless-output", "direction-b-r3"],
+      "edit_target": "empty-harbor-lossless-output",
+      "original_dimensions": [1567, 1004],
+      "original_mode": "RGB",
+      "original_png_sha256": "3addd21de1c4968e9b61388577f009deeae5cac38b997fb5adef78c997db8ad3",
+      "retained_path": "sources/empty-harbor-source-r2.webp",
+      "retained_sha256": "39f3e74076db87b37aab8c8588278baa7c6a750af5984d4e8760e0a6e39fc463",
+      "transparent_requested": false,
+      "service_alpha_delivered": false,
+      "disposition": "active backdrop; corrected natural shoreline footing inside the immutable shipyard slot"
+    },
+    {
+      "asset": "corrected shoreline shipyard",
+      "prompt_id": "P9",
+      "use_case": "edit-image",
+      "input_references": [
+        "shipyard-r1-output",
+        "empty-harbor-r2-lossless-output",
+        "direction-b-r3"
+      ],
+      "edit_target": "shipyard-r1-output",
+      "original_dimensions": [1254, 1254],
+      "original_mode": "RGB",
+      "original_png_sha256": "12219b6ee3d0b2fc2f391a16aa9695d279cff659b35b63b0b4ac6f7d7392d29a",
+      "retained_path": "sources/shipyard-source-r2.webp",
+      "retained_sha256": "22a577d78286ad938a186a562ff853ff22dfd0a65842b48b8aac1742943728bd",
+      "transparent_requested": true,
+      "service_alpha_delivered": false,
+      "local_alpha_recovery": "tools/build_subject_masks.py:reviewed_mask; tools/compose_checkpoint.py:apply_subject_mask",
+      "disposition": "active shipyard; upper-right shore gangway meets P8 dry footing while lower-left slip remains waterward"
     }
   ],
+  "masking": {
+    "date": "2026-09-03",
+    "tool": "rembg",
+    "model": "isnet-general-use",
+    "model_sha256": "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a",
+    "environment": "~/aop-ai-tools/venv with NUMBA_DISABLE_JIT=1",
+    "recipe": "Semantic saliency prediction; alpha-128 subject core; retain largest connected foreground component without filling enclosed holes; sigma-0.65 edge reconstruction; extend alpha-240 interior RGB through the soft edge; trim with 26 source pixels and resize to 900 px maximum edge.",
+    "masks": [
+      {
+        "asset": "townhall",
+        "path": "masks/townhall-mask.png",
+        "sha256": "0b5b2ed3f4f274faaff3733b848bb2d882d3a784f11784fe0adcb37f2bfbd1e7"
+      },
+      {
+        "asset": "tavern",
+        "path": "masks/tavern-mask.png",
+        "sha256": "fe31ac2ff571d8ea27fe330121b3e0a42126c7321c6593d99eec5e69c0afffc3"
+      },
+      {
+        "asset": "tradehouse",
+        "path": "masks/tradehouse-mask.png",
+        "sha256": "4f6a4ceccec8d172459a249f62e27c16a6a66b1ad6cbfbdd4925b1139bb5c393"
+      },
+      {
+        "asset": "barracks",
+        "path": "masks/barracks-mask.png",
+        "sha256": "b97251d90247e7a5a2a5daaebe3fe59eb93053e85f4c4c6aa7a0412b27053fed"
+      },
+      {
+        "asset": "stonewall",
+        "path": "masks/stonewall-mask.png",
+        "sha256": "d69e0d74508e603195979dc57c1ceb4ed7497b44c8d853512c6c58406c89b267"
+      },
+      {
+        "asset": "shipyard",
+        "path": "masks/shipyard-mask.png",
+        "sha256": "865c15e36d843d15654d8f653d2144c804f4ca5b6c9d861cda30ff8698e23c3c"
+      }
+    ]
+  },
   "rejected_transparency_retries": [
     {
       "asset": "townhall",

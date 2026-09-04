@@ -44,11 +44,13 @@ Final runtime naming remains owned by the full #608 integration.
 
 ## Source generation and usage basis
 
-Seven distinct source requests used the subscription-included OpenAI built-in image
-generator on 2026-09-03. There was one call per distinct asset. No API key, CLI fallback,
-paid API route, stock image, external logo, or copied game screenshot was used. The input
-reference was the project-generated approved B styleframe; the generated empty harbor then
-served as a spatial-only reference for the building calls.
+Nine distinct source/variant requests used the subscription-included OpenAI built-in image
+generator on 2026-09-03: the initial empty harbor and six buildings, then one corrected
+empty-harbor edit and one corrected shipyard edit after integrated review exposed the
+shoreline gap. There was one call per distinct asset or edit variant. No API key, CLI
+fallback, paid API route, stock image, external logo, or copied game screenshot was used.
+The project-generated approved B styleframe supplied style/material/camera/light; generated
+harbors supplied spatial reference where recorded.
 
 The interface did not expose a model name/version, sampler, seed, quality, or size control.
 Those fields are truthfully recorded as unavailable rather than guessed. Exact submitted
@@ -56,19 +58,25 @@ text is in [PROMPTS.md](PROMPTS.md); machine-readable hashes and reference roles
 [PROVENANCE.json](PROVENANCE.json). Use is subject to OpenAI's applicable service terms and
 law; this provenance entry is not legal advice.
 
-The built-in service painted its transparency checker into RGB for all six cutout requests.
-A targeted built-in background-extraction retry on town hall, tavern, and trade house did
-the same and was rejected. `tools/compose_checkpoint.py` therefore recovers alpha by:
+The built-in service painted its transparency checker into RGB for all cutout requests. A
+targeted built-in background-extraction retry on town hall, tavern, and trade house did the
+same and was rejected. The first checkpoint's border-connected color extraction also failed
+independent review because it could not clear enclosed checker regions or disconnected pale
+floor mattes. The replacement is the repository's established semantic-mask path:
 
-1. finding pale neutral pixels connected to the source border;
-2. retaining meaningful foreground components;
-3. eroding/feathering one source pixel to remove checker contamination;
-4. extending subject-edge RGB beneath transparency for safe resampling;
-5. trimming with a 17+ px source safety margin and resizing to a 900 px maximum edge.
+1. `rembg` predicts each subject with cached `isnet-general-use`;
+2. `tools/build_subject_masks.py` keeps the alpha-128 subject core's largest connected
+   component without filling enclosed holes;
+3. a sigma-0.65 reconstruction restores a narrow anti-aliased edge;
+4. `tools/compose_checkpoint.py` extends trustworthy alpha-240 interior RGB through that
+   edge so resampling cannot reveal the painted checker;
+5. the cutout is trimmed with 26 source pixels of margin and resized to a 900 px maximum
+   edge.
 
 The retained `sources/*` WebPs preserve the generator result for audit. Their visible
-checker is source evidence, not claimed alpha. The `cutouts/*` files are the actual RGBA
-proof inputs.
+checker is source evidence, not claimed alpha. The six lossless reviewed masks under
+`masks/` and the `cutouts/*` files are the actual proof inputs. Saturated magenta/dark-teal
+proofs replace checker-backed review for alpha acceptance.
 
 ## Retained generated sources
 
@@ -78,41 +86,61 @@ original lossless PNG hashes remain in `PROVENANCE.json`.
 | File                                  | Dimensions |   Bytes | Retained SHA-256                                                   |
 | ------------------------------------- | ---------: | ------: | ------------------------------------------------------------------ |
 | `sources/empty-harbor-source-r1.webp` |  1567×1004 | 301,676 | `cfea5e996e61cbeb84cd7b9a309b1517f9e0bfa357a24515cccbdf753b4305e5` |
+| `sources/empty-harbor-source-r2.webp` |  1567×1004 | 282,382 | `39f3e74076db87b37aab8c8588278baa7c6a750af5984d4e8760e0a6e39fc463` |
 | `sources/townhall-source-r1.webp`     |  1254×1254 | 263,926 | `a4a66aad11387afbe919661993f06f01436189d00fda9be1394395b2b49f40b4` |
 | `sources/tavern-source-r1.webp`       |  1254×1254 | 235,428 | `bf87156203270b169eb15ec6c156735e8222b4afe3ff886a7d324c8ebf5120c6` |
 | `sources/tradehouse-source-r1.webp`   |  1254×1254 | 230,114 | `6561ce57f80bab15a50b5c82fe4189026e3da10c5e360f171798f2c9d6b92eb5` |
 | `sources/barracks-source-r1.webp`     |  1254×1254 | 248,178 | `059720e79f8f48a2bc88d056bd07d9b7b6c50c2c995b63c59ca0eef2ceb9301d` |
 | `sources/stonewall-source-r1.webp`    |  1254×1254 | 139,362 | `51f140a4b3cf3aa1882af39126c9511428f95d6e8062b2c4c19f27a3a31c74b6` |
 | `sources/shipyard-source-r1.webp`     |  1254×1254 | 302,588 | `e190306b2a2ee3d03f2489244fedc5a10ea383e1c8b727f8f3110ed22d97fec9` |
+| `sources/shipyard-source-r2.webp`     |  1254×1254 | 230,830 | `22a577d78286ad938a186a562ff853ff22dfd0a65842b48b8aac1742943728bd` |
 
-Source normalization was RGB WebP quality 80 for the empty harbor and quality 88 for
-building sources, Pillow method 6, exact color handling. It is reproducible with
-`tools/prepare_generated_sources.py` when the original built-in exports are supplied.
+Source normalization used RGB WebP quality 80 for P1, 76 for the more detailed active P8
+harbor, 86 for active P9 shipyard, and 88 for other building sources; Pillow method 6 and
+exact color handling. It is reproducible with `tools/prepare_generated_sources.py` when the
+original built-in exports are supplied. P8 and P9 are active; P1 and P7 remain as audit
+inputs to those edits.
+
+## Reviewed subject masks
+
+| File                        | Mode / dimensions |  Bytes | SHA-256                                                            |
+| --------------------------- | ----------------- | -----: | ------------------------------------------------------------------ |
+| `masks/townhall-mask.png`   | L 1254×1254       | 11,053 | `0b5b2ed3f4f274faaff3733b848bb2d882d3a784f11784fe0adcb37f2bfbd1e7` |
+| `masks/tavern-mask.png`     | L 1254×1254       | 17,300 | `fe31ac2ff571d8ea27fe330121b3e0a42126c7321c6593d99eec5e69c0afffc3` |
+| `masks/tradehouse-mask.png` | L 1254×1254       | 13,153 | `4f6a4ceccec8d172459a249f62e27c16a6a66b1ad6cbfbdd4925b1139bb5c393` |
+| `masks/barracks-mask.png`   | L 1254×1254       | 13,796 | `b97251d90247e7a5a2a5daaebe3fe59eb93053e85f4c4c6aa7a0412b27053fed` |
+| `masks/stonewall-mask.png`  | L 1254×1254       | 10,011 | `d69e0d74508e603195979dc57c1ceb4ed7497b44c8d853512c6c58406c89b267` |
+| `masks/shipyard-mask.png`   | L 1254×1254       | 28,108 | `865c15e36d843d15654d8f653d2144c804f4ca5b6c9d861cda30ff8698e23c3c` |
 
 ## Cutout and layer outputs
 
 | File                                   | Mode / dimensions |   Bytes | SHA-256                                                            |
 | -------------------------------------- | ----------------- | ------: | ------------------------------------------------------------------ |
-| `cutouts/townhall.webp`                | RGBA 900×838      | 183,456 | `c806cb66099726c9b97c4b1ee25787e8a326bdb4297a1db793576f7b131acd09` |
-| `cutouts/tavern.webp`                  | RGBA 900×857      | 188,218 | `57baf305de439be7a2fbcfe7f9709b5e63c8da70ea42b983646a55d4dec39625` |
-| `cutouts/tradehouse.webp`              | RGBA 900×681      | 167,334 | `a198bf0bbc212bca0d462a29c13bbb9921390587b5ff1dbf812f1f0d03c759d5` |
-| `cutouts/barracks.webp`                | RGBA 900×825      | 172,462 | `126139dab5fd8651ba121b622108989cd0056dd32fb9cb1a77dc6d456c75a99f` |
-| `cutouts/stonewall.webp`               | RGBA 900×498      | 108,776 | `4f27e45daab24655b92e24befe4a0f2b0d0e99bfab9e543a3ba7b0235aa03cfb` |
-| `cutouts/shipyard.webp`                | RGBA 900×876      | 223,102 | `e434217a1872fe893456a53970951393ed9722917b7167ef04f23b0bbea89f56` |
+| `cutouts/townhall.webp`                | RGBA 900×840      | 181,000 | `43ef6207b60d0fb29b10a820d369566542254262c1778945c30dfdfb60a48ee6` |
+| `cutouts/tavern.webp`                  | RGBA 900×858      | 189,814 | `bed8007b5e2d0a6b4fef4abb7fb5e1806c448e1fd00cbaa4bfff564693277ebe` |
+| `cutouts/tradehouse.webp`              | RGBA 900×682      | 161,920 | `2140bebef959948fc734c6b9d8be1ac7884782094b32b04efdab7cd017e0db81` |
+| `cutouts/barracks.webp`                | RGBA 900×828      | 170,470 | `0d10085849a2ad8fe0644169da6b182c9fa881d9c9c1d5d47a38cfe73e52c7d3` |
+| `cutouts/stonewall.webp`               | RGBA 900×499      | 109,674 | `adeb8a396ca45e78095aa23586bcdb722e4291074abfec8fd3ff083f3514b041` |
+| `cutouts/shipyard.webp`                | RGBA 900×747      | 189,572 | `d89be75d529fbbf4d7ea51356ddc85de2b13cad3e5eeb51fce1479e1432af83f` |
 | `layers/contact-shadows.webp`          | RGBA 2048×1408    |  22,478 | `361dd6eb8249600077f6eb2a468589f6426998075bcf578391555c149e543e3e` |
-| `layers/empty-backdrop-2048x1408.webp` | RGB 2048×1408     | 303,358 | `6c19ac590f0d5221e0372b48020e16daf44882077880c7c0267a109cf48d2d75` |
+| `layers/empty-backdrop-2048x1408.webp` | RGB 2048×1408     | 303,242 | `4c14305222eeb439c5e1fbd990264f559c2e656a2e53b347b0444a63114cdef9` |
 
 ## Proof outputs
 
 | File                                             | Dimensions |   Bytes | Purpose                                        |
 | ------------------------------------------------ | ---------: | ------: | ---------------------------------------------- |
-| `proofs/checkpoint-contact-sheet-1600x1120.webp` |  1600×1120 | 184,260 | Concise approval summary                       |
-| `proofs/desktop-1440x900.webp`                   |   1440×900 | 210,986 | Native 1024×704 scene in desktop review chrome |
-| `proofs/phone-375x812.webp`                      |    375×812 |  51,312 | Actual 375×258 phone scene                     |
-| `proofs/max-zoom-1024x704.webp`                  |   1024×704 |  91,306 | One current 3× viewport; tavern/economy detail |
-| `proofs/layer-separation-1600x1000.webp`         |  1600×1000 | 184,890 | Empty/RGBA/shadow/slot/depth/anchor evidence   |
-| `proofs/empty-runtime-1024x704.webp`             |   1024×704 | 184,176 | Building-free semantic inspection              |
-| `proofs/scene-runtime-1024x704.webp`             |   1024×704 | 216,370 | Unframed integrated composition                |
+| `proofs/checkpoint-contact-sheet-1600x1120.webp` |  1600×1120 | 181,464 | Concise approval summary                       |
+| `proofs/desktop-1440x900.webp`                   |   1440×900 | 214,692 | Native 1024×704 scene in desktop review chrome |
+| `proofs/phone-375x812.webp`                      |    375×812 |  50,480 | Actual 375×258 phone scene                     |
+| `proofs/max-zoom-1024x704.webp`                  |   1024×704 |  95,514 | One current 3× viewport; tavern/economy detail |
+| `proofs/layer-separation-1600x1000.webp`         |  1600×1000 | 178,194 | Empty/RGBA/shadow/slot/depth/anchor evidence   |
+| `proofs/empty-runtime-1024x704.webp`             |   1024×704 | 192,690 | Building-free semantic inspection              |
+| `proofs/scene-runtime-1024x704.webp`             |   1024×704 | 220,312 | Unframed integrated composition                |
+
+All six `proofs/stress/*-magenta-1024.webp` files are native 1024×1024 composites with the
+900 px cutout centered over uninterrupted magenta and dark-teal fields. They range from
+82,632 to 140,786 bytes and make pale checker islands, edge mattes, and enclosed-gap failures
+visible instead of camouflaging them with another checkerboard.
 
 Every retained WebP, including sources and the 2048 master, is below 300 KiB. This is
 stricter than the checkpoint request for proof files and does not claim final runtime
@@ -122,8 +150,9 @@ payload acceptance for the unfinished full batch.
 
 Inspected at original size on 2026-09-03:
 
-- all seven retained generated sources;
-- all six recovered-alpha cutouts against the viewer's transparency grid;
+- all nine retained generated sources, including active P8 backdrop and P9 shipyard;
+- all six retained masks and all six final RGBA cutouts;
+- all six native 1024 saturated magenta/dark-teal stress composites;
 - empty 2048 master and 1024 semantic proof;
 - unframed 1024 integrated scene;
 - desktop, phone, current 3× crop, layer/anchor sheet, and contact sheet.
@@ -136,30 +165,35 @@ Observed pass conditions:
 - the town hall is civic rather than defensive; the wall is a supporting perimeter piece;
 - tavern's crooked gables/casks, trade house's arcade/awning, barracks' watch stair/drill
   court, and shipyard's hull cradle/crane remain visually distinct;
-- the shipyard carries no painted water and occupies the current shoreline slot;
-- cutouts have no visible pale checker fringe in the integrated native or 3× proof;
+- the shipyard carries no painted water; its upper-right gangway reaches dry sand/limestone
+  while its drydock and lower-left slip remain over water inside the unchanged slot;
+- enclosed crane/roof/railing gaps show the saturated proof background, and cutouts have no
+  detached pale floor matte or visible checker fringe in native stress or the 3× proof;
 - phone composition retains six discoverable silhouettes without permanent labels on the
   scene itself.
 
 ## Automated validation record
 
-`tools/validate_checkpoint.py` passed on 2026-09-03. It checks the complete 22-WebP
-inventory, declared modes and dimensions, metadata removal, 300 KiB ceiling, source
-provenance hashes, prompt coverage, genuine cutout alpha and eight-pixel safety bands,
-Direction B's 38% shadow cap, exact 16:11 geometry, current `SCENE_SLOTS`, and byte-identical
-recomposition of all 15 derived files.
+`tools/validate_checkpoint.py` passed on 2026-09-03. It checks the complete 30-WebP
+inventory, declared modes and dimensions, metadata removal, 300 KiB ceiling, source/mask
+provenance hashes, P1–P9 prompt coverage, genuine cutout alpha, eight-pixel safety bands,
+single alpha-8/alpha-128 subject islands, a five-pixel maximum soft-edge reach, explicit
+enclosed-hole witnesses for all five failed cutouts, six saturated stress fields, Direction
+B's 38% shadow cap, exact 16:11 geometry, current `SCENE_SLOTS`, dry-shore and water
+shipyard witnesses, and byte-identical recomposition of all 21 derived files.
 
 ## Known limitations and next-gate corrections
 
 1. This is a representative subset, not the fourteen-building runtime batch. Starting,
    midgame, full-city, replacement fortifications, citadel accessory, and five faction-flag
    composites remain for checkpoint 2.
-2. The generated source camera and background camera are close but not yet an authored
-   in-place master. The final batch should tighten per-building optical scale, contact edge,
-   and foundation fit while preserving these approved silhouettes.
+2. This is a direction/composition proof, not a final source-sharpness claim. The final
+   batch must author separate high-resolution layers in place instead of treating an
+   upscaled flattened composite as final art, and should tighten per-building optical
+   scale, contact edge, and foundation fit while preserving these approved silhouettes.
 3. Two small wooden training dummies in the barracks can resemble static figures at source
-   scale. They read as rack detail at runtime size; remove or simplify them in final export
-   if the operator reads them as people.
+   scale. They read as rack detail at runtime size, but must be removed or simplified before
+   final export.
 4. The exact current `SCENE_SLOTS` force the tavern/trade pair toward the far left and the
    shipyard to the extreme lower-right. This checkpoint proves those constraints rather
    than silently retuning them. Any final slot change must be separately justified and
