@@ -1,6 +1,6 @@
 # World-map v2 token proof and runtime delivery
 
-**Status:** checkpoint 1 was approved with the recommended city refinement. The approved Direction B family has now been prepared and wired as issue #609's runtime candidate; deterministic in-game phone, tablet, and desktop captures plus checkpoint-2 operator approval remain pending. Visibility and gameplay rules are unchanged.
+**Status:** checkpoint 1 was approved with the recommended city refinement. The approved Direction B family has now been prepared and wired as issue #609's runtime candidate; deterministic in-game phone, tablet, and desktop captures are attached, and checkpoint-2 operator approval remains pending. Visibility and gameplay rules are unchanged.
 
 ## Review the proof
 
@@ -38,4 +38,8 @@ The four overview pages and per-identity `matte-full-footprint-512-*.webp` proof
 
 ## Operator decision
 
-Checkpoint 2 is not yet approved. Review the exact-head phone, tablet, and desktop in-game captures after assets load—including fog states, missing-asset fallback, and theme override cases—before approving the runtime presentation.
+Checkpoint 2 is not yet approved. Review the [runtime capture record](RUNTIME-CAPTURES.md)
+and its exact-size phone, tablet, and desktop in-game views before approving the runtime
+presentation. The captures show the shipped default-art and fog path after assets settle;
+focused tests and independent verification cover missing-asset fallback, preload readiness,
+theme-override priority, and hidden-identity privacy.
