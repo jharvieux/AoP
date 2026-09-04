@@ -1,6 +1,6 @@
 /** Deterministic source binding for the three retained #610 runtime captures. */
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -13,7 +13,45 @@ export const captureBaseline = {
   captured_on: '2026-09-04',
   source_head: 'f1dea84d0d489ef52db3944c47748a708ba40004',
   policy:
-    'This evidence baseline carries across docs-only commits only while every bound runtime source, CSS projection, asset, and capture byte remains exact.',
+    'This evidence baseline carries across evidence-only commits only while the complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact.',
+}
+
+export const frozenCaptureState = {
+  theme: {
+    active_pack: null,
+    mode: 'project default',
+    override: 'none',
+  },
+  captures: {
+    'phone-world': {
+      mounted_screen: 'GameScreen',
+      city_open: false,
+      city_phase: null,
+      building_inspector: null,
+      selected_building: null,
+      selected_unit: 'player flagship and current hex',
+      visible_state: 'resources, minimap, command dock, and traveled dotted course',
+    },
+    'city-inspector': {
+      mounted_screen: 'GameScreen',
+      city_open: true,
+      city_phase: 'full (14 buildings)',
+      building_inspector: 'Shipyard',
+      selected_building: 'Shipyard',
+      selected_unit: null,
+      visible_state: 'selected Shipyard task sheet open',
+    },
+    'interaction-states': {
+      mounted_screen: 'GameScreen',
+      city_open: true,
+      city_phase: 'full (14 buildings)',
+      building_inspector: 'Town Hall',
+      selected_building: 'Town Hall',
+      selected_unit: null,
+      visible_state:
+        'Town Hall sheet open; close focused; info hovered and expanded; Build controls disabled with slash',
+    },
+  },
 }
 
 const commonSources = [
@@ -125,6 +163,63 @@ export const captureSpecs = [
   },
 ]
 
+export const sourceTreePolicies = [
+  {
+    id: 'web-runtime',
+    root: 'apps/web/src',
+    policy: 'all regular files except *.test.* / *.spec.* and __tests__ trees',
+    excludeTests: true,
+  },
+  {
+    id: 'engine-source',
+    root: 'packages/engine/src',
+    policy: 'all regular files',
+    excludeTests: false,
+  },
+  {
+    id: 'shared-source',
+    root: 'packages/shared/src',
+    policy: 'all regular files',
+    excludeTests: false,
+  },
+  {
+    id: 'content-source',
+    root: 'packages/content/src',
+    policy: 'all regular files',
+    excludeTests: false,
+  },
+]
+
+export const buildInputPaths = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'tsconfig.base.json',
+  'apps/web/asset-size-allowlist.json',
+  'apps/web/capacitor.config.ts',
+  'apps/web/index.html',
+  'apps/web/package.json',
+  'apps/web/public/icons/icon-maskable.svg',
+  'apps/web/public/icons/icon.svg',
+  'apps/web/public/manifest.webmanifest',
+  'apps/web/public/sw.js',
+  'apps/web/tsconfig.json',
+  'apps/web/vite-plugins/assetBudget.ts',
+  'apps/web/vite-plugins/swVersion.ts',
+  'apps/web/vite.config.ts',
+  'packages/content/package.json',
+  'packages/content/tsconfig.json',
+  'packages/engine/package.json',
+  'packages/engine/tsconfig.json',
+  'packages/shared/package.json',
+  'packages/shared/tsconfig.json',
+]
+
+export const receiptPaths = [
+  'docs/art/city-harbor-v2/PRODUCTION-OUTPUT-HASHES.json',
+  'docs/art/world-map-v2/runtime-public-receipt.json',
+]
+
 const commonAssets = [
   'apps/web/public/art/resources/gold.png',
   'apps/web/public/art/resources/iron.png',
@@ -137,6 +232,9 @@ const commonAssets = [
 const factionFlags = ['british', 'dutch', 'french', 'pirates', 'spanish'].map(
   (faction) => `apps/web/public/art/factions/${faction}/flag.png`,
 )
+
+const canvasSourcePaths = ['apps/web/src/MapCanvas.tsx', 'apps/web/src/Minimap.tsx']
+const v2BoundCanvasTokens = new Set(['--color-brass', '--color-deep-water'])
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex')
 const normalise = (value) => value.replace(/\s+/g, ' ').trim()
@@ -155,6 +253,42 @@ function readText(path, overrides) {
 function record(path, overrides) {
   const source = readBuffer(path, overrides)
   return { path, bytes: source.byteLength, sha256: sha256(source) }
+}
+
+function isTestPath(path) {
+  return /(?:^|\/)__tests__(?:\/|$)/.test(path) || /\.(?:test|spec)\.[^/]+$/.test(path)
+}
+
+function walkFiles(rootPath) {
+  const result = []
+  const visit = (path) => {
+    for (const entry of readdirSync(join(repoRoot, path), { withFileTypes: true })) {
+      const child = `${path}/${entry.name}`
+      if (entry.isDirectory()) visit(child)
+      else if (entry.isFile()) result.push(child)
+      else throw new Error(`unsupported source-tree entry: ${child}`)
+    }
+  }
+  visit(rootPath)
+  return result
+}
+
+function sourcePolicyFor(path) {
+  return sourceTreePolicies.find((policy) => path.startsWith(`${policy.root}/`))
+}
+
+function shippingSourcePaths(additionalPaths) {
+  const paths = sourceTreePolicies.flatMap((policy) =>
+    walkFiles(policy.root).filter((path) => !policy.excludeTests || !isTestPath(path)),
+  )
+  for (const path of additionalPaths) {
+    const policy = sourcePolicyFor(path)
+    if (!policy || (policy.excludeTests && isTestPath(path))) {
+      throw new Error(`additional source is outside the shipping-source policy: ${path}`)
+    }
+    paths.push(path)
+  }
+  return [...new Set(paths)].sort()
 }
 
 function blockEnd(source, openingBrace) {
@@ -330,6 +464,61 @@ export function buildStylesheetScope(spec, stylesheet, providerSources = []) {
   }
 }
 
+function typedFallbacks(source) {
+  return new Map(
+    [...source.matchAll(/['"](?<name>--[^'"]+)['"]:\s*['"](?<value>#[0-9a-f]+)['"]/gi)].map(
+      (match) => [match.groups.name, match.groups.value],
+    ),
+  )
+}
+
+function canvasTokenCensus(stylesheet, overrides) {
+  const calls = canvasSourcePaths.flatMap((path) =>
+    [
+      ...readText(path, overrides).matchAll(
+        /cssToken\(\s*['"](?<name>--[^'"]+)['"]\s*,\s*['"](?<value>#[0-9a-f]+)['"]\s*\)/gi,
+      ),
+    ].map((match) => ({ path, name: match.groups.name, fallback: match.groups.value })),
+  )
+  const rules = cssRules(stripComments(stylesheet))
+  const rootRules = rules.filter((rule) => rule.selector === ':root' && !rule.wrappers.length)
+  if (rootRules.length !== 1)
+    throw new Error(`expected one top-level :root, found ${rootRules.length}`)
+  const rootTokens = customProperties(rootRules[0].body)
+  const fallbacks = typedFallbacks(readText('apps/web/src/colorTokens.ts', overrides))
+  const byName = new Map()
+  for (const call of calls) {
+    const prior = byName.get(call.name)
+    if (prior && prior.fallback !== call.fallback) {
+      throw new Error(`conflicting Canvas fallback for ${call.name}`)
+    }
+    byName.set(call.name, { name: call.name, fallback: call.fallback })
+  }
+  const tokens = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+  for (const token of tokens) {
+    const cssValue = rootTokens.get(token.name)
+    const typedValue = fallbacks.get(token.name)
+    if (!cssValue || cssValue !== token.fallback || typedValue !== token.fallback) {
+      throw new Error(
+        `Canvas token parity failure ${token.name}: call=${token.fallback}, typed=${typedValue}, CSS=${cssValue}`,
+      )
+    }
+    token.css_value = cssValue
+    token.typed_fallback = typedValue
+  }
+  const escapedTokens = tokens
+    .filter((token) => !v2BoundCanvasTokens.has(token.name))
+    .map((token) => token.name)
+  return {
+    source_paths: canvasSourcePaths,
+    call_count: calls.length,
+    unique_token_count: tokens.length,
+    tokens,
+    schema_v2_escape_count: escapedTokens.length,
+    schema_v2_escape_tokens: escapedTokens,
+  }
+}
+
 function discoveredWorldAssets(overrides) {
   const receipt = JSON.parse(
     readText('docs/art/world-map-v2/runtime-public-receipt.json', overrides),
@@ -373,7 +562,10 @@ function assetsFor(spec, overrides) {
   return [...new Set([...commonAssets, ...surfaceAssets])].sort()
 }
 
-export function buildRuntimeCaptureBindings({ overrides = new Map() } = {}) {
+export function buildRuntimeCaptureBindings({
+  overrides = new Map(),
+  additionalShippingSourcePaths = [],
+} = {}) {
   const stylesheet = readText(stylesheetPath, overrides)
   const scopes = captureSpecs.map((spec) =>
     buildStylesheetScope(
@@ -382,46 +574,51 @@ export function buildRuntimeCaptureBindings({ overrides = new Map() } = {}) {
       spec.componentPropertyProviders.map((path) => readText(path, overrides)),
     ),
   )
-  const sourceSets = Object.fromEntries(
-    captureSpecs.map((spec, index) => [
-      spec.id,
-      {
-        runtime_sources: [...new Set(spec.runtimeSources)]
-          .sort()
-          .map((path) => record(path, overrides)),
-        runtime_assets: assetsFor(spec, overrides).map((path) => record(path, overrides)),
-        stylesheet_scope: scopes[index].sha256,
-      },
-    ]),
+  const assetSets = Object.fromEntries(
+    captureSpecs.map((spec) => [spec.id, assetsFor(spec, overrides)]),
   )
-  const captures = captureSpecs.map((spec) => ({
-    id: spec.id,
-    ...record(spec.path, overrides),
-    dimensions: spec.dimensions,
-    source_set: spec.id,
-  }))
+  const runtimeAssetPaths = [...new Set(Object.values(assetSets).flat())].sort()
   return {
-    schema: 2,
+    schema: 3,
     capture_baseline: captureBaseline,
-    stylesheet_source: {
-      path: stylesheetPath,
-      diagnostic_full_sha256: sha256(Buffer.from(stylesheet)),
-      scopes,
+    binding_boundary: {
+      kind: 'conservative-shipping-tree-manifest-v3',
+      policy:
+        'Any byte or inventory change inside the declared shipping source trees, build inputs, full stylesheet, receipts, runtime assets, frozen state, or captures invalidates this evidence.',
+      source_tree_policies: sourceTreePolicies.map(({ id, root, policy }) => ({
+        id,
+        root,
+        policy,
+      })),
     },
-    source_sets: sourceSets,
-    captures,
+    frozen_capture_state: frozenCaptureState,
+    shipping_sources: shippingSourcePaths(additionalShippingSourcePaths).map((path) =>
+      record(path, overrides),
+    ),
+    build_inputs: buildInputPaths.map((path) => record(path, overrides)),
+    stylesheet_source: {
+      ...record(stylesheetPath, overrides),
+      acceptance: 'full exact-file hash; scoped-selector projections are diagnostic only',
+    },
+    canvas_token_census: canvasTokenCensus(stylesheet, overrides),
+    runtime_assets: {
+      receipts: receiptPaths.map((path) => record(path, overrides)),
+      capture_sets: assetSets,
+      files: runtimeAssetPaths.map((path) => record(path, overrides)),
+    },
+    captures: captureSpecs.map((spec) => ({
+      id: spec.id,
+      ...record(spec.path, overrides),
+      dimensions: spec.dimensions,
+      frozen_state: spec.id,
+    })),
+    diagnostics: {
+      legacy_scoped_stylesheet_projections: scopes,
+    },
   }
 }
 
 export function acceptanceProjection(binding) {
-  return {
-    schema: binding.schema,
-    capture_baseline: binding.capture_baseline,
-    stylesheet_source: {
-      path: binding.stylesheet_source.path,
-      scopes: binding.stylesheet_source.scopes,
-    },
-    source_sets: binding.source_sets,
-    captures: binding.captures,
-  }
+  const { diagnostics: _diagnostics, ...acceptance } = binding
+  return acceptance
 }

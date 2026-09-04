@@ -6,8 +6,12 @@ import { fileURLToPath } from 'node:url'
 import {
   acceptanceProjection,
   bindingPath,
+  buildInputPaths,
   buildRuntimeCaptureBindings,
   captureSpecs,
+  frozenCaptureState,
+  receiptPaths,
+  sourceTreePolicies,
   stylesheetPath,
 } from './runtime-capture-bindings.mjs'
 
@@ -91,52 +95,105 @@ const retainedBinding = JSON.parse(readFileSync(bindingPath, 'utf8'))
 const expectedBinding = buildRuntimeCaptureBindings()
 const projectBinding = (binding) => JSON.stringify(acceptanceProjection(binding))
 const bindingMatches = (candidate) => projectBinding(candidate) === projectBinding(expectedBinding)
+const exactBindingMatches = (candidate) =>
+  JSON.stringify(candidate) === JSON.stringify(expectedBinding)
 const expectedCaptureIds = captureSpecs.map((capture) => capture.id)
 const retainedCaptureIds = retainedBinding.captures.map((capture) => capture.id)
-const retainedSourceSetIds = Object.keys(retainedBinding.source_sets)
-const retainedScopeIds = retainedBinding.stylesheet_source.scopes.map((scope) => scope.id)
+const expectedTopLevelKeys = [
+  'binding_boundary',
+  'build_inputs',
+  'canvas_token_census',
+  'capture_baseline',
+  'captures',
+  'diagnostics',
+  'frozen_capture_state',
+  'runtime_assets',
+  'schema',
+  'shipping_sources',
+  'stylesheet_source',
+]
 const exactInventory =
-  JSON.stringify(Object.keys(retainedBinding).sort()) ===
-    JSON.stringify([
-      'capture_baseline',
-      'captures',
-      'schema',
-      'source_sets',
-      'stylesheet_source',
-    ]) &&
+  retainedBinding.schema === 3 &&
+  JSON.stringify(Object.keys(retainedBinding).sort()) === JSON.stringify(expectedTopLevelKeys) &&
   JSON.stringify(retainedCaptureIds) === JSON.stringify(expectedCaptureIds) &&
-  JSON.stringify(retainedSourceSetIds) === JSON.stringify(expectedCaptureIds) &&
-  JSON.stringify(retainedScopeIds) === JSON.stringify(expectedCaptureIds)
+  JSON.stringify(retainedBinding.build_inputs.map((item) => item.path)) ===
+    JSON.stringify(buildInputPaths) &&
+  JSON.stringify(retainedBinding.runtime_assets.receipts.map((item) => item.path)) ===
+    JSON.stringify(receiptPaths) &&
+  JSON.stringify(retainedBinding.frozen_capture_state) === JSON.stringify(frozenCaptureState) &&
+  JSON.stringify(retainedBinding.binding_boundary.source_tree_policies) ===
+    JSON.stringify(sourceTreePolicies.map(({ id, root, policy }) => ({ id, root, policy })))
 if (!exactInventory) {
   console.error('FAIL runtime source binding inventory equality')
   failures++
 }
-if (!bindingMatches(retainedBinding)) {
-  console.error('FAIL runtime captures are stale for their bound source/CSS/asset bytes')
+if (!bindingMatches(retainedBinding) || !exactBindingMatches(retainedBinding)) {
+  console.error('FAIL runtime captures are stale for their schema-v3 bound inventory or bytes')
   failures++
 }
-const diagnosticHash = retainedBinding.stylesheet_source.diagnostic_full_sha256
-if (!/^[0-9a-f]{64}$/.test(diagnosticHash)) {
-  console.error('FAIL runtime source binding stylesheet diagnostic hash')
+if (
+  retainedBinding.stylesheet_source.path !== stylesheetPath ||
+  !/^[0-9a-f]{64}$/.test(retainedBinding.stylesheet_source.sha256) ||
+  retainedBinding.stylesheet_source.sha256 !==
+    retainedBinding.shipping_sources.find((item) => item.path === stylesheetPath)?.sha256
+) {
+  console.error('FAIL full stylesheet acceptance hash is absent or inconsistent')
+  failures++
+}
+const sourcePaths = retainedBinding.shipping_sources.map((item) => item.path)
+const assetPaths = retainedBinding.runtime_assets.files.map((item) => item.path)
+if (
+  new Set(sourcePaths).size !== sourcePaths.length ||
+  new Set(assetPaths).size !== assetPaths.length ||
+  JSON.stringify(sourcePaths) !== JSON.stringify([...sourcePaths].sort()) ||
+  JSON.stringify(assetPaths) !== JSON.stringify([...assetPaths].sort())
+) {
+  console.error('FAIL schema-v3 source/asset inventory is duplicated or unsorted')
+  failures++
+}
+if (
+  retainedBinding.canvas_token_census.call_count !== 34 ||
+  retainedBinding.canvas_token_census.unique_token_count !== 28 ||
+  retainedBinding.canvas_token_census.schema_v2_escape_count !== 26
+) {
+  console.error('FAIL Canvas token census: expected 34 calls / 28 unique / 26 v2 escapes')
   failures++
 }
 console.log(
-  `PASS runtime source bindings: ${retainedCaptureIds.length} captures / ${retainedSourceSetIds.length} exact source sets`,
+  `PASS schema-v3 source binding: ${retainedCaptureIds.length} captures / ${sourcePaths.length} shipping sources / ${retainedBinding.build_inputs.length} build inputs / ${assetPaths.length} runtime assets / full stylesheet`,
 )
 
 function driftedBuffer(path, suffix = '\nsource-drift') {
   return Buffer.concat([readFileSync(join(repoRoot, path)), Buffer.from(suffix)])
 }
 
-function expectBindingDrift(label, overrides) {
+function expectBindingDrift(label, options) {
   let drifted
   try {
-    drifted = buildRuntimeCaptureBindings({ overrides })
+    drifted = buildRuntimeCaptureBindings(options)
   } catch {
     console.log(`PASS runtime source binding negative control: ${label} rejected`)
     return
   }
   if (projectBinding(drifted) === projectBinding(retainedBinding)) {
+    console.error(`FAIL runtime source binding negative control: ${label} escaped`)
+    failures++
+  } else {
+    console.log(`PASS runtime source binding negative control: ${label} rejected`)
+  }
+}
+
+function replacedSource(path, marker, replacement) {
+  const source = readFileSync(join(repoRoot, path), 'utf8')
+  if (!source.includes(marker))
+    throw new Error(`negative-control marker missing in ${path}: ${marker}`)
+  return source.replace(marker, replacement)
+}
+
+function expectManifestDrift(label, mutate) {
+  const candidate = structuredClone(retainedBinding)
+  mutate(candidate)
+  if (bindingMatches(candidate)) {
     console.error(`FAIL runtime source binding negative control: ${label} escaped`)
     failures++
   } else {
@@ -153,92 +210,111 @@ if (bindingMatches(staleBinding)) {
   console.log('PASS runtime source binding negative control: stale manifest rejected')
 }
 
-const sourceDriftPath = captureSpecs[0].runtimeSources[0]
-expectBindingDrift(
-  'runtime source drift',
-  new Map([[sourceDriftPath, driftedBuffer(sourceDriftPath)]]),
-)
+const sourceDriftPath = 'apps/web/src/App.tsx'
+expectBindingDrift('runtime source drift', {
+  overrides: new Map([[sourceDriftPath, driftedBuffer(sourceDriftPath)]]),
+})
 const assetDriftPath = 'apps/web/public/art/resources/gold.png'
-expectBindingDrift(
-  'runtime asset drift',
-  new Map([[assetDriftPath, driftedBuffer(assetDriftPath)]]),
-)
+expectBindingDrift('runtime asset drift', {
+  overrides: new Map([[assetDriftPath, driftedBuffer(assetDriftPath)]]),
+})
 const captureDriftPath = captureSpecs[0].path
 const captureDrift = Buffer.from(readFileSync(join(repoRoot, captureDriftPath)))
 captureDrift[captureDrift.length - 1] ^= 1
-expectBindingDrift('capture drift', new Map([[captureDriftPath, captureDrift]]))
+expectBindingDrift('capture drift', {
+  overrides: new Map([[captureDriftPath, captureDrift]]),
+})
 
 const stylesheet = readFileSync(join(repoRoot, stylesheetPath), 'utf8')
-const selectedCssMarker = '.resource-hud {'
-if (!stylesheet.includes(selectedCssMarker)) {
-  console.error('FAIL runtime source binding CSS negative-control marker missing')
-  failures++
-} else {
-  expectBindingDrift(
-    'selected CSS drift',
-    new Map([
-      [
-        stylesheetPath,
-        stylesheet.replace(selectedCssMarker, `${selectedCssMarker}\n  opacity: 0.999;`),
-      ],
-    ]),
-  )
-}
-const tokenMarker = '  --surface-panel: #2d1b10;'
-if (!stylesheet.includes(tokenMarker)) {
-  console.error('FAIL runtime source binding token negative-control marker missing')
-  failures++
-} else {
-  expectBindingDrift(
-    'resolved token drift',
-    new Map([[stylesheetPath, stylesheet.replace(tokenMarker, '  --surface-panel: #2d1b11;')]]),
-  )
-}
-const unrelatedCss = `${stylesheet}\n.capture-binding-unrelated { color: #fff; }\n`
-const unrelatedBinding = buildRuntimeCaptureBindings({
-  overrides: new Map([[stylesheetPath, unrelatedCss]]),
-})
-if (projectBinding(unrelatedBinding) !== projectBinding(expectedBinding)) {
-  console.error('FAIL unrelated CSS invalidated the scoped runtime capture binding')
-  failures++
-} else {
-  console.log('PASS runtime source binding negative control: unrelated CSS ignored')
+const cssMutations = [
+  ['app hidden', stylesheet.replace('.app {', '.app {\n  display: none;')],
+  ['new global div hidden selector', `${stylesheet}\ndiv { display: none; }\n`],
+  [
+    'screen transition hidden',
+    stylesheet.replace('.screen-transition {', '.screen-transition {\n  display: none;'),
+  ],
+]
+for (const [label, source] of cssMutations) {
+  if (source === stylesheet) throw new Error(`negative-control CSS marker missing: ${label}`)
+  expectBindingDrift(label, { overrides: new Map([[stylesheetPath, source]]) })
 }
 
-for (const [label, candidate] of [
-  ['unresolved token', stylesheet.replace('  --stroke-standard: #725838;\n', '')],
+const sourceMutations = [
   [
-    'cyclic token',
-    stylesheet
-      .replace('  --stroke-standard: #725838;', '  --stroke-standard: var(--stroke-emphasized);')
-      .replace('  --stroke-emphasized: #cbb17a;', '  --stroke-emphasized: var(--stroke-standard);'),
+    'App wrapper hidden',
+    'apps/web/src/App.tsx',
+    '<div className="app">',
+    '<div className="app" style={{ display: \'none\' }}>',
   ],
-]) {
-  try {
-    buildRuntimeCaptureBindings({ overrides: new Map([[stylesheetPath, candidate]]) })
-  } catch (error) {
-    if (!String(error).includes(label.split(' ')[0])) {
-      console.error(`FAIL ${label} produced the wrong binding failure: ${error}`)
-      failures++
-    } else {
-      console.log(`PASS runtime source binding negative control: ${label} rejected`)
-    }
-    continue
-  }
-  console.error(`FAIL runtime source binding negative control: ${label} escaped`)
-  failures++
+  [
+    'theme resolver URL changed',
+    'apps/web/src/theme/resolve.ts',
+    'return pack?.assets[assetKey(kind, contentId)]?.dataUrl',
+    "return pack?.assets[assetKey(kind, contentId)]?.dataUrl?.replace('data:', 'https:')",
+  ],
+  [
+    'engine ship hull changed',
+    'packages/engine/src/ships.ts',
+    'hull: ship.hull,',
+    'hull: ship.hull + 1,',
+  ],
+  [
+    'engine visibility changed',
+    'packages/engine/src/visibility.ts',
+    'if (city.ownerId === playerId) add(city.position, cityVisionRadius)',
+    'if (city.ownerId === playerId) add(city.position, cityVisionRadius + 1)',
+  ],
+  [
+    'shared canAfford changed',
+    'packages/shared/src/index.ts',
+    'pool.gold >= (cost.gold ?? 0)',
+    'pool.gold > (cost.gold ?? 0)',
+  ],
+]
+for (const [label, path, marker, replacement] of sourceMutations) {
+  expectBindingDrift(label, {
+    overrides: new Map([[path, replacedSource(path, marker, replacement)]]),
+  })
 }
-const providerPath = 'apps/web/src/CityScene.tsx'
-const providerSource = readFileSync(join(repoRoot, providerPath), 'utf8')
-const providerMarker = "'--city-shadow-left':"
-if (!providerSource.includes(providerMarker)) {
-  console.error('FAIL runtime source binding component-provider marker missing')
-  failures++
-} else {
-  expectBindingDrift(
-    'component property provider drift',
-    new Map([[providerPath, providerSource.replace(providerMarker, "'--removed-shadow-left':")]]),
-  )
+
+const newSourcePath = 'apps/web/src/captureBindingInventoryProbe.ts'
+expectBindingDrift('new shipping source inventory entry', {
+  overrides: new Map([[newSourcePath, 'export const captureBindingInventoryProbe = true\n']]),
+  additionalShippingSourcePaths: [newSourcePath],
+})
+expectBindingDrift('new runtime import', {
+  overrides: new Map([
+    [
+      'apps/web/src/App.tsx',
+      `import './captureBindingInventoryProbe'\n${readFileSync(join(repoRoot, 'apps/web/src/App.tsx'), 'utf8')}`,
+    ],
+  ]),
+})
+expectBindingDrift('build input drift', {
+  overrides: new Map([['apps/web/index.html', driftedBuffer('apps/web/index.html')]]),
+})
+expectBindingDrift('receipt drift', {
+  overrides: new Map([
+    [
+      'docs/art/world-map-v2/runtime-public-receipt.json',
+      driftedBuffer('docs/art/world-map-v2/runtime-public-receipt.json', '\n'),
+    ],
+  ]),
+})
+expectManifestDrift('frozen capture state drift', (candidate) => {
+  candidate.frozen_capture_state.theme.override = 'custom theme pack'
+})
+
+const alterHex = (value) => `${value.slice(0, -1)}${value.endsWith('0') ? '1' : '0'}`
+for (const name of retainedBinding.canvas_token_census.schema_v2_escape_tokens) {
+  const token = retainedBinding.canvas_token_census.tokens.find((item) => item.name === name)
+  const marker = `${name}: ${token.css_value};`
+  if (!stylesheet.includes(marker)) throw new Error(`Canvas-token marker missing: ${marker}`)
+  expectBindingDrift(`schema-v2 escaped Canvas token ${name}`, {
+    overrides: new Map([
+      [stylesheetPath, stylesheet.replace(marker, `${name}: ${alterHex(token.css_value)};`)],
+    ]),
+  })
 }
 const spec = readFileSync(join(root, 'README.md'), 'utf8')
 const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
@@ -249,8 +325,10 @@ const approvalMarkers = [
   'f1dea84d0d489ef52db3944c47748a708ba40004',
   'issuecomment-5544612671',
   'docs/evidence-only commits only while',
-  'every bound runtime source, CSS projection, asset, and capture byte remains exact',
-  'any material bound-byte change requires renewed capture approval',
+  'complete schema-v3',
+  'full stylesheet',
+  'frozen capture states',
+  'requires renewed capture approval',
 ]
 for (const [name, source] of [
   ['README.md', spec],
@@ -264,6 +342,23 @@ for (const [name, source] of [
   }
 }
 console.log('PASS operator approval is bound to exact runtime-source and capture bytes')
+for (const marker of [
+  '212 shipping source files',
+  '146 non-test files',
+  'all 29 engine source files',
+  'all 19 shared source files',
+  'all 18 content source files',
+  '22 web/package build inputs',
+  'all **96** referenced public assets',
+  'full `apps/web/src/styles.css` bytes as acceptance evidence',
+  '34 calls and 28 unique MapCanvas/Minimap tokens',
+  '26 values that schema v2 failed to include',
+]) {
+  if (!runtimeReport.includes(marker)) {
+    console.error(`FAIL RUNTIME-VERIFICATION.md: stale schema-v3 census ${marker}`)
+    failures++
+  }
+}
 for (const marker of [
   '--color-action',
   '44 × 44',

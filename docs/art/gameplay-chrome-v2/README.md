@@ -94,8 +94,8 @@ City uses the same HUD/dock type and panel grammar as map. Its selected-building
 
 - `compose.mjs` embeds the approved Direction B source backdrop hashes by local path and writes deterministic self-contained SVG mockups.
 - `RUNTIME-INVENTORY.md` records the exact pre-implementation token, glyph, geometry, and local/multiplayer drift census.
-- `RUNTIME-CAPTURE-BINDINGS.json` binds every retained PNG to the exact React/Canvas/icon/sheet sources, runtime art/font resources, and scoped stylesheet/token closure that determine it. The full stylesheet hash is diagnostic only.
-- `build-runtime-capture-bindings.mjs` regenerates that schema-v2 binding; unrelated CSS does not invalidate it, while selected rules, recursively resolved tokens, component-provided properties, runtime sources/assets, or capture bytes do.
+- `RUNTIME-CAPTURE-BINDINGS.json` is the conservative schema-v3 evidence boundary. It binds the exact inventory and bytes of every non-test file under `apps/web/src`, every file under the engine/shared/content source trees, the web build entry/config inputs, the complete stylesheet, the two runtime-art receipts and their 96 referenced runtime assets, all three captures, and the explicit default-theme/mounted-screen/city/building/selection state frozen in each frame.
+- `build-runtime-capture-bindings.mjs` regenerates that boundary from the repository trees. Any added, removed, renamed, or changed bound file invalidates the evidence. The older selector projections remain diagnostics only; the full `styles.css` hash is acceptance evidence so broad selectors, cascade changes, keyframes, and previously unreferenced Canvas tokens cannot escape.
 - `RUNTIME-VERIFICATION.md` records implemented surfaces, test/build budgets, and exact-source evidence.
 - `validate.mjs` checks proof dimensions, embedded backdrop evidence, geometry, asset size and contract language, then checks source-binding inventory and drift controls, runtime token parity, icon markers, glyph removal, control states, and local/multiplayer parity; it exits nonzero on failure.
 - The final review files are self-contained SVG. They are intentionally not copied into `apps/web/public` and must not be treated as shippable runtime assets.
@@ -107,5 +107,7 @@ Run `node compose.mjs && node build-runtime-capture-bindings.mjs && node validat
 ## Approval record
 
 Approved for implementation: parchment readability, `#c8962c` action/focus, `#c9a227` brass status/selection, Cabin-first functional typography with Pirata One only for short headings, 44 px vector-icon controls with explicit states, and Direction B art remaining visually dominant.
+
+The operative evidence boundary for the runtime record below is the complete schema-v3 source-tree inventory, build inputs, full stylesheet, runtime receipts/assets, frozen capture states, and capture bytes; the older scoped CSS projections are diagnostic only.
 
 On 2026-09-04, the operator approved all three exact-source runtime frames at `f1dea84d0d489ef52db3944c47748a708ba40004`; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5544612671). That approval carries across docs/evidence-only commits only while `RUNTIME-CAPTURE-BINDINGS.json` proves every bound runtime source, CSS projection, asset, and capture byte remains exact; any material bound-byte change requires renewed capture approval.
