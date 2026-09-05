@@ -1854,14 +1854,13 @@ button.primary.secondary {
 
 .city-overlay__identity h1 {
   margin: 0;
-  overflow: hidden;
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: var(--type-title-size);
   font-weight: 400;
   line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .city-overlay__identity h1 + span {
@@ -2372,11 +2371,11 @@ button.primary.secondary {
 }
 
 .city-status-card strong {
-  overflow: hidden;
   color: var(--text-primary);
   font-size: var(--type-label-size);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .city-status-card__label {
@@ -2802,7 +2801,24 @@ button.primary.secondary {
   }
 }
 
-/* 320px compact phones: retain 44px controls and trade decorative copy first. */
+/* Narrow phones stack status copy beside the action so values can wrap without
+   squeezing the harbor control or widening the overlay. */
+@media (max-width: 429px) {
+  .city-status-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .city-status-card:not(.city-status-card--action) {
+    grid-column: 1;
+  }
+
+  .city-status-card--action {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* 320px compact phones retain 44px controls in tighter header and zoom rows. */
 @media (max-width: 374px) {
   .city-overlay__identity h1 {
     max-width: 136px;
@@ -2824,10 +2840,6 @@ button.primary.secondary {
 
   .city-scene-zoom output {
     min-width: 40px;
-  }
-
-  .city-status-card strong {
-    max-width: 90px;
   }
 }
 

@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+// @ts-expect-error Vitest runs in Node; the browser app intentionally excludes Node ambient types.
+import { readFileSync } from 'node:fs'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { GAME_SETUP } from '@aop/content'
 import { createGame, type GameConfig } from '@aop/engine'
@@ -16,6 +18,15 @@ const theme = vi.hoisted(() => ({
 
 const FOCUSABLE_SELECTOR = 'button:not(:disabled), [tabindex]:not([tabindex="-1"])'
 const ORIGINAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight }
+const workingDirectory = (
+  globalThis as typeof globalThis & { process: { cwd: () => string } }
+).process.cwd()
+const stylesSource = readFileSync(
+  workingDirectory.endsWith('/apps/web')
+    ? `${workingDirectory}/src/styles.css`
+    : `${workingDirectory}/apps/web/src/styles.css`,
+  'utf8',
+) as string
 
 afterEach(() => {
   cleanup()
@@ -51,6 +62,18 @@ function usePhoneLayout(matches: boolean) {
     vi.fn(() => query),
   )
   return { query, listeners }
+}
+
+function phoneStyles(width: 320 | 375): string {
+  const queries = [
+    '@media (max-width: 767px)',
+    '@media (max-width: 767px) and (orientation: portrait)',
+    '@media (max-width: 429px)',
+    width === 320
+      ? '@media (max-width: 374px)'
+      : '@media (min-width: 375px) and (max-width: 429px)',
+  ]
+  return queries.reduce((css, query) => css.replace(query, '@media all'), stylesSource)
 }
 
 vi.mock('./theme/ThemeContext', () => ({
@@ -518,26 +541,91 @@ describe('CityScreen dedicated overlay', () => {
     expect(props.onClose).not.toHaveBeenCalled()
   })
 
-  it('keeps both city-cycle controls at 44px in the 320px phone layout', () => {
-    usePhoneLayout(true)
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 568 })
-    const props = cityScreenProps()
-    const secondCity = { ...props.city, id: 'city-second', name: 'Second Harbor' }
-    const onSelectCity = vi.fn()
-    const view = render(
-      <CityScreen {...props} cities={[props.city, secondCity]} onSelectCity={onSelectCity} />,
-    )
+  it.each([
+    { width: 320, height: 568 },
+    { width: 375, height: 812 },
+  ] as const)(
+    'keeps identity, status, and action values lossless at $width x $height',
+    ({ width, height }) => {
+      Object.defineProperties(window, {
+        innerWidth: { configurable: true, value: width },
+        innerHeight: { configurable: true, value: height },
+      })
+      usePhoneLayout(true)
 
-    for (const name of ['Previous city', 'Next city']) {
-      const control = view.getByRole('button', { name })
-      const computed = getComputedStyle(control)
-      expect(computed.minWidth).toBe('44px')
-      expect(computed.minHeight).toBe('44px')
-      fireEvent.click(control)
-    }
-    expect(onSelectCity).toHaveBeenCalledTimes(2)
-  })
+      const props = cityScreenProps()
+      const secondCity = { ...props.city, id: 'city-second', name: 'Second Harbor' }
+      const onSelectCity = vi.fn()
+      const view = render(
+        <>
+          <style>{phoneStyles(width)}</style>
+          <CityScreen
+            {...props}
+            cities={[props.city, secondCity]}
+            onSelectCity={onSelectCity}
+            portDefenderCount={12}
+          />
+        </>,
+      )
+
+      const title = view.getByRole('heading', { name: 'Your Capital' })
+      const status = view.container.querySelector<HTMLElement>('.city-status-strip')!
+      const values = [...status.querySelectorAll<HTMLElement>('strong')]
+      const action = view.getByRole('button', { name: 'Garrison' })
+      expect([
+        title.textContent,
+        ...values.map((value) => value.textContent),
+        action.textContent,
+      ]).toEqual(['Your Capital', 'Your Flagship', 'No garrison captain', 'Garrison'])
+      expect(
+        [title, ...values, action].every((value) => !value.closest('[aria-hidden="true"]')),
+      ).toBe(true)
+
+      title.textContent = 'Your ExtraordinarilyLongCapitalHarborName'
+      values[0]!.textContent = 'Your BartholomewRobertsLongFlagshipName'
+      action.textContent = 'Ungarrison'
+
+      for (const [value, maxWidth] of [
+        [title, width === 320 ? '136px' : '178px'],
+        [values[0]!, 'none'],
+        [values[1]!, 'none'],
+      ] as const) {
+        const computed = getComputedStyle(value)
+        expect([
+          computed.overflow === 'hidden' || computed.textOverflow === 'ellipsis',
+          computed.maxWidth,
+          computed.whiteSpace,
+          computed.overflowWrap,
+        ]).toEqual([false, maxWidth, 'normal', 'anywhere'])
+      }
+
+      const actionStyle = getComputedStyle(action)
+      const actionCardStyle = getComputedStyle(action.closest('.city-status-card--action')!)
+      expect(getComputedStyle(status).gridTemplateColumns).toBe('minmax(0, 1fr) auto')
+      for (const card of status.querySelectorAll<HTMLElement>(
+        '.city-status-card:not(.city-status-card--action)',
+      )) {
+        expect([getComputedStyle(card).gridColumn, getComputedStyle(card).minWidth]).toEqual([
+          '1',
+          '0px',
+        ])
+      }
+      expect([
+        action.textContent,
+        actionStyle.minWidth,
+        actionStyle.minHeight,
+        actionStyle.textOverflow,
+      ]).toEqual(['Ungarrison', '80px', '44px', 'clip'])
+      expect([actionCardStyle.gridColumn, actionCardStyle.gridRow]).toEqual(['2', '1 / span 2'])
+      for (const name of ['Previous city', 'Next city']) {
+        const control = view.getByRole('button', { name })
+        const computed = getComputedStyle(control)
+        expect([computed.minWidth, computed.minHeight]).toEqual(['44px', '44px'])
+        fireEvent.click(control)
+      }
+      expect(onSelectCity).toHaveBeenCalledTimes(2)
+    },
+  )
 
   it('contains focus, inerts the map, restores the opener, and uses Escape one layer at a time', async () => {
     const props = cityScreenProps()
