@@ -13,14 +13,22 @@ const repoRoot = resolve(docsDir, '../../..')
 const bindingPath = resolve(docsDir, 'RUNTIME-CAPTURE-BINDINGS.json')
 const receiptPath = resolve(docsDir, 'RUNTIME-CAPTURE-RECEIPT.json')
 const recordPath = resolve(docsDir, 'RUNTIME-CAPTURES.md')
-const sourceHead = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
-const priorSourceHead = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
+const sourceHead = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
+const priorCaptureSourceHead = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
+const historicalApprovedSourceHead = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
 const pendingStatus = 'captured-pending-direct-operator-approval'
 const historicalApproval = {
   status: 'historical-source-only',
-  sourceHead: priorSourceHead,
+  sourceHead: historicalApprovedSourceHead,
   evidenceHead: 'dc11b60738f4f14b896532bf2db323b2bd054f5c',
   record: 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344',
+  reusable: false,
+}
+const supersededCapture = {
+  sourceHead: priorCaptureSourceHead,
+  recordHead: 'b64ae4c02c3c31342e1fbf70f87b9c07203f86d2',
+  bindingSha256: 'd2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db',
+  approval: { status: 'pending-direct-operator-approval', record: null },
   reusable: false,
 }
 
@@ -70,6 +78,7 @@ const proposal = parseArgs(process.argv.slice(2))
 assert(proposal.schema === 1, 'unexpected proposal schema')
 assert(proposal.kind === 'unapproved-city-runtime-evidence-proposal', 'unexpected proposal kind')
 assert(proposal.sourceHead === sourceHead, 'proposal source head drift')
+assert(proposal.supersededCaptureHead === sourceHead, 'proposal superseded capture head drift')
 assert(proposal.targetCount === 28 && proposal.uniqueBrowserFrames === 22, 'proposal count drift')
 assert(
   proposal.approval?.status === 'pending-direct-operator-approval' &&
@@ -96,6 +105,7 @@ binding.captureSourceHead = sourceHead
 binding.captureStatus = pendingStatus
 binding.approval = { status: 'pending-direct-operator-approval', evidenceHead: null, record: null }
 binding.historicalApproval = historicalApproval
+binding.supersededCapture = supersededCapture
 binding.sourceTransition = {
   classification: 'exact-source-recaptured-pending-approval',
   renderedMarkupChanged: true,
@@ -112,7 +122,12 @@ binding.captures = binding.captures.map((entry) => {
     proposalEntry.bytes === observed.bytes && proposalEntry.sha256 === observed.sha256,
     `${entry.path}: retained capture differs from proposal`,
   )
-  return { ...entry, ...observed }
+  return {
+    ...entry,
+    ...observed,
+    requiredVisibleText: proposalEntry.requiredVisibleText,
+    requireNoSemanticTextOverflow: proposalEntry.requireNoSemanticTextOverflow,
+  }
 })
 
 receipt.sourceHead = sourceHead
@@ -125,11 +140,11 @@ receipt.captureOrigin = {
   nativeSizeInspection: 'completed-by-integration-owner',
 }
 receipt.sourceTransition = {
-  from: priorSourceHead,
+  from: priorCaptureSourceHead,
   to: sourceHead,
   classification: 'exact-source-recaptured-pending-approval',
   changedBehavior:
-    'World-map chrome, responsive overlay, camera, minimap, and reduced-motion source changed; city evidence was renewed because shared MatchScreen and stylesheet inputs changed.',
+    'Final narrow-phone Defense status wrapping and command-dock containment changed shared city presentation after the superseded unapproved capture wave.',
   renderedMarkupChanged: true,
   stylesChanged: true,
   artChanged: false,
@@ -142,7 +157,15 @@ receipt.checkpoints.checkpoint2 = {
   evidenceHead: null,
   record: null,
   historicalApproval,
+  supersededCapture,
 }
+receipt.coverage.semanticTextEvidence = proposal.captures
+  .filter((entry) => entry.requireNoSemanticTextOverflow)
+  .map((entry) => ({
+    path: entry.path,
+    requiredVisibleText: entry.requiredVisibleText,
+    requireNoSemanticTextOverflow: true,
+  }))
 
 const bindingConfig = (await resolveConfig(bindingPath)) ?? {}
 writeFileSync(
@@ -160,6 +183,7 @@ const captureRecords = new Map(
 )
 const report = readRegular(recordPath)
   .toString('utf8')
+  .replaceAll(priorCaptureSourceHead, sourceHead)
   .replace(
     /^(\| `([^`]+\.jpg)`\s+\|.*?\|\s*)([\d,]+)(\s+\|\s+`)([a-f0-9]{64})(`\s+\|)$/gm,
     (line, prefix, name, _bytes, separator, _digest, suffix) => {

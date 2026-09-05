@@ -1,5 +1,6 @@
 import { GAME_SETUP, buildContentCatalog } from '@aop/content'
 import { createGame, type GameConfig } from '@aop/engine'
+import { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CityScreen } from '../../../../../apps/web/src/CityScreen'
 import { ThemeProvider } from '../../../../../apps/web/src/theme/ThemeContext'
@@ -28,6 +29,84 @@ const config: GameConfig = {
 const captureId = new URLSearchParams(window.location.search).get('capture')
 const capture = fixtures.captures.find((candidate) => candidate.id === captureId)
 
+function EvidenceDiagnostics({
+  requiredVisibleText,
+  requireNoSemanticTextOverflow,
+}: {
+  requiredVisibleText: readonly string[]
+  requireNoSemanticTextOverflow: boolean
+}) {
+  useEffect(() => {
+    let secondFrame = 0
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        const root = document.querySelector<HTMLElement>('[data-evidence-fixture]')
+        const semanticElements = [
+          ...(root?.querySelectorAll<HTMLElement>(
+            '.city-overlay__identity h1, .city-status-card, .city-status-card__label, .city-status-card strong, .city-status-card > span:not(.city-status-card__label)',
+          ) ?? []),
+        ]
+        const normalise = (value: string) => value.replace(/\s+/g, ' ').trim()
+        const tolerance = 1
+        const escapes = (inner: DOMRect, outer: DOMRect) =>
+          inner.left < outer.left - tolerance ||
+          inner.top < outer.top - tolerance ||
+          inner.right > outer.right + tolerance ||
+          inner.bottom > outer.bottom + tolerance
+        const clipped = (element: HTMLElement) => {
+          const bounds = element.getBoundingClientRect()
+          const style = getComputedStyle(element)
+          const viewport = new DOMRect(0, 0, window.innerWidth, window.innerHeight)
+          const statusCard = element.closest<HTMLElement>('.city-status-card')
+          const escapesStatusCard =
+            statusCard !== null &&
+            statusCard !== element &&
+            escapes(bounds, statusCard.getBoundingClientRect())
+          const clipsOverflow =
+            ['hidden', 'clip'].includes(style.overflowX) ||
+            ['hidden', 'clip'].includes(style.overflowY) ||
+            style.textOverflow === 'ellipsis' ||
+            style.whiteSpace === 'nowrap'
+          const meaningfulOwnOverflow =
+            element.scrollWidth - element.clientWidth > tolerance ||
+            element.scrollHeight - element.clientHeight > tolerance
+          return (
+            style.visibility === 'hidden' ||
+            style.display === 'none' ||
+            bounds.width === 0 ||
+            bounds.height === 0 ||
+            escapes(bounds, viewport) ||
+            escapesStatusCard ||
+            (clipsOverflow && meaningfulOwnOverflow)
+          )
+        }
+        const missingOrClippedText = requiredVisibleText.filter(
+          (text) =>
+            !semanticElements.some(
+              (element) => normalise(element.textContent ?? '') === text && !clipped(element),
+            ),
+        )
+        const overflow = semanticElements.filter(clipped)
+
+        document.documentElement.dataset.evidenceRequiredVisibleText =
+          requiredVisibleText.join(' | ') || 'none'
+        document.documentElement.dataset.evidenceRequiredTextState =
+          missingOrClippedText.length === 0
+            ? 'visible'
+            : `missing-or-clipped: ${missingOrClippedText.join(' | ')}`
+        document.documentElement.dataset.evidenceSemanticTextOverflow =
+          requireNoSemanticTextOverflow && overflow.length > 0 ? 'detected' : 'none'
+      })
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [requiredVisibleText, requireNoSemanticTextOverflow])
+
+  return null
+}
+
 function Fixture() {
   if (!capture) {
     return (
@@ -46,6 +125,10 @@ function Fixture() {
   }
 
   const stateId = capture.state as FixtureStateId
+  const captureRequirements = capture as typeof capture & {
+    requiredVisibleText?: readonly string[]
+    requireNoSemanticTextOverflow?: boolean
+  }
   const fixture = fixtures.states[stateId]
   const game = createGame(config)
   const player = game.players.find((candidate) => candidate.id === 'player-0')!
@@ -75,6 +158,10 @@ function Fixture() {
   return (
     <ThemeProvider>
       <div className="app" data-evidence-fixture={capture.id}>
+        <EvidenceDiagnostics
+          requiredVisibleText={captureRequirements.requiredVisibleText ?? []}
+          requireNoSemanticTextOverflow={captureRequirements.requireNoSemanticTextOverflow ?? false}
+        />
         <CityScreen
           city={city}
           captain={captain}

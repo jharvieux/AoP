@@ -1,7 +1,7 @@
 # Gilded Harbor city art — production candidate
 
 > **#613 runtime approval pending:** the eight replacement captures were produced and
-> inspected against exact source `a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`, but their
+> inspected against exact source `c1824f22bf14dca6d38f7519fd99affd789a8130`, but their
 > historical approval cannot approve these new pixels. The exact 37-frame renewal record lives in
 > [`../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md`](../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md).
 

@@ -1,8 +1,8 @@
 {
   "schema": 3,
   "date": "2026-09-05",
-  "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
-  "captureSourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "captureSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "captureStatus": "captured-pending-direct-operator-approval",
   "approval": {
     "status": "pending-direct-operator-approval",
@@ -16,6 +16,16 @@
     "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
     "reusable": false
   },
+  "supersededCapture": {
+    "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+    "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+    "approval": {
+      "status": "pending-direct-operator-approval",
+      "record": null
+    },
+    "reusable": false
+  },
   "captureOrigin": {
     "workflow": "truthful shipping-component import harness with visible shipping controls",
     "harness": "docs/art/city-ui-v2/tools/runtime-harness",
@@ -24,7 +34,7 @@
     "programmaticFontOrImageAwaitClaimed": false,
     "visualSettleInspection": "completed-by-integration-owner",
     "nativeSizeInspection": "completed-by-integration-owner",
-    "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+    "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130"
   },
   "shipping_sources": [
     {
@@ -54,7 +64,7 @@
   ],
   "stylesheet_source": {
     "path": "apps/web/src/styles.css",
-    "diagnostic_full_sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7",
+    "diagnostic_full_sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0",
     "scope": {
       "kind": "city-scene-selector-token-closure-v1",
       "sha256": "1c56ca758104e1c0f75ec97912b6a429977e4c979634eed7bb69a3c570008766",
@@ -463,50 +473,50 @@
     {
       "path": "runtime-captures/full-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 241364,
-      "sha256": "da8e255f134f82135bd97bfc1e6a6f49ba5fcd0591ad80a78661804c6e006928"
+      "bytes": 242624,
+      "sha256": "7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d"
     },
     {
       "path": "runtime-captures/full-desktop-3x-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 221797,
-      "sha256": "704a3449008342fa57cf3d6ea5879d7096c046ebce4c3495b9e122c72ce2e6e0"
+      "bytes": 217395,
+      "sha256": "91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17"
     },
     {
       "path": "runtime-captures/full-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 53418,
-      "sha256": "bca3cd1b04de09916344f1040688914a23b7b64e3b7d42c0e14a177777d321c4"
+      "bytes": 54215,
+      "sha256": "e67bf68f329bb5cabcd5fbf03cf47130c27a187555c720b9e08184da2b84d22e"
     },
     {
       "path": "runtime-captures/full-phone-3x-center-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 51196,
-      "sha256": "d50a451d33471ab40a195301f0fb362e45be2d6b3c32b881b7082daa7330ef22"
+      "bytes": 51971,
+      "sha256": "e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696"
     },
     {
       "path": "runtime-captures/full-phone-3x-shipyard-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 40114,
-      "sha256": "b698c7a907aa11c04aa118448cc9cf99b2cde71ea71a509163a3ec6a7d541cc2"
+      "bytes": 41210,
+      "sha256": "b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e"
     },
     {
       "path": "runtime-captures/midgame-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 237477,
-      "sha256": "cbc12a310450ab6c85641df6e6b28983fa87143020a447d54e29fef365b11af7"
+      "bytes": 238547,
+      "sha256": "3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3"
     },
     {
       "path": "runtime-captures/starting-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 237116,
-      "sha256": "b5cae3bfd07ab97c8aa6eaba53162d2bdaa49c8eeef3921254350e112b523678"
+      "bytes": 238120,
+      "sha256": "fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4"
     },
     {
       "path": "runtime-captures/starting-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 52088,
-      "sha256": "6cc22627a0f2c0838efcb9f36589e9e72e095122fd23fa6eabf003962ff28205"
+      "bytes": 52961,
+      "sha256": "d15dcb92c92f41639415e8f0933d6869c68f15e5ea2f7e8073f72865f83afd6d"
     }
   ]
 }

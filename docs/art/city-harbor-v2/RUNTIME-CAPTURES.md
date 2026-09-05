@@ -3,7 +3,7 @@
 ## Result
 
 The live browser capture gate was refreshed on 2026-09-05 against exact #613 target source
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`. A truthful harness imported the shipping
+`c1824f22bf14dca6d38f7519fd99affd789a8130`. A truthful harness imported the shipping
 `CityScreen` and `CityScene` components and created explicit Pirate starting, midgame, and
 full fixtures. Shipping zoom controls were operated visibly. No storage mutation, direct
 post-construction `GameState` edit, or synthetic visual reimplementation was used.
@@ -36,14 +36,14 @@ The live game reached:
 
 | File                                                  | State / viewport                                 |   Bytes | SHA-256                                                            |
 | ----------------------------------------------------- | ------------------------------------------------ | ------: | ------------------------------------------------------------------ |
-| `runtime-captures/starting-desktop-1440x900.jpg`      | Starting, desktop, 1×                            | 237,116 | `b5cae3bfd07ab97c8aa6eaba53162d2bdaa49c8eeef3921254350e112b523678` |
-| `runtime-captures/starting-phone-390x844.jpg`         | Starting, phone, 1×                              |  52,088 | `6cc22627a0f2c0838efcb9f36589e9e72e095122fd23fa6eabf003962ff28205` |
-| `runtime-captures/midgame-desktop-1440x900.jpg`       | Eight-building midgame, desktop, 1×              | 237,477 | `cbc12a310450ab6c85641df6e6b28983fa87143020a447d54e29fef365b11af7` |
-| `runtime-captures/full-desktop-1440x900.jpg`          | Fully built, desktop, 1×                         | 241,364 | `da8e255f134f82135bd97bfc1e6a6f49ba5fcd0591ad80a78661804c6e006928` |
-| `runtime-captures/full-phone-390x844.jpg`             | Fully built, phone, 1×                           |  53,418 | `bca3cd1b04de09916344f1040688914a23b7b64e3b7d42c0e14a177777d321c4` |
-| `runtime-captures/full-phone-3x-center-390x844.jpg`   | Fully built, phone, 3× Town Hall/flag detail     |  51,196 | `d50a451d33471ab40a195301f0fb362e45be2d6b3c32b881b7082daa7330ef22` |
-| `runtime-captures/full-phone-3x-shipyard-390x844.jpg` | Fully built, phone, 3× shoreline/shipyard detail |  40,114 | `b698c7a907aa11c04aa118448cc9cf99b2cde71ea71a509163a3ec6a7d541cc2` |
-| `runtime-captures/full-desktop-3x-1440x900.jpg`       | Fully built, desktop, 3× Town Hall/flag detail   | 221,797 | `704a3449008342fa57cf3d6ea5879d7096c046ebce4c3495b9e122c72ce2e6e0` |
+| `runtime-captures/starting-desktop-1440x900.jpg`      | Starting, desktop, 1×                            | 238,120 | `fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4` |
+| `runtime-captures/starting-phone-390x844.jpg`         | Starting, phone, 1×                              |  52,961 | `d15dcb92c92f41639415e8f0933d6869c68f15e5ea2f7e8073f72865f83afd6d` |
+| `runtime-captures/midgame-desktop-1440x900.jpg`       | Eight-building midgame, desktop, 1×              | 238,547 | `3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3` |
+| `runtime-captures/full-desktop-1440x900.jpg`          | Fully built, desktop, 1×                         | 242,624 | `7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d` |
+| `runtime-captures/full-phone-390x844.jpg`             | Fully built, phone, 1×                           |  54,215 | `e67bf68f329bb5cabcd5fbf03cf47130c27a187555c720b9e08184da2b84d22e` |
+| `runtime-captures/full-phone-3x-center-390x844.jpg`   | Fully built, phone, 3× Town Hall/flag detail     |  51,971 | `e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696` |
+| `runtime-captures/full-phone-3x-shipyard-390x844.jpg` | Fully built, phone, 3× shoreline/shipyard detail |  41,210 | `b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e` |
+| `runtime-captures/full-desktop-3x-1440x900.jpg`       | Fully built, desktop, 3× Town Hall/flag detail   | 217,395 | `91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17` |
 
 Every retained capture is below the repository's 300 KiB per-image ceiling. JPEG is used
 only for review evidence; shipping assets remain the separately validated WebPs.

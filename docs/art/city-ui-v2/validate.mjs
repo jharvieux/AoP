@@ -5,18 +5,26 @@ import { fileURLToPath } from 'node:url'
 
 const DOCS_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(DOCS_DIR, '../../..')
-const SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
+const SOURCE_HEAD = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
 const CAPTURE_SOURCE_HEAD = SOURCE_HEAD
-const PRIOR_CAPTURE_SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
+const PRIOR_CAPTURE_SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
+const HISTORICAL_APPROVED_SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
 const ENGINE_VERSION = '850a9013b70e38a7'
 const CAPTURE_ROOT = 'docs/art/city-ui-v2/runtime-captures'
 const MAX_CAPTURE_BYTES = 300 * 1024
 const PENDING_STATUS = 'captured-pending-direct-operator-approval'
 const HISTORICAL_APPROVAL = {
   status: 'historical-source-only',
-  sourceHead: PRIOR_CAPTURE_SOURCE_HEAD,
+  sourceHead: HISTORICAL_APPROVED_SOURCE_HEAD,
   evidenceHead: 'dc11b60738f4f14b896532bf2db323b2bd054f5c',
   record: 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344',
+  reusable: false,
+}
+const SUPERSEDED_CAPTURE = {
+  sourceHead: PRIOR_CAPTURE_SOURCE_HEAD,
+  recordHead: 'b64ae4c02c3c31342e1fbf70f87b9c07203f86d2',
+  bindingSha256: 'd2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db',
+  approval: { status: 'pending-direct-operator-approval', record: null },
   reusable: false,
 }
 
@@ -45,8 +53,8 @@ const EXPECTED_SOURCES = {
     '127da1e279878d3176ea78dfb13309391f077bfa999df9dc6be759dbec913762',
   ],
   'apps/web/src/CityScene.test.tsx': [
-    29321,
-    'a12d568b4789c810421219bac84408902e7f208f719d66e9c62776bf2b642be1',
+    32571,
+    'cdb358daa73f5f17278a01af0e24477510f1ea17121d475755c7483b22971715',
   ],
   'apps/web/src/CityScene.tsx': [
     16568,
@@ -85,15 +93,15 @@ const EXPECTED_SOURCES = {
     '085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f',
   ],
   'apps/web/src/styles.css': [
-    88328,
-    'f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7',
+    89210,
+    'c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0',
   ],
 }
 
 const EXPECTED_CAPTURES = {
   'full-desktop-1440x900-3x-townhall.jpg': [
-    221797,
-    '704a3449008342fa57cf3d6ea5879d7096c046ebce4c3495b9e122c72ce2e6e0',
+    217395,
+    '91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17',
     1440,
     900,
     'full',
@@ -101,8 +109,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-desktop-1440x900.jpg': [
-    241364,
-    'da8e255f134f82135bd97bfc1e6a6f49ba5fcd0591ad80a78661804c6e006928',
+    242624,
+    '7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d',
     1440,
     900,
     'full',
@@ -110,8 +118,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-landscape-844x390.jpg': [
-    52781,
-    '895d4625963f4ee8a1ce6e99f38c03e49cecedbce0807c7506b402a25dd30f84',
+    52941,
+    '5777edb860bc7214d246d09a37fd69df3f706f1c527fe5ceb79488aede94c8ed',
     844,
     390,
     'full',
@@ -119,8 +127,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-320x568.jpg': [
-    38621,
-    '3f5e41425d7e1142f70cce767ed6fba616595fc671034168430f52b26767a264',
+    41234,
+    'af26aa1abc1f78e6a9c46e1ee2925fffd2d2cec354ff5c33a41598fc6cb4621d',
     320,
     568,
     'full',
@@ -128,8 +136,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-375x812.jpg': [
-    50981,
-    '0fe1503c04391be42c00424e7d9483e50727f78d3ddb73704dd509baf5206661',
+    51875,
+    '1bd5eb07ace624f5111cbf48a4dcc0342806a992bec401ea9c07e387f58c23f9',
     375,
     812,
     'full',
@@ -137,8 +145,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-shipyard.jpg': [
-    40114,
-    'b698c7a907aa11c04aa118448cc9cf99b2cde71ea71a509163a3ec6a7d541cc2',
+    41210,
+    'b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e',
     390,
     844,
     'full',
@@ -146,8 +154,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-townhall.jpg': [
-    51196,
-    'd50a451d33471ab40a195301f0fb362e45be2d6b3c32b881b7082daa7330ef22',
+    51971,
+    'e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696',
     390,
     844,
     'full',
@@ -155,8 +163,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-430x932.jpg': [
-    62789,
-    '0dc33f5afebc093e12af527308e14a9dfebb5733c1c68c914d232f976cf05f17',
+    62741,
+    '48df14358afb0c7bfa8513a1a6f99ad8aba4526bc511c6cf966200d2a86a0c3c',
     430,
     932,
     'full',
@@ -164,8 +172,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-tablet-768x1024.jpg': [
-    153542,
-    '3d480fb6d46bbe08a3241e7122fc810579448dcd64c4bbd611f9b2f5ce45922d',
+    154597,
+    '82b5e7067c838bbee6da44f34110f366f4ddc3d6823f9f5a18eab4dbc5833dc4',
     768,
     1024,
     'full',
@@ -173,8 +181,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-desktop-1440x900.jpg': [
-    237477,
-    'cbc12a310450ab6c85641df6e6b28983fa87143020a447d54e29fef365b11af7',
+    238547,
+    '3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3',
     1440,
     900,
     'midgame',
@@ -182,8 +190,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-phone-375x812.jpg': [
-    50191,
-    'fa7dbb0c601dcdc909d3ba9649a32e2fc3fcb718ee6989685435a1dbacba3f63',
+    51080,
+    '6d8764361e4bd49ebacc17e96d38153d6c237229bbd81fa3a419f472d45c5ea1',
     375,
     812,
     'midgame',
@@ -191,8 +199,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'panel-build-phone-375x812.jpg': [
-    51780,
-    '0169a94304e2b290bb16cfb2c17d1f23a77e69b8c9ad1dc34af81212bee43ece',
+    51810,
+    '95b66e9f5cf758ea22aca524f800dcb5cc13937947e2e196eaf116af34e91003',
     375,
     812,
     'starting',
@@ -200,8 +208,8 @@ const EXPECTED_CAPTURES = {
     'build',
   ],
   'panel-recruit-tablet-768x1024.jpg': [
-    160632,
-    '5d9987ddb9ab1aa78f0381f6ee32f623942b105f22da2b9aa731843714a9afd1',
+    161810,
+    '7eb0c29c3a28105f190ad99c8da9b56cf7ee23b781a3335ae698fc1d5f402896',
     768,
     1024,
     'full',
@@ -209,8 +217,8 @@ const EXPECTED_CAPTURES = {
     'recruit',
   ],
   'panel-tavern-desktop-1440x900.jpg': [
-    272056,
-    '2cc5987466b3de6e3606373b8ce78c5ef4f0c67b5388e34d9ff6393b36bb4951',
+    273475,
+    '852b20ae172701347a21879c9bec7b063107d1c32ca62c9e9157cd690afa484a',
     1440,
     900,
     'full',
@@ -218,8 +226,8 @@ const EXPECTED_CAPTURES = {
     'tavern',
   ],
   'starting-desktop-1440x900.jpg': [
-    237116,
-    'b5cae3bfd07ab97c8aa6eaba53162d2bdaa49c8eeef3921254350e112b523678',
+    238120,
+    'fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4',
     1440,
     900,
     'starting',
@@ -227,8 +235,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-landscape-844x390.jpg': [
-    52166,
-    'd91261606e2dc8d6329fee5a577f3868c9948c06a39eae13980ff9fe8e299684',
+    52280,
+    '258ed3e62bcca2dc98e48ce3ede239989031083ad6807f8bbd31512a51b24b5e',
     844,
     390,
     'starting',
@@ -236,8 +244,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-320x568.jpg': [
-    39234,
-    '937a41c847e8381a3d192626f9cf59953280ea6a7a56dc2a823fd07d9bffb66c',
+    40314,
+    '80d349d1330e45c40fd73f81c1b2d2478d1cd04db2217a14b92dd5ba65b08cc8',
     320,
     568,
     'starting',
@@ -245,8 +253,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-375x812.jpg': [
-    49774,
-    'c04ae7255cd87ce24d672a448c3585c2820bf8854d8ccc24e5d523392f7c062a',
+    49178,
+    '5f7e9bbddd49a7542885a6b8a1e6c4d96f787c29e83705b8e9961053c9b0224b',
     375,
     812,
     'starting',
@@ -254,8 +262,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-430x932.jpg': [
-    61707,
-    'e16c1a0eb2523638cbb937ecb95a36d701b5fe755b1514206b3e9a5562637dde',
+    61637,
+    '64ec58c5d2766a8d3b77d819aeb2cca0809aea09baacd533414826db3c2c0810',
     430,
     932,
     'starting',
@@ -263,8 +271,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-tablet-768x1024.jpg': [
-    151148,
-    'c2360bb976eebfbbf65a4d4836fd75f57427c9fe2e0a28ff1c6a868689ab81b2',
+    152108,
+    '3f736acb8cbdbe8265f5cf0d386ef23bfd2a87f5bf7f2c6ad3ed16c749c8b6ae',
     768,
     1024,
     'starting',
@@ -414,7 +422,9 @@ assert(
     receipt.checkpoints.checkpoint2.evidenceHead === null &&
     receipt.checkpoints.checkpoint2.record === null &&
     stable(binding.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
-    stable(receipt.checkpoints.checkpoint2.historicalApproval) === stable(HISTORICAL_APPROVAL),
+    stable(receipt.checkpoints.checkpoint2.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
+    stable(binding.supersededCapture) === stable(SUPERSEDED_CAPTURE) &&
+    stable(receipt.checkpoints.checkpoint2.supersededCapture) === stable(SUPERSEDED_CAPTURE),
   'checkpoint 2 approval binding drift',
 )
 assert(
@@ -441,6 +451,18 @@ assert(
   stable(receipt.coverage.requiredBreakpoints) ===
     stable(EXPECTED_BREAKPOINTS.map(({ width, height }) => `${width}x${height}`)),
   'receipt breakpoint inventory drift',
+)
+const semanticTextEvidence = [
+  'docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg',
+  'docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg',
+].map((path) => ({
+  path,
+  requiredVisibleText: ['Defense', 'No garrison captain', '1 ship in port'],
+  requireNoSemanticTextOverflow: true,
+}))
+assert(
+  stable(receipt.coverage.semanticTextEvidence) === stable(semanticTextEvidence),
+  'narrow-phone semantic text evidence drift',
 )
 
 assert(
@@ -485,6 +507,20 @@ for (const [name, expected] of Object.entries(EXPECTED_CAPTURES)) {
   assert(entry.round === state.round, `${name}: round drift`)
   assert(entry.visibleBuildings === state.visibleBuildings, `${name}: building count drift`)
   assert(entry.zoom === zoom && entry.panel === panel, `${name}: coverage metadata drift`)
+  const semanticRequirement = semanticTextEvidence.find((item) => item.path === entry.path)
+  if (semanticRequirement) {
+    assert(
+      stable(entry.requiredVisibleText) === stable(semanticRequirement.requiredVisibleText) &&
+        entry.requireNoSemanticTextOverflow === true,
+      `${name}: semantic text requirement drift`,
+    )
+  } else {
+    assert(
+      stable(entry.requiredVisibleText) === stable([]) &&
+        entry.requireNoSemanticTextOverflow === false,
+      `${name}: unexpected semantic text requirement`,
+    )
+  }
 
   const contents = readRegular(entry.path)
   assert(statSync(repoPath(entry.path)).size === bytes, `${name}: byte count drift`)

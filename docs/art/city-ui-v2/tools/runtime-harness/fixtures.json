@@ -1,6 +1,7 @@
 {
   "schema": 1,
-  "targetSourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "targetSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "supersededCaptureHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "states": {
     "starting": {
       "round": 1,
@@ -155,6 +156,8 @@
       "zoom": 1,
       "panel": null,
       "focus": null,
+      "requiredVisibleText": ["Defense", "No garrison captain", "1 ship in port"],
+      "requireNoSemanticTextOverflow": true,
       "targets": ["docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg"]
     },
     {
@@ -164,6 +167,8 @@
       "zoom": 1,
       "panel": null,
       "focus": null,
+      "requiredVisibleText": ["Defense", "No garrison captain", "1 ship in port"],
+      "requireNoSemanticTextOverflow": true,
       "targets": ["docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg"]
     },
     {

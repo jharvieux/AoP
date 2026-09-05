@@ -6,7 +6,7 @@ Issue #608 checkpoint 1 and the Direction B city refinement remain operator-appr
 package includes the requested faction mast, pin, and V-brace physically mounted to Town
 Hall’s central dome. Fresh live starting/midgame/full, phone, desktop, and maximum-zoom
 captures are bound to exact target source
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2` in `RUNTIME-CAPTURE-BINDINGS.json`.
+`c1824f22bf14dca6d38f7519fd99affd789a8130` in `RUNTIME-CAPTURE-BINDINGS.json`.
 Integration-owner visual-settle and native-size review is complete, while direct operator
 approval of these new pixels remains pending. The approval at evidence head
 `dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in

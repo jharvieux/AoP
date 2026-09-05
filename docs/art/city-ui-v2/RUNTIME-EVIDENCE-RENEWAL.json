@@ -2,13 +2,18 @@
   "schema": 1,
   "issue": 613,
   "status": "pending-renewal",
-  "targetSourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "targetSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "policy": "Every listed frame must be recaptured from the exact target source. Historical pixels and approvals remain evidence for their former source only and cannot approve this renewal.",
   "approval": {
     "status": "pending-direct-operator-approval",
     "record": null
   },
   "sourceCensus": [
+    {
+      "path": "apps/web/src/CityScene.test.tsx",
+      "bytes": 32571,
+      "sha256": "cdb358daa73f5f17278a01af0e24477510f1ea17121d475755c7483b22971715"
+    },
     {
       "path": "apps/web/src/MapAlertRegion.test.tsx",
       "bytes": 3076,
@@ -21,8 +26,8 @@
     },
     {
       "path": "apps/web/src/MapCanvas.tsx",
-      "bytes": 105452,
-      "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+      "bytes": 105347,
+      "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
     },
     {
       "path": "apps/web/src/Minimap.test.tsx",
@@ -45,24 +50,29 @@
       "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
     },
     {
+      "path": "apps/web/src/mapCommandLayout.test.ts",
+      "bytes": 21011,
+      "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+    },
+    {
       "path": "apps/web/src/mapCursor.test.ts",
-      "bytes": 8714,
-      "sha256": "180ed0a173da45252f0dee20da9d4cb5c1812e7e342de756f6a155232356876b"
+      "bytes": 9902,
+      "sha256": "c067dedd45ed128878903631c6cd8a6b1018737abd7397ba71309cf5d83a8b24"
     },
     {
       "path": "apps/web/src/mapCursor.ts",
-      "bytes": 4705,
-      "sha256": "0d85c560acc019d43a7d9b891c8a2b773714c06e35af8f272073a4f027dd0df9"
+      "bytes": 5090,
+      "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
     },
     {
       "path": "apps/web/src/screens/GameScreen.test.ts",
-      "bytes": 18388,
-      "sha256": "06d463cf927d9a7d977260fa2866d8505595dd1e66675465073b0a4a1fa45a74"
+      "bytes": 20731,
+      "sha256": "d00ac460c521bc94b3c4e1db89c221b47b74af092dab4d71374d846d1722679b"
     },
     {
       "path": "apps/web/src/screens/GameScreen.tsx",
-      "bytes": 89200,
-      "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+      "bytes": 89340,
+      "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
     },
     {
       "path": "apps/web/src/screens/MatchScreen.test.ts",
@@ -75,9 +85,19 @@
       "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
     },
     {
+      "path": "apps/web/src/singlePlayerPresentation.test.ts",
+      "bytes": 7504,
+      "sha256": "02d5f89f2935a32a66ec4684bde608d6fb4a59dea3bef19b952a63632d7114ea"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.ts",
+      "bytes": 3053,
+      "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+    },
+    {
       "path": "apps/web/src/styles.css",
-      "bytes": 88328,
-      "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+      "bytes": 89210,
+      "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
     }
   ],
   "sets": [
@@ -96,15 +116,25 @@
       },
       "renewal": {
         "status": "captured-pending-direct-operator-approval",
-        "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
         "capturedOn": "2026-09-05",
-        "bindingSha256": "d2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db",
+        "bindingSha256": "dd29d59a255ccef2e12f441e121905fe19a2b40a4eed68f1a72381982e255d00",
         "workflow": "truthful shipping-component import harness with visible shipping controls",
         "uniqueBrowserFramesInSharedCityBatch": 22,
         "sharedCrossSetCopies": 6,
         "visualSettleInspection": "completed-by-integration-owner",
         "nativeSizeInspection": "completed-by-integration-owner",
         "historicalPixelsReused": false,
+        "supersededCapture": {
+          "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+          "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+          "bindingSha256": "d2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db",
+          "approval": {
+            "status": "pending-direct-operator-approval",
+            "record": null
+          },
+          "reusable": false
+        },
         "approval": {
           "status": "pending-direct-operator-approval",
           "record": null
@@ -150,15 +180,25 @@
       },
       "renewal": {
         "status": "captured-pending-direct-operator-approval",
-        "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
         "capturedOn": "2026-09-05",
-        "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+        "bindingSha256": "e5f032212ed70ff3e0b37b5ff1ae76d382b987e3028845f26a3c1b93b2dde1ae",
         "workflow": "truthful shipping-component import harness with visible shipping controls",
         "uniqueBrowserFramesInSharedCityBatch": 22,
         "sharedCrossSetCopies": 6,
         "visualSettleInspection": "completed-by-integration-owner",
         "nativeSizeInspection": "completed-by-integration-owner",
         "historicalPixelsReused": false,
+        "supersededCapture": {
+          "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+          "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+          "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+          "approval": {
+            "status": "pending-direct-operator-approval",
+            "record": null
+          },
+          "reusable": false
+        },
         "approval": {
           "status": "pending-direct-operator-approval",
           "record": null

@@ -3,7 +3,7 @@
 ## Status and provenance
 
 These 20 captures were produced from exact #613 target source
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`. `RUNTIME-CAPTURE-BINDINGS.json` validates that
+`c1824f22bf14dca6d38f7519fd99affd789a8130`. `RUNTIME-CAPTURE-BINDINGS.json` validates that
 same head, its exact thirteen-file source inventory, and every retained capture byte. They
 show the repaired responsive layout, focus containment, reduced-motion behavior,
 topology-aware action gating, web-owned runtime art defaults, and measured reset fit.
@@ -34,26 +34,26 @@ All files are RGB, baseline 8-bit JFIF JPEGs and remain below the 300 KiB eviden
 
 | Capture                                 | State             | View / evidence                  |   Bytes | SHA-256                                                            |
 | --------------------------------------- | ----------------- | -------------------------------- | ------: | ------------------------------------------------------------------ |
-| `full-desktop-1440x900-3x-townhall.jpg` | Full · R54 · 14   | 1440×900 · 3× Town Hall          | 221,797 | `704a3449008342fa57cf3d6ea5879d7096c046ebce4c3495b9e122c72ce2e6e0` |
-| `full-desktop-1440x900.jpg`             | Full · R54 · 14   | 1440×900 · 1×                    | 241,364 | `da8e255f134f82135bd97bfc1e6a6f49ba5fcd0591ad80a78661804c6e006928` |
-| `full-landscape-844x390.jpg`            | Full · R54 · 14   | 844×390 · 1×                     |  52,781 | `895d4625963f4ee8a1ce6e99f38c03e49cecedbce0807c7506b402a25dd30f84` |
-| `full-phone-320x568.jpg`                | Full · R54 · 14   | 320×568 · 1×                     |  38,621 | `3f5e41425d7e1142f70cce767ed6fba616595fc671034168430f52b26767a264` |
-| `full-phone-375x812.jpg`                | Full · R54 · 14   | 375×812 · 1×                     |  50,981 | `0fe1503c04391be42c00424e7d9483e50727f78d3ddb73704dd509baf5206661` |
-| `full-phone-390x844-3x-shipyard.jpg`    | Full · R54 · 14   | 390×844 · 3× Shipyard            |  40,114 | `b698c7a907aa11c04aa118448cc9cf99b2cde71ea71a509163a3ec6a7d541cc2` |
-| `full-phone-390x844-3x-townhall.jpg`    | Full · R54 · 14   | 390×844 · 3× Town Hall           |  51,196 | `d50a451d33471ab40a195301f0fb362e45be2d6b3c32b881b7082daa7330ef22` |
-| `full-phone-430x932.jpg`                | Full · R54 · 14   | 430×932 · 1×                     |  62,789 | `0dc33f5afebc093e12af527308e14a9dfebb5733c1c68c914d232f976cf05f17` |
-| `full-tablet-768x1024.jpg`              | Full · R54 · 14   | 768×1024 · 1×                    | 153,542 | `3d480fb6d46bbe08a3241e7122fc810579448dcd64c4bbd611f9b2f5ce45922d` |
-| `midgame-desktop-1440x900.jpg`          | Mid · R13 · 8     | 1440×900 · 1×                    | 237,477 | `cbc12a310450ab6c85641df6e6b28983fa87143020a447d54e29fef365b11af7` |
-| `midgame-phone-375x812.jpg`             | Mid · R13 · 8     | 375×812 · 1×                     |  50,191 | `fa7dbb0c601dcdc909d3ba9649a32e2fc3fcb718ee6989685435a1dbacba3f63` |
-| `panel-build-phone-375x812.jpg`         | Starting · R1 · 2 | 375×812 · Town Hall build        |  51,780 | `0169a94304e2b290bb16cfb2c17d1f23a77e69b8c9ad1dc34af81212bee43ece` |
-| `panel-recruit-tablet-768x1024.jpg`     | Full · R54 · 14   | 768×1024 · Cutthroat Den recruit | 160,632 | `5d9987ddb9ab1aa78f0381f6ee32f623942b105f22da2b9aa731843714a9afd1` |
-| `panel-tavern-desktop-1440x900.jpg`     | Full · R54 · 14   | 1440×900 · Grog House tavern     | 272,056 | `2cc5987466b3de6e3606373b8ce78c5ef4f0c67b5388e34d9ff6393b36bb4951` |
-| `starting-desktop-1440x900.jpg`         | Starting · R1 · 2 | 1440×900 · 1×                    | 237,116 | `b5cae3bfd07ab97c8aa6eaba53162d2bdaa49c8eeef3921254350e112b523678` |
-| `starting-landscape-844x390.jpg`        | Starting · R1 · 2 | 844×390 · 1×                     |  52,166 | `d91261606e2dc8d6329fee5a577f3868c9948c06a39eae13980ff9fe8e299684` |
-| `starting-phone-320x568.jpg`            | Starting · R1 · 2 | 320×568 · 1×                     |  39,234 | `937a41c847e8381a3d192626f9cf59953280ea6a7a56dc2a823fd07d9bffb66c` |
-| `starting-phone-375x812.jpg`            | Starting · R1 · 2 | 375×812 · 1×                     |  49,774 | `c04ae7255cd87ce24d672a448c3585c2820bf8854d8ccc24e5d523392f7c062a` |
-| `starting-phone-430x932.jpg`            | Starting · R1 · 2 | 430×932 · 1×                     |  61,707 | `e16c1a0eb2523638cbb937ecb95a36d701b5fe755b1514206b3e9a5562637dde` |
-| `starting-tablet-768x1024.jpg`          | Starting · R1 · 2 | 768×1024 · 1×                    | 151,148 | `c2360bb976eebfbbf65a4d4836fd75f57427c9fe2e0a28ff1c6a868689ab81b2` |
+| `full-desktop-1440x900-3x-townhall.jpg` | Full · R54 · 14   | 1440×900 · 3× Town Hall          | 217,395 | `91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17` |
+| `full-desktop-1440x900.jpg`             | Full · R54 · 14   | 1440×900 · 1×                    | 242,624 | `7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d` |
+| `full-landscape-844x390.jpg`            | Full · R54 · 14   | 844×390 · 1×                     |  52,941 | `5777edb860bc7214d246d09a37fd69df3f706f1c527fe5ceb79488aede94c8ed` |
+| `full-phone-320x568.jpg`                | Full · R54 · 14   | 320×568 · 1×                     |  41,234 | `af26aa1abc1f78e6a9c46e1ee2925fffd2d2cec354ff5c33a41598fc6cb4621d` |
+| `full-phone-375x812.jpg`                | Full · R54 · 14   | 375×812 · 1×                     |  51,875 | `1bd5eb07ace624f5111cbf48a4dcc0342806a992bec401ea9c07e387f58c23f9` |
+| `full-phone-390x844-3x-shipyard.jpg`    | Full · R54 · 14   | 390×844 · 3× Shipyard            |  41,210 | `b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e` |
+| `full-phone-390x844-3x-townhall.jpg`    | Full · R54 · 14   | 390×844 · 3× Town Hall           |  51,971 | `e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696` |
+| `full-phone-430x932.jpg`                | Full · R54 · 14   | 430×932 · 1×                     |  62,741 | `48df14358afb0c7bfa8513a1a6f99ad8aba4526bc511c6cf966200d2a86a0c3c` |
+| `full-tablet-768x1024.jpg`              | Full · R54 · 14   | 768×1024 · 1×                    | 154,597 | `82b5e7067c838bbee6da44f34110f366f4ddc3d6823f9f5a18eab4dbc5833dc4` |
+| `midgame-desktop-1440x900.jpg`          | Mid · R13 · 8     | 1440×900 · 1×                    | 238,547 | `3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3` |
+| `midgame-phone-375x812.jpg`             | Mid · R13 · 8     | 375×812 · 1×                     |  51,080 | `6d8764361e4bd49ebacc17e96d38153d6c237229bbd81fa3a419f472d45c5ea1` |
+| `panel-build-phone-375x812.jpg`         | Starting · R1 · 2 | 375×812 · Town Hall build        |  51,810 | `95b66e9f5cf758ea22aca524f800dcb5cc13937947e2e196eaf116af34e91003` |
+| `panel-recruit-tablet-768x1024.jpg`     | Full · R54 · 14   | 768×1024 · Cutthroat Den recruit | 161,810 | `7eb0c29c3a28105f190ad99c8da9b56cf7ee23b781a3335ae698fc1d5f402896` |
+| `panel-tavern-desktop-1440x900.jpg`     | Full · R54 · 14   | 1440×900 · Grog House tavern     | 273,475 | `852b20ae172701347a21879c9bec7b063107d1c32ca62c9e9157cd690afa484a` |
+| `starting-desktop-1440x900.jpg`         | Starting · R1 · 2 | 1440×900 · 1×                    | 238,120 | `fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4` |
+| `starting-landscape-844x390.jpg`        | Starting · R1 · 2 | 844×390 · 1×                     |  52,280 | `258ed3e62bcca2dc98e48ce3ede239989031083ad6807f8bbd31512a51b24b5e` |
+| `starting-phone-320x568.jpg`            | Starting · R1 · 2 | 320×568 · 1×                     |  40,314 | `80d349d1330e45c40fd73f81c1b2d2478d1cd04db2217a14b92dd5ba65b08cc8` |
+| `starting-phone-375x812.jpg`            | Starting · R1 · 2 | 375×812 · 1×                     |  49,178 | `5f7e9bbddd49a7542885a6b8a1e6c4d96f787c29e83705b8e9961053c9b0224b` |
+| `starting-phone-430x932.jpg`            | Starting · R1 · 2 | 430×932 · 1×                     |  61,637 | `64ec58c5d2766a8d3b77d819aeb2cca0809aea09baacd533414826db3c2c0810` |
+| `starting-tablet-768x1024.jpg`          | Starting · R1 · 2 | 768×1024 · 1×                    | 152,108 | `3f736acb8cbdbe8265f5cf0d386ef23bfd2a87f5bf7f2c6ad3ed16c749c8b6ae` |
 
 ## Mechanical boundary
 

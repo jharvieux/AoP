@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -24,14 +25,22 @@ FULL_SHIPPING_SOURCES = (
 )
 STYLESHEET_PATH = "apps/web/src/styles.css"
 STYLESHEET_SCOPE_KIND = "city-scene-selector-token-closure-v1"
-SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
-PRIOR_SOURCE_HEAD = "45a206f760eacce50dc8dd1dc656c5d4e789cb3c"
+SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
+PRIOR_CAPTURE_SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+HISTORICAL_APPROVED_SOURCE_HEAD = "45a206f760eacce50dc8dd1dc656c5d4e789cb3c"
 PENDING_STATUS = "captured-pending-direct-operator-approval"
 HISTORICAL_APPROVAL = {
     "status": "historical-source-only",
-    "sourceHead": PRIOR_SOURCE_HEAD,
+    "sourceHead": HISTORICAL_APPROVED_SOURCE_HEAD,
     "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
     "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": False,
+}
+SUPERSEDED_CAPTURE = {
+    "sourceHead": PRIOR_CAPTURE_SOURCE_HEAD,
+    "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+    "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+    "approval": {"status": "pending-direct-operator-approval", "record": None},
     "reusable": False,
 }
 GENERIC_SELECTORS = frozenset(
@@ -258,6 +267,7 @@ def main() -> None:
     assert proposal["schema"] == 1
     assert proposal["kind"] == "unapproved-city-runtime-evidence-proposal"
     assert proposal["sourceHead"] == SOURCE_HEAD
+    assert proposal["supersededCaptureHead"] == SOURCE_HEAD
     assert proposal["targetCount"] == 28 and proposal["uniqueBrowserFrames"] == 22
     assert proposal["approval"] == {
         "status": "pending-direct-operator-approval",
@@ -312,6 +322,7 @@ def main() -> None:
             "record": None,
         },
         "historicalApproval": HISTORICAL_APPROVAL,
+        "supersededCapture": SUPERSEDED_CAPTURE,
         "captureOrigin": {
             **proposal["captureOrigin"],
             "sourceHead": SOURCE_HEAD,
@@ -327,6 +338,47 @@ def main() -> None:
     }
     output = PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json"
     output.write_text(json.dumps(payload, indent=2) + "\n")
+    local_formatter = REPOSITORY / "node_modules" / ".bin" / "prettier"
+    formatter = (
+        str(local_formatter)
+        if local_formatter.is_file()
+        else shutil.which("prettier")
+    )
+    assert formatter is not None, "prettier is required to format the runtime binding"
+    subprocess.run(
+        [formatter, "--write", str(output)],
+        cwd=REPOSITORY,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+
+    capture_records = {Path(item["path"]).name: item for item in captures}
+    for name in ("README.md", "PRODUCTION-MANIFEST.md", "RUNTIME-CAPTURES.md"):
+        record_path = PACKAGE / name
+        record = record_path.read_text().replace(
+            PRIOR_CAPTURE_SOURCE_HEAD, SOURCE_HEAD
+        )
+        if name == "RUNTIME-CAPTURES.md":
+            pattern = re.compile(
+                r"^(\| `runtime-captures/([^`]+\.jpg)`\s+\|.*?\|\s*)([\d,]+)(\s+\|\s+`)([a-f0-9]{64})(`\s+\|)$",
+                re.MULTILINE,
+            )
+
+            def replace_capture(match: re.Match[str]) -> str:
+                capture = capture_records.get(match.group(2))
+                assert capture is not None, (
+                    f"capture table contains undeclared file: {match.group(2)}"
+                )
+                return (
+                    f"{match.group(1)}{capture['bytes']:,}{match.group(4)}"
+                    f"{capture['sha256']}{match.group(6)}"
+                )
+
+            record = pattern.sub(replace_capture, record)
+            assert all(f"`runtime-captures/{name}`" in record for name in capture_records), (
+                "capture table is missing a declared file"
+            )
+        record_path.write_text(record)
     print(
         f"bound {len(captures)} captures to {len(FULL_SHIPPING_SOURCES)} full sources "
         "and the city stylesheet dependency closure; direct operator approval remains pending"

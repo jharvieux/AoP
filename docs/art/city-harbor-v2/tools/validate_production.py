@@ -72,13 +72,20 @@ RUNTIME_CAPTURE_NAMES = (
     "full-phone-3x-shipyard-390x844.jpg",
     "full-desktop-3x-1440x900.jpg",
 )
-RUNTIME_SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+RUNTIME_SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
 RUNTIME_PENDING_STATUS = "captured-pending-direct-operator-approval"
 RUNTIME_HISTORICAL_APPROVAL = {
     "status": "historical-source-only",
     "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
     "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
     "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": False,
+}
+RUNTIME_SUPERSEDED_CAPTURE = {
+    "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+    "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+    "approval": {"status": "pending-direct-operator-approval", "record": None},
     "reusable": False,
 }
 
@@ -525,6 +532,7 @@ def validate_runtime_captures() -> None:
         assert set_renewal.get("status") == RUNTIME_PENDING_STATUS
         assert set_renewal.get("sourceHead") == RUNTIME_SOURCE_HEAD
         assert set_renewal.get("historicalPixelsReused") is False
+        assert set_renewal.get("supersededCapture") == RUNTIME_SUPERSEDED_CAPTURE
         assert set_renewal.get("approval") == {
             "status": "pending-direct-operator-approval",
             "record": None,
@@ -553,6 +561,7 @@ def validate_runtime_captures() -> None:
         "record": None,
     }, "runtime direct approval must remain pending"
     assert binding["historicalApproval"] == RUNTIME_HISTORICAL_APPROVAL
+    assert binding["supersededCapture"] == RUNTIME_SUPERSEDED_CAPTURE
     assert binding["captureOrigin"]["workflow"] == (
         "truthful shipping-component import harness with visible shipping controls"
     )
@@ -659,6 +668,23 @@ def validate_runtime_captures() -> None:
     historical_captures = {
         Path(item["path"]).name: item for item in historical_binding["captures"]
     }
+    superseded_binding_bytes = subprocess.run(
+        [
+            "git",
+            "show",
+            f"{RUNTIME_SUPERSEDED_CAPTURE['recordHead']}:docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        ],
+        cwd=REPOSITORY,
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert hashlib.sha256(superseded_binding_bytes).hexdigest() == (
+        RUNTIME_SUPERSEDED_CAPTURE["bindingSha256"]
+    ), "superseded city-harbor-v2 binding record drift"
+    superseded_binding = json.loads(superseded_binding_bytes)
+    superseded_captures = {
+        Path(item["path"]).name: item for item in superseded_binding["captures"]
+    }
 
     for name in RUNTIME_CAPTURE_NAMES:
         item = bound_captures[name]
@@ -671,6 +697,9 @@ def validate_runtime_captures() -> None:
         assert sha256(path) == digest, f"runtime capture hash drift: {name}"
         assert digest != historical_captures[name]["sha256"], (
             f"historical runtime pixel was reused: {name}"
+        )
+        assert digest != superseded_captures[name]["sha256"], (
+            f"superseded runtime pixel was reused: {name}"
         )
         with Image.open(path) as image:
             assert image.format == "JPEG" and image.mode == "RGB"

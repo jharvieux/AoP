@@ -15,6 +15,8 @@ const manifestPath = join(packageRoot, 'RUNTIME-EVIDENCE-RENEWAL.json')
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
 const maxCaptureBytes = 300 * 1024
+const capturedPendingStatus = 'captured-pending-direct-operator-approval'
+const recaptureRequiredStatus = 'recapture-required-for-final-source'
 
 function fail(message) {
   throw new Error(message)
@@ -153,24 +155,49 @@ function validateManifest() {
     assert(set.historicalBinding.approvalRecord, `${set.id}: missing historical approval record`)
     if (set.renewal) {
       assert(
-        set.renewal.status === 'captured-pending-direct-operator-approval',
+        [capturedPendingStatus, recaptureRequiredStatus].includes(set.renewal.status),
         `${set.id}: invalid renewal status`,
       )
       assert(
         set.renewal.sourceHead === manifest.targetSourceHead,
         `${set.id}: renewal source head drift`,
       )
-      assert(/^\d{4}-\d{2}-\d{2}$/.test(set.renewal.capturedOn), `${set.id}: invalid capture date`)
-      assert(/^[0-9a-f]{64}$/.test(set.renewal.bindingSha256), `${set.id}: invalid binding hash`)
+      const superseded = set.renewal.supersededCapture
+      assert(superseded?.sourceHead && superseded.sourceHead !== manifest.targetSourceHead)
+      assert(/^[0-9a-f]{40}$/.test(superseded.recordHead), `${set.id}: prior record head drift`)
+      assert(/^[0-9a-f]{64}$/.test(superseded.bindingSha256), `${set.id}: prior binding drift`)
+      assert(superseded.reusable === false, `${set.id}: prior pixels became reusable`)
       assert(
-        set.renewal.historicalPixelsReused === false,
-        `${set.id}: historical pixel reuse record drift`,
+        superseded.approval?.status === 'pending-direct-operator-approval' &&
+          superseded.approval.record === null,
+        `${set.id}: prior unapproved status drift`,
       )
-      assert(
-        set.renewal.visualSettleInspection === 'completed-by-integration-owner' &&
-          set.renewal.nativeSizeInspection === 'completed-by-integration-owner',
-        `${set.id}: native inspection record drift`,
-      )
+      if (set.renewal.status === capturedPendingStatus) {
+        assert(
+          /^\d{4}-\d{2}-\d{2}$/.test(set.renewal.capturedOn),
+          `${set.id}: invalid capture date`,
+        )
+        assert(/^[0-9a-f]{64}$/.test(set.renewal.bindingSha256), `${set.id}: invalid binding hash`)
+        assert(
+          set.renewal.historicalPixelsReused === false,
+          `${set.id}: historical pixel reuse record drift`,
+        )
+        assert(
+          set.renewal.visualSettleInspection === 'completed-by-integration-owner' &&
+            set.renewal.nativeSizeInspection === 'completed-by-integration-owner',
+          `${set.id}: native inspection record drift`,
+        )
+      } else {
+        assert(
+          set.renewal.capturedOn === undefined && set.renewal.bindingSha256 === undefined,
+          `${set.id}: uncaptured target has current evidence metadata`,
+        )
+        assert(
+          set.renewal.visualSettleInspection === 'pending-fresh-capture' &&
+            set.renewal.nativeSizeInspection === 'pending-fresh-capture',
+          `${set.id}: recapture-required inspection status drift`,
+        )
+      }
       assert(
         set.renewal.approval?.status === 'pending-direct-operator-approval' &&
           set.renewal.approval.record === null,
@@ -234,11 +261,15 @@ function validateHistoricalEvidence() {
     const bindingBytes = readRegular(repoPath(set.historicalBinding.path))
     const binding = JSON.parse(bindingBytes)
     if (set.renewal) {
-      assert(
-        sha256(bindingBytes) === set.renewal.bindingSha256,
-        `${set.id}: renewed pending binding drift`,
-      )
-      assert(binding.sourceHead === manifest.targetSourceHead, `${set.id}: source head drift`)
+      const captured = set.renewal.status === capturedPendingStatus
+      const expectedBindingSha256 = captured
+        ? set.renewal.bindingSha256
+        : set.renewal.supersededCapture.bindingSha256
+      const expectedSourceHead = captured
+        ? manifest.targetSourceHead
+        : set.renewal.supersededCapture.sourceHead
+      assert(sha256(bindingBytes) === expectedBindingSha256, `${set.id}: current binding drift`)
+      assert(binding.sourceHead === expectedSourceHead, `${set.id}: source head drift`)
       assert(
         binding.captureStatus === 'captured-pending-direct-operator-approval',
         `${set.id}: capture status drift`,
@@ -295,11 +326,31 @@ function validateHistoricalEvidence() {
           `${repositoryPath}: historical capture bytes were reused`,
         )
       }
+      if (set.renewal.status === capturedPendingStatus) {
+        const supersededBytes = git(
+          ['show', `${set.renewal.supersededCapture.recordHead}:${set.historicalBinding.path}`],
+          { encoding: 'buffer' },
+        )
+        assert(
+          sha256(supersededBytes) === set.renewal.supersededCapture.bindingSha256,
+          `${set.id}: superseded binding provenance drift`,
+        )
+        const superseded = recordedCaptureMap(set, JSON.parse(supersededBytes))
+        for (const spec of set.captures) {
+          const repositoryPath = join(set.captureRoot, spec[0])
+          assert(
+            sha256(readRegular(repoPath(repositoryPath))) !== superseded.get(repositoryPath).sha256,
+            `${repositoryPath}: superseded current capture bytes were reused`,
+          )
+        }
+      }
     }
   }
 
   const renewedCitySets = manifest.sets.filter(
-    (set) => ['city-ui-v2', 'city-harbor-v2'].includes(set.id) && set.renewal,
+    (set) =>
+      ['city-ui-v2', 'city-harbor-v2'].includes(set.id) &&
+      set.renewal?.status === capturedPendingStatus,
   )
   if (renewedCitySets.length === 2) {
     const fixtures = JSON.parse(
@@ -338,7 +389,7 @@ function staleState() {
     readRegular(repoPath('docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json')),
   )
   let cityState
-  if (citySet.renewal) {
+  if (citySet.renewal?.status === capturedPendingStatus) {
     assert(cityBinding.sourceHead === manifest.targetSourceHead, 'city UI renewal source drift')
     assert(
       cityBinding.captureStatus === 'captured-pending-direct-operator-approval',
@@ -347,6 +398,26 @@ function staleState() {
     cityState = {
       status: citySet.renewal.status,
       captureCount: citySet.count,
+      directOperatorApproval: citySet.renewal.approval,
+    }
+  } else if (citySet.renewal?.status === recaptureRequiredStatus) {
+    assert(
+      cityBinding.sourceHead === citySet.renewal.supersededCapture.sourceHead,
+      'city UI superseded source drift',
+    )
+    const citySourceRecords = new Map(
+      cityBinding.sourceFiles.map((record) => [record.path, record]),
+    )
+    const changedBoundSources = manifest.sourceCensus
+      .filter((record) => citySourceRecords.has(record.path))
+      .filter((record) => citySourceRecords.get(record.path).sha256 !== record.sha256)
+      .map((record) => record.path)
+    assert(changedBoundSources.length > 0, 'city UI recapture has no changed bound source')
+    cityState = {
+      status: citySet.renewal.status,
+      supersededSourceHead: cityBinding.sourceHead,
+      targetSourceHead: manifest.targetSourceHead,
+      changedBoundSources,
       directOperatorApproval: citySet.renewal.approval,
     }
   } else {
@@ -370,7 +441,7 @@ function staleState() {
   )
   const currentStylesheetHash = sha256(readRegular(repoPath('apps/web/src/styles.css')))
   let harborState
-  if (harborSet.renewal) {
+  if (harborSet.renewal?.status === capturedPendingStatus) {
     assert(
       harborBinding.sourceHead === manifest.targetSourceHead &&
         harborBinding.stylesheet_source.diagnostic_full_sha256 === currentStylesheetHash,
@@ -385,6 +456,20 @@ function staleState() {
       captureCount: harborSet.count,
       directOperatorApproval: harborSet.renewal.approval,
       note: 'The narrower city-scene CSS projection remained stable, while fresh pixels intentionally bind this set to the complete #613 target stylesheet.',
+    }
+  } else if (harborSet.renewal?.status === recaptureRequiredStatus) {
+    assert(
+      harborBinding.sourceHead === harborSet.renewal.supersededCapture.sourceHead &&
+        harborBinding.stylesheet_source.diagnostic_full_sha256 !== currentStylesheetHash,
+      'city harbor superseded source drift',
+    )
+    harborState = {
+      status: harborSet.renewal.status,
+      supersededSourceHead: harborBinding.sourceHead,
+      targetSourceHead: manifest.targetSourceHead,
+      historicalFullStylesheetSha256: harborBinding.stylesheet_source.diagnostic_full_sha256,
+      targetFullStylesheetSha256: currentStylesheetHash,
+      directOperatorApproval: harborSet.renewal.approval,
     }
   } else {
     assert(
@@ -437,7 +522,7 @@ function checkPending() {
   validateHistoricalEvidence()
   const stale = staleState()
   const capturedCount = manifest.sets
-    .filter((set) => set.renewal)
+    .filter((set) => set.renewal?.status === capturedPendingStatus)
     .reduce((total, set) => total + set.count, 0)
   console.log(
     JSON.stringify(

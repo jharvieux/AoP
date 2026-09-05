@@ -16,6 +16,10 @@ function assert(condition, message) {
 
 assert(fixtures.schema === 1, 'unexpected fixture schema')
 assert(fixtures.targetSourceHead === renewal.targetSourceHead, 'fixture source head drift')
+assert(
+  fixtures.supersededCaptureHead === fixtures.targetSourceHead,
+  'superseded capture head must be the clean integration source head',
+)
 execFileSync('git', ['merge-base', '--is-ancestor', fixtures.targetSourceHead, 'HEAD'], {
   cwd: repoRoot,
 })
@@ -119,6 +123,21 @@ for (const [setId, expected] of declaredSets) {
 
 const shared = fixtures.captures.filter((capture) => capture.targets.length === 2)
 assert(shared.length === 6, 'expected six byte-identical cross-set copies')
+const semanticTextChecks = fixtures.captures.filter(
+  (capture) => capture.requireNoSemanticTextOverflow,
+)
+assert(
+  JSON.stringify(semanticTextChecks.map((capture) => capture.id).sort()) ===
+    JSON.stringify(['full-phone-320', 'full-phone-375']),
+  'expected semantic text checks on the full 320px and 375px phone frames',
+)
+for (const capture of semanticTextChecks) {
+  assert(
+    JSON.stringify(capture.requiredVisibleText) ===
+      JSON.stringify(['Defense', 'No garrison captain', '1 ship in port']),
+    `${capture.id}: full Defense copy requirement drift`,
+  )
+}
 assert(fixtures.captures.filter((capture) => capture.zoom === 3).length === 3, '3x coverage drift')
 assert(
   JSON.stringify(
@@ -131,5 +150,5 @@ assert(
 )
 
 console.log(
-  'PASS city evidence harness: exact source ancestry; 2/8/14 buildings; 22 fresh frames -> 28 targets; six cross-set copies; 1x/3x and build/recruit/tavern coverage',
+  'PASS city evidence harness: exact source ancestry; 2/8/14 buildings; 22 fresh frames -> 28 targets; six cross-set copies; 1x/3x and build/recruit/tavern coverage; full Defense copy and no-overflow checks at 320/375',
 )

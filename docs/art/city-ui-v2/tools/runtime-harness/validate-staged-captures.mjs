@@ -152,6 +152,15 @@ for (const capture of fixtures.captures) {
       sha256(bytes) !== sha256(historical),
       `${capture.id}: staged bytes equal the historical capture; historical bytes cannot be reused`,
     )
+    const superseded = execFileSync(
+      'git',
+      ['show', `${fixtures.supersededCaptureHead}:${target}`],
+      { cwd: repoRoot, encoding: 'buffer' },
+    )
+    assert(
+      sha256(bytes) !== sha256(superseded),
+      `${capture.id}: staged bytes equal the current capture; current pixels cannot be reused`,
+    )
     const entry = {
       captureId: capture.id,
       path: target,
@@ -163,6 +172,8 @@ for (const capture of fixtures.captures) {
       zoom: capture.zoom,
       panel: capture.panel,
       focus: capture.focus,
+      requiredVisibleText: capture.requiredVisibleText ?? [],
+      requireNoSemanticTextOverflow: capture.requireNoSemanticTextOverflow ?? false,
     }
     entries.push(entry)
     byTarget.set(target, entry)
@@ -178,6 +189,7 @@ const proposal = {
   kind: 'unapproved-city-runtime-evidence-proposal',
   issue: 613,
   sourceHead: fixtures.targetSourceHead,
+  supersededCaptureHead: fixtures.supersededCaptureHead,
   capturedOn: values.get('--captured-on'),
   uniqueBrowserFrames: fixtures.captures.length,
   targetCount: entries.length,
