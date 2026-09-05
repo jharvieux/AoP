@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "issue": 611,
+  "generated_on": "2026-09-04",
+  "generation_service": "OpenAI built-in image generator in Codex",
+  "model": null,
+  "seed": null,
+  "interface_model_exposed": false,
+  "interface_seed_exposed": false,
+  "reference": {
+    "path": "../../commercial-visual-v2/sources/b-gilded-harbor-diorama-map-r1.webp",
+    "role": "style, material, palette, camera, and lighting reference only",
+    "sha256": "c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9"
+  },
+  "assets": [
+    {
+      "id": "terrain:land-base:a",
+      "kind": "base",
+      "prompt_key": "land-base-a",
+      "raw_file": "exec-263d5f7a-ecb4-4343-979b-ed3a120a4089.png",
+      "raw_sha256": "3fed7e33e1fe7e1a75b3732212279f0e35a32d8712672944e4e8f9958d1f3f3b",
+      "raw_bytes": 2159613,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGB",
+      "source": "sources/land-base-a-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/land-base-a.webp"
+    },
+    {
+      "id": "terrain:land-base:b",
+      "kind": "base",
+      "prompt_key": "land-base-b",
+      "raw_file": "exec-f482ea76-00e4-4d9b-85bc-f49b41cb04b5.png",
+      "raw_sha256": "815fee35dd42475ec9af2a7adce80821fa564f035cef33c55a07d3a6db334d05",
+      "raw_bytes": 2026858,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGB",
+      "source": "sources/land-base-b-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/land-base-b.webp"
+    },
+    {
+      "id": "terrain:land-base:c",
+      "kind": "base",
+      "prompt_key": "land-base-c",
+      "raw_file": "exec-32137d30-719a-4f3a-9d44-b76dc335788e.png",
+      "raw_sha256": "32f0adb390f230e441eb5a67c4ad614f5d5d5154bed93db745eae0cce600f1cc",
+      "raw_bytes": 2366064,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGB",
+      "source": "sources/land-base-c-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/land-base-c.webp"
+    },
+    {
+      "id": "terrain:forest:a",
+      "kind": "decal",
+      "prompt_key": "forest-a",
+      "raw_file": "exec-9e367224-8b43-4b18-a37e-b511b05d1a7c.png",
+      "raw_sha256": "9a57955c6edbc0af68e2c6a013a1083bf6e4526876028f2de70fea46deade779",
+      "raw_bytes": 1568917,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGB",
+      "alpha_handling": "deterministic rendered-checker extraction",
+      "source": "sources/forest-a-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/forest-a.webp"
+    },
+    {
+      "id": "terrain:forest:b",
+      "kind": "decal",
+      "prompt_key": "forest-b",
+      "raw_file": "exec-ca486761-021b-4231-a4f6-2fd1ecee1fc7.png",
+      "raw_sha256": "fffd75bb16353d5dd0d72f264bbf6196162c4866b18de654fa2033a4a747814c",
+      "raw_bytes": 1091631,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGBA",
+      "alpha_handling": "native generated alpha",
+      "source": "sources/forest-b-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/forest-b.webp"
+    },
+    {
+      "id": "terrain:clearing",
+      "kind": "decal",
+      "prompt_key": "clearing",
+      "raw_file": "exec-f7045bf7-568c-4adf-9cc5-a8ff7b07cf58.png",
+      "raw_sha256": "75c4460bcdd417879fe172669382d4a4ad9b7ba4b10a3a999ab8fb0af4394f3b",
+      "raw_bytes": 1654719,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGB",
+      "alpha_handling": "deterministic rendered-checker extraction",
+      "source": "sources/clearing-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/clearing.webp"
+    },
+    {
+      "id": "terrain:highland",
+      "kind": "decal",
+      "prompt_key": "highland",
+      "raw_file": "exec-de02eb55-60a0-46d4-8b44-37eb767c3aec.png",
+      "raw_sha256": "d66bf7f22167d501b79d34333c7289f5636a2e5864e8cd0544de01ece9e892a7",
+      "raw_bytes": 755011,
+      "raw_dimensions": [1254, 1254],
+      "raw_mode": "RGBA",
+      "alpha_handling": "native generated alpha",
+      "source": "sources/highland-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/highland.webp"
+    },
+    {
+      "id": "terrain:port:straight",
+      "kind": "port",
+      "prompt_key": "port-straight",
+      "raw_file": "exec-f5c72e05-0603-48dc-9bb3-6687ef0a742d.png",
+      "raw_sha256": "d98d988846c7f510fe8eab2112a0a5bc3ee369bc8d47c6dac022a6a1e5c83d6f",
+      "raw_bytes": 900300,
+      "raw_dimensions": [1512, 1040],
+      "raw_mode": "RGB",
+      "alpha_handling": "deterministic rendered-checker extraction",
+      "source": "sources/port-straight-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/port-straight.webp"
+    },
+    {
+      "id": "terrain:port:l",
+      "kind": "port",
+      "prompt_key": "port-l",
+      "raw_file": "exec-db6e302b-786c-42b4-8bd9-a26ee71a96f9.png",
+      "raw_sha256": "235f484297e935c28df8110e2705954e88cbb16e0eb6153b9aab69568c8ac194",
+      "raw_bytes": 1854535,
+      "raw_dimensions": [1536, 1024],
+      "raw_mode": "RGBA",
+      "alpha_handling": "targeted background-extraction edit",
+      "dark_halo_cleanup": true,
+      "source": "sources/port-l-256.webp",
+      "runtime": "apps/web/public/art/world-map-v2/terrain/port-l.webp"
+    }
+  ],
+  "rejected": [
+    {
+      "id": "terrain:port:l:original",
+      "prompt_key": "port-l",
+      "raw_file": "exec-56d2704a-514a-444f-90f6-0fcdc6aa1425.png",
+      "raw_sha256": "3119114604c4ab536d9307017bba04f91c72b76e0573d0d75eaf57c46a19ba55",
+      "raw_bytes": 1480958,
+      "raw_dimensions": [1536, 1024],
+      "raw_mode": "RGBA",
+      "reason": "opaque dark vignette surrounded the dock; replaced by a background-extraction edit"
+    }
+  ]
+}

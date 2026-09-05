@@ -2,7 +2,7 @@
   "schema": 3,
   "capture_baseline": {
     "captured_on": "2026-09-04",
-    "source_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
+    "source_head": "e547b55ced81d5f45fb110bf0b95a070b0c48274",
     "policy": "This evidence baseline carries across evidence-only commits only while the immutable material-baseline anchor and complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact."
   },
   "binding_boundary": {
@@ -89,8 +89,8 @@
     },
     {
       "path": "apps/web/src/MapCanvas.tsx",
-      "bytes": 89735,
-      "sha256": "81b764b4adcd3e64a9f37c8c6f4af86638120007ab3d723aec03a033165bd3c2"
+      "bytes": 101915,
+      "sha256": "49983be44b6e5d37fdd8e22f60ab509e0d226983379f5946e64e0c8bb1c2adb5"
     },
     {
       "path": "apps/web/src/Minimap.tsx",
@@ -349,8 +349,8 @@
     },
     {
       "path": "apps/web/src/mapArtRegistry.ts",
-      "bytes": 9428,
-      "sha256": "e5586dd1bf81a6b8f10c6e7cadd88db0bdf4cf3636624d8b9a84cb5586551f54"
+      "bytes": 9292,
+      "sha256": "6abc5ee19af614070da48eba3a9d784b46e28f050cf11799de3c29a05571ee39"
     },
     {
       "path": "apps/web/src/mapCursor.ts",
@@ -401,6 +401,11 @@
       "path": "apps/web/src/mapLayout.ts",
       "bytes": 7999,
       "sha256": "f892b8767e9636b30a16cd98b6c7a2888c9dc57bc7551f926cdbeb896633c8e7"
+    },
+    {
+      "path": "apps/web/src/mapPresentation.ts",
+      "bytes": 20178,
+      "sha256": "237796466d12ea14ec2d0da0d3200082441a1236318cfa50e8f3f2c67f9559ff"
     },
     {
       "path": "apps/web/src/mapSprites.ts",
@@ -2101,24 +2106,24 @@
     {
       "id": "phone-world",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-phone-world-375x812.png",
-      "bytes": 184381,
-      "sha256": "06e830d837b0112c0612ca8e7aa9f9c990907f7628132ce0ebbdc6616fa13bb1",
+      "bytes": 240148,
+      "sha256": "2d68a767e85256253a1a2ec025227d4ae3bf30120ec7d334fb1a15616e71becd",
       "dimensions": [375, 812],
       "frozen_state": "phone-world"
     },
     {
       "id": "city-inspector",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-city-inspector-1440x900.png",
-      "bytes": 228700,
-      "sha256": "15d83da5c065cad5a5b9363d50b2bac11fe830b274d19d11fcb5fb2853fcae13",
+      "bytes": 265087,
+      "sha256": "3fbd466006a79c45ef9f0723fef3438cd3578c6a79b993b4bf818b948faf9a7b",
       "dimensions": [1440, 900],
       "frozen_state": "city-inspector"
     },
     {
       "id": "interaction-states",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-interaction-states-1440x960.png",
-      "bytes": 279832,
-      "sha256": "9dc5f8aace3163724a87f534677efa2201347155ff27bfe3cf48ff1e4460cdbe",
+      "bytes": 266698,
+      "sha256": "5d333268a47ff10995308ef0cc191c002fa7f6b0e037ec5e3119e60ea8133e29",
       "dimensions": [1440, 960],
       "frozen_state": "interaction-states"
     }
@@ -4159,9 +4164,9 @@
   "material_baseline": {
     "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
     "bytes": 612,
-    "sha256": "5c3e951224a4daee942d09d258a71cc2239660fc18012a7f00916fca59dc0da1",
-    "capture_head": "f1dea84d0d489ef52db3944c47748a708ba40004",
-    "capture_record_sha256": "db5803719e18c5e180aba2fe916aca63b88dfb79034fde8701c450d143f5da1d",
-    "material_sha256": "02c350403ca423110ce3fa32de4fe917e778e7e9f6e7fcb2ede85eba07718116"
+    "sha256": "b6088f08fdf681c338db2fa8f07e423cc947672d1fda737ca2e6d47dea9a95ac",
+    "capture_head": "e547b55ced81d5f45fb110bf0b95a070b0c48274",
+    "capture_record_sha256": "480bdeb7afe4c9aad6dacce22a7031e8b383db060a02d8b55b4c58f2171ccdcc",
+    "material_sha256": "8f289893c6a6294abc87955c146fb254dd5181e958ae1e309743052e11e4fa4f"
   }
 }

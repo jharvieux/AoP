@@ -525,7 +525,7 @@ const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
 const approvalMarkers = [
   retainedMaterialBaseline.captured_on,
-  'operator approved all three exact-source runtime frames',
+  'operator renewed approval for all three exact-source runtime frames',
   retainedMaterialBaseline.capture_head,
   captureRecord,
   'docs/evidence-only commits only while',
@@ -613,8 +613,8 @@ for (const marker of [
   }
 }
 for (const marker of [
-  '212 shipping source files',
-  '146 non-test files',
+  '213 shipping source files',
+  '147 non-test files',
   'all 29 engine source files',
   'all 19 shared source files',
   'all 18 content source files',

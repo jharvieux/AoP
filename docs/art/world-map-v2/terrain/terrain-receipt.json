@@ -1,0 +1,242 @@
+{
+  "schema": 2,
+  "issue": 611,
+  "source": [
+    {
+      "path": "sources/land-base-a-256.webp",
+      "sha256": "907dfed40c9a0551fda0d6fea7238a13b4da9853b2d6a045b0e5283e42557e25",
+      "bytes": 72012,
+      "dimensions": [256, 256],
+      "mode": "RGB"
+    },
+    {
+      "path": "sources/land-base-b-256.webp",
+      "sha256": "16fff27d66e70d44af6d70e4bcacec677e6d78435ee3b70199e9e6973f88e177",
+      "bytes": 72988,
+      "dimensions": [256, 256],
+      "mode": "RGB"
+    },
+    {
+      "path": "sources/land-base-c-256.webp",
+      "sha256": "808c8f0c20f72a8d5a3157d17cb2adb610beffa9c2bd2bce5852204429907d07",
+      "bytes": 72178,
+      "dimensions": [256, 256],
+      "mode": "RGB"
+    },
+    {
+      "path": "sources/forest-a-256.webp",
+      "sha256": "ab667eb0ce919415ca0c696199cc060fc404a6f046ddafd0298fb84db3a44f4e",
+      "bytes": 19788,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/forest-b-256.webp",
+      "sha256": "477157e54792da8aa349c60d85195bce36cb1ad924f204c3b3a1d8730258337a",
+      "bytes": 19866,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/clearing-256.webp",
+      "sha256": "2ebee72cbde118a62be1e86bd342426136c9a50a9bd44ba362f0c0ee189793b9",
+      "bytes": 13714,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/highland-256.webp",
+      "sha256": "904ab1bb773321058beb5a9eddee342ec5daf642a0cc2f55b6e4129eb73d7edb",
+      "bytes": 14854,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/port-straight-256.webp",
+      "sha256": "3c93aab9aa9a0de15dd4800c0578b935b484c46a3fc1ecc135c644314711ed38",
+      "bytes": 9096,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/port-l-256.webp",
+      "sha256": "4a4de87f0cc8d2e508d55d6d1eb83b0361a5f87b4dc6e1b194052f2a4e9630b7",
+      "bytes": 10984,
+      "dimensions": [256, 256],
+      "mode": "RGBA"
+    }
+  ],
+  "runtime": [
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/land-base-a.webp",
+      "sha256": "02b672dfb9f8752b0ee3c489ad4a66c41ba5dc1dfb9ce18867d91b2f0715743d",
+      "bytes": 19744,
+      "dimensions": [128, 128],
+      "mode": "RGB"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/land-base-b.webp",
+      "sha256": "f2f29271826502205555301d5cbc555052a57f5cced71fd8f0c9889d4c935f3e",
+      "bytes": 20084,
+      "dimensions": [128, 128],
+      "mode": "RGB"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/land-base-c.webp",
+      "sha256": "f4301ef6d1bed4ad4ee2c96d6893a4d1249500ee760d3565643de431eeb61d34",
+      "bytes": 19114,
+      "dimensions": [128, 128],
+      "mode": "RGB"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/forest-a.webp",
+      "sha256": "c88d9526faf0ea97cffc38356ef4381b5326a90cccb093c24ad2f148902fc8c0",
+      "bytes": 15826,
+      "dimensions": [128, 128],
+      "mode": "RGBA"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/forest-b.webp",
+      "sha256": "b84009a0fe8e2daf25b197183b8f778a2b1fbffdcf814ba99064d9c9908963b8",
+      "bytes": 14824,
+      "dimensions": [128, 128],
+      "mode": "RGBA"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/clearing.webp",
+      "sha256": "a1b394877b76b25c68dc73b1c5009b4ef6aee3d10927a4419d9add4be15a5c55",
+      "bytes": 12344,
+      "dimensions": [128, 128],
+      "mode": "RGBA"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/highland.webp",
+      "sha256": "8482fe876bd1a2a8bbaaba9b73c775ea529355daefcec5d237c800e14b7d6f3f",
+      "bytes": 11684,
+      "dimensions": [128, 128],
+      "mode": "RGBA"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/port-straight.webp",
+      "sha256": "957bc25a0223bc5cc954e751f1b726bf6c8cab92fccf8b14c9501d9020a87911",
+      "bytes": 15628,
+      "dimensions": [192, 128],
+      "mode": "RGBA"
+    },
+    {
+      "path": "apps/web/public/art/world-map-v2/terrain/port-l.webp",
+      "sha256": "2d8d61a732a9e8f4fbdb0a509ec7bda71794ff8844ed1470604b55fecda232d3",
+      "bytes": 19720,
+      "dimensions": [192, 128],
+      "mode": "RGBA"
+    }
+  ],
+  "proofs": [
+    {
+      "path": "proofs/seam-no-repeat-5x5.webp",
+      "sha256": "d233c400ad41be52f583c53e88ab0ffb9eafb21ce28734fbb69afa84210ecf51",
+      "bytes": 99078,
+      "dimensions": [640, 640],
+      "mode": "RGB"
+    },
+    {
+      "path": "proofs/seam-no-repeat-5x5-hex.webp",
+      "sha256": "6ca58255fb3f3de01d60220788506441c8b41def2a0c884b14588524f53fc186",
+      "bytes": 99544,
+      "dimensions": [640, 640],
+      "mode": "RGB"
+    },
+    {
+      "path": "proofs/terrain-contact-sheet.webp",
+      "sha256": "3d960eb5b0c657f0101ae84ce0b18799d4f5e0867ecfff380aa62c46f15fcc4c",
+      "bytes": 33198,
+      "dimensions": [768, 512],
+      "mode": "RGB"
+    }
+  ],
+  "budget": {
+    "per_image_limit_bytes": 307200,
+    "runtime_total_bytes": 148968,
+    "largest_image_bytes": 99544
+  },
+  "seam_proof": {
+    "selection_salt": "terrain-base:land:{topology}",
+    "selections": {
+      "square": {
+        "matrix": [
+          [1, 0, 1, 2, 1],
+          [2, 2, 1, 1, 0],
+          [0, 2, 2, 0, 1],
+          [0, 2, 0, 2, 2],
+          [0, 1, 0, 2, 0]
+        ],
+        "variant_counts": [9, 7, 9],
+        "unique_rows": 5,
+        "unique_columns": 5,
+        "longest_axis_run": 3,
+        "parity_dominance": [0.384615, 0.416667],
+        "distinct_2x2_motifs": 14,
+        "offset_match_ratios": {
+          "1,0": 0.2,
+          "0,1": 0.35,
+          "1,1": 0.3125,
+          "-1,1": 0.3125,
+          "2,0": 0.4,
+          "0,2": 0.2
+        },
+        "minimum_base_interior_pairwise_mae": 8.177517,
+        "base_interior_pairwise_mae": {
+          "0,1": 8.177517,
+          "0,2": 8.240596,
+          "1,2": 8.227141
+        },
+        "translated_composite_mae": {
+          "1,0": 5.702368,
+          "0,1": 4.680444,
+          "1,1": 4.884827,
+          "-1,1": 4.972748,
+          "2,0": 4.337044,
+          "0,2": 5.725537
+        }
+      },
+      "hex": {
+        "matrix": [
+          [2, 0, 0, 1, 1],
+          [1, 0, 1, 2, 0],
+          [1, 2, 1, 0, 0],
+          [2, 0, 1, 0, 2],
+          [1, 2, 2, 1, 0]
+        ],
+        "variant_counts": [9, 9, 7],
+        "unique_rows": 5,
+        "unique_columns": 5,
+        "longest_axis_run": 3,
+        "parity_dominance": [0.461538, 0.416667],
+        "distinct_2x2_motifs": 16,
+        "offset_match_ratios": {
+          "1,0": 0.2,
+          "0,1": 0.3,
+          "1,1": 0.1875,
+          "-1,1": 0.3125,
+          "2,0": 0.2,
+          "0,2": 0.333333
+        },
+        "minimum_base_interior_pairwise_mae": 8.177517,
+        "base_interior_pairwise_mae": {
+          "0,1": 8.177517,
+          "0,2": 8.240596,
+          "1,2": 8.227141
+        },
+        "translated_composite_mae": {
+          "1,0": 5.73009,
+          "0,1": 5.035291,
+          "1,1": 5.777634,
+          "-1,1": 4.954132,
+          "2,0": 5.741536,
+          "0,2": 4.774316
+        }
+      }
+    },
+    "maximum_cross_variant_edge_channel_delta": 1
+  }
+}

@@ -252,8 +252,14 @@ describe('mapArtPreloadRequests', () => {
     expect(selected).not.toContain(mapArtRegistry.seaEncounters.merchant)
     expect(selected).not.toContain(mapArtRegistry.landEncounters.hermit)
     expect(selected).not.toContain(mapArtRegistry.landSites.ruins)
-    expect(selected).toEqual([mapArtRegistry.tiles.land, mapArtRegistry.tiles.port])
-    expect(overrideLookups).toEqual(['tile:land', 'tile:port'])
+    expect(selected).toEqual([])
+    expect(overrideLookups).toEqual([])
+  })
+
+  it('does not preload the unused legacy land and port images', () => {
+    const selected = urls(scene())
+    expect(selected).not.toContain(mapArtRegistry.tiles.land)
+    expect(selected).not.toContain(mapArtRegistry.tiles.port)
   })
 
   it('keeps the all-family readiness request finite and eligibility-scoped', () => {
