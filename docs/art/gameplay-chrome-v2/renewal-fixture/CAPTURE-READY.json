@@ -1,0 +1,2485 @@
+{
+  "schema": "aop-cross-evidence-capture-ready-v1",
+  "issue": 613,
+  "status": "capture-ready-unapproved",
+  "approval": {
+    "status": "pending-direct-operator-approval",
+    "record": null
+  },
+  "source": {
+    "head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+    "policy": "All non-test web runtime files, all engine/shared/content source files, build inputs, renderer receipts, and runtime assets must equal target-source bytes.",
+    "shipping_file_count": 217,
+    "build_input_count": 22,
+    "runtime_asset_count": 105,
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "d73e22c3d03110d8884b74c684fe6def907993b11f9f3eb4b25a0aa68fe798ed",
+      "bytes": 47818
+    },
+    "files": [
+      {
+        "path": "apps/web/src/AdSlot.tsx",
+        "bytes": 3167,
+        "sha256": "4659df379d2875e77675c8e52d0bc6e753ac95b99225bb5d9d849400014fc044"
+      },
+      {
+        "path": "apps/web/src/App.tsx",
+        "bytes": 18715,
+        "sha256": "127da1e279878d3176ea78dfb13309391f077bfa999df9dc6be759dbec913762"
+      },
+      {
+        "path": "apps/web/src/BattleBoardSheet.tsx",
+        "bytes": 11111,
+        "sha256": "ef6805a1b03d2ee2047f41e29758099c1bc82069718e8e949e74488207168d38"
+      },
+      {
+        "path": "apps/web/src/BoardingCommandSheet.tsx",
+        "bytes": 10368,
+        "sha256": "b155abc58a1a8695d8fbc24e6843df9826b0d655d5c9fed481d04c6fa5f313d7"
+      },
+      {
+        "path": "apps/web/src/CityScene.tsx",
+        "bytes": 16568,
+        "sha256": "552d1e21d28573b4070b588480911224d97b00cf80364d526959b5ea56fa42a2"
+      },
+      {
+        "path": "apps/web/src/CityScreen.tsx",
+        "bytes": 14893,
+        "sha256": "cc0a30af02bb29735f561956ec0038f027647ac1764f93bee7870d05e22e95fe"
+      },
+      {
+        "path": "apps/web/src/ErrorBoundary.tsx",
+        "bytes": 1736,
+        "sha256": "7b415c0ecf4c971bfc6454053edcf32aa9a27c76b4702b4a9964a65f0ad27833"
+      },
+      {
+        "path": "apps/web/src/MapAlertRegion.tsx",
+        "bytes": 2517,
+        "sha256": "d8f79d809b24c200d909c52f8a07b77bcef6315c279ad4598479a11d8cbb90c5"
+      },
+      {
+        "path": "apps/web/src/MapCanvas.tsx",
+        "bytes": 105452,
+        "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+      },
+      {
+        "path": "apps/web/src/Minimap.tsx",
+        "bytes": 11011,
+        "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
+      },
+      {
+        "path": "apps/web/src/ResourceHud.tsx",
+        "bytes": 1748,
+        "sha256": "0a1b99e6d43b70913208e2cd3642155e9b876d3a64b84e6fef3c4d951d7411bb"
+      },
+      {
+        "path": "apps/web/src/SaveScreen.tsx",
+        "bytes": 4171,
+        "sha256": "42728fd1227289f9e17ccd0ef79a3623d13a7b621a82893b5614803a627b3642"
+      },
+      {
+        "path": "apps/web/src/TacticalRoundSheet.tsx",
+        "bytes": 2747,
+        "sha256": "c2a134298b6d6b5620d10c86724739785dcab52be58f04b990f2931f1a83a725"
+      },
+      {
+        "path": "apps/web/src/UpdateBanner.tsx",
+        "bytes": 589,
+        "sha256": "ed7166c2666f6cafb5af2eaef74cf1ecefc8c95204e8449ef2237aeca13a75a0"
+      },
+      {
+        "path": "apps/web/src/actionDispatch.ts",
+        "bytes": 2135,
+        "sha256": "597fdfb8d3ce6ba89ede1b0973a79f702bc46e277327c5948e291c7468defa5f"
+      },
+      {
+        "path": "apps/web/src/appSave.ts",
+        "bytes": 456,
+        "sha256": "298884ce91e28cff89f1a5db070ba5a584c18d1314d763213ededd40cbda80a6"
+      },
+      {
+        "path": "apps/web/src/approach.ts",
+        "bytes": 1793,
+        "sha256": "db57f6228a6a1cc73b76067eba8d88e3a3db77156d5ebeba1c05af7d1da348b4"
+      },
+      {
+        "path": "apps/web/src/audio/audioManager.ts",
+        "bytes": 7176,
+        "sha256": "74fbc691706b06b93aeaf2a2d22a550504a71c7a6f5842ae8de0018d1329bf09"
+      },
+      {
+        "path": "apps/web/src/audio/dialogueClips.ts",
+        "bytes": 1026,
+        "sha256": "aacc43bd388b18a6144a1b6ad5def5b08db208ed13e8abe2a5ad240dbcb31487"
+      },
+      {
+        "path": "apps/web/src/audio/feedback.ts",
+        "bytes": 1688,
+        "sha256": "415d3541b41e5f9739692c4aebd1a73c002ffbb8de64d2c1ef211b66b48cea0d"
+      },
+      {
+        "path": "apps/web/src/audio/musicClips.ts",
+        "bytes": 2195,
+        "sha256": "ee2092e7024174f97c999171783f6195ca00ec6b85d656290c551e7befbd4571"
+      },
+      {
+        "path": "apps/web/src/audio/sfxClips.ts",
+        "bytes": 481,
+        "sha256": "a72963dc6b75900ca974a46bde6ee8f49a3b4c13223ddb6eea70513068a449cd"
+      },
+      {
+        "path": "apps/web/src/audio/useAudioSettings.ts",
+        "bytes": 923,
+        "sha256": "bf22734f6c0c4c667323ca8780ef81666f0e553c1af045d1376686be973edeba"
+      },
+      {
+        "path": "apps/web/src/audio/useBackgroundMusic.ts",
+        "bytes": 747,
+        "sha256": "28bfc7a38f380be888402105e48e7b1e61c6fb2519eaeafb8e36502fd168ba01"
+      },
+      {
+        "path": "apps/web/src/audio/useEncounterAudio.ts",
+        "bytes": 1289,
+        "sha256": "9be931b1c826e2329bd451bbbd271f2c9c03d0e66326198e55371f5045f6a859"
+      },
+      {
+        "path": "apps/web/src/auth/AuthContext.tsx",
+        "bytes": 11002,
+        "sha256": "d352fc3995f39d88b511d9bd7df97a19f672f10cfe237a51e5894e19fb1bf69a"
+      },
+      {
+        "path": "apps/web/src/auth/config.ts",
+        "bytes": 526,
+        "sha256": "984f2ec6dbf773723b1f08ccd0e3c02f61c50f509c23d375fcb2b06df9724197"
+      },
+      {
+        "path": "apps/web/src/auth/index.ts",
+        "bytes": 520,
+        "sha256": "b5d88f2939826f6d887ef30f6d03f120e3df81b510fdbe32d5e0e3f9ed8e8f7c"
+      },
+      {
+        "path": "apps/web/src/auth/machine.ts",
+        "bytes": 992,
+        "sha256": "8c570b1b42b4031fe4431c246c7f1d4595e422de102db7f71f26c54e8f4d79bd"
+      },
+      {
+        "path": "apps/web/src/auth/migrate.ts",
+        "bytes": 1410,
+        "sha256": "1fedc64e380c7d27f5acf7517cea6cb9a11c7775fe7eb17c34cf8f41aaceeb24"
+      },
+      {
+        "path": "apps/web/src/auth/oauthCallback.ts",
+        "bytes": 2411,
+        "sha256": "086561f42a4125f3efd4926b0c580f205adf4ea6815776ebcd2f790cd69fe6df"
+      },
+      {
+        "path": "apps/web/src/auth/session.ts",
+        "bytes": 2881,
+        "sha256": "52b51cb105e4340a846b66bae39c3eeed5a007681fcd66867d6f8a989fc1f9c5"
+      },
+      {
+        "path": "apps/web/src/auth/supabaseAuth.ts",
+        "bytes": 8061,
+        "sha256": "9934048e9f985fbf97a3abbf09ecbc909fc4f6da7bccbdfaabed495775af3d7c"
+      },
+      {
+        "path": "apps/web/src/auth/types.ts",
+        "bytes": 3351,
+        "sha256": "a7320ad0761cb33ff6ff9f9e41151bd721e90204f42ad7e3aa51bdeb89c09e10"
+      },
+      {
+        "path": "apps/web/src/auth/upgrade.ts",
+        "bytes": 1203,
+        "sha256": "6c39a4521985d5495e70139c0720b5dbceb8fe261d0b8647669cda53fb6b6ef1"
+      },
+      {
+        "path": "apps/web/src/battleBoardSvg.tsx",
+        "bytes": 9967,
+        "sha256": "34dade9396268f18257a0d3a81875e726bd7f2f68d94e7e4279c5c96cb185e37"
+      },
+      {
+        "path": "apps/web/src/boardingPlanner.ts",
+        "bytes": 4609,
+        "sha256": "b95ff21d0c34c674811c7e4b3be4459a1d0e299535eeb6b43b2eabc1f88dc787"
+      },
+      {
+        "path": "apps/web/src/captainAshore.ts",
+        "bytes": 1490,
+        "sha256": "a49333157b4b08269e818f92932061cb80f91480549a88fb5121296e867f2079"
+      },
+      {
+        "path": "apps/web/src/catalog.ts",
+        "bytes": 950,
+        "sha256": "2690dc39d62d4158a957c19192dd5e3b64ab88608d3a10ab4d9d7ace9a9c275f"
+      },
+      {
+        "path": "apps/web/src/cityArtRegistry.ts",
+        "bytes": 1475,
+        "sha256": "92d0fd188a3f24800404c096475148e2bbc94817c9bfa1fc7f88e89606686398"
+      },
+      {
+        "path": "apps/web/src/cityBuildingInfo.ts",
+        "bytes": 3252,
+        "sha256": "04297115d363d8622c139b2507056e4869411c8872d95558cb48e365d1836d2b"
+      },
+      {
+        "path": "apps/web/src/cityDocking.ts",
+        "bytes": 713,
+        "sha256": "8fe001856dcb7a98f89f7cf6108c6522c35de7b82834e9b8a07f4eb8afbc1bfe"
+      },
+      {
+        "path": "apps/web/src/cityModals.tsx",
+        "bytes": 37375,
+        "sha256": "30a05428054db5a2e3fd4f91d0717afa09ee6d937b8b01a86af9438d58a82596"
+      },
+      {
+        "path": "apps/web/src/citySceneLayout.json",
+        "bytes": 7842,
+        "sha256": "c7a6f599f27e6548db237667ac9cd99abf60e398427babad23f318bddf25385f"
+      },
+      {
+        "path": "apps/web/src/colorTokens.ts",
+        "bytes": 1794,
+        "sha256": "53951fbd6cd4aeea21bd293e22705a0f7bac092a34e12ba905a5a59cf8ccf237"
+      },
+      {
+        "path": "apps/web/src/components/BottomSheet.tsx",
+        "bytes": 3696,
+        "sha256": "21f5a5e12c696da03a82d8449bd5f59ff9b4d2924e3bcebd416275a9b7465a2b"
+      },
+      {
+        "path": "apps/web/src/components/ChatPanel.tsx",
+        "bytes": 3389,
+        "sha256": "7a6073c971e17b1ded67dcc02f5bae6bd51e9cccbfeb8fa08828fc792ad678e8"
+      },
+      {
+        "path": "apps/web/src/components/DiplomacyPanel.tsx",
+        "bytes": 7028,
+        "sha256": "522e6047c016cfd2cc31e470779ddd016f09b78d4bde955307673d740279a647"
+      },
+      {
+        "path": "apps/web/src/components/MatchChatPanel.tsx",
+        "bytes": 1571,
+        "sha256": "772bbcbfb94b9507a3a137f5e0fe3de1548e7fba0a95c6fdf0342858c9a2609d"
+      },
+      {
+        "path": "apps/web/src/components/Skeleton.tsx",
+        "bytes": 616,
+        "sha256": "1958e023857c3c918aa27adad46f379173433ecfce1543a4ad3b4a834fa3074f"
+      },
+      {
+        "path": "apps/web/src/components/SkullEmblem.tsx",
+        "bytes": 892,
+        "sha256": "8700fd0723712497f993387a37fbd486247c14a94e2f04e315db161af6e26c49"
+      },
+      {
+        "path": "apps/web/src/components/Spinner.tsx",
+        "bytes": 707,
+        "sha256": "981a7ba8ab698581faa3f0af2762a92b0b0efb350e8faa152a406cce1f966172"
+      },
+      {
+        "path": "apps/web/src/components/diplomacy.ts",
+        "bytes": 2963,
+        "sha256": "86828eeff19ffdbf88b737213d07cd6a4439f75197bea5b3f3d596ea560ec0b5"
+      },
+      {
+        "path": "apps/web/src/continueSave.ts",
+        "bytes": 553,
+        "sha256": "277913083435c00dcd4395a0323f13369d9085734081a9c09d4ad85f26891886"
+      },
+      {
+        "path": "apps/web/src/deepEqual.ts",
+        "bytes": 1230,
+        "sha256": "437db3c532bb0b262aa38151db456fe965b5e703629f39059dd39bc7259ccb9f"
+      },
+      {
+        "path": "apps/web/src/encounterPortraits.ts",
+        "bytes": 605,
+        "sha256": "83608dea163c539201e83976e9fa7e6cec0e76276b750d980c63164a6aecd809"
+      },
+      {
+        "path": "apps/web/src/errors.ts",
+        "bytes": 185,
+        "sha256": "ac6a0b676f2bdd4f0f21330d81ebf953b058453dbd846db80a559ad39bc3fd47"
+      },
+      {
+        "path": "apps/web/src/fleetVisibility.ts",
+        "bytes": 1721,
+        "sha256": "b0bd8c3ec3ba9988798ebabbf88ddcad17775cb67b27b9d102be6877b2e516a7"
+      },
+      {
+        "path": "apps/web/src/gameSession.ts",
+        "bytes": 1086,
+        "sha256": "afdfc48787e718b73aa45b8cd4b9cfee7e3aee2506286ee4925795e551a82dd0"
+      },
+      {
+        "path": "apps/web/src/haptics.ts",
+        "bytes": 999,
+        "sha256": "ab22737d0f24e950a2b25481863fab21198f59c633713bd640cc37efb276868a"
+      },
+      {
+        "path": "apps/web/src/loadSave.ts",
+        "bytes": 3568,
+        "sha256": "9682b4eb21c56aaeffbc94f24b5b4e8e950acd36c959e7770fdf0cdd2daeb94d"
+      },
+      {
+        "path": "apps/web/src/main.tsx",
+        "bytes": 963,
+        "sha256": "60f38b4fa55f192c2bf5e378aee474cfa2ee71ffba34d961c7fb88dfce7d28e8"
+      },
+      {
+        "path": "apps/web/src/mapArtRegistry.ts",
+        "bytes": 9292,
+        "sha256": "6abc5ee19af614070da48eba3a9d784b46e28f050cf11799de3c29a05571ee39"
+      },
+      {
+        "path": "apps/web/src/mapCamera.ts",
+        "bytes": 7266,
+        "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+      },
+      {
+        "path": "apps/web/src/mapCursor.ts",
+        "bytes": 4705,
+        "sha256": "0d85c560acc019d43a7d9b891c8a2b773714c06e35af8f272073a4f027dd0df9"
+      },
+      {
+        "path": "apps/web/src/mapEditor/CommunityLibraryPanel.tsx",
+        "bytes": 6722,
+        "sha256": "a24a7d15b107a974a233aa1acfb9089d115a04f2670e5eaf505ae7f2be5e5bb8"
+      },
+      {
+        "path": "apps/web/src/mapEditor/MapEditorCanvas.tsx",
+        "bytes": 6388,
+        "sha256": "8e4db2bfcf3c351f8ed874541595636c91eaad35606355db13074f5758726dc0"
+      },
+      {
+        "path": "apps/web/src/mapEditor/autosaveScheduler.ts",
+        "bytes": 1856,
+        "sha256": "ae963d9302875b2909deffa102e7e944758c1472d0c290b2e63e0c07ab544fdf"
+      },
+      {
+        "path": "apps/web/src/mapEditor/draft.ts",
+        "bytes": 7955,
+        "sha256": "b234bfef605b6c586b4afda224984d2c8163b321927f4120cb6ec91be49d5fc0"
+      },
+      {
+        "path": "apps/web/src/mapEditor/encode.ts",
+        "bytes": 2446,
+        "sha256": "a36f33b1d8a1996ca46bb10f20c6809e1d45f2156defef4bc4d3f225a50fe73b"
+      },
+      {
+        "path": "apps/web/src/mapEditor/libraryClient.ts",
+        "bytes": 4545,
+        "sha256": "f8f735bb919bafee6aed95be3c03dae134fc238c3ead18e5a0d0819894fb5f47"
+      },
+      {
+        "path": "apps/web/src/mapEditor/storage.ts",
+        "bytes": 3535,
+        "sha256": "0f22d7bf19f292836da4793368904e38ae648b8569caf3bff760122cc1d78b19"
+      },
+      {
+        "path": "apps/web/src/mapEditor/types.ts",
+        "bytes": 2078,
+        "sha256": "38a41efd3392eee6c0818e9c4edbb5c883718bb30325132c4f9b3e32ac02064c"
+      },
+      {
+        "path": "apps/web/src/mapLayout.ts",
+        "bytes": 7999,
+        "sha256": "f892b8767e9636b30a16cd98b6c7a2888c9dc57bc7551f926cdbeb896633c8e7"
+      },
+      {
+        "path": "apps/web/src/mapPresentation.ts",
+        "bytes": 20178,
+        "sha256": "237796466d12ea14ec2d0da0d3200082441a1236318cfa50e8f3f2c67f9559ff"
+      },
+      {
+        "path": "apps/web/src/mapSprites.ts",
+        "bytes": 7235,
+        "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
+      },
+      {
+        "path": "apps/web/src/monetization/CheckoutPendingBanner.tsx",
+        "bytes": 645,
+        "sha256": "4df2bc32ffd30f55d05f46e97dd5782d6ce6dd5624becdde22c7190786ebf2e6"
+      },
+      {
+        "path": "apps/web/src/monetization/adConfig.ts",
+        "bytes": 837,
+        "sha256": "63f94e0d4966325862c37ec772e60c3052a1394db8909939bcda38054631e38c"
+      },
+      {
+        "path": "apps/web/src/monetization/adScriptGuard.ts",
+        "bytes": 1321,
+        "sha256": "bb1b5dafc7555f27bf3f1afcdb70686e67b1c269cd7a874d91b8f3ae4afc3bea"
+      },
+      {
+        "path": "apps/web/src/monetization/checkout.ts",
+        "bytes": 2522,
+        "sha256": "15e47cb6284f4f83db4dc1690ea68c1f393a5f879bcbf2c1597dafbfb3459eb9"
+      },
+      {
+        "path": "apps/web/src/monetization/checkoutReturn.ts",
+        "bytes": 3706,
+        "sha256": "2e01b07619e57af2601462d705bbb046bbb88bd4e86534ea85986a7dfd854b51"
+      },
+      {
+        "path": "apps/web/src/monetization/entitlements.ts",
+        "bytes": 1801,
+        "sha256": "ba2a9a9e42afd9133f35213b95ab147023bed94736d891e8787f97cdb90d2aa4"
+      },
+      {
+        "path": "apps/web/src/monetization/iap.ts",
+        "bytes": 3312,
+        "sha256": "336e48b733148c768aa42d358b22023f355781dc900eaced16bbba2582fbea82"
+      },
+      {
+        "path": "apps/web/src/monetization/useRemoveAds.ts",
+        "bytes": 2917,
+        "sha256": "038f2c5a9516cee69217018c8214935a91b51e24333cddf4b7782cbe859db656"
+      },
+      {
+        "path": "apps/web/src/multiplayer/approachAndEngage.ts",
+        "bytes": 3020,
+        "sha256": "bac18383b69d88aa32eded0d32d7f04287ee70115cc1c43c81622157b5f3d790"
+      },
+      {
+        "path": "apps/web/src/multiplayer/battleSessionClient.ts",
+        "bytes": 4413,
+        "sha256": "51bc06ad28370f28c3a391b914664d3497705009193047f850df6f9917bff1a1"
+      },
+      {
+        "path": "apps/web/src/multiplayer/battleSessionFlow.ts",
+        "bytes": 4397,
+        "sha256": "9d213c5f59582c17255000ebba5f32ee237ac93587fc7c571d765d89bb55ead7"
+      },
+      {
+        "path": "apps/web/src/multiplayer/browserTransports.ts",
+        "bytes": 1656,
+        "sha256": "aecdb2d3290e65aea99e7a9d067cb57c0af22f1009730da8f07d1e9d6e90c4d4"
+      },
+      {
+        "path": "apps/web/src/multiplayer/chatClient.ts",
+        "bytes": 3950,
+        "sha256": "dfb6de27a584f011d8b36dcea2ade3436e4939f604e1d0bcbfb015590c7da482"
+      },
+      {
+        "path": "apps/web/src/multiplayer/chatSync.ts",
+        "bytes": 2103,
+        "sha256": "9d96e14f30ffb8dd93380d209022302c190fe41dc40898a26fc90426a4c69e63"
+      },
+      {
+        "path": "apps/web/src/multiplayer/leaderboardClient.ts",
+        "bytes": 2251,
+        "sha256": "d5665a485c608b91a528c09951bdb29395d19892372c9ff6f209b688cff25558"
+      },
+      {
+        "path": "apps/web/src/multiplayer/matchActionClient.ts",
+        "bytes": 3509,
+        "sha256": "3732eb04e2f86a7e08dafacbdf5d5b347e426117ce4d68b036788b6ac22bcd11"
+      },
+      {
+        "path": "apps/web/src/multiplayer/matchActions.ts",
+        "bytes": 25215,
+        "sha256": "324804a7aa6e40a1edcd18b76af6cdeeef9b356d0668b454b8faf31c858f1001"
+      },
+      {
+        "path": "apps/web/src/multiplayer/matchConfig.ts",
+        "bytes": 3835,
+        "sha256": "b9b72ab34555028e30baa5155f86187cb552b728ba567614f3b7d3e7b5a3732c"
+      },
+      {
+        "path": "apps/web/src/multiplayer/matchReplay.ts",
+        "bytes": 7797,
+        "sha256": "6f15b445cd3973874582b01673c19be97c5a55fba92bab5403d8c86a83e20dea"
+      },
+      {
+        "path": "apps/web/src/multiplayer/matchmakingQueueClient.ts",
+        "bytes": 6597,
+        "sha256": "df833a8560b1d04e927c0589c1e73fe0cf531e2724d088e9543d4501d4988fb0"
+      },
+      {
+        "path": "apps/web/src/multiplayer/openMatchesClient.ts",
+        "bytes": 3429,
+        "sha256": "68b5a82982a8d2bf96b02fb643af887a905af61a4427c6f07577e7c0e9fd0ab7"
+      },
+      {
+        "path": "apps/web/src/multiplayer/playerViewBoard.ts",
+        "bytes": 6376,
+        "sha256": "0d444725ce154fdc969639fad7f0af36ce8a010020781b9d3e95354af950ff4e"
+      },
+      {
+        "path": "apps/web/src/multiplayer/realtimeTransport.ts",
+        "bytes": 5544,
+        "sha256": "9558bcb9600fc1dc8413865afaa8778793be76184df56d8e19abea3a9d7dd4c5"
+      },
+      {
+        "path": "apps/web/src/multiplayer/reconnectSync.ts",
+        "bytes": 4305,
+        "sha256": "a82f44a2ed63fe9dccb0fae82439f0a2c49ed76ac85047b66c2aeef0ac4d38c8"
+      },
+      {
+        "path": "apps/web/src/multiplayer/spectateClient.ts",
+        "bytes": 3724,
+        "sha256": "63bf99cd67f6e3791a73478ad12bbd1d3f8c7f2e72686aae3a22abc690539d06"
+      },
+      {
+        "path": "apps/web/src/multiplayer/spectatePoll.ts",
+        "bytes": 1975,
+        "sha256": "c351fed91cd7d7c70bec4f0bcd12155a15dcc8189132cef90ea7aa604aaaf963"
+      },
+      {
+        "path": "apps/web/src/multiplayer/submitWithRetry.ts",
+        "bytes": 2526,
+        "sha256": "0949abd29d302b8bc042b6b2718601c3aa0d292e3d1f4a1acb29d418da57f51b"
+      },
+      {
+        "path": "apps/web/src/multiplayer/turnSync.ts",
+        "bytes": 2154,
+        "sha256": "9646bd61e12cb2bf291ec2d4a713e348010b6b0f4e49a4b7a75180a97a997c14"
+      },
+      {
+        "path": "apps/web/src/multiplayer/turnTimer.ts",
+        "bytes": 3335,
+        "sha256": "fc2c5ab0ea04a23545f6701d953940597524d748ff4bd95814073165e7bc5b1c"
+      },
+      {
+        "path": "apps/web/src/multiplayer/useMatchChat.ts",
+        "bytes": 3523,
+        "sha256": "63c7c2b0b5525d234d166ff5d10659ea09d1dd2b4ab484f39acd54633900d859"
+      },
+      {
+        "path": "apps/web/src/paintedWorld.ts",
+        "bytes": 7630,
+        "sha256": "b3f56ff797c4d1036ae54621a7b52a7cc5e0be810cf92ca928e1af5165184bb0"
+      },
+      {
+        "path": "apps/web/src/partyMarch.ts",
+        "bytes": 1005,
+        "sha256": "b309aab946287395e7fd894f249070d41e52a2ea6e17633e8e1df5703c8ac290"
+      },
+      {
+        "path": "apps/web/src/partyRange.ts",
+        "bytes": 4477,
+        "sha256": "da16ebae73acaaf9f645b7dbf773098d563b91a3c95fffec498bea7498afa1a4"
+      },
+      {
+        "path": "apps/web/src/pathPreview.ts",
+        "bytes": 3203,
+        "sha256": "38af2b380ee78d2c87f32c555b12457a39b84f922b5636582074a73ff8f41a68"
+      },
+      {
+        "path": "apps/web/src/players.ts",
+        "bytes": 1422,
+        "sha256": "e76f9be8de80bdbbfad1c61963f4336556e9e641a047fdc35fe8b7817f22267a"
+      },
+      {
+        "path": "apps/web/src/plugins/androidBackButton.ts",
+        "bytes": 1487,
+        "sha256": "85746314669e96e80ee2c7e2ae06715a9e1e2bb3bc3508102c7d4d4f5643a164"
+      },
+      {
+        "path": "apps/web/src/plugins/nativeBridge.ts",
+        "bytes": 2365,
+        "sha256": "e28006bbd29f1b412b46e5d5ccf9498cbb75c199c65048ca8eb596d05c24dd72"
+      },
+      {
+        "path": "apps/web/src/plugins/pushNotifications.ts",
+        "bytes": 3984,
+        "sha256": "b23ec58083e2d3658776d79df0d740ea35b19d90d28e127f527ba7c7f63e21ab"
+      },
+      {
+        "path": "apps/web/src/plugins/pushTokenStore.ts",
+        "bytes": 3730,
+        "sha256": "e46c2052db0fab94f0bef85477c9231bf447268e9a2ca2f37f1927403800d949"
+      },
+      {
+        "path": "apps/web/src/portDefenders.ts",
+        "bytes": 1508,
+        "sha256": "9c1dfd55c0137a63281a0b1c52ab7f8f3335f1a669f6faadfe5a14d5c7dcb1a3"
+      },
+      {
+        "path": "apps/web/src/registerServiceWorker.ts",
+        "bytes": 1372,
+        "sha256": "14baeac18b8cb71674cf7181b579da469c3cb1fffa3e6b383230d890ea224a46"
+      },
+      {
+        "path": "apps/web/src/replay/ReplayScreen.tsx",
+        "bytes": 4723,
+        "sha256": "a94adc6c7fd51df5b2f5b5124e152ab5a1a3a1710987b17347a6a1cc6c467784"
+      },
+      {
+        "path": "apps/web/src/replay/replayCursor.ts",
+        "bytes": 3716,
+        "sha256": "30026a22920a4cc73f6820fe595c67d9ee73cbe3869ca9edf583e7b3cc2df303"
+      },
+      {
+        "path": "apps/web/src/replay/useReplayCursor.ts",
+        "bytes": 2966,
+        "sha256": "f9b3c5627ff607e5ca1aaa608698576600ddc18ad0ce6b5c3febb64bf3b516fc"
+      },
+      {
+        "path": "apps/web/src/reporting.ts",
+        "bytes": 2352,
+        "sha256": "4bb28027d520de798baa4ae36ff73f08bcc525becb6feb58691f0269b74c745b"
+      },
+      {
+        "path": "apps/web/src/screens/AccountScreen.tsx",
+        "bytes": 7980,
+        "sha256": "02b1c3e40e8febd7bf3f54740c61b32d152a13bcae0ceda35e07887b45c82f94"
+      },
+      {
+        "path": "apps/web/src/screens/DesignateSpectatorScreen.tsx",
+        "bytes": 4449,
+        "sha256": "c35252eb7e18c8026021fddbaa51fbfa0fb3f6d3fcb69553057969fa31c40600"
+      },
+      {
+        "path": "apps/web/src/screens/GameOverScreen.tsx",
+        "bytes": 4803,
+        "sha256": "35663663c6a7abac6ff41685aec5241b15e238dfeb653f77a6bc0e9d94b53889"
+      },
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89200,
+        "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+      },
+      {
+        "path": "apps/web/src/screens/LeaderboardScreen.tsx",
+        "bytes": 5070,
+        "sha256": "4ad921cfbd3df60983e3ebe4569938197a878f9727debea47036cbbdba2a1460"
+      },
+      {
+        "path": "apps/web/src/screens/MainMenu.tsx",
+        "bytes": 7424,
+        "sha256": "55225cda7a691e68ea0862e988b0dd382638cb472de18bcef488ffbf77837919"
+      },
+      {
+        "path": "apps/web/src/screens/MapEditorScreen.tsx",
+        "bytes": 19729,
+        "sha256": "d259321f1a95dbc4a3c35e1e772e780b18d364bcc714f15ca199ffccd6b8e762"
+      },
+      {
+        "path": "apps/web/src/screens/MatchBrowserScreen.tsx",
+        "bytes": 7657,
+        "sha256": "4549ac2a399f716e8fadde57183583b45a50c28205f5eafb1511b8b1248c5781"
+      },
+      {
+        "path": "apps/web/src/screens/MatchScreen.tsx",
+        "bytes": 61775,
+        "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
+      },
+      {
+        "path": "apps/web/src/screens/NewGameSetup.tsx",
+        "bytes": 13162,
+        "sha256": "7693c9ad29b818a756b60902729b4a7af18ef98ad8a1429c74d4e7a35ac6ef01"
+      },
+      {
+        "path": "apps/web/src/screens/QuickMatchScreen.tsx",
+        "bytes": 10991,
+        "sha256": "fcd9385482c648a03d21b26555b04b55124a5833c8a7dae91db1f6ed3b77c8ec"
+      },
+      {
+        "path": "apps/web/src/screens/SpectateScreen.tsx",
+        "bytes": 6763,
+        "sha256": "323eff0c99ab9ccb11f042a3e4284a580e414c1b2c1b7053ec5d57b49ce175d9"
+      },
+      {
+        "path": "apps/web/src/screens/ThemePackEditor.tsx",
+        "bytes": 10365,
+        "sha256": "1d16d0fb029b2cf49dd0b12b8de17ea75ba66176ee629864d819d2193ae700d4"
+      },
+      {
+        "path": "apps/web/src/screens/ThemePacksScreen.tsx",
+        "bytes": 6941,
+        "sha256": "3b46ac57acc8fbedb6aa49fe222173e999061949c10613b9c985f186028606ac"
+      },
+      {
+        "path": "apps/web/src/screens/TitleScreen.tsx",
+        "bytes": 1882,
+        "sha256": "3ed961b250341df5659a0d28fd942ecc8ee758a213eb4267f67576d5688a96d1"
+      },
+      {
+        "path": "apps/web/src/screens/WatchReplayScreen.tsx",
+        "bytes": 2698,
+        "sha256": "e5987b2338f61d8dd4f9f6066acab7251ec2a16cea944d04d013b20c1f247115"
+      },
+      {
+        "path": "apps/web/src/shipAnimation.ts",
+        "bytes": 4573,
+        "sha256": "a2744d4e15d8bf0d838fd40828708411e1377cacef5777c4d2a272109fdc6ac9"
+      },
+      {
+        "path": "apps/web/src/shipRange.ts",
+        "bytes": 3143,
+        "sha256": "e5bbf3aa8535fdacdb356db1aaaf10e40a075f2b089a5bbeaabfa599eb6e4171"
+      },
+      {
+        "path": "apps/web/src/storage.ts",
+        "bytes": 6527,
+        "sha256": "8fdcdfe3b2069ce096b6f5b5d509994b707ef96394043bc42d6f8977d30bc035"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 88328,
+        "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+      },
+      {
+        "path": "apps/web/src/textureLoader.ts",
+        "bytes": 4629,
+        "sha256": "8c69b18bcdfddaff6ca78fbab502483876f6d194ff80bbfb9634a537fc432aad"
+      },
+      {
+        "path": "apps/web/src/theme/ThemeContext.tsx",
+        "bytes": 2328,
+        "sha256": "d432a72b0089906f4802bb9ee1fda9c536f39eef3b7134ec910ee87345be302c"
+      },
+      {
+        "path": "apps/web/src/theme/assets.ts",
+        "bytes": 4012,
+        "sha256": "f4ffc05235b37b985e461a0f614256e65273a50a4065348181d7629099e7ec35"
+      },
+      {
+        "path": "apps/web/src/theme/resolve.ts",
+        "bytes": 1252,
+        "sha256": "6a09752dda016f4e5ae5f9bd206d54156121fa87cb644790dbb85ebdf7dc1929"
+      },
+      {
+        "path": "apps/web/src/theme/storage.ts",
+        "bytes": 4299,
+        "sha256": "63d4d79e57be71a3e6263408f17984f31d6467170cff2b384db842ee394f0127"
+      },
+      {
+        "path": "apps/web/src/theme/types.ts",
+        "bytes": 1688,
+        "sha256": "2f91d31e0f673344858bce3a286508aac5514688fbaca191d0ae42417f6add72"
+      },
+      {
+        "path": "apps/web/src/types.ts",
+        "bytes": 88,
+        "sha256": "08c5da6f120b5a3b49bc1b6989ffcbeefb0afdd34307040b553b03643908209a"
+      },
+      {
+        "path": "apps/web/src/uiIcons.ts",
+        "bytes": 6147,
+        "sha256": "e4137065cdbd2446a04f646cde53c90ea3f82a2bf27fcbdba1db4b70df7f4f90"
+      },
+      {
+        "path": "apps/web/src/usePixiApp.ts",
+        "bytes": 3986,
+        "sha256": "497820d62d4354828b0c383d07bfcb2c91682d6e0b9599a365334de2afdfaa1c"
+      },
+      {
+        "path": "apps/web/src/vite-env.d.ts",
+        "bytes": 331,
+        "sha256": "5e01e05b9163eb5703a5692ed5471efa41696629f436125658e28e90041316c2"
+      },
+      {
+        "path": "packages/content/src/buildings.ts",
+        "bytes": 9372,
+        "sha256": "5b37fe64f4cb3b7ea6d22d5ebc61c98a300b81fd080f880168550a016499fdbf"
+      },
+      {
+        "path": "packages/content/src/catalog.ts",
+        "bytes": 4505,
+        "sha256": "464bcea138d9cd2d473ff89fb831b3b70362fabb8a022b5c5926b4176079e487"
+      },
+      {
+        "path": "packages/content/src/combat.ts",
+        "bytes": 3873,
+        "sha256": "562ea19a6a91e7cd9598a8c6db38824337f1855006284eea9518071709541f0b"
+      },
+      {
+        "path": "packages/content/src/encounters.ts",
+        "bytes": 3308,
+        "sha256": "cecc00d19d7dfd97bdfaabc153d7bdfc90c319f8d172faaaa6eec495c42989d0"
+      },
+      {
+        "path": "packages/content/src/factions.ts",
+        "bytes": 13049,
+        "sha256": "123145d63d8066401f111e42d72b4d4d03129a64f91de3bf88bb2c34ac6cad09"
+      },
+      {
+        "path": "packages/content/src/hexMap.ts",
+        "bytes": 2162,
+        "sha256": "cff73c62b739e2cf34e244919ae4f8942e053ebb52ab0838deca82d15a1e72df"
+      },
+      {
+        "path": "packages/content/src/index.ts",
+        "bytes": 486,
+        "sha256": "56684ab891853a599188663f368ac10117343c8475c2ccc319fbdf2963440761"
+      },
+      {
+        "path": "packages/content/src/items.ts",
+        "bytes": 4649,
+        "sha256": "12c198723eedb7fd1cc7199f075ba4a8dfd4e59a976c3975eccdbc27cac9a6c7"
+      },
+      {
+        "path": "packages/content/src/landEncounters.ts",
+        "bytes": 2666,
+        "sha256": "e02bd359faf9a5d0485446eba686e711a797d19053eda2cd6f6137ac331d29b2"
+      },
+      {
+        "path": "packages/content/src/landSites.ts",
+        "bytes": 2694,
+        "sha256": "02179d7e013c6099b930238d8eb556f1cae541b666caff29827adcd4ee4bc8ac"
+      },
+      {
+        "path": "packages/content/src/maps/startingMap.ts",
+        "bytes": 6925,
+        "sha256": "d2df628b41241e243a1564e1f85cda0c0aaec6e12f370845051f85b1a27f27cb"
+      },
+      {
+        "path": "packages/content/src/maps/startingMapHex.ts",
+        "bytes": 650,
+        "sha256": "a9b61f40a979e0d5dccba1d445f24553aae8ae8f91a06268b60b346c71b284c1"
+      },
+      {
+        "path": "packages/content/src/resourceNodes.ts",
+        "bytes": 1212,
+        "sha256": "65c9b5513dcadaa301d3c16d614d5f92108f8a3bafedc732c590ddc7af1eaeb0"
+      },
+      {
+        "path": "packages/content/src/ships.ts",
+        "bytes": 3855,
+        "sha256": "d368336c57230683edad9922de91e34b76c0696b733081e2c54923f1eedc3e88"
+      },
+      {
+        "path": "packages/content/src/skills.ts",
+        "bytes": 6249,
+        "sha256": "5090b9f297af352b16709e48ec93c7d38dc666e06591d125358e3c14a0f1858f"
+      },
+      {
+        "path": "packages/content/src/testMaps/hexProto.ts",
+        "bytes": 2277,
+        "sha256": "a0132ce44a8c0c2a490c055d4d0b1e8942e7cc55835a5d8829ada86d05204e85"
+      },
+      {
+        "path": "packages/content/src/theming.ts",
+        "bytes": 1630,
+        "sha256": "c83a76fa4e5b0b2b4e5c5e8770261dc3984863f478f003eba0b1ccb208fe14e0"
+      },
+      {
+        "path": "packages/content/src/tuning.ts",
+        "bytes": 40791,
+        "sha256": "cb220b8fa294adc0bf5d5b8416987900e9c7f93562dafa56db6f809048eeed49"
+      },
+      {
+        "path": "packages/engine/src/actions.ts",
+        "bytes": 19052,
+        "sha256": "8bf5818468f44a37e5aaadddec39c180f14ca0cd5a032026bba97337b46de2f0"
+      },
+      {
+        "path": "packages/engine/src/ai.ts",
+        "bytes": 84347,
+        "sha256": "091ecc6c8362e190342705d3da1a26f4537319af31e57aa82d10858e9b314906"
+      },
+      {
+        "path": "packages/engine/src/alliances.ts",
+        "bytes": 6858,
+        "sha256": "6144058d03bbcbf963b16b4457aab2edfc4a129aad9cb2a5d41efd859996df78"
+      },
+      {
+        "path": "packages/engine/src/battleBoard.ts",
+        "bytes": 43781,
+        "sha256": "d1765401b07b11ff8836d6498edd50874e674c4d5d8987046952c0781c557f9e"
+      },
+      {
+        "path": "packages/engine/src/combat.ts",
+        "bytes": 18434,
+        "sha256": "596acbca3a81b9524a5d519cd26332bb9eba6e664d0b91e563de6a4c5fef1d2e"
+      },
+      {
+        "path": "packages/engine/src/content.ts",
+        "bytes": 10514,
+        "sha256": "0e17e8d17eec19f95714d87e2c60a9383605c8a2e87caf78c44fa6da2b571824"
+      },
+      {
+        "path": "packages/engine/src/economy.ts",
+        "bytes": 5212,
+        "sha256": "168f122dadb6dfad2a9fe1202cbe115ecb1b1e8571ea0d7a43c6f80c044f2277"
+      },
+      {
+        "path": "packages/engine/src/encounters.ts",
+        "bytes": 5385,
+        "sha256": "ad8b2314c14cf170dc2f3f008a53e9cc3d7634c5be46fa46bead9cf523b8fa7a"
+      },
+      {
+        "path": "packages/engine/src/game.ts",
+        "bytes": 9755,
+        "sha256": "bc9d325dae2f686b7bc1a4ddb8d34de37087ee36aabddf415d0416fb830254cc"
+      },
+      {
+        "path": "packages/engine/src/hex.ts",
+        "bytes": 4365,
+        "sha256": "e483a2be736e69df83f6491c9b3b926f7f5bc259e2f2003f2819640d4c26d1e3"
+      },
+      {
+        "path": "packages/engine/src/hexGrid.ts",
+        "bytes": 5497,
+        "sha256": "19aeca750471c1d21df2d13e77f90179d6a1f5f272fbb3e0b4963c16f442ce43"
+      },
+      {
+        "path": "packages/engine/src/hexPathfinding.ts",
+        "bytes": 5337,
+        "sha256": "67e6b5a0e3d4675aa623e60f1115948dc41a680d3533cf7f4ae44e9ba8e056ee"
+      },
+      {
+        "path": "packages/engine/src/index.ts",
+        "bytes": 735,
+        "sha256": "650efa67ce7f248db8add5d3d70015c8d1c1ff7d6e61408ed71e07412b7617bb"
+      },
+      {
+        "path": "packages/engine/src/items.ts",
+        "bytes": 1362,
+        "sha256": "346054b39575cfd0d35623edee5cd86d041a5d1b518d65a12dc43dd7210c3c9f"
+      },
+      {
+        "path": "packages/engine/src/landContent.ts",
+        "bytes": 6643,
+        "sha256": "eef791caf0bffbe5127da9d0661063ffe9171d0c224b6841199e27329a2c3829"
+      },
+      {
+        "path": "packages/engine/src/map.ts",
+        "bytes": 17422,
+        "sha256": "dfe6108cbe56598ab59d4240f17ef475ac9062f6e3d5bf97b58c192bac871b53"
+      },
+      {
+        "path": "packages/engine/src/mapDefinition.ts",
+        "bytes": 14157,
+        "sha256": "aa99cd5f2cf0813697a12d25301663fd265aee3a8e7f5084336322482423002a"
+      },
+      {
+        "path": "packages/engine/src/pathfinding.ts",
+        "bytes": 10036,
+        "sha256": "88e5a02978b2e961427b16d12c7efb87bc1cf7d3d1c6389e1df7dfd810ec868d"
+      },
+      {
+        "path": "packages/engine/src/playerView.ts",
+        "bytes": 18467,
+        "sha256": "c4602882d530f151e5d2557f1f8c19a3d5f205ab5149c6268e858dff91e75a3b"
+      },
+      {
+        "path": "packages/engine/src/probe.ts",
+        "bytes": 22108,
+        "sha256": "91b3bb265c9e1ba6783fc81c44c291af1dc267ea07f966edeb2fee0577b97fac"
+      },
+      {
+        "path": "packages/engine/src/reducer.ts",
+        "bytes": 134371,
+        "sha256": "eebf981ebfd5afa257c0607434a6ad732f06e67e6843de555f4651d5c58ac11b"
+      },
+      {
+        "path": "packages/engine/src/rng.ts",
+        "bytes": 1097,
+        "sha256": "a0ffe4e3a131dbc3eaefe87f21b7a2186be565983930505c387321bb269a65d9"
+      },
+      {
+        "path": "packages/engine/src/rulesVersion.ts",
+        "bytes": 7130,
+        "sha256": "b016b9a42d2f2a50f9d579f09b886a8be7041e749c5d0dbdb8e78d3891461ad9"
+      },
+      {
+        "path": "packages/engine/src/ships.ts",
+        "bytes": 1381,
+        "sha256": "a0b8bef8da5d7b9809122ea4aaecbb8f03a4ba050a4af1219248ae4db7bada10"
+      },
+      {
+        "path": "packages/engine/src/sim.ts",
+        "bytes": 4710,
+        "sha256": "4d1a3252319d4846d3ad5c5395fe617de4981cf825c7300d2071117a0a1f4749"
+      },
+      {
+        "path": "packages/engine/src/skills.ts",
+        "bytes": 4448,
+        "sha256": "5b2159bb0e0003523ca8cd1e0d0cf0038b65fbb2e91d126c0ce8fc42ac8ff0ff"
+      },
+      {
+        "path": "packages/engine/src/tactics.ts",
+        "bytes": 22136,
+        "sha256": "a53514cdb8d656372b4b7752b85fcc956fda9219c36367ce0eb96377af887f61"
+      },
+      {
+        "path": "packages/engine/src/types.ts",
+        "bytes": 30709,
+        "sha256": "35941168a2e7dfb5bee597c397c27d6b50dba0d762edd827157c9a7f480af0a8"
+      },
+      {
+        "path": "packages/engine/src/visibility.ts",
+        "bytes": 7285,
+        "sha256": "0ce5d139a3fa9b3fd08d4730deb24363e4e7cb622e9d42689b5e240a5c9271b0"
+      },
+      {
+        "path": "packages/shared/src/communityMaps.test.ts",
+        "bytes": 4752,
+        "sha256": "9ff94cbc09e47ecf91206723952d4b8cffab52e11105fe22b6db2a9d3c7f2be2"
+      },
+      {
+        "path": "packages/shared/src/communityMaps.ts",
+        "bytes": 8186,
+        "sha256": "cfaa90056ec3393dd6364a5b6404480b4b21e1bc54c130e5da34869c69e618e0"
+      },
+      {
+        "path": "packages/shared/src/constants-parity.test.ts",
+        "bytes": 3031,
+        "sha256": "8be6cbf982eb3c576b26abef92d28d1a1d1ca22b4c3694829ca3b4ff7ba47fbf"
+      },
+      {
+        "path": "packages/shared/src/database.types.ts",
+        "bytes": 21289,
+        "sha256": "dab986007a87a406873d64cd56abdd6f8847ced3cd91bdb995722798eb7c2c8a"
+      },
+      {
+        "path": "packages/shared/src/email.ts",
+        "bytes": 4296,
+        "sha256": "d4b76bbb71c30b08b75507d3edd1811285dab09040aed43fb03ebf669a2e864f"
+      },
+      {
+        "path": "packages/shared/src/engineVersion.generated.ts",
+        "bytes": 245,
+        "sha256": "e8251380a2b15544ad145aa0584a74a1ca3b62881a49f1b5683df9b23cf1502f"
+      },
+      {
+        "path": "packages/shared/src/index.ts",
+        "bytes": 6473,
+        "sha256": "1de86eafdfbcb6b6e47c02c56f30b8f96d17ac0249c3ef2682ad37cc84aa867b"
+      },
+      {
+        "path": "packages/shared/src/leaderboard.test.ts",
+        "bytes": 3539,
+        "sha256": "9384a873ec507d28c012833e740df2b318716e6b58e1b3d3bcdebc95035a8cf0"
+      },
+      {
+        "path": "packages/shared/src/leaderboard.ts",
+        "bytes": 3554,
+        "sha256": "29fe59be5e8de4dc901a908811187628fbca96d7e5ed428d8da54c6cc33daa2a"
+      },
+      {
+        "path": "packages/shared/src/mapCodes.ts",
+        "bytes": 9971,
+        "sha256": "e08f26038b4ecd911059ac19c2086e0eaaf71a3a255e5fdde2ec18aecc25767a"
+      },
+      {
+        "path": "packages/shared/src/matchmaking.ts",
+        "bytes": 6438,
+        "sha256": "e5802f1510c11cf9c1de257d6d6c206e7afcc83ae2959ce84e1624fe227e125d"
+      },
+      {
+        "path": "packages/shared/src/multiplayer.ts",
+        "bytes": 17978,
+        "sha256": "0fba6a9a8745d09c2f2ca00d6d7f90e48bf34e94ded44573dd8e67d9175d22c3"
+      },
+      {
+        "path": "packages/shared/src/push.test.ts",
+        "bytes": 4096,
+        "sha256": "6b08096a9be8ad29be74f63b45b139ec6548d202739442d561be0f2cad8ef9c5"
+      },
+      {
+        "path": "packages/shared/src/push.ts",
+        "bytes": 9890,
+        "sha256": "a271fe85def1b3c09bda66f50a8d5c684d8854284056837c443ae939c7069461"
+      },
+      {
+        "path": "packages/shared/src/rating.test.ts",
+        "bytes": 9608,
+        "sha256": "64eec381d3c62c1a349a72f79b7bda622b4349c9c986d428e353463360b6dab3"
+      },
+      {
+        "path": "packages/shared/src/rating.ts",
+        "bytes": 8141,
+        "sha256": "ca2d8b6d051fb011ffd2535b2a31d14b45d44d6a8b2a03d71d8ef434ca3f4a1c"
+      },
+      {
+        "path": "packages/shared/src/retention.ts",
+        "bytes": 1220,
+        "sha256": "03ecc56dfb41fc618b7a2895eaea6f9518525642b289382c51d2709db2bf3161"
+      },
+      {
+        "path": "packages/shared/src/snapshots.ts",
+        "bytes": 5426,
+        "sha256": "09ebb0b489a715fc1a5ceaa698774a167d3174841ae800068a8c62aa9956afc0"
+      },
+      {
+        "path": "packages/shared/src/stripe.ts",
+        "bytes": 7501,
+        "sha256": "df4b0f3625ec7c33323c768745e1d3f34277a7a09d19cb6c52d61e0053b5d8cb"
+      },
+      {
+        "path": "package.json",
+        "bytes": 976,
+        "sha256": "60902d32f07c837158a56ba2403cc4057af40dd9140eb9aba5d40fe38d1d507d"
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "bytes": 124251,
+        "sha256": "4a87e4d0d5350d3f777098f2f69294cfa0eafc73e5be057c1cf989b267b6e158"
+      },
+      {
+        "path": "pnpm-workspace.yaml",
+        "bytes": 802,
+        "sha256": "d144991b7bffd7a03bc368f6455a6efdde1cdffd11c3fe0a20fbba25e4e9b2a3"
+      },
+      {
+        "path": "tsconfig.base.json",
+        "bytes": 581,
+        "sha256": "976fb2768fb4cc9c06783addaaa61ead61a211301a17e5b0b7159686f4712797"
+      },
+      {
+        "path": "apps/web/asset-size-allowlist.json",
+        "bytes": 1192,
+        "sha256": "0a01e8cbdcd6379d41667c90751c3dc0be7fd3b953315e020efac45a2d182854"
+      },
+      {
+        "path": "apps/web/capacitor.config.ts",
+        "bytes": 1813,
+        "sha256": "c427ae3d49afb2bfe92b60143df4c6a11751752540ec9499d06ac0bf6a7185f8"
+      },
+      {
+        "path": "apps/web/index.html",
+        "bytes": 783,
+        "sha256": "936a4539b0a8c6fb2f843db1daabb21317898bb84658b8f5b99cefbc88521d52"
+      },
+      {
+        "path": "apps/web/package.json",
+        "bytes": 792,
+        "sha256": "58c8680098d839cc236027dedd24877c90e5e3c9b089dc19a1d6f330abb73f57"
+      },
+      {
+        "path": "apps/web/public/icons/icon-maskable.svg",
+        "bytes": 892,
+        "sha256": "1ce021aee1b1aecf920451e88b3fa56bef09de682463ef3a353c693f5059b574"
+      },
+      {
+        "path": "apps/web/public/icons/icon.svg",
+        "bytes": 622,
+        "sha256": "6405546ab6003764ed048823c2495d7fca7660bb61e44a2a1cb1b9ac0c518d3e"
+      },
+      {
+        "path": "apps/web/public/manifest.webmanifest",
+        "bytes": 563,
+        "sha256": "84c2f8b8cf2cd5e121b8c29316cfcc316a6a1d35d28b78aaf051e5b43aa4ad4f"
+      },
+      {
+        "path": "apps/web/public/sw.js",
+        "bytes": 3355,
+        "sha256": "fe65bfb33977881af466ee369a1c90b8700a59721bb016b86282d56dbf72183f"
+      },
+      {
+        "path": "apps/web/tsconfig.json",
+        "bytes": 163,
+        "sha256": "8c074cc9c5391c683cd01201f19e6cbd2367c5aa61a2493fdc65bcbdadaa2a7b"
+      },
+      {
+        "path": "apps/web/vite-plugins/assetBudget.ts",
+        "bytes": 5998,
+        "sha256": "971535800afb7cb08a786e47dd0bb142fdde043fca4fa1cf3098078fa3a96d3c"
+      },
+      {
+        "path": "apps/web/vite-plugins/swVersion.ts",
+        "bytes": 2754,
+        "sha256": "1b26148e715a73f4a86620965a65ba6568fcef5dbb218854c7f523dad53766b6"
+      },
+      {
+        "path": "apps/web/vite.config.ts",
+        "bytes": 2008,
+        "sha256": "77d654e719e4188b2f2ff71875d9719eafc29942205763b3da0af38f173f7e41"
+      },
+      {
+        "path": "packages/content/package.json",
+        "bytes": 301,
+        "sha256": "fc1d19d2a83937a2b500bf31b93206154fa599bbbfbe3fd350fbef44e2cf5a90"
+      },
+      {
+        "path": "packages/content/tsconfig.json",
+        "bytes": 66,
+        "sha256": "8f6e85eeaa8025fe7b2f01763e03f32540d3e2869ae857490d685098460f4e3a"
+      },
+      {
+        "path": "packages/engine/package.json",
+        "bytes": 586,
+        "sha256": "50285febd79459cc5fa930c023eac2cb845fefa2666e8ffee357a16768c3663b"
+      },
+      {
+        "path": "packages/engine/tsconfig.json",
+        "bytes": 74,
+        "sha256": "fea9cfcb057785994121b5c0768b9912cbcae898ce8c2c6c3ff57dd78ae99ee5"
+      },
+      {
+        "path": "packages/shared/package.json",
+        "bytes": 398,
+        "sha256": "8d0f686877bd5e055dee264aba694fcc438e0be8a1e028691bc9e2e07611880d"
+      },
+      {
+        "path": "packages/shared/tsconfig.json",
+        "bytes": 146,
+        "sha256": "e72727b304598dbe6d4fadb6a9f32e23709275133c7d36769b780d3ca9df4218"
+      },
+      {
+        "path": "docs/art/city-harbor-v2/PRODUCTION-OUTPUT-HASHES.json",
+        "bytes": 30190,
+        "sha256": "209b5a1cb7e692c73ce065957a266aedb728d663902a8757cd94c4ba896fdab0"
+      },
+      {
+        "path": "docs/art/world-map-v2/runtime-public-receipt.json",
+        "bytes": 14007,
+        "sha256": "82e6629acaf31d0986e2bd9401015ec5ffc70818616e3e9063bd63d3b40f3d95"
+      },
+      {
+        "path": "docs/art/world-map-v2/terrain/terrain-receipt.json",
+        "bytes": 7138,
+        "sha256": "920c1f49a544a131f0c86973e24ac93190a4d30831b55f2948e6b34ea9b06068"
+      },
+      {
+        "path": "apps/web/public/art/cities/british.webp",
+        "bytes": 17936,
+        "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7"
+      },
+      {
+        "path": "apps/web/public/art/cities/dutch.webp",
+        "bytes": 14296,
+        "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a"
+      },
+      {
+        "path": "apps/web/public/art/cities/french.webp",
+        "bytes": 15984,
+        "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f"
+      },
+      {
+        "path": "apps/web/public/art/cities/neutral.webp",
+        "bytes": 11814,
+        "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3"
+      },
+      {
+        "path": "apps/web/public/art/cities/pirates.webp",
+        "bytes": 17284,
+        "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a"
+      },
+      {
+        "path": "apps/web/public/art/cities/spanish.webp",
+        "bytes": 17978,
+        "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r1.webp",
+        "bytes": 60378,
+        "sha256": "89cca01aa439d05a68f3312c4a115c559aae5e99a7b4e707a4499d276eec4856"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r2.webp",
+        "bytes": 57430,
+        "sha256": "3d3cbf817db1a66328d8c6cb209dc495443e6c79b68f30b43319af18a8110778"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r3.webp",
+        "bytes": 56932,
+        "sha256": "157d18d151d64685af2d40c0364a1b7021c27f69899f96b6ee2fd45135158ea1"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r4.webp",
+        "bytes": 60878,
+        "sha256": "11bbca0a8ff34edbb219146f1fda81712806c72eba8a5c0c4747083d084cff4c"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r1.webp",
+        "bytes": 50390,
+        "sha256": "5484034876fe6d7608ff44413f764a03043cfe66495511a23396b40a14cb1935"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r2.webp",
+        "bytes": 69218,
+        "sha256": "c1aa408938c98899718d78733c438bdb15e6da928e20ed51846dc658d9b8208f"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r3.webp",
+        "bytes": 58516,
+        "sha256": "e17d554f3e287acf4901ec761a1e3c36bbb4dd28d0385c50e782cdb2971da8f4"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r4.webp",
+        "bytes": 58772,
+        "sha256": "3b0943dd8ed95f8a24699472893329df7e44138a6d22d0830e4957ba48ec00eb"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r1.webp",
+        "bytes": 50006,
+        "sha256": "7072891f5c23a9f492a1ee6df80d06d8ff5e3c0762a5a02357099d05c401e246"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r2.webp",
+        "bytes": 63378,
+        "sha256": "bc26dd36c0100b4fc57e9d6181061bb967d0c8181eb3435e25fd4021959236b3"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r3.webp",
+        "bytes": 61050,
+        "sha256": "f5c9b43dc82df33614ddd62d6bbffed0fded854252f33d418ff88220a45c02a4"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r4.webp",
+        "bytes": 32558,
+        "sha256": "210466e409d5e205da328c29c98e355771d56ccf9f5a73940224f360b435ef5b"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r1.webp",
+        "bytes": 55958,
+        "sha256": "06bb2c5e08919855a2fe1359bc01f90486686cadcdd6f2972b193ed762ad1721"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r2.webp",
+        "bytes": 56610,
+        "sha256": "606b3c1fec9b5afc752dcb38ce867f118bca51f80f77d7b2b7e096b89a737ff5"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r3.webp",
+        "bytes": 47630,
+        "sha256": "efe8cf9ee224bc4ea9f489840d6dfa64861dfea5a6ebe833903d5735a76e5db1"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r4.webp",
+        "bytes": 18996,
+        "sha256": "a7cd75a1e11a1388f0fc7a94c853c5bdcaafa7005a44a55612caf776092695f8"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r1.webp",
+        "bytes": 57268,
+        "sha256": "7c48f1897f524bf5a209ca3e766c9f5de81e68e10e0e40c8661728725277f6f0"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r2.webp",
+        "bytes": 59454,
+        "sha256": "29d039ee1b7574f782a406fb0ea92d51459620ed9af35dccb9ddfd637cdd544b"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r3.webp",
+        "bytes": 35224,
+        "sha256": "8eefe4c370e91ec231d5d870d5741b3673d207dc26463110e16e56e61c3b7cdf"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r4.webp",
+        "bytes": 15760,
+        "sha256": "6ef03d17acf57601d344390d25d1ddb29f1103783e0bb04a20dc1e01674ffe62"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r1.webp",
+        "bytes": 38326,
+        "sha256": "b72948b51473f41fd0794242688b37983fd09161b700d6ac0dcb773024a58f57"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r2.webp",
+        "bytes": 32496,
+        "sha256": "57245beb51994903acbbd021678ff374dbf395d81a8ce610814f33a44bb28817"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r3.webp",
+        "bytes": 44764,
+        "sha256": "e4d5b6067f18b027f2d201a60b6460b0fe8495d1235004482e5bcd5ec7491f06"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r4.webp",
+        "bytes": 19224,
+        "sha256": "01c9e6141b2511ea3183633b0bd179f2fb1baf348599bbaf90da4e755f725e42"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop.webp",
+        "bytes": 195292,
+        "sha256": "6f4449bd1d1926f0a8cb315ecd1400a94c69f1ff5d292ac9e6b1f0963d9d20a3"
+      },
+      {
+        "path": "apps/web/public/art/city/barracks.webp",
+        "bytes": 115258,
+        "sha256": "27081eb9236dfe5484483898b942a8ad40eb9b345d99d100c07ef5eee06c2639"
+      },
+      {
+        "path": "apps/web/public/art/city/citadel-tower.webp",
+        "bytes": 70666,
+        "sha256": "dc4a75efc36737df82c49b7aba1e355c8d8810dc2b66d9a55bdb05f6cc42d595"
+      },
+      {
+        "path": "apps/web/public/art/city/citadel.webp",
+        "bytes": 91260,
+        "sha256": "d11926a278876055cad9aadb5e28efb7415b4ea8b6f6c0e46ddf09ae3dd903a4"
+      },
+      {
+        "path": "apps/web/public/art/city/distillery.webp",
+        "bytes": 99024,
+        "sha256": "a8bd03ffde417ab17271ac28336cdbf3fec41ff959005eb2bb913a6517bf9028"
+      },
+      {
+        "path": "apps/web/public/art/city/fortressArmory.webp",
+        "bytes": 185498,
+        "sha256": "592a766da33606837316753410d7a072c23e9716174b7fa3709dd663b1e1e225"
+      },
+      {
+        "path": "apps/web/public/art/city/garrisonHall.webp",
+        "bytes": 161642,
+        "sha256": "360c51145cbf9fb58a50bbc9cea50966d255e850e98d24476ccb3f296a8fce91"
+      },
+      {
+        "path": "apps/web/public/art/city/grandArsenal.webp",
+        "bytes": 197404,
+        "sha256": "b1484ae8a1a57a78c02aac4c5d7006c65743eb4565e87a1fb2935e7d97b832b8"
+      },
+      {
+        "path": "apps/web/public/art/city/ironmine.webp",
+        "bytes": 90286,
+        "sha256": "9b30a80ac79222f4292d4e284e56e973b2821faaaec2a5443313cf0db05f6c5a"
+      },
+      {
+        "path": "apps/web/public/art/city/palisade.webp",
+        "bytes": 75388,
+        "sha256": "cf4274b7106e9aac827cbf45b3d0c23cd69ce6e463b28b3a63ed4b5e1e2747d3"
+      },
+      {
+        "path": "apps/web/public/art/city/sawmill.webp",
+        "bytes": 104330,
+        "sha256": "64bc14d5ab303555bc8a0d7afa8ed1db8a7ea8a8e9b10856175e7401380d3a50"
+      },
+      {
+        "path": "apps/web/public/art/city/shipyard.webp",
+        "bytes": 141246,
+        "sha256": "c29693b722862b383923a493b6435a1c54e45205eb8135fdd0d4c17fe4505847"
+      },
+      {
+        "path": "apps/web/public/art/city/stoneWall.webp",
+        "bytes": 73984,
+        "sha256": "b7b5b048109d8c7d0b8fd38eadc08b1ef03a163464d8863340c8111d44864540"
+      },
+      {
+        "path": "apps/web/public/art/city/tavern.webp",
+        "bytes": 119156,
+        "sha256": "f476687761a68ee13811bd56d893d391a8e36ec49659ba5f2952b8c52c06085e"
+      },
+      {
+        "path": "apps/web/public/art/city/townhall.webp",
+        "bytes": 203636,
+        "sha256": "9228c6a739e80d89685cb71c3a5bd0f860007a9893477910300f66d53428156f"
+      },
+      {
+        "path": "apps/web/public/art/city/tradehouse.webp",
+        "bytes": 122652,
+        "sha256": "7da3ac5b485df534e356d85f924eed67f75a7ebc12e0adcd098f7034d12fdbca"
+      },
+      {
+        "path": "apps/web/public/art/encounters/bandit-camp.webp",
+        "bytes": 12374,
+        "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f"
+      },
+      {
+        "path": "apps/web/public/art/encounters/hermit.webp",
+        "bytes": 13494,
+        "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8"
+      },
+      {
+        "path": "apps/web/public/art/encounters/merchant-v2.webp",
+        "bytes": 16420,
+        "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567"
+      },
+      {
+        "path": "apps/web/public/art/encounters/native-village.webp",
+        "bytes": 12600,
+        "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b"
+      },
+      {
+        "path": "apps/web/public/art/encounters/natives-v2.webp",
+        "bytes": 13946,
+        "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106"
+      },
+      {
+        "path": "apps/web/public/art/encounters/settlers-v2.webp",
+        "bytes": 20062,
+        "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/flag.png",
+        "bytes": 10804,
+        "sha256": "51b1686e7cfbe5f2e304337d0b45ee29ae4fba05db35b91b3ec00dba5a1979bb"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_brigantine_v2.webp",
+        "bytes": 14960,
+        "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_frigate_v2.webp",
+        "bytes": 14140,
+        "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_galleon_v2.webp",
+        "bytes": 15502,
+        "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_sloop.webp",
+        "bytes": 8798,
+        "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/flag.png",
+        "bytes": 5843,
+        "sha256": "3f21fbbf96f15051f31fdfb0f70b2264bbc5ee9707f7111c05d19d60f76d531a"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_brigantine_v2.webp",
+        "bytes": 16866,
+        "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_frigate_v2.webp",
+        "bytes": 15072,
+        "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_galleon_v2.webp",
+        "bytes": 15734,
+        "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_sloop_v2.webp",
+        "bytes": 12402,
+        "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/flag.png",
+        "bytes": 15953,
+        "sha256": "94a8467effd2c4d40aeef05531181aa054c20850461267d6ec6ff3b10b0ccb91"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_brigantine_v2.webp",
+        "bytes": 14868,
+        "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_frigate_v2.webp",
+        "bytes": 12904,
+        "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_galleon_v2.webp",
+        "bytes": 14852,
+        "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_sloop_v2.webp",
+        "bytes": 10748,
+        "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/flag.png",
+        "bytes": 22910,
+        "sha256": "23bb5e4a2563633ab586c8f5cf110ef90cfa586bc4726b09726b66c9efe03296"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_brigantine_v2.webp",
+        "bytes": 16568,
+        "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_frigate_v2.webp",
+        "bytes": 13762,
+        "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_galleon_v2.webp",
+        "bytes": 13200,
+        "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+        "bytes": 10808,
+        "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/flag.png",
+        "bytes": 17034,
+        "sha256": "02e518bc4b01a1310fa2a9a90285f52e6426bc97284c84852001325ceaa6545c"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_brigantine_v2.webp",
+        "bytes": 13086,
+        "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_frigate_v2.webp",
+        "bytes": 13526,
+        "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_galleon_v2.webp",
+        "bytes": 16318,
+        "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_sloop_v2.webp",
+        "bytes": 10114,
+        "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94"
+      },
+      {
+        "path": "apps/web/public/art/parties/british.webp",
+        "bytes": 13298,
+        "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7"
+      },
+      {
+        "path": "apps/web/public/art/parties/dutch.webp",
+        "bytes": 16284,
+        "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3"
+      },
+      {
+        "path": "apps/web/public/art/parties/french.webp",
+        "bytes": 17306,
+        "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc"
+      },
+      {
+        "path": "apps/web/public/art/parties/pirates.webp",
+        "bytes": 17232,
+        "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef"
+      },
+      {
+        "path": "apps/web/public/art/parties/spanish.webp",
+        "bytes": 14882,
+        "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6"
+      },
+      {
+        "path": "apps/web/public/art/resources/gold.png",
+        "bytes": 6885,
+        "sha256": "a33b424ca44602beffeeafcfabd49a089cc01aae851cc4deca3ec01cab3ca6db"
+      },
+      {
+        "path": "apps/web/public/art/resources/iron.png",
+        "bytes": 11192,
+        "sha256": "90b0f2e521b9e8c405e566eb8e671179ea72eaadb9868160ad5700aadf2dc394"
+      },
+      {
+        "path": "apps/web/public/art/resources/rum.png",
+        "bytes": 2033,
+        "sha256": "6478faf5c0a42dba0e6058ae375483953eb618e0dceea92b4c172b5992650eca"
+      },
+      {
+        "path": "apps/web/public/art/resources/timber.png",
+        "bytes": 6678,
+        "sha256": "e20e5735b26e4e352670cc9748a22ed9addf8a7acab72c9ff89fe1371a876b4b"
+      },
+      {
+        "path": "apps/web/public/art/sites/lumber-camp.webp",
+        "bytes": 19190,
+        "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba"
+      },
+      {
+        "path": "apps/web/public/art/sites/mine.webp",
+        "bytes": 17964,
+        "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa"
+      },
+      {
+        "path": "apps/web/public/art/sites/ruins.webp",
+        "bytes": 16050,
+        "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760"
+      },
+      {
+        "path": "apps/web/public/art/sites/sawmill.webp",
+        "bytes": 16618,
+        "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815"
+      },
+      {
+        "path": "apps/web/public/art/tiles/land.png",
+        "bytes": 19327,
+        "sha256": "d9571057d4a44b6c2dfcd692e8d9adade66358afd073dd25e532aff616d5007f"
+      },
+      {
+        "path": "apps/web/public/art/tiles/port.png",
+        "bytes": 17759,
+        "sha256": "29db69da334364eab148d7350b9350bb5cfa66eb673c74a846078ce56eaf0982"
+      },
+      {
+        "path": "apps/web/public/art/ui/build.png",
+        "bytes": 3142,
+        "sha256": "bb0406ef0ff40f2dd5d34dc48d847ae19628fc135a083fba128e9416d6d07206"
+      },
+      {
+        "path": "apps/web/public/art/ui/upgrade.png",
+        "bytes": 6780,
+        "sha256": "aca53597176bca94e47a9f936d91499af1f1fe6f21892e710e45f71dcaa38d51"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/clearing.webp",
+        "bytes": 12344,
+        "sha256": "a1b394877b76b25c68dc73b1c5009b4ef6aee3d10927a4419d9add4be15a5c55"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/forest-a.webp",
+        "bytes": 15826,
+        "sha256": "c88d9526faf0ea97cffc38356ef4381b5326a90cccb093c24ad2f148902fc8c0"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/forest-b.webp",
+        "bytes": 14824,
+        "sha256": "b84009a0fe8e2daf25b197183b8f778a2b1fbffdcf814ba99064d9c9908963b8"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/highland.webp",
+        "bytes": 11684,
+        "sha256": "8482fe876bd1a2a8bbaaba9b73c775ea529355daefcec5d237c800e14b7d6f3f"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-a.webp",
+        "bytes": 19744,
+        "sha256": "02b672dfb9f8752b0ee3c489ad4a66c41ba5dc1dfb9ce18867d91b2f0715743d"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-b.webp",
+        "bytes": 20084,
+        "sha256": "f2f29271826502205555301d5cbc555052a57f5cced71fd8f0c9889d4c935f3e"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-c.webp",
+        "bytes": 19114,
+        "sha256": "f4301ef6d1bed4ad4ee2c96d6893a4d1249500ee760d3565643de431eeb61d34"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/port-l.webp",
+        "bytes": 19720,
+        "sha256": "2d8d61a732a9e8f4fbdb0a509ec7bda71794ff8844ed1470604b55fecda232d3"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/port-straight.webp",
+        "bytes": 15628,
+        "sha256": "957bc25a0223bc5cc954e751f1b726bf6c8cab92fccf8b14c9501d9020a87911"
+      },
+      {
+        "path": "apps/web/public/fonts/cabin-latin.woff2",
+        "bytes": 28228,
+        "sha256": "3912b808ba0a5888e70ec69585dc500bfd241929c58f073ff7789b12179c3843"
+      },
+      {
+        "path": "apps/web/public/fonts/pirata-one-latin.woff2",
+        "bytes": 8824,
+        "sha256": "37d289e4600f084545a6def9ca145a547fff4ce7ceca7847a08d598a23c8d6cb"
+      }
+    ]
+  },
+  "renderer": {
+    "policy": "Exact shipping renderers plus the complete world, terrain, city, flag, font, resource, and inspector-art dependency set.",
+    "source_file_count": 19,
+    "runtime_asset_count": 105,
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "f5955173d179f6919f5c6c7e127af3cb43f63df7ce58de7293cd030e3f71e423",
+      "bytes": 18357
+    },
+    "files": [
+      {
+        "path": "apps/web/src/CityScene.tsx",
+        "bytes": 16568,
+        "sha256": "552d1e21d28573b4070b588480911224d97b00cf80364d526959b5ea56fa42a2"
+      },
+      {
+        "path": "apps/web/src/CityScreen.tsx",
+        "bytes": 14893,
+        "sha256": "cc0a30af02bb29735f561956ec0038f027647ac1764f93bee7870d05e22e95fe"
+      },
+      {
+        "path": "apps/web/src/MapCanvas.tsx",
+        "bytes": 105452,
+        "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+      },
+      {
+        "path": "apps/web/src/Minimap.tsx",
+        "bytes": 11011,
+        "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
+      },
+      {
+        "path": "apps/web/src/ResourceHud.tsx",
+        "bytes": 1748,
+        "sha256": "0a1b99e6d43b70913208e2cd3642155e9b876d3a64b84e6fef3c4d951d7411bb"
+      },
+      {
+        "path": "apps/web/src/cityModals.tsx",
+        "bytes": 37375,
+        "sha256": "30a05428054db5a2e3fd4f91d0717afa09ee6d937b8b01a86af9438d58a82596"
+      },
+      {
+        "path": "apps/web/src/colorTokens.ts",
+        "bytes": 1794,
+        "sha256": "53951fbd6cd4aeea21bd293e22705a0f7bac092a34e12ba905a5a59cf8ccf237"
+      },
+      {
+        "path": "apps/web/src/mapArtRegistry.ts",
+        "bytes": 9292,
+        "sha256": "6abc5ee19af614070da48eba3a9d784b46e28f050cf11799de3c29a05571ee39"
+      },
+      {
+        "path": "apps/web/src/mapCamera.ts",
+        "bytes": 7266,
+        "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+      },
+      {
+        "path": "apps/web/src/mapLayout.ts",
+        "bytes": 7999,
+        "sha256": "f892b8767e9636b30a16cd98b6c7a2888c9dc57bc7551f926cdbeb896633c8e7"
+      },
+      {
+        "path": "apps/web/src/mapPresentation.ts",
+        "bytes": 20178,
+        "sha256": "237796466d12ea14ec2d0da0d3200082441a1236318cfa50e8f3f2c67f9559ff"
+      },
+      {
+        "path": "apps/web/src/mapSprites.ts",
+        "bytes": 7235,
+        "sha256": "b6e00b204e8f413fb81a502bb8472738775b49beb849d63efcd20b5adf0938b7"
+      },
+      {
+        "path": "apps/web/src/paintedWorld.ts",
+        "bytes": 7630,
+        "sha256": "b3f56ff797c4d1036ae54621a7b52a7cc5e0be810cf92ca928e1af5165184bb0"
+      },
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89200,
+        "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 88328,
+        "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+      },
+      {
+        "path": "apps/web/src/textureLoader.ts",
+        "bytes": 4629,
+        "sha256": "8c69b18bcdfddaff6ca78fbab502483876f6d194ff80bbfb9634a537fc432aad"
+      },
+      {
+        "path": "apps/web/src/theme/ThemeContext.tsx",
+        "bytes": 2328,
+        "sha256": "d432a72b0089906f4802bb9ee1fda9c536f39eef3b7134ec910ee87345be302c"
+      },
+      {
+        "path": "apps/web/src/uiIcons.ts",
+        "bytes": 6147,
+        "sha256": "e4137065cdbd2446a04f646cde53c90ea3f82a2bf27fcbdba1db4b70df7f4f90"
+      },
+      {
+        "path": "apps/web/src/usePixiApp.ts",
+        "bytes": 3986,
+        "sha256": "497820d62d4354828b0c383d07bfcb2c91682d6e0b9599a365334de2afdfaa1c"
+      },
+      {
+        "path": "docs/art/city-harbor-v2/PRODUCTION-OUTPUT-HASHES.json",
+        "bytes": 30190,
+        "sha256": "209b5a1cb7e692c73ce065957a266aedb728d663902a8757cd94c4ba896fdab0"
+      },
+      {
+        "path": "docs/art/world-map-v2/runtime-public-receipt.json",
+        "bytes": 14007,
+        "sha256": "82e6629acaf31d0986e2bd9401015ec5ffc70818616e3e9063bd63d3b40f3d95"
+      },
+      {
+        "path": "docs/art/world-map-v2/terrain/terrain-receipt.json",
+        "bytes": 7138,
+        "sha256": "920c1f49a544a131f0c86973e24ac93190a4d30831b55f2948e6b34ea9b06068"
+      },
+      {
+        "path": "apps/web/public/art/cities/british.webp",
+        "bytes": 17936,
+        "sha256": "861aaaa1fe42b1dff20fc3fcd1445c9f1dc07113c9a76df346a01c2eb2f7dbb7"
+      },
+      {
+        "path": "apps/web/public/art/cities/dutch.webp",
+        "bytes": 14296,
+        "sha256": "f3fe6f40074a439b4e4152962b366e4416d0807b82209437f6bd861c99a6595a"
+      },
+      {
+        "path": "apps/web/public/art/cities/french.webp",
+        "bytes": 15984,
+        "sha256": "1de3b154c47329e324d25f188b2772e8cce35badb808305ae29cd3ff2152ba7f"
+      },
+      {
+        "path": "apps/web/public/art/cities/neutral.webp",
+        "bytes": 11814,
+        "sha256": "ecaeac6ab8e6d41e9bae2a8349f3ca6889eeb1da4a6f7a2e77b0b6f33f1b16a3"
+      },
+      {
+        "path": "apps/web/public/art/cities/pirates.webp",
+        "bytes": 17284,
+        "sha256": "e499fe16320b1ed584e46256a1ef62bed17abd47389d0829837b5915f2b2d05a"
+      },
+      {
+        "path": "apps/web/public/art/cities/spanish.webp",
+        "bytes": 17978,
+        "sha256": "4e1e7702d327983ebec6a4bb50b6154e10853efdb7faaa52f8c0d50349a7fe97"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r1.webp",
+        "bytes": 60378,
+        "sha256": "89cca01aa439d05a68f3312c4a115c559aae5e99a7b4e707a4499d276eec4856"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r2.webp",
+        "bytes": 57430,
+        "sha256": "3d3cbf817db1a66328d8c6cb209dc495443e6c79b68f30b43319af18a8110778"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r3.webp",
+        "bytes": 56932,
+        "sha256": "157d18d151d64685af2d40c0364a1b7021c27f69899f96b6ee2fd45135158ea1"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c1r4.webp",
+        "bytes": 60878,
+        "sha256": "11bbca0a8ff34edbb219146f1fda81712806c72eba8a5c0c4747083d084cff4c"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r1.webp",
+        "bytes": 50390,
+        "sha256": "5484034876fe6d7608ff44413f764a03043cfe66495511a23396b40a14cb1935"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r2.webp",
+        "bytes": 69218,
+        "sha256": "c1aa408938c98899718d78733c438bdb15e6da928e20ed51846dc658d9b8208f"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r3.webp",
+        "bytes": 58516,
+        "sha256": "e17d554f3e287acf4901ec761a1e3c36bbb4dd28d0385c50e782cdb2971da8f4"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c2r4.webp",
+        "bytes": 58772,
+        "sha256": "3b0943dd8ed95f8a24699472893329df7e44138a6d22d0830e4957ba48ec00eb"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r1.webp",
+        "bytes": 50006,
+        "sha256": "7072891f5c23a9f492a1ee6df80d06d8ff5e3c0762a5a02357099d05c401e246"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r2.webp",
+        "bytes": 63378,
+        "sha256": "bc26dd36c0100b4fc57e9d6181061bb967d0c8181eb3435e25fd4021959236b3"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r3.webp",
+        "bytes": 61050,
+        "sha256": "f5c9b43dc82df33614ddd62d6bbffed0fded854252f33d418ff88220a45c02a4"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c3r4.webp",
+        "bytes": 32558,
+        "sha256": "210466e409d5e205da328c29c98e355771d56ccf9f5a73940224f360b435ef5b"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r1.webp",
+        "bytes": 55958,
+        "sha256": "06bb2c5e08919855a2fe1359bc01f90486686cadcdd6f2972b193ed762ad1721"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r2.webp",
+        "bytes": 56610,
+        "sha256": "606b3c1fec9b5afc752dcb38ce867f118bca51f80f77d7b2b7e096b89a737ff5"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r3.webp",
+        "bytes": 47630,
+        "sha256": "efe8cf9ee224bc4ea9f489840d6dfa64861dfea5a6ebe833903d5735a76e5db1"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c4r4.webp",
+        "bytes": 18996,
+        "sha256": "a7cd75a1e11a1388f0fc7a94c853c5bdcaafa7005a44a55612caf776092695f8"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r1.webp",
+        "bytes": 57268,
+        "sha256": "7c48f1897f524bf5a209ca3e766c9f5de81e68e10e0e40c8661728725277f6f0"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r2.webp",
+        "bytes": 59454,
+        "sha256": "29d039ee1b7574f782a406fb0ea92d51459620ed9af35dccb9ddfd637cdd544b"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r3.webp",
+        "bytes": 35224,
+        "sha256": "8eefe4c370e91ec231d5d870d5741b3673d207dc26463110e16e56e61c3b7cdf"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c5r4.webp",
+        "bytes": 15760,
+        "sha256": "6ef03d17acf57601d344390d25d1ddb29f1103783e0bb04a20dc1e01674ffe62"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r1.webp",
+        "bytes": 38326,
+        "sha256": "b72948b51473f41fd0794242688b37983fd09161b700d6ac0dcb773024a58f57"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r2.webp",
+        "bytes": 32496,
+        "sha256": "57245beb51994903acbbd021678ff374dbf395d81a8ce610814f33a44bb28817"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r3.webp",
+        "bytes": 44764,
+        "sha256": "e4d5b6067f18b027f2d201a60b6460b0fe8495d1235004482e5bcd5ec7491f06"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop-c6r4.webp",
+        "bytes": 19224,
+        "sha256": "01c9e6141b2511ea3183633b0bd179f2fb1baf348599bbaf90da4e755f725e42"
+      },
+      {
+        "path": "apps/web/public/art/city/backdrop.webp",
+        "bytes": 195292,
+        "sha256": "6f4449bd1d1926f0a8cb315ecd1400a94c69f1ff5d292ac9e6b1f0963d9d20a3"
+      },
+      {
+        "path": "apps/web/public/art/city/barracks.webp",
+        "bytes": 115258,
+        "sha256": "27081eb9236dfe5484483898b942a8ad40eb9b345d99d100c07ef5eee06c2639"
+      },
+      {
+        "path": "apps/web/public/art/city/citadel-tower.webp",
+        "bytes": 70666,
+        "sha256": "dc4a75efc36737df82c49b7aba1e355c8d8810dc2b66d9a55bdb05f6cc42d595"
+      },
+      {
+        "path": "apps/web/public/art/city/citadel.webp",
+        "bytes": 91260,
+        "sha256": "d11926a278876055cad9aadb5e28efb7415b4ea8b6f6c0e46ddf09ae3dd903a4"
+      },
+      {
+        "path": "apps/web/public/art/city/distillery.webp",
+        "bytes": 99024,
+        "sha256": "a8bd03ffde417ab17271ac28336cdbf3fec41ff959005eb2bb913a6517bf9028"
+      },
+      {
+        "path": "apps/web/public/art/city/fortressArmory.webp",
+        "bytes": 185498,
+        "sha256": "592a766da33606837316753410d7a072c23e9716174b7fa3709dd663b1e1e225"
+      },
+      {
+        "path": "apps/web/public/art/city/garrisonHall.webp",
+        "bytes": 161642,
+        "sha256": "360c51145cbf9fb58a50bbc9cea50966d255e850e98d24476ccb3f296a8fce91"
+      },
+      {
+        "path": "apps/web/public/art/city/grandArsenal.webp",
+        "bytes": 197404,
+        "sha256": "b1484ae8a1a57a78c02aac4c5d7006c65743eb4565e87a1fb2935e7d97b832b8"
+      },
+      {
+        "path": "apps/web/public/art/city/ironmine.webp",
+        "bytes": 90286,
+        "sha256": "9b30a80ac79222f4292d4e284e56e973b2821faaaec2a5443313cf0db05f6c5a"
+      },
+      {
+        "path": "apps/web/public/art/city/palisade.webp",
+        "bytes": 75388,
+        "sha256": "cf4274b7106e9aac827cbf45b3d0c23cd69ce6e463b28b3a63ed4b5e1e2747d3"
+      },
+      {
+        "path": "apps/web/public/art/city/sawmill.webp",
+        "bytes": 104330,
+        "sha256": "64bc14d5ab303555bc8a0d7afa8ed1db8a7ea8a8e9b10856175e7401380d3a50"
+      },
+      {
+        "path": "apps/web/public/art/city/shipyard.webp",
+        "bytes": 141246,
+        "sha256": "c29693b722862b383923a493b6435a1c54e45205eb8135fdd0d4c17fe4505847"
+      },
+      {
+        "path": "apps/web/public/art/city/stoneWall.webp",
+        "bytes": 73984,
+        "sha256": "b7b5b048109d8c7d0b8fd38eadc08b1ef03a163464d8863340c8111d44864540"
+      },
+      {
+        "path": "apps/web/public/art/city/tavern.webp",
+        "bytes": 119156,
+        "sha256": "f476687761a68ee13811bd56d893d391a8e36ec49659ba5f2952b8c52c06085e"
+      },
+      {
+        "path": "apps/web/public/art/city/townhall.webp",
+        "bytes": 203636,
+        "sha256": "9228c6a739e80d89685cb71c3a5bd0f860007a9893477910300f66d53428156f"
+      },
+      {
+        "path": "apps/web/public/art/city/tradehouse.webp",
+        "bytes": 122652,
+        "sha256": "7da3ac5b485df534e356d85f924eed67f75a7ebc12e0adcd098f7034d12fdbca"
+      },
+      {
+        "path": "apps/web/public/art/encounters/bandit-camp.webp",
+        "bytes": 12374,
+        "sha256": "79f0689f6a995eb83c68e406deee4aaaf1464200bd635b4ab5ff01f07677206f"
+      },
+      {
+        "path": "apps/web/public/art/encounters/hermit.webp",
+        "bytes": 13494,
+        "sha256": "65707a2bb017d09fbf49a363cc450d290c0a5258b5fc5fafeac188594df62ef8"
+      },
+      {
+        "path": "apps/web/public/art/encounters/merchant-v2.webp",
+        "bytes": 16420,
+        "sha256": "b72d2cfc6e16109a9bc02322cf325fdd87ed30d434d8a9d5b274c8478e36f567"
+      },
+      {
+        "path": "apps/web/public/art/encounters/native-village.webp",
+        "bytes": 12600,
+        "sha256": "5f879097a06d679aa4836d91433fa75236cde363a01dd0ee94ce588126880e4b"
+      },
+      {
+        "path": "apps/web/public/art/encounters/natives-v2.webp",
+        "bytes": 13946,
+        "sha256": "fc86e459315aca8d3d03fc58a637314e7c4e1df23958414ba035811d79def106"
+      },
+      {
+        "path": "apps/web/public/art/encounters/settlers-v2.webp",
+        "bytes": 20062,
+        "sha256": "51effd644bbcd8292135ba87a05130d5157e45754d331d58d8c82fe04ada1dfb"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/flag.png",
+        "bytes": 10804,
+        "sha256": "51b1686e7cfbe5f2e304337d0b45ee29ae4fba05db35b91b3ec00dba5a1979bb"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_brigantine_v2.webp",
+        "bytes": 14960,
+        "sha256": "d7d5ab49f0a9910e852821d1fecc6f09c14c42d9025b53617c266f85bec45490"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_frigate_v2.webp",
+        "bytes": 14140,
+        "sha256": "9b165e2374fc0f489fd93845777fbb9171850006f395dd899554d14a9d96f63c"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_galleon_v2.webp",
+        "bytes": 15502,
+        "sha256": "dc7d9fc8481f6dd63740763b12d8eff41a5f16101d12a9d50b68426912d38723"
+      },
+      {
+        "path": "apps/web/public/art/factions/british/ship_sloop.webp",
+        "bytes": 8798,
+        "sha256": "528d3190cb219ecabd74c095ac82d6062f3b61c5704873768ef3e0be65b9068c"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/flag.png",
+        "bytes": 5843,
+        "sha256": "3f21fbbf96f15051f31fdfb0f70b2264bbc5ee9707f7111c05d19d60f76d531a"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_brigantine_v2.webp",
+        "bytes": 16866,
+        "sha256": "a5b31ad15227023e9b15ee9471160d5f67c64568145bbc359ad856be6a5dbe79"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_frigate_v2.webp",
+        "bytes": 15072,
+        "sha256": "5a23064ff7d125bb4f47d885c7ae35b7ccb2ecf0dba40d6b449452a4dc45329e"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_galleon_v2.webp",
+        "bytes": 15734,
+        "sha256": "d09bd4d4cc8bf6223c7173a584cb0c020a8a9e533be08f99b88e39a022d095f2"
+      },
+      {
+        "path": "apps/web/public/art/factions/dutch/ship_sloop_v2.webp",
+        "bytes": 12402,
+        "sha256": "7897601737cc9fa1d2de3709f6fa0d308c4eea6951fcba2ec19a15074c62c8de"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/flag.png",
+        "bytes": 15953,
+        "sha256": "94a8467effd2c4d40aeef05531181aa054c20850461267d6ec6ff3b10b0ccb91"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_brigantine_v2.webp",
+        "bytes": 14868,
+        "sha256": "e482c57cce300ecf626944301a8de34713b37d9d624b6e587fdc4cad23a43306"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_frigate_v2.webp",
+        "bytes": 12904,
+        "sha256": "d988978c0bc16b8bfb1f64ec13b5fc5a4b17351f241c6830692f2d24de532fdf"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_galleon_v2.webp",
+        "bytes": 14852,
+        "sha256": "e8e925142e35635edfe1b9e81c4fe88463e1ef28137be39613d7140c2c37af2b"
+      },
+      {
+        "path": "apps/web/public/art/factions/french/ship_sloop_v2.webp",
+        "bytes": 10748,
+        "sha256": "709d9d4ceb8a1d38f58ef7b9547968afa472b5562d6458682e11dcc7316c755c"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/flag.png",
+        "bytes": 22910,
+        "sha256": "23bb5e4a2563633ab586c8f5cf110ef90cfa586bc4726b09726b66c9efe03296"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_brigantine_v2.webp",
+        "bytes": 16568,
+        "sha256": "2d3ec8bbd6e272c3d2914c3c26f88e565dfa027ebb4619fa22f018d5278c8193"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_frigate_v2.webp",
+        "bytes": 13762,
+        "sha256": "348af5f1c7882f396f343a550d6ce19e27bb2bbf7211414d962ac5ad183d0786"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_galleon_v2.webp",
+        "bytes": 13200,
+        "sha256": "e645705b86e19cbb97155c2fe7bb3083ef4e8021a4f70db2c350153aee631200"
+      },
+      {
+        "path": "apps/web/public/art/factions/pirates/ship_sloop_v2.webp",
+        "bytes": 10808,
+        "sha256": "67e9e2f93a443387a0534fa3cbf7e5f84f4eb3f8677ba857ee07327ea260d80a"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/flag.png",
+        "bytes": 17034,
+        "sha256": "02e518bc4b01a1310fa2a9a90285f52e6426bc97284c84852001325ceaa6545c"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_brigantine_v2.webp",
+        "bytes": 13086,
+        "sha256": "eb21383b9438bf93ac410c500c644f15f23ab410a3addda20e799603f0ecc310"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_frigate_v2.webp",
+        "bytes": 13526,
+        "sha256": "eac7f452615ce99b978aee560754cd9c7aeb906e3d10f9304e93854adcbb29b1"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_galleon_v2.webp",
+        "bytes": 16318,
+        "sha256": "40ac173f20f4bc6392c12b694e34522318f1c5020cb617290524e350effd111f"
+      },
+      {
+        "path": "apps/web/public/art/factions/spanish/ship_sloop_v2.webp",
+        "bytes": 10114,
+        "sha256": "ae79d6bd9122fe9b6d833f8910a014f7aba3a1ead20470a294f08c92fbcbda94"
+      },
+      {
+        "path": "apps/web/public/art/parties/british.webp",
+        "bytes": 13298,
+        "sha256": "ccc6776fa60ff8d41d13c6e732748d2e5087e1f33ec9fe1e0bd6401f9862bef7"
+      },
+      {
+        "path": "apps/web/public/art/parties/dutch.webp",
+        "bytes": 16284,
+        "sha256": "cbd0921889167cc38b9c72b3fd34f6ae52af5f36f94bfe289f1392b80fb248a3"
+      },
+      {
+        "path": "apps/web/public/art/parties/french.webp",
+        "bytes": 17306,
+        "sha256": "4c897b35912a39f117ab7140aa2f6acbff94b11b4f4cd46dd7412dac4c657cdc"
+      },
+      {
+        "path": "apps/web/public/art/parties/pirates.webp",
+        "bytes": 17232,
+        "sha256": "c29c11f0b12fa524f6eaebb8346e28f5821b5520f7162cafa106408e6d564eef"
+      },
+      {
+        "path": "apps/web/public/art/parties/spanish.webp",
+        "bytes": 14882,
+        "sha256": "b812c3adb31b805a2622aa55766f785e9b194c7905dd4aba1c92ba8190caf7c6"
+      },
+      {
+        "path": "apps/web/public/art/resources/gold.png",
+        "bytes": 6885,
+        "sha256": "a33b424ca44602beffeeafcfabd49a089cc01aae851cc4deca3ec01cab3ca6db"
+      },
+      {
+        "path": "apps/web/public/art/resources/iron.png",
+        "bytes": 11192,
+        "sha256": "90b0f2e521b9e8c405e566eb8e671179ea72eaadb9868160ad5700aadf2dc394"
+      },
+      {
+        "path": "apps/web/public/art/resources/rum.png",
+        "bytes": 2033,
+        "sha256": "6478faf5c0a42dba0e6058ae375483953eb618e0dceea92b4c172b5992650eca"
+      },
+      {
+        "path": "apps/web/public/art/resources/timber.png",
+        "bytes": 6678,
+        "sha256": "e20e5735b26e4e352670cc9748a22ed9addf8a7acab72c9ff89fe1371a876b4b"
+      },
+      {
+        "path": "apps/web/public/art/sites/lumber-camp.webp",
+        "bytes": 19190,
+        "sha256": "6ce13d51ab0904232bc33513d628ffa7f2a57404ce0645490b9445a16c3a96ba"
+      },
+      {
+        "path": "apps/web/public/art/sites/mine.webp",
+        "bytes": 17964,
+        "sha256": "7deba7e1dd9addd56b5b2f8ac4818c784e00dede3bc9830416db6e5335621faa"
+      },
+      {
+        "path": "apps/web/public/art/sites/ruins.webp",
+        "bytes": 16050,
+        "sha256": "31c92e7763a7f876c9629508966f48ec92ae692e5b55d28ae753b05169680760"
+      },
+      {
+        "path": "apps/web/public/art/sites/sawmill.webp",
+        "bytes": 16618,
+        "sha256": "ed8be005960821aeb1be3536528f785825f86993f858bc8c4494daeb459c5815"
+      },
+      {
+        "path": "apps/web/public/art/tiles/land.png",
+        "bytes": 19327,
+        "sha256": "d9571057d4a44b6c2dfcd692e8d9adade66358afd073dd25e532aff616d5007f"
+      },
+      {
+        "path": "apps/web/public/art/tiles/port.png",
+        "bytes": 17759,
+        "sha256": "29db69da334364eab148d7350b9350bb5cfa66eb673c74a846078ce56eaf0982"
+      },
+      {
+        "path": "apps/web/public/art/ui/build.png",
+        "bytes": 3142,
+        "sha256": "bb0406ef0ff40f2dd5d34dc48d847ae19628fc135a083fba128e9416d6d07206"
+      },
+      {
+        "path": "apps/web/public/art/ui/upgrade.png",
+        "bytes": 6780,
+        "sha256": "aca53597176bca94e47a9f936d91499af1f1fe6f21892e710e45f71dcaa38d51"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/clearing.webp",
+        "bytes": 12344,
+        "sha256": "a1b394877b76b25c68dc73b1c5009b4ef6aee3d10927a4419d9add4be15a5c55"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/forest-a.webp",
+        "bytes": 15826,
+        "sha256": "c88d9526faf0ea97cffc38356ef4381b5326a90cccb093c24ad2f148902fc8c0"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/forest-b.webp",
+        "bytes": 14824,
+        "sha256": "b84009a0fe8e2daf25b197183b8f778a2b1fbffdcf814ba99064d9c9908963b8"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/highland.webp",
+        "bytes": 11684,
+        "sha256": "8482fe876bd1a2a8bbaaba9b73c775ea529355daefcec5d237c800e14b7d6f3f"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-a.webp",
+        "bytes": 19744,
+        "sha256": "02b672dfb9f8752b0ee3c489ad4a66c41ba5dc1dfb9ce18867d91b2f0715743d"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-b.webp",
+        "bytes": 20084,
+        "sha256": "f2f29271826502205555301d5cbc555052a57f5cced71fd8f0c9889d4c935f3e"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/land-base-c.webp",
+        "bytes": 19114,
+        "sha256": "f4301ef6d1bed4ad4ee2c96d6893a4d1249500ee760d3565643de431eeb61d34"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/port-l.webp",
+        "bytes": 19720,
+        "sha256": "2d8d61a732a9e8f4fbdb0a509ec7bda71794ff8844ed1470604b55fecda232d3"
+      },
+      {
+        "path": "apps/web/public/art/world-map-v2/terrain/port-straight.webp",
+        "bytes": 15628,
+        "sha256": "957bc25a0223bc5cc954e751f1b726bf6c8cab92fccf8b14c9501d9020a87911"
+      },
+      {
+        "path": "apps/web/public/fonts/cabin-latin.woff2",
+        "bytes": 28228,
+        "sha256": "3912b808ba0a5888e70ec69585dc500bfd241929c58f073ff7789b12179c3843"
+      },
+      {
+        "path": "apps/web/public/fonts/pirata-one-latin.woff2",
+        "bytes": 8824,
+        "sha256": "37d289e4600f084545a6def9ca145a547fff4ce7ceca7847a08d598a23c8d6cb"
+      }
+    ]
+  },
+  "fixture": {
+    "policy": "Real shipping GameScreen, MapCanvas, CityScreen, and CityScene; only audio feedback is inert.",
+    "files": [
+      {
+        "path": "docs/art/gameplay-chrome-v2/renewal-fixture/fixtureData.ts",
+        "bytes": 2464,
+        "sha256": "9e501e1c43350beffe9c62e493e92f61d64081f25a8259c0887e71a11288c0ec"
+      },
+      {
+        "path": "docs/art/gameplay-chrome-v2/renewal-fixture/index.html",
+        "bytes": 330,
+        "sha256": "33eff2100c709beb932ec735fd8b8ea4d789bbf557604045c3b97dfc272b7739"
+      },
+      {
+        "path": "docs/art/gameplay-chrome-v2/renewal-fixture/runtime.tsx",
+        "bytes": 6033,
+        "sha256": "46b7bf48d19ef5fda6ae0be95470eb399b7b0219ebdc507c8c9fa33b84fb7565"
+      },
+      {
+        "path": "docs/art/gameplay-chrome-v2/renewal-fixture/stubs/audioFeedback.ts",
+        "bytes": 177,
+        "sha256": "4bf7272ebacc0aa09b889a07f2530f313ec453fd91d2c5cf43c2b705aa2d428b"
+      },
+      {
+        "path": "docs/art/gameplay-chrome-v2/renewal-fixture/vite.config.ts",
+        "bytes": 1169,
+        "sha256": "85783ff24828e8e55a1b202272c7080032e8b6218232db77bcfb7612c5be7e3d"
+      }
+    ],
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "227c6258629eee7e8f26d6c0e5c4358fd84be3ff99e75f56ccceaf15a1fc9c82",
+      "bytes": 795
+    }
+  },
+  "historical_approvals": [
+    {
+      "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+      "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+      "reusable": false,
+      "may_change_before_direct_operator_approval": false,
+      "observed_sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde"
+    },
+    {
+      "path": "docs/art/gameplay-chrome-v2/RUNTIME-CAPTURE-BINDINGS.json",
+      "sha256": "60b09cb87a52321c578ca818752178837b1d5c809e621df3f20e05c4442b015c",
+      "reusable": false,
+      "observed_sha256": "60b09cb87a52321c578ca818752178837b1d5c809e621df3f20e05c4442b015c"
+    },
+    {
+      "path": "docs/art/world-map-v2/terrain/runtime-capture-receipt.json",
+      "sha256": "24081cd29ef5ee5bba0f2633487dd7bc0c7ecaca4445cd1ea25883a469a38293",
+      "reusable": false,
+      "observed_sha256": "24081cd29ef5ee5bba0f2633487dd7bc0c7ecaca4445cd1ea25883a469a38293"
+    }
+  ],
+  "server": {
+    "origin": "http://127.0.0.1:4627",
+    "fresh_origin_required": true,
+    "chrome_world": "http://127.0.0.1:4627/index.html?scene=chrome-world",
+    "chrome_city": "http://127.0.0.1:4627/index.html?scene=chrome-city",
+    "terrain": "http://127.0.0.1:4627/index.html?scene=terrain"
+  },
+  "expected_captures": {
+    "chrome": [
+      ["runtime-phone-world-375x812.png", 375, 812, 2],
+      ["runtime-city-inspector-1440x900.png", 1440, 900, 3],
+      ["runtime-interaction-states-1440x960.png", 1440, 960, 3]
+    ],
+    "terrain": [
+      ["desktop-overview.png", 1440, 900],
+      ["desktop-tactical.png", 1440, 900],
+      ["desktop-detail.png", 1440, 900],
+      ["phone-overview.png", 390, 844],
+      ["phone-tactical.png", 390, 844],
+      ["phone-detail.png", 390, 844]
+    ]
+  },
+  "binding_sha256": "6678cab608897369cfa5ca08cfd36a71f3eddfad9da49fc8756ddc46e774abb3"
+}

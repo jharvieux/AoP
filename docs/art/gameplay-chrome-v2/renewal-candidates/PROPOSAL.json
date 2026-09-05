@@ -1,0 +1,193 @@
+{
+  "schema": "aop-cross-evidence-renewal-proposal-v1",
+  "issue": 613,
+  "status": "unapproved-proposal",
+  "approval": {
+    "status": "pending-direct-operator-approval",
+    "record": null
+  },
+  "source_head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "source_tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+  "candidate_digest": "7d300d1e6010953bbcbfd89697cb764f35b9285560c4232fd32ee90cb860beba",
+  "capture_ready": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-fixture/CAPTURE-READY.json",
+    "bytes": 91380,
+    "sha256": "d399b2be29eda5a3ca24c9316da91e497207d34cdaf73304cf8fa0ba6303cbb4"
+  },
+  "capture_ready_binding": "6678cab608897369cfa5ca08cfd36a71f3eddfad9da49fc8756ddc46e774abb3",
+  "source_material": {
+    "algorithm": "sha256",
+    "sha256": "d73e22c3d03110d8884b74c684fe6def907993b11f9f3eb4b25a0aa68fe798ed",
+    "bytes": 47818
+  },
+  "renderer_material": {
+    "algorithm": "sha256",
+    "sha256": "f5955173d179f6919f5c6c7e127af3cb43f63df7ce58de7293cd030e3f71e423",
+    "bytes": 18357
+  },
+  "fixture_material": {
+    "algorithm": "sha256",
+    "sha256": "227c6258629eee7e8f26d6c0e5c4358fd84be3ff99e75f56ccceaf15a1fc9c82",
+    "bytes": 795
+  },
+  "ingestion": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/INGESTION.json",
+    "bytes": 6528,
+    "sha256": "d6470484c0379438fa0f4f1cd92bb5570242d47004531ea88778a9a4a874f4c0"
+  },
+  "observations": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/OBSERVATIONS.json",
+    "bytes": 9147,
+    "sha256": "29158d3ccc5ccc666e83dc6324e3d6a3a43ac02dc3babf3a3f0847a299767026"
+  },
+  "historical_approvals_reusable": false,
+  "immutable_chrome_material_anchor": {
+    "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+    "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+    "reusable": false,
+    "may_change_before_direct_operator_approval": false,
+    "observed_sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde"
+  },
+  "evidence_set": "gameplay-chrome-v2",
+  "captures": [
+    {
+      "id": "chrome-phone-world",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-world",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-phone-world-375x812.png",
+      "bytes": 132682,
+      "sha256": "95ca834f76f57ba77465a6a77e1f27e0d72046f2a0048f749e2b4475903adce7",
+      "dimensions": [375, 812],
+      "png_color_type": 2,
+      "encoding": {
+        "palette_colors": null,
+        "decoded_rgb_sha256": "27352456e769b79325b171bd93b9a492c38c65ed4c6c616cc799dba243ccd05c",
+        "rgb_rmse": 0
+      },
+      "observation": {
+        "id": "chrome-phone-world",
+        "scene": "chrome-world",
+        "viewport": [375, 812],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [375, 812],
+          "document_scroll": [375, 812],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "chrome-city-inspector",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-city",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-city-inspector-1440x900.png",
+      "bytes": 243256,
+      "sha256": "c2e3212dfe59b7afc454b1336c60af38aeab79f916878efe093297e405d4ff8f",
+      "dimensions": [1440, 900],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 40,
+        "decoded_rgb_sha256": "44deb3b68c0735cc906e85c41b93f5aa5c6323f9677d0f87c3b4c7a929472a63",
+        "rgb_rmse": 9.405708
+      },
+      "observation": {
+        "id": "chrome-city-inspector",
+        "scene": "chrome-city",
+        "viewport": [1440, 900],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 900],
+          "document_scroll": [1440, 900],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 53,
+          "total_images": 53,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "overlay_rect": [0, 0, 1440, 900],
+          "scene_rect": [25, 101, 1000, 692.8125],
+          "inspector_rect": [1037, 89, 390, 798],
+          "selected_building": "Shipyard"
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false,
+          "selected_building_label_visible": true
+        }
+      }
+    },
+    {
+      "id": "chrome-interaction-states",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-city",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-interaction-states-1440x960.png",
+      "bytes": 292600,
+      "sha256": "95c5215c2856197ed1b238f109f58ec1718ffba2f161a59c2521caa9d4184f58",
+      "dimensions": [1440, 960],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 40,
+        "decoded_rgb_sha256": "ca32632245520b033bf4adeaacf966c0b4581e4ee02174c0c1296d6da939fac7",
+        "rgb_rmse": 9.714534
+      },
+      "observation": {
+        "id": "chrome-interaction-states",
+        "scene": "chrome-city",
+        "viewport": [1440, 960],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 960],
+          "document_scroll": [1440, 960],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 99,
+          "total_images": 99,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "overlay_rect": [0, 0, 1440, 960],
+          "scene_rect": [26, 104.34375, 998, 686.125],
+          "inspector_rect": [1037, 89, 390, 858],
+          "selected_building": "Town Hall",
+          "focused_control": "Close building details",
+          "hovered_control": "About Town Hall",
+          "hovered": true,
+          "aria_expanded": false,
+          "disabled_build_buttons": 14
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false,
+          "hovered_collapsed_state_visible": true
+        }
+      }
+    }
+  ]
+}

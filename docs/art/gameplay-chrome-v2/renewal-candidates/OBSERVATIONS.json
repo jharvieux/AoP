@@ -1,0 +1,312 @@
+{
+  "schema": "aop-cross-evidence-observations-v1",
+  "issue": 613,
+  "source_head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "source_tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+  "captured_on": "2026-09-05",
+  "browser": "Codex in-app Browser (Chrome)",
+  "screenshot_dimensions": "CSS viewport pixels",
+  "device_pixel_ratio_policy": "Recorded per frame from the browser; no DPR override is claimed.",
+  "raw_capture_format": "JPEG emitted by the in-app Browser screenshot API",
+  "native_inspection_tool": "Codex native image viewer at original detail",
+  "terrain": {
+    "fresh_origin": true,
+    "same_live_session": true,
+    "gameplay_actions_between_captures": 0,
+    "seed": 611,
+    "size": "xlarge",
+    "dimensions": [96, 96],
+    "topology": "square",
+    "players": 5,
+    "human_faction": "Pirates",
+    "round": 1,
+    "theme": "default/no override",
+    "capture_order": [
+      "phone overview after Fit",
+      "phone tactical after 9 Zoom in actions and Center map",
+      "phone detail after 3 more Zoom in actions and Center map",
+      "desktop detail after resize and Center map",
+      "desktop tactical after 3 Zoom out actions and Center map",
+      "desktop overview after Fit"
+    ],
+    "fixture_state_unchanged": true
+  },
+  "frames": [
+    {
+      "id": "chrome-phone-world",
+      "scene": "chrome-world",
+      "viewport": [375, 812],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [375, 812],
+        "document_scroll": [375, 812],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "chrome-city-inspector",
+      "scene": "chrome-city",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "loaded_images": 53,
+        "total_images": 53,
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "overlay_rect": [0, 0, 1440, 900],
+        "scene_rect": [25, 101, 1000, 692.8125],
+        "inspector_rect": [1037, 89, 390, 798],
+        "selected_building": "Shipyard"
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false,
+        "selected_building_label_visible": true
+      }
+    },
+    {
+      "id": "chrome-interaction-states",
+      "scene": "chrome-city",
+      "viewport": [1440, 960],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 960],
+        "document_scroll": [1440, 960],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "loaded_images": 99,
+        "total_images": 99,
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "overlay_rect": [0, 0, 1440, 960],
+        "scene_rect": [26, 104.34375, 998, 686.125],
+        "inspector_rect": [1037, 89, 390, 858],
+        "selected_building": "Town Hall",
+        "focused_control": "Close building details",
+        "hovered_control": "About Town Hall",
+        "hovered": true,
+        "aria_expanded": false,
+        "disabled_build_buttons": 14
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false,
+        "hovered_collapsed_state_visible": true
+      }
+    },
+    {
+      "id": "terrain-desktop-overview",
+      "scene": "terrain",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "overview",
+          "control": "Fit",
+          "fit_scale_diagnostic_authoritative": false
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "terrain-desktop-tactical",
+      "scene": "terrain",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "tactical",
+          "control": "Center map",
+          "tile_px": 25.875944
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "terrain-desktop-detail",
+      "scene": "terrain",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "detail",
+          "control": "Center map",
+          "tile_px": 49.4159
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "terrain-phone-overview",
+      "scene": "terrain",
+      "viewport": [390, 844],
+      "device_pixel_ratio": 2,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [390, 844],
+        "document_scroll": [390, 844],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "overview",
+          "control": "Fit",
+          "scale_diagnostic": 0.126953,
+          "tile_px_diagnostic": 4.0625,
+          "fit_scale_diagnostic_authoritative": false
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "terrain-phone-tactical",
+      "scene": "terrain",
+      "viewport": [390, 844],
+      "device_pixel_ratio": 2,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [390, 844],
+        "document_scroll": [390, 844],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "tactical",
+          "control": "Center map",
+          "tile_px": 25.300965
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    },
+    {
+      "id": "terrain-phone-detail",
+      "scene": "terrain",
+      "viewport": [390, 844],
+      "device_pixel_ratio": 2,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [390, 844],
+        "document_scroll": [390, 844],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "camera": {
+          "band": "detail",
+          "control": "Center map",
+          "tile_px": 49.415889
+        }
+      },
+      "native_inspection": {
+        "original_size": true,
+        "fonts_complete": true,
+        "art_complete": true,
+        "clipped_label": false,
+        "missing_image": false,
+        "map_error": false
+      }
+    }
+  ]
+}
