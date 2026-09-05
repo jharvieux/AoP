@@ -1,7 +1,7 @@
 # City UI v2 runtime evidence
 
 > **#613 approval pending:** these 20 replacement pixels were captured and inspected against
-> exact source `a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`. Direct operator approval is
+> exact source `c1824f22bf14dca6d38f7519fd99affd789a8130`. Direct operator approval is
 > deliberately still pending under the 37-frame cross-evidence procedure in
 > [`RUNTIME-EVIDENCE-RENEWAL.md`](RUNTIME-EVIDENCE-RENEWAL.md).
 

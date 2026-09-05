@@ -4,12 +4,14 @@
 
 All approvals inherited from issues #608, #610, #611, and #612 are historical evidence for
 their former source revisions and do **not** carry to repaired #613 source
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`. The 28 city UI and city-art targets have now
+`c1824f22bf14dca6d38f7519fd99affd789a8130`. The 28 city UI and city-art targets have now
 been replaced with 22 fresh browser frames, including six byte-identical cross-set copies.
-They have passed native inspection, but direct operator approval remains pending. The three
-gameplay-chrome and six terrain replacements remain separate #613 work.
+They have passed native inspection. The three gameplay-chrome and six terrain frames were
+also captured and validated as separate unapproved renewal proposals. All 37 target paths are
+now reviewable, but direct operator approval remains pending; the retained #610 and #611
+approval-bound sets and material anchors remain unchanged until that approval.
 
-`RUNTIME-EVIDENCE-RENEWAL.json` is the fail-loud pending record. It binds the 14 source and
+`RUNTIME-EVIDENCE-RENEWAL.json` is the fail-loud pending record. It binds the 18 source and
 test inputs changed by #613, records the four historical binding identities, declares the
 exact 37-frame inventory, and records per-set renewal progress. Direct operator approval is
 deliberately null until all replacement pixels are reviewable and the operator approves the
@@ -83,7 +85,7 @@ Then create a no-approval proposal outside the repository:
 node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --proposal \
   --stage-root /absolute/staging/path \
   --output /absolute/new/proposal.json \
-  --source-head a5a8fd5f8c522ebddfb146510b492bcea1c28ee2 \
+  --source-head c1824f22bf14dca6d38f7519fd99affd789a8130 \
   --captured-on YYYY-MM-DD \
   --confirmation PREPARE_UNAPPROVED_CAPTURE_PROPOSAL
 ```
