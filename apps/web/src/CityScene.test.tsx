@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CityScene } from './CityScene'
 import { CityScreen } from './CityScreen'
+import { CITY_BUILDING_IDS, cityArtRegistry } from './cityArtRegistry'
 import citySceneLayout from './citySceneLayout.json'
 
 const theme = vi.hoisted(() => ({
@@ -14,8 +15,43 @@ const theme = vi.hoisted(() => ({
 }))
 
 const FOCUSABLE_SELECTOR = 'button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+const ORIGINAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: ORIGINAL_VIEWPORT.width,
+  })
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: ORIGINAL_VIEWPORT.height,
+  })
+})
+
+function usePhoneLayout(matches: boolean) {
+  const listeners = new Set<EventListenerOrEventListenerObject>()
+  const query = {
+    matches,
+    media: '(max-width: 767px)',
+    onchange: null,
+    addEventListener: vi.fn((_event: string, listener: EventListenerOrEventListenerObject) => {
+      listeners.add(listener)
+    }),
+    removeEventListener: vi.fn((_event: string, listener: EventListenerOrEventListenerObject) => {
+      listeners.delete(listener)
+    }),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as MediaQueryList
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => query),
+  )
+  return { query, listeners }
+}
 
 vi.mock('./theme/ThemeContext', () => ({
   useTheme: () => ({
@@ -115,6 +151,26 @@ describe('CityScene production art consumer', () => {
     expect(names).toEqual(['Town Hall', 'Shipyard', 'Grog House', 'Cutthroat Den', 'Citadel'])
   })
 
+  it('selects web-owned production art for all fourteen building ids', () => {
+    const { container } = render(
+      <CityScene
+        buildings={CITY_BUILDING_IDS}
+        faction="pirates"
+        onOpenBuilding={() => undefined}
+      />,
+    )
+
+    for (const buildingId of CITY_BUILDING_IDS) {
+      const building = container.querySelector<HTMLElement>(`[data-building-id="${buildingId}"]`)!
+      expect(building.querySelector('.city-building-art__image')?.getAttribute('src')).toBe(
+        cityArtRegistry.buildings[buildingId],
+      )
+    }
+    expect(container.querySelector('.city-scene__sprite--tower')?.getAttribute('src')).toBe(
+      cityArtRegistry.citadelTower,
+    )
+  })
+
   it('falls back from a failed theme override to local art, then to the placeholder', async () => {
     theme.spriteUrl.mockImplementation((contentId) =>
       contentId === 'building:townhall' ? '/theme/townhall.webp' : undefined,
@@ -204,6 +260,28 @@ describe('CityScene production art consumer', () => {
       left: 150,
       top: 100,
     })
+  })
+
+  it('recenters without smooth scrolling when reduced motion is requested', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: true }) as MediaQueryList),
+    )
+    const { container, getByRole } = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    const viewport = container.querySelector<HTMLElement>('.city-scene-viewport')!
+    viewport.scrollTo = vi.fn()
+    Object.defineProperties(viewport, {
+      scrollWidth: { configurable: true, value: 600 },
+      clientWidth: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    })
+
+    fireEvent.click(getByRole('button', { name: 'Recenter city' }))
+
+    expect(viewport.scrollTo).toHaveBeenCalledWith({ behavior: 'auto', left: 150, top: 100 })
   })
 
   it('uses the same override-to-local fallback for the backdrop, flag, and citadel tower', async () => {
@@ -350,6 +428,72 @@ describe('CityScene production art consumer', () => {
 })
 
 describe('CityScreen dedicated overlay', () => {
+  it('contains phone drawer focus and pointer interaction, then restores its trigger', async () => {
+    const media = usePhoneLayout(true)
+    const props = cityScreenProps()
+    const view = render(<CityScreen {...props} />)
+    const townHall = view.getByRole('button', { name: 'Manage Town Hall' })
+
+    fireEvent.click(townHall)
+    const sceneColumn = view.container.querySelector<HTMLElement>('.city-overlay__scene-column')!
+    const drawer = view.container.querySelector<HTMLElement>('.city-inspector--open')!
+    await waitFor(() => expect(sceneColumn.hasAttribute('inert')).toBe(true))
+    expect(sceneColumn.getAttribute('aria-hidden')).toBe('true')
+    expect(getComputedStyle(sceneColumn).pointerEvents).toBe('none')
+
+    const drawerControls = [...drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
+    const first = drawerControls[0]!
+    const last = drawerControls[drawerControls.length - 1]!
+    last.focus()
+    fireEvent.keyDown(last, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+
+    fireEvent.click(view.getByRole('button', { name: 'Close building details' }))
+    await waitFor(() => expect(document.activeElement).toBe(townHall))
+    expect(sceneColumn.hasAttribute('inert')).toBe(false)
+    expect(sceneColumn.getAttribute('aria-hidden')).toBeNull()
+
+    view.unmount()
+    expect(media.query.removeEventListener).toHaveBeenCalledOnce()
+    expect(media.listeners.size).toBe(0)
+  })
+
+  it('keeps scene buildings interactive beside the desktop inspector', () => {
+    usePhoneLayout(false)
+    const props = cityScreenProps()
+    const view = render(<CityScreen {...props} />)
+    const sceneColumn = view.container.querySelector<HTMLElement>('.city-overlay__scene-column')!
+
+    fireEvent.click(view.getByRole('button', { name: 'Manage Town Hall' }))
+    expect(sceneColumn.hasAttribute('inert')).toBe(false)
+    fireEvent.click(view.getByRole('button', { name: 'Manage Cutthroat Den' }))
+    expect(
+      view.getByRole('button', { name: 'Manage Cutthroat Den' }).getAttribute('aria-pressed'),
+    ).toBe('true')
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
+  it('keeps both city-cycle controls at 44px in the 320px phone layout', () => {
+    usePhoneLayout(true)
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 568 })
+    const props = cityScreenProps()
+    const secondCity = { ...props.city, id: 'city-second', name: 'Second Harbor' }
+    const onSelectCity = vi.fn()
+    const view = render(
+      <CityScreen {...props} cities={[props.city, secondCity]} onSelectCity={onSelectCity} />,
+    )
+
+    for (const name of ['Previous city', 'Next city']) {
+      const control = view.getByRole('button', { name })
+      const computed = getComputedStyle(control)
+      expect(computed.minWidth).toBe('44px')
+      expect(computed.minHeight).toBe('44px')
+      fireEvent.click(control)
+    }
+    expect(onSelectCity).toHaveBeenCalledTimes(2)
+  })
+
   it('contains focus, inerts the map, restores the opener, and uses Escape one layer at a time', async () => {
     const props = cityScreenProps()
 

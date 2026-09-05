@@ -23,6 +23,7 @@ import { DiplomacyPanel } from '../components/DiplomacyPanel'
 import { MatchChatPanel } from '../components/MatchChatPanel'
 import { Spinner } from '../components/Spinner'
 import { CityScreen } from '../CityScreen'
+import { findViewerCaptainAtCity } from '../cityDocking'
 import { MapCanvas } from '../MapCanvas'
 import { submitApproachAndEngage } from '../multiplayer/approachAndEngage'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
@@ -530,15 +531,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
   const myParties = ownParties(view)
     .map(partyFromView)
     .filter((p): p is NonNullable<typeof p> => p !== null)
-  const captainAtOpenCity = openCity
-    ? myCaptains.find(
-        (c) =>
-          Math.max(
-            Math.abs(c.position.x - openCity.position.x),
-            Math.abs(c.position.y - openCity.position.y),
-          ) <= 1,
-      )
-    : undefined
+  const captainAtOpenCity =
+    openCity && board
+      ? findViewerCaptainAtCity(myCaptains, board.map, view.viewerId, openCity.position)
+      : undefined
   const firstOwnCityId = view.cities.find((c) => c.ownerId === view.viewerId)?.id ?? null
 
   function handleTileClick(x: number, y: number) {

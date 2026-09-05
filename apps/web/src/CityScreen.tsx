@@ -74,6 +74,8 @@ const FOCUSABLE_SELECTOR = [
 ].join(',')
 
 const NATIVE_BACK_EVENT = 'aop:native-back'
+const PHONE_LAYOUT_QUERY = '(max-width: 767px)'
+const CITY_NAV_TARGET_STYLE = { minWidth: 44, minHeight: 44 } satisfies React.CSSProperties
 
 /**
  * Graphical city screen (#429): the constructed buildings drawn as a scene,
@@ -98,11 +100,21 @@ export function CityScreen(props: CityScreenProps) {
   } = props
   const { factionName } = useTheme()
   const [openBuildingId, setOpenBuildingId] = useState<string | null>(null)
+  const [phoneLayout, setPhoneLayout] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const buildingTriggerRef = useRef<HTMLButtonElement | null>(null)
   const titleId = useId()
   const garrisonHintId = useId()
+
+  useEffect(() => {
+    if (!window.matchMedia) return
+    const phoneQuery = window.matchMedia(PHONE_LAYOUT_QUERY)
+    const updatePhoneLayout = () => setPhoneLayout(phoneQuery.matches)
+    updatePhoneLayout()
+    phoneQuery.addEventListener('change', updatePhoneLayout)
+    return () => phoneQuery.removeEventListener('change', updatePhoneLayout)
+  }, [])
 
   useEffect(() => {
     const overlay = overlayRef.current
@@ -206,6 +218,7 @@ export function CityScreen(props: CityScreenProps) {
   const selectedName = openBuildingId
     ? buildingDisplayName(openBuildingId, faction)
     : 'Harbor command'
+  const phoneDrawerOpen = phoneLayout && openBuildingId !== null
 
   return (
     <div
@@ -225,9 +238,10 @@ export function CityScreen(props: CityScreenProps) {
           return
         }
         if (event.key !== 'Tab') return
-        const focusable = [
-          ...(overlayRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []),
-        ]
+        const focusScope = phoneDrawerOpen
+          ? overlayRef.current?.querySelector<HTMLElement>('.city-inspector--open')
+          : overlayRef.current
+        const focusable = [...(focusScope?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])]
         if (focusable.length === 0) return
         const first = focusable[0]!
         const last = focusable[focusable.length - 1]!
@@ -263,6 +277,7 @@ export function CityScreen(props: CityScreenProps) {
                   type="button"
                   className="city-scene-nav"
                   aria-label="Previous city"
+                  style={CITY_NAV_TARGET_STYLE}
                   onClick={() => cycleCity(-1)}
                 >
                   <UiIcon name="previous" />
@@ -274,6 +289,7 @@ export function CityScreen(props: CityScreenProps) {
                   type="button"
                   className="city-scene-nav"
                   aria-label="Next city"
+                  style={CITY_NAV_TARGET_STYLE}
                   onClick={() => cycleCity(1)}
                 >
                   <UiIcon name="next" />
@@ -293,7 +309,13 @@ export function CityScreen(props: CityScreenProps) {
         </header>
 
         <main className="city-overlay__body">
-          <section className="city-overlay__scene-column" aria-label="City location">
+          <section
+            className="city-overlay__scene-column"
+            aria-label="City location"
+            aria-hidden={phoneDrawerOpen ? true : undefined}
+            inert={phoneDrawerOpen}
+            style={phoneDrawerOpen ? { pointerEvents: 'none' } : undefined}
+          >
             <CityScene
               key={city.id}
               buildings={city.buildings}

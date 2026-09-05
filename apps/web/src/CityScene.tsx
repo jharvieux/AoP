@@ -1,6 +1,7 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
 import { useRef, useState } from 'react'
+import { cityArtRegistry, cityBuildingArtUrl } from './cityArtRegistry'
 import citySceneLayout from './citySceneLayout.json'
 import { buildingContentId, cityBackdropContentId, factionFlagContentId } from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
@@ -9,10 +10,9 @@ import { UiIcon } from './uiIcons'
 /**
  * Graphical city scene (#429, art wired in #447): every constructed building
  * drawn in a fixed scene layout, data-driven from `city.buildings`. Each slot
- * renders its `BUILDINGS[id].spriteUrl` art (theme-pack override via
- * `resolveSpriteUrl` wins when set); the category-colored placeholder block
- * shows only until the art loads, and returns as the fallback if the art
- * 404s or a building has no sprite yet.
+ * renders web-owned production art (theme-pack overrides win when set); the
+ * category-colored placeholder block shows only until the art loads, and
+ * returns as the fallback if both the override and production art fail.
  */
 
 /** The backdrop image behind the whole scene (#447). Falls back to the
@@ -124,7 +124,11 @@ export function CityBuildingArt({
   const { spriteUrl: themeSpriteUrl } = useTheme()
   const def = BUILDINGS[buildingId]
   const [artLoaded, setArtLoaded] = useState(false)
-  const candidates = spriteCandidates(themeSpriteUrl, buildingContentId(buildingId), def?.spriteUrl)
+  const candidates = spriteCandidates(
+    themeSpriteUrl,
+    buildingContentId(buildingId),
+    cityBuildingArtUrl(buildingId),
+  )
 
   function report(loaded: boolean) {
     setArtLoaded(loaded)
@@ -215,7 +219,7 @@ function SceneBuilding({ id, slot, faction, selected, onOpenBuilding }: SceneBui
       ? spriteCandidates(
           themeSpriteUrl,
           buildingContentId('citadel:tower'),
-          def.cornerTowerSpriteUrl,
+          cityArtRegistry.citadelTower,
         )
       : []
   return (
@@ -311,10 +315,11 @@ export function CityScene({
   function recenter() {
     const viewport = viewportRef.current
     if (!viewport) return
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     viewport.scrollTo({
       left: Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2),
       top: Math.max(0, (viewport.scrollHeight - viewport.clientHeight) / 2),
-      behavior: 'smooth',
+      behavior: reduceMotion ? 'auto' : 'smooth',
     })
   }
 

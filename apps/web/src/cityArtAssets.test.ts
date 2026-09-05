@@ -4,6 +4,7 @@ import { readFileSync, statSync } from 'node:fs'
 // @ts-expect-error Vitest supplies Node built-ins; the browser app intentionally omits Node types.
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { CITY_BUILDING_IDS, cityArtRegistry, cityBuildingArtUrl } from './cityArtRegistry'
 import citySceneLayout from './citySceneLayout.json'
 
 const PUBLIC_ART_URL = new URL('../public/art/', import.meta.url)
@@ -53,19 +54,21 @@ function webpDimensions(bytes: Uint8Array): readonly [number, number] {
 }
 
 describe('city production art assets', () => {
-  const buildingUrls = Object.values(BUILDINGS).map((building) => building.spriteUrl!)
-  const towerUrl = BUILDINGS.citadel!.cornerTowerSpriteUrl!
+  const buildingUrls = Object.values(cityArtRegistry.buildings)
+  const towerUrl = cityArtRegistry.citadelTower
   const backdropUrls = citySceneLayout.backdrop.tiles.map((tile) => tile.src)
   const runtimeUrls = [...backdropUrls, ...buildingUrls, towerUrl]
 
-  it('ships one WebP for every exact building id and the citadel tower pseudo-id', () => {
-    expect(Object.keys(BUILDINGS)).toHaveLength(14)
+  it('maps every exact content building id and the citadel tower to web-owned WebPs', () => {
+    expect(Object.keys(BUILDINGS).sort()).toEqual([...CITY_BUILDING_IDS].sort())
+    expect(Object.keys(cityArtRegistry.buildings).sort()).toEqual([...CITY_BUILDING_IDS].sort())
     expect(new Set(buildingUrls).size).toBe(14)
     for (const url of runtimeUrls) {
       expect(url.endsWith('.webp')).toBe(true)
       expect(statSync(cityAssetPath(url)).isFile()).toBe(true)
     }
-    expect(BUILDINGS.stoneWall!.spriteUrl).toBe('/art/city/stoneWall.webp')
+    expect(cityBuildingArtUrl('stoneWall')).toBe('/art/city/stoneWall.webp')
+    expect(cityBuildingArtUrl('not-a-building')).toBeUndefined()
     expect(towerUrl).toBe('/art/city/citadel-tower.webp')
   })
 
@@ -131,8 +134,7 @@ describe('city production art assets', () => {
         ).toBeGreaterThanOrEqual(1)
 
         for (const [contentId, slot] of Object.entries(citySceneLayout.slots)) {
-          const building = BUILDINGS[contentId as keyof typeof BUILDINGS]!
-          const [sourceWidth, sourceHeight] = assetDimensions.get(building.spriteUrl!)!
+          const [sourceWidth, sourceHeight] = assetDimensions.get(cityBuildingArtUrl(contentId)!)!
           const ratio = Math.min(
             sourceWidth / (deviceWidth * slot.width * 0.01),
             sourceHeight / (deviceHeight * slot.height * 0.01),

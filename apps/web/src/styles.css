@@ -1675,7 +1675,7 @@ button.primary.secondary {
   --city-zoom: 1;
 
   position: relative;
-  width: calc(var(--city-zoom) * min(100%, (100dvh - 190px) * 16 / 11));
+  width: calc(var(--city-zoom) * min(100%, (100dvh - 250px) * 16 / 11));
   flex: none;
   margin: auto;
   aspect-ratio: 16 / 11;
@@ -2349,6 +2349,25 @@ button.primary.secondary {
   }
 }
 
+/* Portrait tablets keep the harbor dominant and place one bounded inspector
+   below it. The scene and management content each own one non-nested scroll
+   region when their contents exceed the available row. */
+@media (min-width: 768px) and (max-width: 899px) and (orientation: portrait) {
+  .city-overlay__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(240px, 30dvh);
+  }
+
+  .city-inspector {
+    border-top: 1px solid var(--stroke-emphasized);
+    border-left: 0;
+  }
+
+  .city-scene {
+    width: calc(var(--city-zoom) * min(100%, (70dvh - 208px) * 16 / 11));
+  }
+}
+
 /* 1440px desktop: wider scenic stage without allowing the inspector to sprawl. */
 @media (min-width: 1200px) {
   .city-overlay {
@@ -2407,6 +2426,11 @@ button.primary.secondary {
     height: 100%;
     grid-template-rows: minmax(0, 1fr) auto;
     padding: var(--space-1);
+  }
+
+  .city-overlay__scene-column[inert] {
+    pointer-events: none;
+    user-select: none;
   }
 
   .city-scene {
@@ -2567,8 +2591,30 @@ button.primary.secondary {
     max-height: none;
   }
 
+  .city-scene {
+    width: calc(var(--city-zoom) * min(100%, (100dvh - 190px) * 16 / 11));
+  }
+
   .city-status-strip {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    gap: var(--space-1);
+  }
+
+  .city-status-card {
+    min-height: 48px;
+    padding: 2px var(--space-2);
+    line-height: 1.05;
+  }
+
+  .city-status-card--action {
+    min-width: 88px;
+    padding: 2px;
+  }
+
+  .city-status-card--action button {
+    min-width: 80px;
+    min-height: 44px;
   }
 }
 
@@ -3681,10 +3727,20 @@ button.primary.secondary {
   .sheet-backdrop,
   .city-overlay,
   .city-inspector,
+  .city-scene__building,
+  .city-scene__label,
+  .city-scene-zoom button,
+  .info-toggle,
   .action-toast,
   .spinner,
   .skeleton {
     animation: none;
     transition: none;
+  }
+
+  .city-scene__building:active,
+  .city-scene-zoom button:not(:disabled):active,
+  .info-toggle:active {
+    transform: none;
   }
 }
