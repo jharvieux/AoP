@@ -442,6 +442,58 @@ describe('CityScreen dedicated overlay', () => {
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull())
   })
 
+  it('uses backdrop activation to close details first and the city second', async () => {
+    const props = cityScreenProps()
+
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return open ? (
+        <CityScreen
+          {...props}
+          onClose={() => {
+            props.onClose()
+            setOpen(false)
+          }}
+        />
+      ) : null
+    }
+
+    const view = render(<Harness />)
+    const townHall = view.getByRole('button', { name: 'Manage Town Hall' })
+    fireEvent.click(townHall)
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        view.getByRole('button', { name: 'Close building details' }),
+      ),
+    )
+
+    const overlay = view.container.querySelector<HTMLElement>('[data-city-overlay]')!
+    fireEvent.click(overlay)
+    await waitFor(() => expect(document.activeElement).toBe(townHall))
+    expect(view.queryByRole('button', { name: 'Close building details' })).toBeNull()
+    expect(props.onClose).not.toHaveBeenCalled()
+
+    fireEvent.click(overlay)
+    expect(props.onClose).toHaveBeenCalledOnce()
+    expect(view.queryByRole('dialog')).toBeNull()
+  })
+
+  it('does not treat shell, building, or control click bubbling as backdrop activation', () => {
+    const props = cityScreenProps()
+    const view = render(<CityScreen {...props} />)
+    const shell = view.container.querySelector<HTMLElement>('.city-overlay__shell')!
+
+    fireEvent.click(shell)
+    fireEvent.click(view.getByRole('button', { name: 'Manage Town Hall' }))
+    expect(view.getByRole('button', { name: 'Close building details' })).not.toBeNull()
+    expect(props.onClose).not.toHaveBeenCalled()
+
+    fireEvent.click(view.getByRole('button', { name: 'Close building details' }))
+    fireEvent.click(view.getByRole('button', { name: 'Garrison' }))
+    expect(props.onGarrisonCaptain).toHaveBeenCalledOnce()
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
   it('cycles cities, clears stale building selection, and preserves garrison callbacks', () => {
     const props = cityScreenProps()
     const secondCity = { ...props.city, id: 'city-second', name: 'Second Harbor' }

@@ -215,6 +215,9 @@ export function CityScreen(props: CityScreenProps) {
       aria-modal="true"
       aria-labelledby={titleId}
       data-city-overlay
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismissTopLayer()
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault()
