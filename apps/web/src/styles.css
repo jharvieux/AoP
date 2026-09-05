@@ -1675,7 +1675,7 @@ button.primary.secondary {
   --city-zoom: 1;
 
   position: relative;
-  width: calc(var(--city-zoom) * min(100%, (100dvh - 250px) * 16 / 11));
+  width: calc(var(--city-zoom) * var(--city-fit-width, min(100%, (100dvh - 268px) * 16 / 11)));
   flex: none;
   margin: auto;
   aspect-ratio: 16 / 11;

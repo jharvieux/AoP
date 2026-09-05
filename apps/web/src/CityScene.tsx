@@ -1,6 +1,6 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { cityArtRegistry, cityBuildingArtUrl } from './cityArtRegistry'
 import citySceneLayout from './citySceneLayout.json'
 import { buildingContentId, cityBackdropContentId, factionFlagContentId } from './mapSprites'
@@ -293,6 +293,7 @@ export function CityScene({
   const { spriteUrl: themeSpriteUrl } = useTheme()
   const [zoomIndex, setZoomIndex] = useState(0)
   const [failedBackdropOverride, setFailedBackdropOverride] = useState<string>()
+  const [fitWidth, setFitWidth] = useState<number>()
   const viewportRef = useRef<HTMLDivElement>(null)
   const known = buildings.filter((id) => BUILDINGS[id])
   const placed = known
@@ -311,6 +312,22 @@ export function CityScene({
   const showBackdropOverride =
     Boolean(backdropOverride) && backdropOverride !== failedBackdropOverride
   const zoom = ZOOM_STOPS[zoomIndex]!
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const measureFit = () => {
+      const nextWidth = Math.min(viewport.clientWidth, (viewport.clientHeight * 16) / 11)
+      if (nextWidth > 0) setFitWidth((current) => (current === nextWidth ? current : nextWidth))
+    }
+
+    measureFit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measureFit)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
 
   function recenter() {
     const viewport = viewportRef.current
@@ -351,7 +368,12 @@ export function CityScene({
           className="city-scene"
           role="group"
           aria-label="City buildings"
-          style={{ '--city-zoom': zoom } as React.CSSProperties}
+          style={
+            {
+              '--city-fit-width': fitWidth === undefined ? undefined : `${fitWidth}px`,
+              '--city-zoom': zoom,
+            } as React.CSSProperties
+          }
         >
           {showBackdropOverride && backdropOverride ? (
             <FallbackImage

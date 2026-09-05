@@ -175,16 +175,4 @@ describe('single-player and multiplayer city mounting parity', () => {
     expect(tabletStyles).toContain('border-top: 1px solid var(--stroke-emphasized)')
     expect(tabletStyles).toContain('(70dvh - 208px) * 16 / 11')
   })
-
-  it('height-fits the desktop 1x scene while preserving the short-landscape override', () => {
-    expect(stylesSource).toContain('(100dvh - 250px) * 16 / 11')
-    const landscapeStart = stylesSource.indexOf(
-      '@media (max-height: 430px) and (orientation: landscape)',
-    )
-    const landscapeStyles = stylesSource.slice(
-      landscapeStart,
-      stylesSource.indexOf('.battle-intro', landscapeStart),
-    )
-    expect(landscapeStyles).toContain('(100dvh - 190px) * 16 / 11')
-  })
 })

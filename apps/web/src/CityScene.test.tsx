@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { GAME_SETUP } from '@aop/content'
 import { createGame, type GameConfig } from '@aop/engine'
 import { useState } from 'react'
@@ -236,6 +236,51 @@ describe('CityScene production art consumer', () => {
     fireEvent.click(getByRole('button', { name: 'Reset city view' }))
     expect(getByRole('status', { name: 'City zoom level' }).textContent).toBe('100%')
     expect(viewport.scrollTo).toHaveBeenCalledWith({ left: 0, top: 0 })
+  })
+
+  it('fits reset scale to the measured desktop viewport and tracks resizes', () => {
+    let notifyResize: ResizeObserverCallback | undefined
+    const disconnect = vi.fn()
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          notifyResize = callback
+        }
+
+        observe() {}
+        unobserve() {}
+        disconnect() {
+          disconnect()
+        }
+      },
+    )
+    const view = render(
+      <CityScene buildings={['townhall']} faction="pirates" onOpenBuilding={() => undefined} />,
+    )
+    const viewport = view.container.querySelector<HTMLElement>('.city-scene-viewport')!
+    const scene = view.container.querySelector<HTMLElement>('.city-scene')!
+    let viewportWidth = 983
+    let viewportHeight = 632
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, get: () => viewportWidth },
+      clientHeight: { configurable: true, get: () => viewportHeight },
+    })
+
+    act(() => notifyResize?.([] as ResizeObserverEntry[], {} as ResizeObserver))
+    let resetWidth = Number.parseFloat(scene.style.getPropertyValue('--city-fit-width'))
+    expect(resetWidth).toBeCloseTo((viewportHeight * 16) / 11)
+    expect((resetWidth * 11) / 16).toBeLessThanOrEqual(viewportHeight)
+
+    viewportWidth = 909
+    viewportHeight = 500
+    act(() => notifyResize?.([] as ResizeObserverEntry[], {} as ResizeObserver))
+    resetWidth = Number.parseFloat(scene.style.getPropertyValue('--city-fit-width'))
+    expect(resetWidth).toBeCloseTo((viewportHeight * 16) / 11)
+    expect((resetWidth * 11) / 16).toBeLessThanOrEqual(viewportHeight)
+
+    view.unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
   })
 
   it('supports keyboard panning and an explicit recenter control', () => {
