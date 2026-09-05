@@ -892,7 +892,14 @@ export function MapCanvas(props: MapCanvasProps) {
       keepTileVisible: (tile) => {
         stopCameraMotion()
         const { w, h } = viewportSize()
-        const position = panToKeepTileVisible(view, tile, TILE, w, h)
+        const position = panToKeepTileVisible(
+          view,
+          tile,
+          TILE,
+          w,
+          h,
+          mapTopology(propsRef.current.map),
+        )
         publishCamera({ ...view, ...position })
       },
     }
