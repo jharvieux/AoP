@@ -657,8 +657,8 @@ for (const marker of [
   }
 }
 for (const marker of [
-  '215 shipping source files',
-  '149 non-test files',
+  '218 shipping source files',
+  '152 non-test files',
   'all 29 engine source files',
   'all 19 shared source files',
   'all 18 content source files',
