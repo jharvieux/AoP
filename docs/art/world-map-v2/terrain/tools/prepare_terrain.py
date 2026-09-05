@@ -28,8 +28,10 @@ IMAGE_LIMIT = 300 * 1024
 SOURCE_SIZE = 256
 RUNTIME_SIZE = 128
 MASK = 0xFFFFFFFF
-APPROVAL_SOURCE_HEAD = "272c8ded20d97f3ab770e803b1b4d819e5546527"
-APPROVAL_COMMENT = "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944"
+APPROVAL_DATE = "2026-09-05"
+APPROVAL_SOURCE_HEAD = "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee"
+APPROVAL_APPLICATION_SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
+APPROVAL_COMMENT = "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496"
 APPROVAL_BOUNDARY = (
     "Approval covers the exact renderer/runtime-asset digest and six capture hashes in this receipt. "
     "Any material bound-byte change requires renewed approval."
@@ -564,8 +566,9 @@ def validate_runtime_captures() -> None:
     approval = capture_receipt.get("operator_approval")
     if approval != {
         "status": "approved",
-        "approved_on": "2026-09-04",
+        "approved_on": APPROVAL_DATE,
         "source_head": APPROVAL_SOURCE_HEAD,
+        "application_source_head": APPROVAL_APPLICATION_SOURCE_HEAD,
         "issue_comment": APPROVAL_COMMENT,
         "boundary": APPROVAL_BOUNDARY,
     }:

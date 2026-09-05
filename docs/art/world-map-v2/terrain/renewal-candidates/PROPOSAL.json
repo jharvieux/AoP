@@ -1,0 +1,382 @@
+{
+  "schema": "aop-cross-evidence-renewal-proposal-v1",
+  "issue": 613,
+  "status": "unapproved-proposal",
+  "approval": {
+    "status": "pending-direct-operator-approval",
+    "record": null
+  },
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+  "candidate_digest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+  "capture_ready": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-fixture/CAPTURE-READY.json",
+    "bytes": 92800,
+    "sha256": "35fe7ee027e16a5c2e00583aa5e6621ba4414558122934a86185afad945a0e93"
+  },
+  "capture_ready_binding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1",
+  "source_material": {
+    "algorithm": "sha256",
+    "sha256": "660f3330994e60a819cb6125818df4c2c72325d5e8ed8d68a5c56b6fdacb128d",
+    "bytes": 47959
+  },
+  "renderer_material": {
+    "algorithm": "sha256",
+    "sha256": "11210617b874cad4202650b545c21f2bd1010fd68326e05ee92cd161e8614eb2",
+    "bytes": 18357
+  },
+  "fixture_material": {
+    "algorithm": "sha256",
+    "sha256": "10570ec83e4577bcc5a853a7f8a1087bf93b443de1ea9ed1d776615ff569549d",
+    "bytes": 795
+  },
+  "more_command_repair": {
+    "policy": "Exact repaired shipping command component/style bytes and their zero-intersection regression test; live open/confirm geometry is bound by the proposal observations.",
+    "required_styles": [
+      ".map-command-layout {",
+      "align-items: end;",
+      ".map-command-more[open] {",
+      "min-height: 88px;",
+      ".map-command-more__menu {",
+      "position: absolute;",
+      "top: 0;",
+      "right: 0;",
+      "grid-auto-flow: column;",
+      "overflow-x: auto;"
+    ],
+    "files": [
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+      },
+      {
+        "path": "apps/web/src/mapCommandLayout.test.ts",
+        "bytes": 21011,
+        "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+      }
+    ],
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "6546842865cf6021e38ee34f52c14072260212589d5c134719100175ef5a3278",
+      "bytes": 402
+    }
+  },
+  "ingestion": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/INGESTION.json",
+    "bytes": 6528,
+    "sha256": "bb6ae4765c090c6373bca22250bc34a49709ec80bd356052cfd73a57b6967c6f"
+  },
+  "observations": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/OBSERVATIONS.json",
+    "bytes": 12675,
+    "sha256": "3d4906d018527f0c803a72ba28a704c93ca2dff634125eaaa0a6faf52d4025cc"
+  },
+  "historical_approvals_reusable": false,
+  "immutable_chrome_material_anchor": {
+    "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+    "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+    "reusable": false,
+    "may_change_before_direct_operator_approval": false,
+    "observed_sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde"
+  },
+  "evidence_set": "world-map-terrain-v2",
+  "captures": [
+    {
+      "id": "terrain-desktop-overview",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "overview",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/desktop-overview.png",
+      "bytes": 31531,
+      "sha256": "e7df1f36edc36f8cae0007735ca5442b20b8330b7151f5275d6321743694849e",
+      "dimensions": [1440, 900],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "57700c256d144265a0803dfb40086d33afad73088e6881e74f39e6f45877a923",
+        "rgb_rmse": 1.946148
+      },
+      "observation": {
+        "id": "terrain-desktop-overview",
+        "scene": "terrain",
+        "viewport": [1440, 900],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 900],
+          "document_scroll": [1440, 900],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "overview",
+            "control": "Fit",
+            "scale_diagnostic": 0.46875,
+            "fit_scale_diagnostic_saturated": true,
+            "fit_scale_diagnostic_authoritative": false
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "terrain-desktop-tactical",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "tactical",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/desktop-tactical.png",
+      "bytes": 43284,
+      "sha256": "1ecbb403c51473c1f05b5debd64e559f3e7220ca73b05b154b83b2b55cb0eb9e",
+      "dimensions": [1440, 900],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "8749c4da624b817164f0ddb57330f0fe1b3d6e701d6f013b1a9c0f2ad53e5fa6",
+        "rgb_rmse": 2.057974
+      },
+      "observation": {
+        "id": "terrain-desktop-tactical",
+        "scene": "terrain",
+        "viewport": [1440, 900],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 900],
+          "document_scroll": [1440, 900],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "tactical",
+            "control": "Center map"
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "terrain-desktop-detail",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "detail",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/desktop-detail.png",
+      "bytes": 65770,
+      "sha256": "29517b2e105e93de1375dc8fe35b369579266f9c4207294627ffc98a4adf12eb",
+      "dimensions": [1440, 900],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "b314c87c91869dedf074648e323446c5857e00b01d7ffc1c29e878fcc7e2d3da",
+        "rgb_rmse": 2.344244
+      },
+      "observation": {
+        "id": "terrain-desktop-detail",
+        "scene": "terrain",
+        "viewport": [1440, 900],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 900],
+          "document_scroll": [1440, 900],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "detail",
+            "control": "Center map"
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "terrain-phone-overview",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "overview",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/phone-overview.png",
+      "bytes": 21486,
+      "sha256": "62bb619068c5abcbd7d429480127069e7610cddbeff0b36628e0796f0f05e408",
+      "dimensions": [390, 844],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "ab81fa5fb07f937bc360eb6c87220ce998e9e6a544c0de636729e1ffd58550d6",
+        "rgb_rmse": 2.256059
+      },
+      "observation": {
+        "id": "terrain-phone-overview",
+        "scene": "terrain",
+        "viewport": [390, 844],
+        "device_pixel_ratio": 2,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [390, 844],
+          "document_scroll": [390, 844],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "overview",
+            "control": "Fit",
+            "scale_diagnostic": 0.126953,
+            "tile_px_diagnostic": 4.0625,
+            "fit_scale_diagnostic_saturated": true,
+            "fit_scale_diagnostic_authoritative": false
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "terrain-phone-tactical",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "tactical",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/phone-tactical.png",
+      "bytes": 33256,
+      "sha256": "4c722485249acd082a5bedbb0a0b62636e8c3437ae79deba00a5a157accfecc1",
+      "dimensions": [390, 844],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "b376f257f9fe656f1187c6f8732f08d9d8ec2b4dbd00a8d218549ba925e9ce9c",
+        "rgb_rmse": 2.565417
+      },
+      "observation": {
+        "id": "terrain-phone-tactical",
+        "scene": "terrain",
+        "viewport": [390, 844],
+        "device_pixel_ratio": 2,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [390, 844],
+          "document_scroll": [390, 844],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "tactical",
+            "control": "Center map",
+            "tile_px": 25.300965
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "terrain-phone-detail",
+      "set": "world-map-terrain-v2",
+      "scene": "terrain",
+      "band": "detail",
+      "path": "docs/art/world-map-v2/terrain/renewal-candidates/phone-detail.png",
+      "bytes": 49886,
+      "sha256": "034a00c80f4d6195310084e735e9539d532dd5ef7971e4038c39e7af28fda7f1",
+      "dimensions": [390, 844],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 256,
+        "decoded_rgb_sha256": "fcdbc71b9cd3b3bcd543de4c4122ae3b698298b8d1e4f06fbdc5d10a803bb7e0",
+        "rgb_rmse": 3.161169
+      },
+      "observation": {
+        "id": "terrain-phone-detail",
+        "scene": "terrain",
+        "viewport": [390, 844],
+        "device_pixel_ratio": 2,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [390, 844],
+          "document_scroll": [390, 844],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "camera": {
+            "band": "detail",
+            "control": "Center map",
+            "tile_px": 49.415889
+          }
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    }
+  ]
+}

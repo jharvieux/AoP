@@ -6,8 +6,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Iterator
 
@@ -23,6 +25,24 @@ FULL_SHIPPING_SOURCES = (
 )
 STYLESHEET_PATH = "apps/web/src/styles.css"
 STYLESHEET_SCOPE_KIND = "city-scene-selector-token-closure-v1"
+SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
+PRIOR_CAPTURE_SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+HISTORICAL_APPROVED_SOURCE_HEAD = "45a206f760eacce50dc8dd1dc656c5d4e789cb3c"
+PENDING_STATUS = "captured-pending-direct-operator-approval"
+HISTORICAL_APPROVAL = {
+    "status": "historical-source-only",
+    "sourceHead": HISTORICAL_APPROVED_SOURCE_HEAD,
+    "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": False,
+}
+SUPERSEDED_CAPTURE = {
+    "sourceHead": PRIOR_CAPTURE_SOURCE_HEAD,
+    "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+    "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+    "approval": {"status": "pending-direct-operator-approval", "record": None},
+    "reusable": False,
+}
 GENERIC_SELECTORS = frozenset(
     {
         "button",
@@ -235,23 +255,80 @@ def build_stylesheet_binding() -> dict[str, object]:
 def main() -> None:
     from PIL import Image
 
+    assert len(sys.argv) == 5, (
+        "usage: build_runtime_capture_bindings.py --proposal /absolute/proposal.json "
+        "--inspection-confirmation INTEGRATION_OWNER_INSPECTED_EXACT_CITY_PIXELS"
+    )
+    assert sys.argv[1] == "--proposal" and sys.argv[3] == "--inspection-confirmation"
+    assert sys.argv[4] == "INTEGRATION_OWNER_INSPECTED_EXACT_CITY_PIXELS"
+    proposal_path = Path(sys.argv[2])
+    assert proposal_path.is_absolute() and proposal_path.resolve() == proposal_path
+    proposal = json.loads(proposal_path.read_text())
+    assert proposal["schema"] == 1
+    assert proposal["kind"] == "unapproved-city-runtime-evidence-proposal"
+    assert proposal["sourceHead"] == SOURCE_HEAD
+    assert proposal["supersededCaptureHead"] == SOURCE_HEAD
+    assert proposal["targetCount"] == 28 and proposal["uniqueBrowserFrames"] == 22
+    assert proposal["approval"] == {
+        "status": "pending-direct-operator-approval",
+        "record": None,
+    }
+    proposal_captures = {item["path"]: item for item in proposal["captures"]}
+
+    subprocess.run(
+        ["git", "merge-base", "--is-ancestor", SOURCE_HEAD, "HEAD"],
+        cwd=REPOSITORY,
+        check=True,
+    )
+    for relative in (*FULL_SHIPPING_SOURCES, STYLESHEET_PATH):
+        target = subprocess.run(
+            ["git", "show", f"{SOURCE_HEAD}:{relative}"],
+            cwd=REPOSITORY,
+            check=True,
+            capture_output=True,
+        ).stdout
+        assert target == (REPOSITORY / relative).read_bytes(), (
+            f"{relative}: worktree differs from target source"
+        )
+
     captures = []
     for path in sorted((PACKAGE / "runtime-captures").glob("*.jpg")):
         with Image.open(path) as image:
             assert image.format == "JPEG" and image.mode == "RGB"
             dimensions = list(image.size)
-        captures.append(
-            {
-                "path": str(path.relative_to(PACKAGE)),
-                "dimensions": dimensions,
-                "bytes": path.stat().st_size,
-                "sha256": sha256(path),
-            }
-        )
+        repository_path = str(path.relative_to(REPOSITORY))
+        proposal_entry = proposal_captures.get(repository_path)
+        assert proposal_entry is not None, f"proposal omitted {repository_path}"
+        observed = {
+            "path": str(path.relative_to(PACKAGE)),
+            "dimensions": dimensions,
+            "bytes": path.stat().st_size,
+            "sha256": sha256(path),
+        }
+        assert proposal_entry["dimensions"] == dimensions
+        assert proposal_entry["bytes"] == observed["bytes"]
+        assert proposal_entry["sha256"] == observed["sha256"]
+        captures.append(observed)
 
     payload = {
-        "schema": 2,
-        "date": date.today().isoformat(),
+        "schema": 3,
+        "date": proposal["capturedOn"],
+        "sourceHead": SOURCE_HEAD,
+        "captureSourceHead": SOURCE_HEAD,
+        "captureStatus": PENDING_STATUS,
+        "approval": {
+            "status": "pending-direct-operator-approval",
+            "evidenceHead": None,
+            "record": None,
+        },
+        "historicalApproval": HISTORICAL_APPROVAL,
+        "supersededCapture": SUPERSEDED_CAPTURE,
+        "captureOrigin": {
+            **proposal["captureOrigin"],
+            "sourceHead": SOURCE_HEAD,
+            "visualSettleInspection": "completed-by-integration-owner",
+            "nativeSizeInspection": "completed-by-integration-owner",
+        },
         "shipping_sources": [
             {"path": relative, "sha256": sha256(REPOSITORY / relative)}
             for relative in FULL_SHIPPING_SOURCES
@@ -261,9 +338,50 @@ def main() -> None:
     }
     output = PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json"
     output.write_text(json.dumps(payload, indent=2) + "\n")
+    local_formatter = REPOSITORY / "node_modules" / ".bin" / "prettier"
+    formatter = (
+        str(local_formatter)
+        if local_formatter.is_file()
+        else shutil.which("prettier")
+    )
+    assert formatter is not None, "prettier is required to format the runtime binding"
+    subprocess.run(
+        [formatter, "--write", str(output)],
+        cwd=REPOSITORY,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+
+    capture_records = {Path(item["path"]).name: item for item in captures}
+    for name in ("README.md", "PRODUCTION-MANIFEST.md", "RUNTIME-CAPTURES.md"):
+        record_path = PACKAGE / name
+        record = record_path.read_text().replace(
+            PRIOR_CAPTURE_SOURCE_HEAD, SOURCE_HEAD
+        )
+        if name == "RUNTIME-CAPTURES.md":
+            pattern = re.compile(
+                r"^(\| `runtime-captures/([^`]+\.jpg)`\s+\|.*?\|\s*)([\d,]+)(\s+\|\s+`)([a-f0-9]{64})(`\s+\|)$",
+                re.MULTILINE,
+            )
+
+            def replace_capture(match: re.Match[str]) -> str:
+                capture = capture_records.get(match.group(2))
+                assert capture is not None, (
+                    f"capture table contains undeclared file: {match.group(2)}"
+                )
+                return (
+                    f"{match.group(1)}{capture['bytes']:,}{match.group(4)}"
+                    f"{capture['sha256']}{match.group(6)}"
+                )
+
+            record = pattern.sub(replace_capture, record)
+            assert all(f"`runtime-captures/{name}`" in record for name in capture_records), (
+                "capture table is missing a declared file"
+            )
+        record_path.write_text(record)
     print(
         f"bound {len(captures)} captures to {len(FULL_SHIPPING_SOURCES)} full sources "
-        "and the city stylesheet dependency closure"
+        "and the city stylesheet dependency closure; direct operator approval remains pending"
     )
 
 

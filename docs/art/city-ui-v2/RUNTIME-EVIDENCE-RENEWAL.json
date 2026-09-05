@@ -1,0 +1,340 @@
+{
+  "schema": 1,
+  "issue": 613,
+  "status": "approved-renewal",
+  "targetSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "policy": "Every listed frame must be recaptured from the exact target source. Historical pixels and approvals remain evidence for their former source only and cannot approve this renewal.",
+  "approval": {
+    "status": "approved",
+    "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349",
+    "setRecords": {
+      "city-harbor-v2": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289",
+      "gameplay-chrome-v2": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774",
+      "world-map-terrain-v2": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496",
+      "city-ui-v2": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
+    }
+  },
+  "sourceCensus": [
+    {
+      "path": "apps/web/src/CityScene.test.tsx",
+      "bytes": 32571,
+      "sha256": "cdb358daa73f5f17278a01af0e24477510f1ea17121d475755c7483b22971715"
+    },
+    {
+      "path": "apps/web/src/MapAlertRegion.test.tsx",
+      "bytes": 3076,
+      "sha256": "956fc120136798dfd1a9b018911e2aad6b2c68fc2c1c0ce744f9b66a552f393b"
+    },
+    {
+      "path": "apps/web/src/MapAlertRegion.tsx",
+      "bytes": 2517,
+      "sha256": "d8f79d809b24c200d909c52f8a07b77bcef6315c279ad4598479a11d8cbb90c5"
+    },
+    {
+      "path": "apps/web/src/MapCanvas.tsx",
+      "bytes": 105347,
+      "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
+    },
+    {
+      "path": "apps/web/src/Minimap.test.tsx",
+      "bytes": 9135,
+      "sha256": "cbbc3c0b41a1d7e4207ff2fe843ac9cb38d63dec5ec3f54e0df1e100c7417330"
+    },
+    {
+      "path": "apps/web/src/Minimap.tsx",
+      "bytes": 11011,
+      "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
+    },
+    {
+      "path": "apps/web/src/mapCamera.test.ts",
+      "bytes": 6767,
+      "sha256": "41df4754516b171c7713b1846f7526ccd43479c385c20c1ecdd12e8d813f8cfd"
+    },
+    {
+      "path": "apps/web/src/mapCamera.ts",
+      "bytes": 7266,
+      "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+    },
+    {
+      "path": "apps/web/src/mapCommandLayout.test.ts",
+      "bytes": 21011,
+      "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+    },
+    {
+      "path": "apps/web/src/mapCursor.test.ts",
+      "bytes": 9902,
+      "sha256": "c067dedd45ed128878903631c6cd8a6b1018737abd7397ba71309cf5d83a8b24"
+    },
+    {
+      "path": "apps/web/src/mapCursor.ts",
+      "bytes": 5090,
+      "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.test.ts",
+      "bytes": 20731,
+      "sha256": "d00ac460c521bc94b3c4e1db89c221b47b74af092dab4d71374d846d1722679b"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.tsx",
+      "bytes": 89340,
+      "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.test.ts",
+      "bytes": 23344,
+      "sha256": "3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.tsx",
+      "bytes": 61775,
+      "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.test.ts",
+      "bytes": 7504,
+      "sha256": "02d5f89f2935a32a66ec4684bde608d6fb4a59dea3bef19b952a63632d7114ea"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.ts",
+      "bytes": 3053,
+      "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+    },
+    {
+      "path": "apps/web/src/styles.css",
+      "bytes": 89210,
+      "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+    }
+  ],
+  "sets": [
+    {
+      "id": "city-ui-v2",
+      "issue": 612,
+      "count": 20,
+      "historicalBinding": {
+        "path": "docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "ac2369ba6eb59510e29dabd0e6c3bb6a3ec8edddb34483836fa0ccf13c0c329a",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "recordHead": "edb3e5b0f07bf7a7fa1c7f540ba8d9ec94497307",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344",
+        "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "evidenceBindingSha256": "dd29d59a255ccef2e12f441e121905fe19a2b40a4eed68f1a72381982e255d00",
+        "bindingSha256": "221596bec6f35deacc838f6f503cdfe29c1cb301952985125b798466f7814f4f",
+        "workflow": "truthful shipping-component import harness with visible shipping controls",
+        "uniqueBrowserFramesInSharedCityBatch": 22,
+        "sharedCrossSetCopies": 6,
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-integration-owner",
+        "historicalPixelsReused": false,
+        "supersededCapture": {
+          "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+          "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+          "bindingSha256": "d2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db",
+          "approval": {
+            "status": "pending-direct-operator-approval",
+            "record": null
+          },
+          "reusable": false
+        },
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
+        }
+      },
+      "captureRoot": "docs/art/city-ui-v2/runtime-captures",
+      "recipe": "Use the truthful shipping-component harness and the starting/midgame/full state, breakpoint, zoom, and panel matrix in RUNTIME-CAPTURES.md. Build from the target source, operate shipping panel and zoom controls visibly, settle visibly, inspect native-size output, and do not claim a programmatic font/image await.",
+      "captures": [
+        ["full-desktop-1440x900-3x-townhall.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-landscape-844x390.jpg", 844, 390, "jpeg-rgb"],
+        ["full-phone-320x568.jpg", 320, 568, "jpeg-rgb"],
+        ["full-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["full-phone-390x844-3x-shipyard.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-390x844-3x-townhall.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-430x932.jpg", 430, 932, "jpeg-rgb"],
+        ["full-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"],
+        ["midgame-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["midgame-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["panel-build-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["panel-recruit-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"],
+        ["panel-tavern-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-landscape-844x390.jpg", 844, 390, "jpeg-rgb"],
+        ["starting-phone-320x568.jpg", 320, 568, "jpeg-rgb"],
+        ["starting-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["starting-phone-430x932.jpg", 430, 932, "jpeg-rgb"],
+        ["starting-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"]
+      ]
+    },
+    {
+      "id": "city-harbor-v2",
+      "issue": 608,
+      "count": 8,
+      "historicalBinding": {
+        "path": "docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "b696ffd1b2a921be740a9ef67c254edd7cfe71636f776ef926e427664207e0dd",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "recordHead": "edb3e5b0f07bf7a7fa1c7f540ba8d9ec94497307",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+        "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "evidenceBindingSha256": "e5f032212ed70ff3e0b37b5ff1ae76d382b987e3028845f26a3c1b93b2dde1ae",
+        "bindingSha256": "9e453520c9f48c48625a7b5111d797554b028bd82e2ea25260607ba28d6cdf3d",
+        "workflow": "truthful shipping-component import harness with visible shipping controls",
+        "uniqueBrowserFramesInSharedCityBatch": 22,
+        "sharedCrossSetCopies": 6,
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-integration-owner",
+        "historicalPixelsReused": false,
+        "supersededCapture": {
+          "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+          "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+          "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+          "approval": {
+            "status": "pending-direct-operator-approval",
+            "record": null
+          },
+          "reusable": false
+        },
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289"
+        }
+      },
+      "captureRoot": "docs/art/city-harbor-v2/runtime-captures",
+      "recipe": "Use the same truthful shipping-component harness and 2/8/14-building state progression as the #612 set. Capture the two desktop state frames, two 390x844 state frames, full desktop/phone, and both 3x Town Hall/Shipyard checks listed in RUNTIME-CAPTURES.md after visible settling and native-size inspection.",
+      "captures": [
+        ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-desktop-3x-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-phone-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-3x-center-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-3x-shipyard-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["midgame-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-phone-390x844.jpg", 390, 844, "jpeg-rgb"]
+      ]
+    },
+    {
+      "id": "gameplay-chrome-v2",
+      "issue": 610,
+      "count": 3,
+      "historicalBinding": {
+        "path": "docs/art/gameplay-chrome-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "60b09cb87a52321c578ca818752178837b1d5c809e621df3f20e05c4442b015c",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "recordHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5551752271",
+        "reusable": false
+      },
+      "historicalMaterialAnchor": {
+        "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+        "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+        "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "0c8f70c3401592c2d4fb69355dc5105614c23562260f64910dd167d7e5b6fc75",
+        "evidenceProposal": {
+          "path": "docs/art/gameplay-chrome-v2/renewal-candidates/PROPOSAL.json",
+          "sha256": "36ba925745d28171a09ca1a691be3d0c1625dbb9bcffc4a28b420d8e9bec8804",
+          "captureRoot": "docs/art/gameplay-chrome-v2/renewal-candidates",
+          "candidateDigest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+          "captureReadyBinding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1"
+        },
+        "materialBaseline": {
+          "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+          "sha256": "2343b68c79cefaaa0f1b9a13a0e93ea49149da805026d6fa8acb8c90c0af25ce",
+          "materialSha256": "37e0bc426ae2fabc80d4d1115121727bb241505071e337a34b5b1f12ba5d62f8",
+          "bytes": 60124,
+          "counts": {
+            "shippingSources": 218,
+            "buildInputs": 22,
+            "runtimeAssets": 96,
+            "captures": 3,
+            "canvasTokens": 28
+          }
+        },
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-independent-verifier",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774"
+        }
+      },
+      "captureRoot": "docs/art/gameplay-chrome-v2/runtime-captures",
+      "recipe": "Recreate the default-theme frozen states in RUNTIME-VERIFICATION.md: phone world with no city/course/event feed, full city with Shipyard inspector, and full city with Town Hall interaction states. Capture true PNG after visible settle and native inspection; retain the required PNG color type.",
+      "captures": [
+        ["runtime-phone-world-375x812.png", 375, 812, "png-rgb-2"],
+        ["runtime-city-inspector-1440x900.png", 1440, 900, "png-indexed-3"],
+        ["runtime-interaction-states-1440x960.png", 1440, 960, "png-indexed-3"]
+      ]
+    },
+    {
+      "id": "world-map-terrain-v2",
+      "issue": 611,
+      "count": 6,
+      "historicalBinding": {
+        "path": "docs/art/world-map-v2/terrain/runtime-capture-receipt.json",
+        "sha256": "24081cd29ef5ee5bba0f2633487dd7bc0c7ecaca4445cd1ea25883a469a38293",
+        "sourceHead": "272c8ded20d97f3ab770e803b1b4d819e5546527",
+        "recordHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944",
+        "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "b5bee695068d5bd15c342e78f1a5e4312d7627029d851d93b643d11997660e37",
+        "evidenceProposal": {
+          "path": "docs/art/world-map-v2/terrain/renewal-candidates/PROPOSAL.json",
+          "sha256": "758b4b8d1b84fc31372b541d9e7681443454c5ca8037ef008ebdb8819aa38357",
+          "captureRoot": "docs/art/world-map-v2/terrain/renewal-candidates",
+          "candidateDigest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+          "captureReadyBinding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1"
+        },
+        "rendererAndRuntimeAssetDigest": "20c0309a32c23c6e7d34e084a06d93e87f00f1ae591941075ba19f4ead9bda6a",
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-independent-verifier",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496"
+        }
+      },
+      "captureRoot": "docs/art/world-map-v2/terrain/runtime-captures",
+      "recipe": "Start one fresh-origin, default-theme, untouched round-1 xlarge 96x96 session. Without gameplay actions, capture overview, tactical, and detail on 1440x900 desktop and 390x844 phone using the fit/zoom/recenter sequence in RUNTIME-CAPTURES.md; settle after every final camera operation.",
+      "captures": [
+        ["desktop-overview.png", 1440, 900, "png"],
+        ["desktop-tactical.png", 1440, 900, "png"],
+        ["desktop-detail.png", 1440, 900, "png"],
+        ["phone-overview.png", 390, 844, "png"],
+        ["phone-tactical.png", 390, 844, "png"],
+        ["phone-detail.png", 390, 844, "png"]
+      ]
+    }
+  ]
+}

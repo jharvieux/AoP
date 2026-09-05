@@ -1,0 +1,299 @@
+{
+  "schema": "aop-map-ux-runtime-captures-v2",
+  "issue": 613,
+  "captured_on": "2026-09-05",
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+  "source_archive_sha256": "0464a34facfca2b4838983fccb0faa90932212d1c6e27932cca936f0f9e27903",
+  "browser": "Codex in-app Browser (Chrome)",
+  "desktop_reference": "M5 MacBook Air",
+  "harness": {
+    "single_player": "/docs/art/map-ux-v2/tools/index.html?mode=sp",
+    "multiplayer": "/docs/art/map-ux-v2/tools/index.html?mode=mp",
+    "files": [
+      {
+        "path": "docs/art/map-ux-v2/tools/fixtureData.ts",
+        "bytes": 4595,
+        "sha256": "87ff2f339f00b54b5b65cbcba29f5fc3af44e51409fbbca4fd00c481f20e665e"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/index.html",
+        "bytes": 319,
+        "sha256": "ae3aa7ecd0a15a65b5ed96747305afae948b8ef6c18c9bdc4944503ef3dd4b26"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/runtime.tsx",
+        "bytes": 3217,
+        "sha256": "10dcd1ad19191f1e68d0e9b699842709ddba1be7384f02ea29859b203c977752"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/audioFeedback.ts",
+        "bytes": 177,
+        "sha256": "4bf7272ebacc0aa09b889a07f2530f313ec453fd91d2c5cf43c2b705aa2d428b"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/auth.ts",
+        "bytes": 300,
+        "sha256": "b948ebce4f6d091ef4bbaf70c05d0e7249342d3e03791a25aca4575666e90dc8"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/authConfig.ts",
+        "bytes": 109,
+        "sha256": "49e5f3492328b3f53c69345d6278fe032a851841ed4c671ac3a3bb9fdbb464c7"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/realtimeTransport.ts",
+        "bytes": 358,
+        "sha256": "016bc15022a93c25f5f61aeeda8ec614e039a50df25df3860f37446356b7e939"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/reconnectSync.ts",
+        "bytes": 70,
+        "sha256": "f50692369a07a0c04145fdca2240be166514a8ad53179a75ea90ce515b5f95fa"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/spectateClient.ts",
+        "bytes": 328,
+        "sha256": "82f6f018387916e22c20b404bfd1a8303ee997911752d6c4588b639501288155"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/spectatePoll.ts",
+        "bytes": 69,
+        "sha256": "34ced48710c96092cb2830e277da11266e56d9c99212184ad79b3f3d3654b877"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/submitWithRetry.ts",
+        "bytes": 86,
+        "sha256": "3b92cd88ba47b5865e96a1d99ece4e646a0dec3cba0aa805da1ff4d3573df04e"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/stubs/turnSync.ts",
+        "bytes": 65,
+        "sha256": "b0456db17f1d7bf9e6cc5a312446bbb7975c9fd3f9b9d2d69906abf64a8c9012"
+      },
+      {
+        "path": "docs/art/map-ux-v2/tools/vite.config.ts",
+        "bytes": 1716,
+        "sha256": "639832676858ffb76ec8a7eed15424542addd0edaba7f80c80795649e2928843"
+      }
+    ]
+  },
+  "source_files": [
+    {
+      "path": "apps/web/src/MapAlertRegion.tsx",
+      "bytes": 2517,
+      "sha256": "d8f79d809b24c200d909c52f8a07b77bcef6315c279ad4598479a11d8cbb90c5"
+    },
+    {
+      "path": "apps/web/src/MapAlertRegion.test.tsx",
+      "bytes": 3076,
+      "sha256": "956fc120136798dfd1a9b018911e2aad6b2c68fc2c1c0ce744f9b66a552f393b"
+    },
+    {
+      "path": "apps/web/src/MapCanvas.tsx",
+      "bytes": 105347,
+      "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
+    },
+    {
+      "path": "apps/web/src/Minimap.tsx",
+      "bytes": 11011,
+      "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
+    },
+    {
+      "path": "apps/web/src/Minimap.test.tsx",
+      "bytes": 9135,
+      "sha256": "cbbc3c0b41a1d7e4207ff2fe843ac9cb38d63dec5ec3f54e0df1e100c7417330"
+    },
+    {
+      "path": "apps/web/src/mapCamera.ts",
+      "bytes": 7266,
+      "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+    },
+    {
+      "path": "apps/web/src/mapCamera.test.ts",
+      "bytes": 6767,
+      "sha256": "41df4754516b171c7713b1846f7526ccd43479c385c20c1ecdd12e8d813f8cfd"
+    },
+    {
+      "path": "apps/web/src/mapCommandLayout.test.ts",
+      "bytes": 21011,
+      "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+    },
+    {
+      "path": "apps/web/src/mapCursor.ts",
+      "bytes": 5090,
+      "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
+    },
+    {
+      "path": "apps/web/src/mapCursor.test.ts",
+      "bytes": 9902,
+      "sha256": "c067dedd45ed128878903631c6cd8a6b1018737abd7397ba71309cf5d83a8b24"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.tsx",
+      "bytes": 89340,
+      "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.test.ts",
+      "bytes": 20731,
+      "sha256": "d00ac460c521bc94b3c4e1db89c221b47b74af092dab4d71374d846d1722679b"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.tsx",
+      "bytes": 61775,
+      "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.test.ts",
+      "bytes": 23344,
+      "sha256": "3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.ts",
+      "bytes": 3053,
+      "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.test.ts",
+      "bytes": 7504,
+      "sha256": "02d5f89f2935a32a66ec4684bde608d6fb4a59dea3bef19b952a63632d7114ea"
+    },
+    {
+      "path": "apps/web/src/styles.css",
+      "bytes": 89210,
+      "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+    }
+  ],
+  "measurements": {
+    "path": "docs/art/map-ux-v2/RUNTIME-MEASUREMENTS.json",
+    "bytes": 11972,
+    "sha256": "cbcf03f19932bef4382c0cb5a51e78439604571db671414d729bb02553a35552"
+  },
+  "approval": {
+    "captures_operator_approved": true,
+    "evidence_head": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349",
+    "touch_recording_attached": true,
+    "touch_recording_attachment": "https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453",
+    "physical_phone_performance_available": false
+  },
+  "capability_gates": {
+    "touch_recording": {
+      "status": "pass",
+      "reason": "The exact-source Simulator run passed and its GitHub-safe derivative is durably attached to issue #613.",
+      "attachment": {
+        "status": "durably-attached-to-issue",
+        "issue": 613,
+        "url": "https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453",
+        "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
+        "bytes": 920404,
+        "duration_seconds": 38.876947,
+        "dimensions_pixels": [720, 1566],
+        "frame_count": 2249,
+        "codec": "H.264 High / yuv420p / BT.709",
+        "derivative_of_original_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
+        "simulator": "iPhone 17 Pro / iOS 26.5",
+        "verification": "XCUITest PASS 1/1",
+        "physical_phone_capture": false
+      },
+      "external_candidate": {
+        "status": "recorded-and-xctest-passed; pending durable integration",
+        "attached_to_this_package": false,
+        "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "metadata_path": "/private/tmp/aop-613-touch-final-c1824f2/metadata/artifact-metadata.json",
+        "metadata_sha256": "1618a296f6a48c8b4151a294ab7d6ded2e63a99f8bb39389ff9e6d7e6ad7dad2",
+        "recording_path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2.mov",
+        "recording_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
+        "recording_bytes": 19337683,
+        "duration_seconds": 38.86,
+        "dimensions_pixels": [1206, 2622],
+        "frame_count": 2293,
+        "upload_candidate": {
+          "path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2-github.mp4",
+          "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
+          "bytes": 920404,
+          "duration_seconds": 38.876947,
+          "dimensions_pixels": [720, 1566],
+          "frame_count": 2249,
+          "codec": "H.264 High / yuv420p / BT.709"
+        },
+        "harness_head": "d4c3ef1e0f0aea21c858fed37baf68b5e0abf405",
+        "harness_binding_sha256": "7ef355a8e088daf20614014ed0a9ef481eab64146977fab044a844cb8bd9389b"
+      }
+    }
+  },
+  "captures": [
+    {
+      "path": "runtime-captures/map-phone-375x667.jpg",
+      "width": 375,
+      "height": 667,
+      "mode": "single-player",
+      "state": "full collision fixture",
+      "primary": true,
+      "bytes": 34086,
+      "sha256": "59b2ef2393fdb78b78ad848ddbf69c7f89aa9b5fc0ccee48a63684d464b057d1"
+    },
+    {
+      "path": "runtime-captures/map-phone-minimap-focus-390x844.jpg",
+      "width": 390,
+      "height": 844,
+      "mode": "single-player",
+      "state": "full collision fixture; minimap keyboard focus",
+      "primary": true,
+      "bytes": 39048,
+      "sha256": "b2ae86e49f0befc601a176bd62655e6d56f7e9a3c3b8ca1f5b2c3087b2e1c4ba"
+    },
+    {
+      "path": "runtime-captures/map-phone-landscape-844x390.jpg",
+      "width": 844,
+      "height": 390,
+      "mode": "single-player",
+      "state": "full collision fixture; compact More resign confirmation",
+      "primary": true,
+      "bytes": 41059,
+      "sha256": "5b588009d532ddcb9e67c11e8d203ae404b3308f69dd215144e6feb095bc0f15"
+    },
+    {
+      "path": "runtime-captures/map-tablet-portrait-768x1024.jpg",
+      "width": 768,
+      "height": 1024,
+      "mode": "single-player",
+      "state": "full collision fixture",
+      "primary": true,
+      "bytes": 49615,
+      "sha256": "1d12b2a9f56aaf86b8803cb43b7b593389be8c595cddac821a57c04a52bddf90"
+    },
+    {
+      "path": "runtime-captures/map-tablet-landscape-1024x768.jpg",
+      "width": 1024,
+      "height": 768,
+      "mode": "multiplayer",
+      "state": "sanitized PlayerView; two halted orders and route fixture",
+      "primary": true,
+      "bytes": 55839,
+      "sha256": "6abad01d8bed6aac809522f9cd206cd5d53efe9653039a9bb2034ec547bd9bd3"
+    },
+    {
+      "path": "runtime-captures/map-desktop-more-1440x900.jpg",
+      "width": 1440,
+      "height": 900,
+      "mode": "single-player",
+      "state": "full collision fixture; More commands open",
+      "primary": true,
+      "bytes": 61920,
+      "sha256": "63b8884acfac02450ad5fe3bf14ff5a280925812cdf7552f163a5997835a9b24"
+    },
+    {
+      "path": "runtime-captures/map-phone-landscape-mp-844x390.jpg",
+      "width": 844,
+      "height": 390,
+      "mode": "multiplayer",
+      "state": "sanitized PlayerView; two halted orders, route fixture, and compact More confirmation",
+      "primary": false,
+      "bytes": 42212,
+      "sha256": "821f4562890163835e0e1e4c6f7fe5f2193862e3733d7400531b6d75d2dc3f9f"
+    }
+  ],
+  "binding_sha256": "e375f90cdad6d939b82d603a6d2328b4611a86c41c81cf05ba17522186eea30a"
+}

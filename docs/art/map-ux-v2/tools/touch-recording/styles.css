@@ -1,0 +1,105 @@
+.touch-recording-app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-canvas);
+}
+
+.touch-recording-map {
+  width: 100%;
+  height: 100%;
+}
+
+.touch-recording-observation {
+  position: absolute;
+  top: max(var(--space-2), env(safe-area-inset-top, 0px));
+  left: max(var(--space-2), env(safe-area-inset-left, 0px));
+  z-index: 8;
+  display: flex;
+  max-width: min(58vw, 270px);
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--stroke-standard);
+  border-radius: var(--radius-2);
+  background: color-mix(in srgb, var(--surface-inset) 94%, transparent);
+  box-shadow: var(--elevation-2);
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.touch-recording-observation__eyebrow {
+  color: var(--text-secondary);
+  font-size: var(--type-caption-size);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.touch-recording-observation__state {
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.touch-recording-target {
+  position: absolute;
+  z-index: 7;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 2px dashed var(--color-highlight);
+  border-radius: 50%;
+  background: rgb(23 16 10 / 28%);
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 70%),
+    0 0 16px rgb(224 182 79 / 80%);
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.touch-recording-target::before,
+.touch-recording-target::after {
+  position: absolute;
+  content: '';
+  background: var(--color-highlight);
+}
+
+.touch-recording-target::before {
+  width: 2px;
+  height: 48px;
+}
+
+.touch-recording-target::after {
+  width: 48px;
+  height: 2px;
+}
+
+.touch-recording-target span {
+  position: absolute;
+  top: calc(100% + 7px);
+  min-width: max-content;
+  padding: 2px 5px;
+  border-radius: var(--radius-1);
+  background: var(--surface-inset);
+  box-shadow: var(--elevation-1);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 599px) {
+  .touch-recording-observation {
+    max-width: calc(100% - 212px);
+  }
+}
+
+@media (max-height: 419px) and (orientation: landscape) {
+  .touch-recording-observation {
+    max-width: 28vw;
+  }
+}

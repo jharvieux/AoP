@@ -1,0 +1,23 @@
+{
+  "extends": "../../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@aop/content": ["../../../../../packages/content/src/index.ts"],
+      "@aop/engine": ["../../../../../packages/engine/src/index.ts"],
+      "@aop/shared": ["../../../../../packages/shared/src/index.ts"],
+      "@aop/shared/*": ["../../../../../packages/shared/src/*.ts"],
+      "pixi.js": ["../../../../../apps/web/node_modules/pixi.js"],
+      "react": ["../../../../../apps/web/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["../../../../../apps/web/node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": [
+        "../../../../../apps/web/node_modules/@types/react/jsx-dev-runtime.d.ts"
+      ],
+      "react-dom": ["../../../../../apps/web/node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/client": ["../../../../../apps/web/node_modules/@types/react-dom/client.d.ts"]
+    },
+    "typeRoots": ["../../../../../apps/web/node_modules/@types"]
+  },
+  "include": ["fixtureData.ts", "runtime.tsx", "styles.d.ts"]
+}

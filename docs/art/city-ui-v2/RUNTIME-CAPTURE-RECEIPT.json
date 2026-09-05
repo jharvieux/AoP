@@ -1,23 +1,24 @@
 {
   "schema": 1,
   "issue": 612,
-  "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+  "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "captureStatus": "approved",
-  "capturedOn": "2026-09-04",
+  "capturedOn": "2026-09-05",
   "captureOrigin": {
-    "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
-    "workflow": "normal UI only",
+    "workflow": "truthful shipping-component import harness with visible shipping controls",
+    "harness": "docs/art/city-ui-v2/tools/runtime-harness",
     "browser": "Codex in-app Browser (Chromium version not exposed)",
     "faction": "pirates",
     "programmaticFontOrImageAwaitClaimed": false,
     "visualSettleInspection": "completed-by-integration-owner",
-    "nativeSizeInspection": "completed-by-integration-owner"
+    "nativeSizeInspection": "completed-by-integration-owner",
+    "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130"
   },
   "sourceTransition": {
-    "from": "59c82c623dc046c68cec53548903e69af09456a8",
-    "to": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "from": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "to": "c1824f22bf14dca6d38f7519fd99affd789a8130",
     "classification": "exact-source-recaptured-approved",
-    "changedBehavior": "Backdrop dismissal, responsive focus containment, topology-aware docking, reduced motion, responsive layout, and web-owned art defaults",
+    "changedBehavior": "Final narrow-phone Defense status wrapping and command-dock containment changed shared city presentation after the superseded unapproved capture wave.",
     "renderedMarkupChanged": true,
     "stylesChanged": true,
     "artChanged": false,
@@ -42,16 +43,42 @@
     },
     "checkpoint2": {
       "status": "approved",
-      "scope": "Exact-head recapture, native-size review, and approval for the current source",
-      "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
-      "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344"
+      "scope": "Exact-source recapture, native-size review, and direct operator approval for these pixels",
+      "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+      "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230",
+      "historicalApproval": {
+        "status": "historical-source-only",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344",
+        "reusable": false
+      },
+      "supersededCapture": {
+        "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+        "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+        "bindingSha256": "d2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db",
+        "approval": { "status": "pending-direct-operator-approval", "record": null },
+        "reusable": false
+      }
     }
   },
   "coverage": {
     "requiredBreakpoints": ["320x568", "375x812", "430x932", "768x1024", "844x390", "1440x900"],
     "zoomLevels": [1, 3],
     "managementPanels": ["build", "recruit", "tavern"],
-    "captureCount": 20
+    "captureCount": 20,
+    "semanticTextEvidence": [
+      {
+        "path": "docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg",
+        "requiredVisibleText": ["Defense", "No garrison captain", "1 ship in port"],
+        "requireNoSemanticTextOverflow": true
+      },
+      {
+        "path": "docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg",
+        "requiredVisibleText": ["Defense", "No garrison captain", "1 ship in port"],
+        "requireNoSemanticTextOverflow": true
+      }
+    ]
   },
   "artifacts": {
     "record": "docs/art/city-ui-v2/RUNTIME-CAPTURES.md",

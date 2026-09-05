@@ -1,0 +1,233 @@
+{
+  "schema": "aop-cross-evidence-renewal-proposal-v1",
+  "issue": 613,
+  "status": "unapproved-proposal",
+  "approval": {
+    "status": "pending-direct-operator-approval",
+    "record": null
+  },
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+  "candidate_digest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+  "capture_ready": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-fixture/CAPTURE-READY.json",
+    "bytes": 92800,
+    "sha256": "35fe7ee027e16a5c2e00583aa5e6621ba4414558122934a86185afad945a0e93"
+  },
+  "capture_ready_binding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1",
+  "source_material": {
+    "algorithm": "sha256",
+    "sha256": "660f3330994e60a819cb6125818df4c2c72325d5e8ed8d68a5c56b6fdacb128d",
+    "bytes": 47959
+  },
+  "renderer_material": {
+    "algorithm": "sha256",
+    "sha256": "11210617b874cad4202650b545c21f2bd1010fd68326e05ee92cd161e8614eb2",
+    "bytes": 18357
+  },
+  "fixture_material": {
+    "algorithm": "sha256",
+    "sha256": "10570ec83e4577bcc5a853a7f8a1087bf93b443de1ea9ed1d776615ff569549d",
+    "bytes": 795
+  },
+  "more_command_repair": {
+    "policy": "Exact repaired shipping command component/style bytes and their zero-intersection regression test; live open/confirm geometry is bound by the proposal observations.",
+    "required_styles": [
+      ".map-command-layout {",
+      "align-items: end;",
+      ".map-command-more[open] {",
+      "min-height: 88px;",
+      ".map-command-more__menu {",
+      "position: absolute;",
+      "top: 0;",
+      "right: 0;",
+      "grid-auto-flow: column;",
+      "overflow-x: auto;"
+    ],
+    "files": [
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+      },
+      {
+        "path": "apps/web/src/mapCommandLayout.test.ts",
+        "bytes": 21011,
+        "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+      }
+    ],
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "6546842865cf6021e38ee34f52c14072260212589d5c134719100175ef5a3278",
+      "bytes": 402
+    }
+  },
+  "ingestion": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/INGESTION.json",
+    "bytes": 6528,
+    "sha256": "bb6ae4765c090c6373bca22250bc34a49709ec80bd356052cfd73a57b6967c6f"
+  },
+  "observations": {
+    "path": "docs/art/gameplay-chrome-v2/renewal-candidates/OBSERVATIONS.json",
+    "bytes": 12675,
+    "sha256": "3d4906d018527f0c803a72ba28a704c93ca2dff634125eaaa0a6faf52d4025cc"
+  },
+  "historical_approvals_reusable": false,
+  "immutable_chrome_material_anchor": {
+    "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+    "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+    "reusable": false,
+    "may_change_before_direct_operator_approval": false,
+    "observed_sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde"
+  },
+  "evidence_set": "gameplay-chrome-v2",
+  "captures": [
+    {
+      "id": "chrome-phone-world",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-world",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-phone-world-375x812.png",
+      "bytes": 137822,
+      "sha256": "cb6b686837c2258682f54936e92fd777df1a3b29787c4318293ec68468ba92a5",
+      "dimensions": [375, 812],
+      "png_color_type": 2,
+      "encoding": {
+        "palette_colors": null,
+        "decoded_rgb_sha256": "a34a500439f62c1d7ad6d608bce5a564fdb6d66423224d68823e4c4cb7496808",
+        "rgb_rmse": 0
+      },
+      "observation": {
+        "id": "chrome-phone-world",
+        "scene": "chrome-world",
+        "viewport": [375, 812],
+        "device_pixel_ratio": 2,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [375, 812],
+          "document_scroll": [375, 812],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false
+        }
+      }
+    },
+    {
+      "id": "chrome-city-inspector",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-city",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-city-inspector-1440x900.png",
+      "bytes": 247242,
+      "sha256": "f03d02ff4cd42f44cdf83702155bd512d646c999dfa4fcc3bf1694ce90c17ad9",
+      "dimensions": [1440, 900],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 40,
+        "decoded_rgb_sha256": "3e90bae4a5f0bb4c66610a6261761b1a06c8fa712e158376d38accdb5a26381a",
+        "rgb_rmse": 9.262423
+      },
+      "observation": {
+        "id": "chrome-city-inspector",
+        "scene": "chrome-city",
+        "viewport": [1440, 900],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 900],
+          "document_scroll": [1440, 900],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 53,
+          "total_images": 53,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "overlay_rect": [0, 0, 1440, 900],
+          "scene_rect": [25, 101, 1000, 696.3125],
+          "inspector_rect": [1037, 89, 390, 798],
+          "selected_building": "Shipyard",
+          "focused_control": "Close building details"
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false,
+          "selected_building_label_visible": true
+        }
+      }
+    },
+    {
+      "id": "chrome-interaction-states",
+      "set": "gameplay-chrome-v2",
+      "scene": "chrome-city",
+      "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-interaction-states-1440x960.png",
+      "bytes": 293704,
+      "sha256": "9ab69ff52ef5cfbb308a254832be581f668f76fc20b9e9251a49d5a96756af55",
+      "dimensions": [1440, 960],
+      "png_color_type": 3,
+      "encoding": {
+        "palette_colors": 40,
+        "decoded_rgb_sha256": "f39df46a3183a73ee3618dc3dfe90e218aa4923bc764ae20eb104b40055c1a91",
+        "rgb_rmse": 9.759014
+      },
+      "observation": {
+        "id": "chrome-interaction-states",
+        "scene": "chrome-city",
+        "viewport": [1440, 960],
+        "device_pixel_ratio": 1,
+        "settle_ms": 1200,
+        "measurements": {
+          "document_client": [1440, 960],
+          "document_scroll": [1440, 960],
+          "busy": false,
+          "map_error": false,
+          "fonts_status": "loaded",
+          "loaded_images": 99,
+          "total_images": 99,
+          "incomplete_images": 0,
+          "undersized_direct_targets": 0,
+          "minimum_direct_target": 44,
+          "overlay_rect": [0, 0, 1440, 960],
+          "scene_rect": [25, 101, 1000, 756.3125],
+          "inspector_rect": [1037, 89, 390, 858],
+          "selected_building": "Town Hall",
+          "focused_control": "Close building details",
+          "hovered_control": "About Town Hall",
+          "hovered": true,
+          "aria_expanded": false,
+          "disabled_build_buttons": 14
+        },
+        "native_inspection": {
+          "original_size": true,
+          "fonts_complete": true,
+          "art_complete": true,
+          "clipped_label": false,
+          "missing_image": false,
+          "map_error": false,
+          "hovered_collapsed_state_visible": true
+        }
+      }
+    }
+  ]
+}

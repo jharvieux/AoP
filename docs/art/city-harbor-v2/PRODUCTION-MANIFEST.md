@@ -2,14 +2,17 @@
 
 ## Status
 
-Issue #608 checkpoint 1, the Direction B city refinement, and refreshed checkpoint 2 are
-operator-approved. This package includes the requested faction mast, pin, and V-brace
-physically mounted to Town Hall’s central dome. Refreshed live starting/midgame/full, phone,
-desktop, and maximum-zoom captures are bound to the exact shipping sources in
-`RUNTIME-CAPTURE-BINDINGS.json`. Integration-owner visual-settle and native-size review is
-complete. The exact-byte approval is recorded in
-[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263) against
-evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c`.
+Issue #608 checkpoint 1 and the Direction B city refinement remain operator-approved. This
+package includes the requested faction mast, pin, and V-brace physically mounted to Town
+Hall’s central dome. Fresh live starting/midgame/full, phone, desktop, and maximum-zoom
+captures are bound to exact target source
+`c1824f22bf14dca6d38f7519fd99affd789a8130` in `RUNTIME-CAPTURE-BINDINGS.json`.
+Integration-owner visual-settle and native-size review is complete. The operator approved the
+new pixels at evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable
+record is [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289).
+The earlier approval at evidence head
+`dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263).
 
 The production batch keeps the exact existing `SCENE_SLOTS` rectangles and content IDs.
 It replaces the shipping city URLs with WebP art for the backdrop, all fourteen building

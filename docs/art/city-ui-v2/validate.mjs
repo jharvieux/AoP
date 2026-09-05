@@ -5,12 +5,30 @@ import { fileURLToPath } from 'node:url'
 
 const DOCS_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(DOCS_DIR, '../../..')
-const SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
+const SOURCE_HEAD = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
 const CAPTURE_SOURCE_HEAD = SOURCE_HEAD
-const PRIOR_CAPTURE_SOURCE_HEAD = '59c82c623dc046c68cec53548903e69af09456a8'
+const PRIOR_CAPTURE_SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
+const HISTORICAL_APPROVED_SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
 const ENGINE_VERSION = '850a9013b70e38a7'
 const CAPTURE_ROOT = 'docs/art/city-ui-v2/runtime-captures'
 const MAX_CAPTURE_BYTES = 300 * 1024
+const APPROVED_STATUS = 'approved'
+const APPROVAL_EVIDENCE_HEAD = '08717289778883d7adca6ff7a6f15b20fb7c6b25'
+const APPROVAL_RECORD = 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230'
+const HISTORICAL_APPROVAL = {
+  status: 'historical-source-only',
+  sourceHead: HISTORICAL_APPROVED_SOURCE_HEAD,
+  evidenceHead: 'dc11b60738f4f14b896532bf2db323b2bd054f5c',
+  record: 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344',
+  reusable: false,
+}
+const SUPERSEDED_CAPTURE = {
+  sourceHead: PRIOR_CAPTURE_SOURCE_HEAD,
+  recordHead: 'b64ae4c02c3c31342e1fbf70f87b9c07203f86d2',
+  bindingSha256: 'd2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db',
+  approval: { status: 'pending-direct-operator-approval', record: null },
+  reusable: false,
+}
 
 const EXPECTED_STATES = [
   { id: 'starting', round: 1, visibleBuildings: 2 },
@@ -37,8 +55,8 @@ const EXPECTED_SOURCES = {
     '127da1e279878d3176ea78dfb13309391f077bfa999df9dc6be759dbec913762',
   ],
   'apps/web/src/CityScene.test.tsx': [
-    29321,
-    'a12d568b4789c810421219bac84408902e7f208f719d66e9c62776bf2b642be1',
+    32571,
+    'cdb358daa73f5f17278a01af0e24477510f1ea17121d475755c7483b22971715',
   ],
   'apps/web/src/CityScene.tsx': [
     16568,
@@ -69,23 +87,23 @@ const EXPECTED_SOURCES = {
     '30a05428054db5a2e3fd4f91d0717afa09ee6d937b8b01a86af9438d58a82596',
   ],
   'apps/web/src/screens/MatchScreen.test.ts': [
-    7167,
-    'e670d76a35831abc96634c9afa0caecc127ffcd4ce400d7cbbee113be7ba62c8',
+    23344,
+    '3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d',
   ],
   'apps/web/src/screens/MatchScreen.tsx': [
-    59590,
-    '85a049ef89fda9c6508b0264e73e9081f1660e611ff78aad8939fafd901a0cfe',
+    61775,
+    '085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f',
   ],
   'apps/web/src/styles.css': [
-    81187,
-    '4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c',
+    89210,
+    'c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0',
   ],
 }
 
 const EXPECTED_CAPTURES = {
   'full-desktop-1440x900-3x-townhall.jpg': [
-    259691,
-    '1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a',
+    217395,
+    '91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17',
     1440,
     900,
     'full',
@@ -93,8 +111,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-desktop-1440x900.jpg': [
-    284730,
-    '77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7',
+    242624,
+    '7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d',
     1440,
     900,
     'full',
@@ -102,8 +120,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-landscape-844x390.jpg': [
-    61706,
-    'ccdcb81ed7d93bf1a3d72407e82222b95202371e0a24415ee7cd44b0e51146c2',
+    52941,
+    '5777edb860bc7214d246d09a37fd69df3f706f1c527fe5ceb79488aede94c8ed',
     844,
     390,
     'full',
@@ -111,8 +129,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-320x568.jpg': [
-    45447,
-    'eecf942501ac8411154a0fcd2a438ce24aacd905c183b0090954c9685e1f869d',
+    41234,
+    'af26aa1abc1f78e6a9c46e1ee2925fffd2d2cec354ff5c33a41598fc6cb4621d',
     320,
     568,
     'full',
@@ -120,8 +138,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-375x812.jpg': [
-    59002,
-    'bb42082cd65a63068d3571bad2fde4e02c1e2587e73b1c5ebe0ee216b126a562',
+    51875,
+    '1bd5eb07ace624f5111cbf48a4dcc0342806a992bec401ea9c07e387f58c23f9',
     375,
     812,
     'full',
@@ -129,8 +147,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-shipyard.jpg': [
-    48222,
-    '3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d',
+    41210,
+    'b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e',
     390,
     844,
     'full',
@@ -138,8 +156,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-townhall.jpg': [
-    61467,
-    '16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254',
+    51971,
+    'e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696',
     390,
     844,
     'full',
@@ -147,8 +165,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-430x932.jpg': [
-    72025,
-    '4a077ecaabc417ca929fc963544e9f46493685a90db2334a174e56351eeba176',
+    62741,
+    '48df14358afb0c7bfa8513a1a6f99ad8aba4526bc511c6cf966200d2a86a0c3c',
     430,
     932,
     'full',
@@ -156,8 +174,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-tablet-768x1024.jpg': [
-    182744,
-    '1c76b528702b68e455fd998870a484fe332f52ac52f5e9508fd97535498b336a',
+    154597,
+    '82b5e7067c838bbee6da44f34110f366f4ddc3d6823f9f5a18eab4dbc5833dc4',
     768,
     1024,
     'full',
@@ -165,8 +183,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-desktop-1440x900.jpg': [
-    280020,
-    'a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40',
+    238547,
+    '3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3',
     1440,
     900,
     'midgame',
@@ -174,8 +192,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-phone-375x812.jpg': [
-    58483,
-    '03bea6f04ab0d9bf194d81790fa9dccb96b7c6b4bde249d870564b33a5905205',
+    51080,
+    '6d8764361e4bd49ebacc17e96d38153d6c237229bbd81fa3a419f472d45c5ea1',
     375,
     812,
     'midgame',
@@ -183,8 +201,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'panel-build-phone-375x812.jpg': [
-    61635,
-    '61e92d7b81d7ad3cb7099a520ce7cf358daab2ec45f16a8e1240bfec9203796a',
+    51810,
+    '95b66e9f5cf758ea22aca524f800dcb5cc13937947e2e196eaf116af34e91003',
     375,
     812,
     'starting',
@@ -192,8 +210,8 @@ const EXPECTED_CAPTURES = {
     'build',
   ],
   'panel-recruit-tablet-768x1024.jpg': [
-    193802,
-    'c11d27874c39a3abcd5f8d0e35bbdc3573038ea255d9d1f4982143b6d1f8d1f4',
+    161810,
+    '7eb0c29c3a28105f190ad99c8da9b56cf7ee23b781a3335ae698fc1d5f402896',
     768,
     1024,
     'full',
@@ -201,8 +219,8 @@ const EXPECTED_CAPTURES = {
     'recruit',
   ],
   'panel-tavern-desktop-1440x900.jpg': [
-    297671,
-    'ec3c39d93583561d843b7f87bc8966a3ff210106917a0ced435c0f950800d04d',
+    273475,
+    '852b20ae172701347a21879c9bec7b063107d1c32ca62c9e9157cd690afa484a',
     1440,
     900,
     'full',
@@ -210,8 +228,8 @@ const EXPECTED_CAPTURES = {
     'tavern',
   ],
   'starting-desktop-1440x900.jpg': [
-    279096,
-    '6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8',
+    238120,
+    'fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4',
     1440,
     900,
     'starting',
@@ -219,8 +237,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-landscape-844x390.jpg': [
-    60791,
-    'e3a8fad32144fc86f85bb7596f13fc255904f3a2a1e2171b851bdf474fbcc2d9',
+    52280,
+    '258ed3e62bcca2dc98e48ce3ede239989031083ad6807f8bbd31512a51b24b5e',
     844,
     390,
     'starting',
@@ -228,8 +246,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-320x568.jpg': [
-    44355,
-    'c134773ef86a8d6b3cf89bdaa0e6d5f2342d98f56f1396b8d0ed19d9aaa37916',
+    40314,
+    '80d349d1330e45c40fd73f81c1b2d2478d1cd04db2217a14b92dd5ba65b08cc8',
     320,
     568,
     'starting',
@@ -237,8 +255,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-375x812.jpg': [
-    57484,
-    '5ceeb1714c979d3e9481288d0c237aa2200cd250c5be66bda2161b4c841c717d',
+    49178,
+    '5f7e9bbddd49a7542885a6b8a1e6c4d96f787c29e83705b8e9961053c9b0224b',
     375,
     812,
     'starting',
@@ -246,8 +264,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-430x932.jpg': [
-    70325,
-    'f4c28d02163c144dc141ac9c76dfe9fa5764a38432eedd581d45030ed766520a',
+    61637,
+    '64ec58c5d2766a8d3b77d819aeb2cca0809aea09baacd533414826db3c2c0810',
     430,
     932,
     'starting',
@@ -255,8 +273,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-tablet-768x1024.jpg': [
-    177147,
-    '25ca80b639df0d144f00b7e15ffa8e5094d7bd5196c1be0750d1dc87eba94d27',
+    152108,
+    '3f736acb8cbdbe8265f5cf0d386ef23bfd2a87f5bf7f2c6ad3ed16c749c8b6ae',
     768,
     1024,
     'starting',
@@ -345,10 +363,10 @@ const record = readFileSync(resolve(DOCS_DIR, 'RUNTIME-CAPTURES.md'), 'utf8')
 assert(binding.schema === 1 && binding.issue === 612, 'unexpected binding identity')
 assert(binding.sourceHead === SOURCE_HEAD, 'binding source head drift')
 assert(binding.captureSourceHead === CAPTURE_SOURCE_HEAD, 'capture source head drift')
-assert(binding.captureStatus === 'approved', 'capture status drift')
+assert(binding.captureStatus === APPROVED_STATUS, 'capture status drift')
 assert(receipt.schema === 1 && receipt.issue === 612, 'unexpected receipt identity')
 assert(receipt.sourceHead === SOURCE_HEAD, 'receipt source head drift')
-assert(receipt.captureStatus === 'approved', 'receipt capture status drift')
+assert(receipt.captureStatus === APPROVED_STATUS, 'receipt capture status drift')
 assert(receipt.captureOrigin.sourceHead === CAPTURE_SOURCE_HEAD, 'receipt capture origin drift')
 assert(
   binding.sourceTransition.classification === 'exact-source-recaptured-approved' &&
@@ -375,7 +393,15 @@ assert(
   'required breakpoint inventory drift',
 )
 
-assert(receipt.captureOrigin.workflow === 'normal UI only', 'capture workflow drift')
+assert(
+  receipt.captureOrigin.workflow ===
+    'truthful shipping-component import harness with visible shipping controls',
+  'capture workflow drift',
+)
+assert(
+  receipt.captureOrigin.harness === 'docs/art/city-ui-v2/tools/runtime-harness',
+  'capture harness drift',
+)
 assert(receipt.captureOrigin.faction === 'pirates', 'capture faction drift')
 assert(
   receipt.captureOrigin.programmaticFontOrImageAwaitClaimed === false,
@@ -390,11 +416,14 @@ assert(receipt.checkpoints.checkpoint1.status === 'approved', 'checkpoint 1 stat
 assert(receipt.checkpoints.checkpoint2.status === 'approved', 'checkpoint 2 status drift')
 assert(
   binding.approval.status === 'approved' &&
-    binding.approval.evidenceHead === 'dc11b60738f4f14b896532bf2db323b2bd054f5c' &&
-    binding.approval.record ===
-      'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344' &&
-    receipt.checkpoints.checkpoint2.evidenceHead === binding.approval.evidenceHead &&
-    receipt.checkpoints.checkpoint2.record === binding.approval.record,
+    binding.approval.evidenceHead === APPROVAL_EVIDENCE_HEAD &&
+    binding.approval.record === APPROVAL_RECORD &&
+    receipt.checkpoints.checkpoint2.evidenceHead === APPROVAL_EVIDENCE_HEAD &&
+    receipt.checkpoints.checkpoint2.record === APPROVAL_RECORD &&
+    stable(binding.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
+    stable(receipt.checkpoints.checkpoint2.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
+    stable(binding.supersededCapture) === stable(SUPERSEDED_CAPTURE) &&
+    stable(receipt.checkpoints.checkpoint2.supersededCapture) === stable(SUPERSEDED_CAPTURE),
   'checkpoint 2 approval binding drift',
 )
 assert(
@@ -421,6 +450,18 @@ assert(
   stable(receipt.coverage.requiredBreakpoints) ===
     stable(EXPECTED_BREAKPOINTS.map(({ width, height }) => `${width}x${height}`)),
   'receipt breakpoint inventory drift',
+)
+const semanticTextEvidence = [
+  'docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg',
+  'docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg',
+].map((path) => ({
+  path,
+  requiredVisibleText: ['Defense', 'No garrison captain', '1 ship in port'],
+  requireNoSemanticTextOverflow: true,
+}))
+assert(
+  stable(receipt.coverage.semanticTextEvidence) === stable(semanticTextEvidence),
+  'narrow-phone semantic text evidence drift',
 )
 
 assert(
@@ -465,6 +506,20 @@ for (const [name, expected] of Object.entries(EXPECTED_CAPTURES)) {
   assert(entry.round === state.round, `${name}: round drift`)
   assert(entry.visibleBuildings === state.visibleBuildings, `${name}: building count drift`)
   assert(entry.zoom === zoom && entry.panel === panel, `${name}: coverage metadata drift`)
+  const semanticRequirement = semanticTextEvidence.find((item) => item.path === entry.path)
+  if (semanticRequirement) {
+    assert(
+      stable(entry.requiredVisibleText) === stable(semanticRequirement.requiredVisibleText) &&
+        entry.requireNoSemanticTextOverflow === true,
+      `${name}: semantic text requirement drift`,
+    )
+  } else {
+    assert(
+      stable(entry.requiredVisibleText) === stable([]) &&
+        entry.requireNoSemanticTextOverflow === false,
+      `${name}: unexpected semantic text requirement`,
+    )
+  }
 
   const contents = readRegular(entry.path)
   assert(statSync(repoPath(entry.path)).size === bytes, `${name}: byte count drift`)
@@ -513,12 +568,12 @@ assert(
 
 assert(record.includes(SOURCE_HEAD), 'capture record source head drift')
 assert(
-  record.includes('operator approved') && record.includes(binding.approval.record),
+  record.includes('operator approved') && record.includes(APPROVAL_RECORD),
   'capture record checkpoint status drift',
 )
 for (const name of captureNames)
   assert(record.includes(`\`${name}\``), `capture missing from record: ${name}`)
 
 console.log(
-  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; checkpoint 2 approved and exact-bound.`,
+  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; native inspection and direct operator approval bound to ${APPROVAL_EVIDENCE_HEAD}.`,
 )

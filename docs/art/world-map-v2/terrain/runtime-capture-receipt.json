@@ -1,17 +1,19 @@
 {
   "schema": 1,
   "issue": 611,
-  "captured_on": "2026-09-04",
-  "browser": "Codex in-app browser",
-  "origin": "http://127.0.0.1:4616/",
+  "captured_on": "2026-09-05",
+  "browser": "Codex in-app Browser (Chrome)",
+  "origin": "http://127.0.0.1:4627/",
   "fresh_origin": true,
   "runtime_binding": {
-    "immutable_starting_head": "090cb97bb8f93fd35d774014f7bb945bd9b6162d",
-    "renderer_and_runtime_asset_digest": "3c78432372f9fe2b67ca1f4b56430c0d9899af5d5614d9a21b0754a64ae4606c",
+    "immutable_starting_head": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+    "application_source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+    "application_source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+    "renderer_and_runtime_asset_digest": "20c0309a32c23c6e7d34e084a06d93e87f00f1ae591941075ba19f4ead9bda6a",
     "digest_method": "SHA-256 of the ordered SHA-256 lines for MapCanvas.tsx, mapPresentation.ts, and every apps/web/public/art/world-map-v2/terrain file"
   },
   "scene": {
-    "entry": "New Game UI",
+    "entry": "Bound renewal fixture mounting the shipping GameScreen and MapCanvas",
     "map_size": "xlarge",
     "dimensions": [96, 96],
     "topology": "square",
@@ -20,19 +22,20 @@
     "viewer_faction": "pirates",
     "gameplay_actions_between_captures": 0,
     "theme": "default/no override",
-    "seed": null,
+    "seed": 611,
     "seed_exposed_by_ui": false,
+    "seed_bound_by_fixture": true,
     "same_live_session_for_all_captures": true
   },
   "settle_procedure": "Waited at least 1.2 seconds after each final fit/zoom/center operation and retained the later settled frame when an initial capture was incomplete.",
   "viewports": {
     "desktop": {
       "viewport": [1440, 900],
-      "map_canvas": [1440, 740]
+      "device_pixel_ratio": 1
     },
     "phone": {
       "viewport": [390, 844],
-      "map_canvas": [390, 650]
+      "device_pixel_ratio": 2
     }
   },
   "captures": [
@@ -41,72 +44,73 @@
       "band": "overview",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 39126,
-      "sha256": "9d813db06f3bfb0ff92eb51f456551cde71faa900c7e29c8ad6459222dbb48e5",
-      "camera": "Fit to map from tactical; scale 0.240885, 7.708 screen px per tile"
+      "bytes": 31531,
+      "sha256": "e7df1f36edc36f8cae0007735ca5442b20b8330b7151f5275d6321743694849e",
+      "camera": "Fit from tactical; overview band observed; saturated 0.46875 minimap scale diagnostic is non-authoritative"
     },
     {
       "path": "runtime-captures/desktop-tactical.png",
       "band": "tactical",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 46870,
-      "sha256": "5ede02fdce67393a91f780b29bfc64c0d42c6ccc732acc3342c4e775e8e6e09e",
-      "camera": "Three 0.8x zoom steps from detail, then centered on fleet; scale 0.945874, 30.268 screen px per tile"
+      "bytes": 43284,
+      "sha256": "1ecbb403c51473c1f05b5debd64e559f3e7220ca73b05b154b83b2b55cb0eb9e",
+      "camera": "Three Zoom out actions from desktop detail, then Center map; tactical band observed"
     },
     {
       "path": "runtime-captures/desktop-detail.png",
       "band": "detail",
       "viewport": "desktop",
       "dimensions": [1440, 900],
-      "bytes": 63327,
-      "sha256": "450aeda254d2a9d0426347d55d711b055c22382ea1e67e04b55288a3eeb16918",
-      "camera": "Phone detail scale retained across the desktop viewport switch, then centered on fleet; scale 1.847411, 59.117 screen px per tile"
+      "bytes": 65770,
+      "sha256": "29517b2e105e93de1375dc8fe35b369579266f9c4207294627ffc98a4adf12eb",
+      "camera": "Phone detail state retained across the desktop viewport switch, then Center map; detail band observed"
     },
     {
       "path": "runtime-captures/phone-overview.png",
       "band": "overview",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 19327,
-      "sha256": "2a916ac1b51143b1d35be8854fe6cd714d710246c38178032d3bc6c123faa8c7",
-      "camera": "Fit to map; scale 0.126953, 4.063 screen px per tile"
+      "bytes": 21486,
+      "sha256": "62bb619068c5abcbd7d429480127069e7610cddbeff0b36628e0796f0f05e408",
+      "camera": "Fit; overview band observed; saturated 0.126953 scale diagnostic is non-authoritative"
     },
     {
       "path": "runtime-captures/phone-tactical.png",
       "band": "tactical",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 26552,
-      "sha256": "8b292f179323acaf47bc3bf775b3bfa44feb0922fb78d1b7fc04115d2a263607",
-      "camera": "Nine 1.25x zoom steps from phone fit, then center on fleet; scale 0.945874, 30.268 screen px per tile"
+      "bytes": 33256,
+      "sha256": "4c722485249acd082a5bedbb0a0b62636e8c3437ae79deba00a5a157accfecc1",
+      "camera": "Nine Zoom in actions from Fit, then Center map; 25.300965 screen px per tile"
     },
     {
       "path": "runtime-captures/phone-detail.png",
       "band": "detail",
       "viewport": "phone",
       "dimensions": [390, 844],
-      "bytes": 33631,
-      "sha256": "60ae14060387e76201f074767972cef71e427107d0f5e08926d6b7ba55ed84b6",
-      "camera": "Three more 1.25x zoom steps from tactical, then center on fleet; scale 1.847411, 59.117 screen px per tile"
+      "bytes": 49886,
+      "sha256": "034a00c80f4d6195310084e735e9539d532dd5ef7971e4038c39e7af28fda7f1",
+      "camera": "Three additional Zoom in actions from tactical, then Center map; 49.415889 screen px per tile"
     }
   ],
   "operator_approval": {
     "status": "approved",
-    "approved_on": "2026-09-04",
-    "source_head": "272c8ded20d97f3ab770e803b1b4d819e5546527",
-    "issue_comment": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944",
+    "approved_on": "2026-09-05",
+    "source_head": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+    "application_source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+    "issue_comment": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496",
     "boundary": "Approval covers the exact renderer/runtime-asset digest and six capture hashes in this receipt. Any material bound-byte change requires renewed approval."
   },
   "interaction_smoke": {
-    "phone_pan_drags": 22,
-    "zoom_button_actions": 12,
-    "center_actions": 2,
-    "console_warnings": 0,
-    "console_errors": 0
+    "gameplay_actions": 0,
+    "zoom_button_actions": 15,
+    "center_actions": 4,
+    "fit_actions": 2
   },
   "limitations": [
-    "The New Game UI does not expose its generated seed, so the visual receipt binds one untouched live session and exact pixels rather than asserting a seed value.",
-    "The in-app browser exposed screenshots and console logs but not Performance Timeline entries; CPU timings and draw-work counts are recorded separately in PERFORMANCE.md."
+    "The Fit diagnostics saturated on desktop and phone and are recorded as non-authoritative; the shipping Fit action and fit-camera calculation establish the overview states.",
+    "The in-app Browser did not expose Performance Timeline entries. The accepted available reference is the M5 MacBook Air/Chrome measurement; no physical-iPhone frame-time claim is made.",
+    "The iPhone 17 Pro Simulator touch run verifies gestures and route confirmation, not physical-device performance."
   ]
 }

@@ -11,7 +11,6 @@ import {
   partyToCombatant,
   pathCost,
   tileAt,
-  visibleState,
   type Action,
   type BattleReport,
   type BoardActivationView,
@@ -36,8 +35,10 @@ import { partyBlockedSet } from '../partyMarch'
 import { classifyPartyRangeOverlay } from '../partyRange'
 import { portDefenderCount } from '../portDefenders'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
+import { singlePlayerPresentationBoard } from '../singlePlayerPresentation'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
+import { MapAlertRegion, type MapAlertItem } from '../MapAlertRegion'
 import {
   probeBoardingBattle,
   probeCityAssault,
@@ -364,9 +365,11 @@ export function GameScreen({
     }
   }, [game, player, onAction, battleReport])
 
-  const { visible, explored } = useMemo(() => visibleState(game, viewer.id), [game, viewer.id])
-  const visibleKeys = useMemo(() => new Set(visible.map((c) => `${c.x},${c.y}`)), [visible])
-  const exploredKeys = useMemo(() => new Set(explored.map((c) => `${c.x},${c.y}`)), [explored])
+  const presentation = useMemo(
+    () => singlePlayerPresentationBoard(game, viewer.id),
+    [game, viewer.id],
+  )
+  const { visibleKeys, exploredKeys } = presentation
 
   // Turn-event feed (#346): a lightweight "what happened" log so activity
   // outside the viewport (AI moves, captures, new sightings) is ascertainable.
@@ -384,14 +387,10 @@ export function GameScreen({
 
   useEffect(() => {
     const sighted = new Set(
-      game.captains
-        .filter(
-          (c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`),
-        )
-        .map((c) => c.id),
+      presentation.captains.filter((c) => c.ownerId !== viewer.id).map((c) => c.id),
     )
     const cityOwners: Record<string, string> = {}
-    for (const c of game.cities) cityOwners[c.id] = c.ownerId
+    for (const c of presentation.cities) cityOwners[c.id] = c.ownerId
     const nameOf = (id: string) => game.players.find((p) => p.id === id)?.name ?? id
 
     const prev = prevSnapshotRef.current
@@ -399,18 +398,18 @@ export function GameScreen({
       if (game.round > prev.round) pushEvent(`Round ${game.round} begins`)
       for (const id of sighted) {
         if (!prev.sighted.has(id)) {
-          const cap = game.captains.find((c) => c.id === id)
+          const cap = presentation.captains.find((c) => c.id === id)
           if (cap) pushEvent(`Enemy fleet sighted at ${cap.position.x},${cap.position.y}`)
         }
       }
-      for (const c of game.cities) {
+      for (const c of presentation.cities) {
         const was = prev.cityOwners[c.id]
         if (was && was !== c.ownerId) pushEvent(`${c.name} captured by ${nameOf(c.ownerId)}`)
       }
     }
     prevSnapshotRef.current = { round: game.round, sighted, cityOwners }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, visibleKeys, viewer.id, pushEvent])
+  }, [game.round, game.players, presentation, viewer.id, pushEvent])
 
   useEffect(() => {
     if (!battleReport) return
@@ -431,34 +430,34 @@ export function GameScreen({
   }, [itemFound])
 
   const selectedCaptain = selectedCaptainId
-    ? (game.captains.find((c) => c.id === selectedCaptainId) ?? null)
+    ? (presentation.captains.find((c) => c.id === selectedCaptainId) ?? null)
     : null
   const selectedParty = selectedPartyId
-    ? (game.parties.find((p) => p.id === selectedPartyId) ?? null)
+    ? (presentation.parties.find((p) => p.id === selectedPartyId) ?? null)
     : null
   const partyAttackTarget = partyAttackTargetId
-    ? (game.parties.find((p) => p.id === partyAttackTargetId) ?? null)
+    ? (presentation.parties.find((p) => p.id === partyAttackTargetId) ?? null)
     : null
   const partyAssaultCity = partyAssaultCityId
-    ? (game.cities.find((c) => c.id === partyAssaultCityId) ?? null)
+    ? (presentation.cities.find((c) => c.id === partyAssaultCityId) ?? null)
     : null
   const attackTarget = attackTargetId
-    ? (game.captains.find((c) => c.id === attackTargetId) ?? null)
+    ? (presentation.captains.find((c) => c.id === attackTargetId) ?? null)
     : null
   const assaultCity = assaultCityId
-    ? (game.cities.find((c) => c.id === assaultCityId) ?? null)
+    ? (presentation.cities.find((c) => c.id === assaultCityId) ?? null)
     : null
   const enemyCityInfo = enemyCityInfoId
-    ? (game.cities.find((c) => c.id === enemyCityInfoId) ?? null)
+    ? (presentation.cities.find((c) => c.id === enemyCityInfoId) ?? null)
     : null
   const encounter = encounterId
-    ? (game.encounters.find((e) => e.id === encounterId && e.active) ?? null)
+    ? (presentation.encounters.find((e) => e.id === encounterId && e.active) ?? null)
     : null
   const encounterChoices = encounter
     ? Object.keys(game.config.content?.encounters?.[encounter.kind]?.choices ?? {})
     : []
   const landEncounter = landEncounterId
-    ? (game.landEncounters.find((e) => e.id === landEncounterId && e.active) ?? null)
+    ? (presentation.landEncounters.find((e) => e.id === landEncounterId && e.active) ?? null)
     : null
   const landEncounterChoices = landEncounter
     ? Object.keys(game.config.content?.landEncounters?.[landEncounter.kind]?.choices ?? {})
@@ -478,19 +477,24 @@ export function GameScreen({
   // one; the HUD roster and city sheet now honor that instead of always acting
   // on whichever city sorts first.
   const viewerCities = useMemo(
-    () => game.cities.filter((c) => c.ownerId === viewer.id),
-    [game.cities, viewer.id],
+    () => presentation.cities.filter((c) => c.ownerId === viewer.id),
+    [presentation.cities, viewer.id],
   )
   const viewerCity =
     viewerCities.find((c) => c.id === selectedCityId) ?? viewerCities[0] ?? undefined
   const viewerCaptainAtCity = viewerCity
-    ? findViewerCaptainAtCity(game.captains, game.map, viewer.id, viewerCity.position)
+    ? findViewerCaptainAtCity(
+        presentation.captains,
+        presentation.map,
+        viewer.id,
+        viewerCity.position,
+      )
     : undefined
   // Every captain the viewer owns, so the city sheet's fleet list (#114) can
   // break the army out one row per captain instead of just the docked one.
   const viewerCaptains = useMemo(
-    () => game.captains.filter((c) => c.ownerId === viewer.id),
-    [game.captains, viewer.id],
+    () => presentation.captains.filter((c) => c.ownerId === viewer.id),
+    [presentation.captains, viewer.id],
   )
 
   // Captain/party owners are always real players — fail loud (#AOP-CLIENT-1
@@ -524,7 +528,7 @@ export function GameScreen({
    */
   function approachToEngage(targetPos: Coord): Coord[] | null | undefined {
     if (!selectedCaptain) return undefined
-    const approach = findApproachPath(game.map, selectedCaptain.position, targetPos)
+    const approach = findApproachPath(presentation.map, selectedCaptain.position, targetPos)
     if (!approach) return undefined
     const cost = approach.length - 1
     if (cost + 1 > selectedCaptain.movementPoints) return undefined
@@ -546,8 +550,8 @@ export function GameScreen({
     if (!selectedCaptain) return
     // The engine rejects an intercept onto a target already within reach, and
     // there's nothing to chase if no water approach exists at all.
-    if (mapDistance(game.map, selectedCaptain.position, targetPos) <= 1) return
-    if (!findApproachPath(game.map, selectedCaptain.position, targetPos)) return
+    if (mapDistance(presentation.map, selectedCaptain.position, targetPos) <= 1) return
+    if (!findApproachPath(presentation.map, selectedCaptain.position, targetPos)) return
     shipMoveFeedback()
     onAction({
       type: 'setSailOrder',
@@ -566,26 +570,18 @@ export function GameScreen({
   const rangeOverlay = useMemo<RangeOverlay | undefined>(() => {
     if (!selectedCaptain) return undefined
     return classifyRangeOverlay({
-      map: game.map,
+      map: presentation.map,
       from: selectedCaptain.position,
       movementPoints: selectedCaptain.movementPoints,
       hasTroops: selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0,
-      enemies: game.captains
-        .filter(
-          (c) => c.ownerId !== viewer.id && visibleKeys.has(`${c.position.x},${c.position.y}`),
-        )
+      enemies: presentation.captains.filter((c) => c.ownerId !== viewer.id).map((c) => c.position),
+      enemyCities: presentation.cities
+        .filter((c) => c.ownerId !== viewer.id)
         .map((c) => c.position),
-      enemyCities: game.cities
-        .filter(
-          (c) => c.ownerId !== viewer.id && exploredKeys.has(`${c.position.x},${c.position.y}`),
-        )
-        .map((c) => c.position),
-      encounters: game.encounters
-        .filter((e) => e.active && visibleKeys.has(`${e.position.x},${e.position.y}`))
-        .map((e) => e.position),
+      encounters: presentation.encounters.filter((e) => e.active).map((e) => e.position),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCaptain, game, viewer.id, visibleKeys, exploredKeys])
+  }, [selectedCaptain, presentation, viewer.id])
 
   // Movement-range shading for a selected landing party (#476), the land twin
   // of the ship overlay above. Same fog rules; "other parties" blocks
@@ -593,46 +589,33 @@ export function GameScreen({
   // blocked set (own parties are always known, enemy ones only in vision).
   const partyRangeOverlay = useMemo(() => {
     if (!selectedParty) return undefined
-    const otherParties = game.parties.filter(
-      (p) =>
-        p.id !== selectedParty.id &&
-        (p.ownerId === viewer.id || visibleKeys.has(`${p.position.x},${p.position.y}`)),
-    )
+    const otherParties = presentation.parties.filter((p) => p.id !== selectedParty.id)
     return classifyPartyRangeOverlay({
-      map: game.map,
+      map: presentation.map,
       from: selectedParty.position,
       movementPoints: selectedParty.movementPoints,
       otherParties: otherParties.map((p) => p.position),
       enemies: otherParties.filter((p) => p.ownerId !== viewer.id).map((p) => p.position),
-      enemyCities: game.cities
-        .filter(
-          (c) => c.ownerId !== viewer.id && exploredKeys.has(`${c.position.x},${c.position.y}`),
-        )
+      enemyCities: presentation.cities
+        .filter((c) => c.ownerId !== viewer.id)
         .map((c) => c.position),
-      encounters: game.landEncounters
-        .filter((e) => e.active && visibleKeys.has(`${e.position.x},${e.position.y}`))
-        .map((e) => e.position),
-      capturableSites: game.landSites
-        .filter(
-          (s) =>
-            s.active &&
-            s.claimedBy !== viewer.id &&
-            visibleKeys.has(`${s.position.x},${s.position.y}`),
-        )
+      encounters: presentation.landEncounters.filter((e) => e.active).map((e) => e.position),
+      capturableSites: presentation.landSites
+        .filter((s) => s.active && s.claimedBy !== viewer.id)
         .map((s) => s.position),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedParty, game, viewer.id, visibleKeys, exploredKeys])
+  }, [selectedParty, presentation, viewer.id])
 
   // Paused sail orders (#372): own ships halted on a new sighting, awaiting the
   // player's Resume (re-issue the order, refreshing the seen-contacts baseline)
   // or Cancel (drop it).
-  const interruptedCaptains = game.captains.filter(
+  const interruptedCaptains = presentation.captains.filter(
     (c) => c.ownerId === viewer.id && c.sailOrder?.interrupted,
   )
 
   function resumeSailOrder(captainId: string) {
-    const cap = game.captains.find((c) => c.id === captainId)
+    const cap = presentation.captains.find((c) => c.id === captainId)
     const order = cap?.sailOrder
     if (!order) return
     tapFeedback()
@@ -657,7 +640,7 @@ export function GameScreen({
   function openCity(cityId: string) {
     tapFeedback()
     setSelectedCityId(cityId)
-    const city = game.cities.find((c) => c.id === cityId)
+    const city = presentation.cities.find((c) => c.id === cityId)
     if (city) mapControlsRef.current?.centerOn(city.position)
     setCityOpen(true)
   }
@@ -690,7 +673,7 @@ export function GameScreen({
     // duplicate of its landing party's tile (see captainAshore.ts). Excluding
     // it here lets a tap on that tile select the co-located party instead of
     // a nonexistent ship.
-    const ownHere = game.captains.find(
+    const ownHere = presentation.captains.find(
       (c) => c.ownerId === viewer.id && !c.shipLost && c.position.x === x && c.position.y === y,
     )
     if (ownHere) {
@@ -698,7 +681,7 @@ export function GameScreen({
       // re-boards it (partial if the hold can't take everyone).
       if (
         selectedParty &&
-        mapDistance(game.map, selectedParty.position, ownHere.position) === 1 &&
+        mapDistance(presentation.map, selectedParty.position, ownHere.position) === 1 &&
         !ownHere.captured
       ) {
         tapFeedback()
@@ -717,7 +700,7 @@ export function GameScreen({
       setPendingApproach(null)
       return
     }
-    const ownPartyHere = game.parties.find(
+    const ownPartyHere = presentation.parties.find(
       (p) => p.ownerId === viewer.id && p.position.x === x && p.position.y === y,
     )
     if (ownPartyHere) {
@@ -731,8 +714,8 @@ export function GameScreen({
         const tap = classifySelectedPartyTileTap(
           selectedParty,
           viewer.id,
-          game.landSites,
-          game.landEncounters,
+          presentation.landSites,
+          presentation.landEncounters,
         )
         if (tap.action === 'captureSite') {
           tapFeedback()
@@ -763,7 +746,7 @@ export function GameScreen({
     if (!selectedCaptain) {
       // Own city tapped with nothing selected: enter city management —
       // matching multiplayer's interpretTileClick (matchActions.ts) semantics.
-      const ownCityHere = game.cities.find(
+      const ownCityHere = presentation.cities.find(
         (c) => c.ownerId === viewer.id && c.position.x === x && c.position.y === y,
       )
       if (ownCityHere) openCity(ownCityHere.id)
@@ -772,8 +755,7 @@ export function GameScreen({
     // An anchored or shipLost captain (#498) has no ship orders to give — the
     // engine already rejects every one (`requireShipControl`, reducer.ts);
     // this just saves a round trip on a tap that could never do anything.
-    if (captainAshoreState(selectedCaptain, game.parties)) return
-    const key = `${x},${y}`
+    if (captainAshoreState(selectedCaptain, presentation.parties)) return
 
     // Fog rules unchanged (#376): a target is only tappable while currently
     // visible, same as the map itself only ever renders a captain/encounter
@@ -781,11 +763,9 @@ export function GameScreen({
     // Cities are exempt — they're static, explored landmarks the map already
     // shows from outside current vision, so the read-only info fallback below
     // keeps working exactly as before.
-    const enemyHere = visibleKeys.has(key)
-      ? game.captains.find(
-          (c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y,
-        )
-      : undefined
+    const enemyHere = presentation.captains.find(
+      (c) => c.ownerId !== viewer.id && c.position.x === x && c.position.y === y,
+    )
     if (enemyHere) {
       const approach = approachToEngage(enemyHere.position)
       if (approach !== undefined) {
@@ -801,7 +781,7 @@ export function GameScreen({
     // Enemy city (#344): a landing force that can reach it this turn opens the
     // assault confirm; otherwise (unreachable, or no troops aboard) the
     // read-only enemy-city info.
-    const cityHere = game.cities.find((c) => c.position.x === x && c.position.y === y)
+    const cityHere = presentation.cities.find((c) => c.position.x === x && c.position.y === y)
     if (cityHere && cityHere.ownerId !== viewer.id) {
       const hasTroops = selectedCaptain.troops.reduce((sum, t) => sum + t.count, 0) > 0
       const approach = hasTroops ? approachToEngage(cityHere.position) : undefined
@@ -810,7 +790,7 @@ export function GameScreen({
         setAssaultCityId(cityHere.id)
       } else if (
         hasTroops &&
-        findApproachPath(game.map, selectedCaptain.position, cityHere.position)
+        findApproachPath(presentation.map, selectedCaptain.position, cityHere.position)
       ) {
         // Troops aboard but the city is beyond this turn's reach (#376): sail an
         // intercept course toward it and assault on arrival.
@@ -822,9 +802,9 @@ export function GameScreen({
       return
     }
 
-    const encounterHere = visibleKeys.has(key)
-      ? game.encounters.find((e) => e.active && e.position.x === x && e.position.y === y)
-      : undefined
+    const encounterHere = presentation.encounters.find(
+      (e) => e.active && e.position.x === x && e.position.y === y,
+    )
     if (encounterHere) {
       const approach = approachToEngage(encounterHere.position)
       if (approach !== undefined) {
@@ -839,11 +819,11 @@ export function GameScreen({
     // Put a landing party ashore (#465): an adjacent empty land tile, with
     // troops aboard and a movement point to spend, opens the disembark sheet.
     if (
-      tileAt(game.map, { x, y })?.type === 'land' &&
-      mapDistance(game.map, selectedCaptain.position, { x, y }) === 1 &&
+      tileAt(presentation.map, { x, y })?.type === 'land' &&
+      mapDistance(presentation.map, selectedCaptain.position, { x, y }) === 1 &&
       selectedCaptain.movementPoints >= 1 &&
       selectedCaptain.troops.some((t) => t.count > 0) &&
-      !game.parties.some((p) => p.position.x === x && p.position.y === y)
+      !presentation.parties.some((p) => p.position.x === x && p.position.y === y)
     ) {
       tapFeedback()
       setDisembarkTile({ x, y })
@@ -855,7 +835,7 @@ export function GameScreen({
     // Empty tile: move there if reachable this turn; if it's reachable by sea
     // but beyond this turn's movement, set a multi-turn sail order instead (#372)
     // so one click sends the ship on the whole voyage.
-    const cost = pathCost(game.map, selectedCaptain.position, { x, y })
+    const cost = pathCost(presentation.map, selectedCaptain.position, { x, y })
     if (cost === null) return
     if (cost <= selectedCaptain.movementPoints) {
       shipMoveFeedback()
@@ -884,25 +864,22 @@ export function GameScreen({
    * auto-continues each turn, exactly the ship idiom (`setSailOrder`, #372).
    */
   function handlePartyTileClick(x: number, y: number, party: LandingParty) {
-    const key = `${x},${y}`
-    const enemyPartyHere = visibleKeys.has(key)
-      ? game.parties.find(
-          (p) => p.ownerId !== viewer.id && p.position.x === x && p.position.y === y,
-        )
-      : undefined
+    const enemyPartyHere = presentation.parties.find(
+      (p) => p.ownerId !== viewer.id && p.position.x === x && p.position.y === y,
+    )
     if (enemyPartyHere) {
       if (
-        mapDistance(game.map, party.position, enemyPartyHere.position) <= 1 &&
+        mapDistance(presentation.map, party.position, enemyPartyHere.position) <= 1 &&
         party.movementPoints >= 1
       ) {
         setPartyAttackTargetId(enemyPartyHere.id)
       }
       return
     }
-    const cityHere = game.cities.find((c) => c.position.x === x && c.position.y === y)
+    const cityHere = presentation.cities.find((c) => c.position.x === x && c.position.y === y)
     if (cityHere && cityHere.ownerId !== viewer.id) {
       if (
-        mapDistance(game.map, party.position, cityHere.position) <= 1 &&
+        mapDistance(presentation.map, party.position, cityHere.position) <= 1 &&
         party.movementPoints >= 1
       ) {
         setPartyAssaultCityId(cityHere.id)
@@ -915,12 +892,12 @@ export function GameScreen({
     // which never reaches here — handleTileClick routes that tap through
     // classifySelectedPartyTileTap instead.
     // Resolve an adjacent land encounter (#466): open its choice sheet.
-    const landEncHere = visibleKeys.has(key)
-      ? game.landEncounters.find((e) => e.active && e.position.x === x && e.position.y === y)
-      : undefined
+    const landEncHere = presentation.landEncounters.find(
+      (e) => e.active && e.position.x === x && e.position.y === y,
+    )
     if (
       landEncHere &&
-      mapDistance(game.map, party.position, landEncHere.position) <= 1 &&
+      mapDistance(presentation.map, party.position, landEncHere.position) <= 1 &&
       party.movementPoints >= 1
     ) {
       setLandEncounterId(landEncHere.id)
@@ -928,8 +905,8 @@ export function GameScreen({
     }
     // March: reachable this turn moves outright; reachable but farther sets a
     // standing march order (#482) the engine auto-continues each turn.
-    const blocked = partyBlockedSet(game.map, game.parties, party.id)
-    const path = findLandPath(game.map, party.position, { x, y }, blocked)
+    const blocked = partyBlockedSet(presentation.map, presentation.parties, party.id)
+    const path = findLandPath(presentation.map, party.position, { x, y }, blocked)
     if (!path || path.length < 2) return
     const cost = path.length - 1
     shipMoveFeedback()
@@ -949,12 +926,12 @@ export function GameScreen({
   // Paused march orders (#482): own parties halted on a new sighting or a
   // blocked route, awaiting Resume (re-issue, refreshing the seen-contacts
   // baseline) or Cancel (drop it) — the land twin of the sail-order banner.
-  const interruptedParties = game.parties.filter(
+  const interruptedParties = presentation.parties.filter(
     (p) => p.ownerId === viewer.id && p.marchOrder?.interrupted,
   )
 
   function resumeMarchOrder(partyId: string) {
-    const order = game.parties.find((p) => p.id === partyId)?.marchOrder
+    const order = presentation.parties.find((p) => p.id === partyId)?.marchOrder
     if (!order) return
     tapFeedback()
     onAction({
@@ -1187,10 +1164,14 @@ export function GameScreen({
 
   const odds = useMemo(() => {
     if (!selectedCaptain || !attackTarget || !game.config.combatStats) return null
+    const defender = game.captains.find((captain) => captain.id === attackTarget.id)
+    if (!defender) return null
     return estimateOdds(
       {
         attacker: captainToCombatant(selectedCaptain, game.config.content),
-        defender: captainToCombatant(attackTarget, game.config.content),
+        // `attackTarget` is the fog-safe presence gate. Single-player can use
+        // authoritative detail only after that currently-visible shell exists.
+        defender: captainToCombatant(defender, game.config.content),
       },
       createCombatStats(game.config.combatStats),
       game.actionCount,
@@ -1203,6 +1184,7 @@ export function GameScreen({
   // included (cityToCombatant folds in the fortification defense bonus).
   const assaultStrength = useMemo(() => {
     if (!selectedCaptain || !assaultCity || !game.config.combatStats) return null
+    if (!visibleKeys.has(`${assaultCity.position.x},${assaultCity.position.y}`)) return null
     const stats = createCombatStats(game.config.combatStats)
     return {
       attacker: combatantStrength(captainToCombatant(selectedCaptain, game.config.content), stats),
@@ -1218,6 +1200,8 @@ export function GameScreen({
   // same combatants the reducer resolves, so the preview never lies.
   const partyAssaultStrength = useMemo(() => {
     if (!selectedParty || !partyAssaultCity || !game.config.combatStats) return null
+    if (!visibleKeys.has(`${partyAssaultCity.position.x},${partyAssaultCity.position.y}`))
+      return null
     const stats = createCombatStats(game.config.combatStats)
     return {
       attacker: combatantStrength(partyToCombatant(selectedParty), stats),
@@ -1677,6 +1661,23 @@ export function GameScreen({
     },
   }
 
+  const haltedOrders: MapAlertItem[] = [
+    ...interruptedCaptains.map((captain) => ({
+      id: `captain:${captain.id}`,
+      name: captain.name,
+      message: `${captain.name} halted: new contact sighted`,
+      onResume: () => resumeSailOrder(captain.id),
+      onCancel: () => cancelSailOrder(captain.id),
+    })),
+    ...interruptedParties.map((party) => ({
+      id: `party:${party.id}`,
+      name: party.name,
+      message: `${party.name} halted: new contact or blocked route`,
+      onResume: () => resumeMarchOrder(party.id),
+      onCancel: () => cancelMarchOrder(party.id),
+    })),
+  ]
+
   return (
     <div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen">
       <GameplayHud
@@ -1701,13 +1702,13 @@ export function GameScreen({
 
       <div className="map-container">
         <MapCanvas
-          map={game.map}
-          captains={game.captains}
-          cities={game.cities}
-          parties={game.parties}
-          encounters={game.encounters}
-          landSites={game.landSites}
-          landEncounters={game.landEncounters}
+          map={presentation.map}
+          captains={presentation.captains}
+          cities={presentation.cities}
+          parties={presentation.parties}
+          encounters={presentation.encounters}
+          landSites={presentation.landSites}
+          landEncounters={presentation.landEncounters}
           viewerId={viewer.id}
           visibleKeys={visibleKeys}
           exploredKeys={exploredKeys}
@@ -1741,49 +1742,27 @@ export function GameScreen({
           controlsRef={mapControlsRef}
         />
         {eventFeed.length > 0 && (
-          <ul className="turn-event-feed" aria-label="Recent events">
+          <ul
+            className="turn-event-feed map-overlay-region map-overlay-region--events"
+            data-map-overlay-region="events"
+            aria-label="Recent events"
+          >
             {eventFeed.map((e) => (
               <li key={e.id}>{e.text}</li>
             ))}
           </ul>
         )}
-        {/* Paused sail orders (#372): a ship halted on a new sighting waits here
-            for Resume (continue, re-baselining the contacts it now sees) or
-            Cancel (drop the course). */}
-        {isViewerTurn &&
-          interruptedCaptains.map((cap) => (
-            <div key={cap.id} className="sail-interrupt-banner" role="status">
-              <span>{cap.name} halted: new contact sighted</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
-        {/* Paused march orders (#482): the land twin of the banner above — a
-            column halts on a new sighting OR a route another party now blocks. */}
-        {isViewerTurn &&
-          interruptedParties.map((p) => (
-            <div key={p.id} className="sail-interrupt-banner" role="status">
-              <span>{p.name} halted: new contact or blocked route</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
+        {/* Sail and march interruptions share one bounded selector card, so a
+            burst of halted orders cannot grow into the route-hint region. */}
+        {isViewerTurn && <MapAlertRegion orders={haltedOrders} />}
         {/* City roster (#373): only when the viewer holds more than one city —
             a single-city game keeps the unchanged "City" button and no strip. */}
         {viewerCities.length > 1 && (
-          <ul className="city-roster" aria-label="Your cities">
+          <ul
+            className="city-roster map-overlay-region map-overlay-region--roster"
+            data-map-overlay-region="roster"
+            aria-label="Your cities"
+          >
             {viewerCities.map((c) => (
               <li key={c.id}>
                 <button
@@ -1820,14 +1799,14 @@ export function GameScreen({
           <div className="selection-info" role="status">
             {selectedCaptain
               ? (() => {
-                  const ashore = captainAshoreState(selectedCaptain, game.parties)
+                  const ashore = captainAshoreState(selectedCaptain, presentation.parties)
                   return ashore
                     ? `${selectedCaptain.name} — anchored, captain ashore leading a landing party${ashore === 'shipLost' ? ' (ship lost)' : ''}`
                     : `${selectedCaptain.name} — Movement ${selectedCaptain.movementPoints}/${selectedCaptain.maxMovementPoints}`
                 })()
               : (() => {
                   const leader = selectedParty!.captainId
-                    ? game.captains.find((c) => c.id === selectedParty!.captainId)
+                    ? presentation.captains.find((c) => c.id === selectedParty!.captainId)
                     : undefined
                   return `${selectedParty!.name}${leader ? ` — led by ${leader.name}` : ''} — Movement ${selectedParty!.movementPoints}/${selectedParty!.maxMovementPoints}`
                 })()}
@@ -1849,9 +1828,10 @@ export function GameScreen({
             {idleCityHint}
           </div>
         )}
-        <div className="button-group">
+        <div className="button-group map-command-layout" role="group" aria-label="Map commands">
           <button
-            className="secondary"
+            type="button"
+            className="secondary map-command-prominent"
             onClick={() => {
               tapFeedback()
               setCityOpen(true)
@@ -1860,37 +1840,51 @@ export function GameScreen({
           >
             City
           </button>
-          <button
-            className="secondary"
-            onClick={() => {
-              tapFeedback()
-              setSavesOpen(true)
-            }}
-          >
-            Saves
-          </button>
-          <button className="primary" onClick={endTurn} disabled={player.isAI}>
+          <button type="button" className="primary" onClick={endTurn} disabled={player.isAI}>
             <UiIcon name="endTurn" />
             {player.isAI ? 'AI thinking…' : 'End Turn'}
           </button>
-          {!confirmingResign ? (
-            <button
-              className="secondary"
-              onClick={() => setConfirmingResign(true)}
-              disabled={player.isAI}
-            >
-              Resign
-            </button>
-          ) : (
-            <>
-              <button className="danger" onClick={resign} disabled={player.isAI}>
-                Confirm Resign
+          <details className="map-command-more">
+            <summary className="map-command-more__toggle">
+              <UiIcon name="more" />
+              More
+            </summary>
+            <div className="map-command-more__menu" role="group" aria-label="More commands">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  tapFeedback()
+                  setSavesOpen(true)
+                }}
+              >
+                Saves
               </button>
-              <button className="secondary" onClick={() => setConfirmingResign(false)}>
-                Cancel
-              </button>
-            </>
-          )}
+              {!confirmingResign ? (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setConfirmingResign(true)}
+                  disabled={player.isAI}
+                >
+                  Resign
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="danger" onClick={resign} disabled={player.isAI}>
+                    Confirm Resign
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setConfirmingResign(false)}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
         </div>
       </div>
 
@@ -2289,14 +2283,19 @@ export function GameScreen({
           city={viewerCity}
           captain={viewerCaptainAtCity}
           captains={viewerCaptains}
-          parties={game.parties}
+          parties={presentation.parties}
           faction={viewer.faction}
           resources={viewer.resources}
           setup={game.config.setup}
           round={game.round}
           playerName={(id) => game.players.find((p) => p.id === id)?.name ?? id}
           playerItemStash={viewer.itemStash}
-          portDefenderCount={portDefenderCount(viewerCaptains, game.parties, game.map, viewerCity)}
+          portDefenderCount={portDefenderCount(
+            viewerCaptains,
+            presentation.parties,
+            presentation.map,
+            viewerCity,
+          )}
           cities={viewerCities}
           onSelectCity={openCity}
           onClose={() => setCityOpen(false)}

@@ -2,17 +2,19 @@
 
 ## Result
 
-The live browser capture gate was refreshed on 2026-09-04 against the integrated #612
-city destination. A normal hex game was advanced exclusively through visible game
-controls and one-building-per-round construction; the retained fully built save was
-reopened through the visible Continue action. No fixture, developer shortcut, storage
-mutation, or direct `GameState` edit was used.
+The live browser capture gate was refreshed on 2026-09-05 against exact #613 target source
+`c1824f22bf14dca6d38f7519fd99affd789a8130`. A truthful harness imported the shipping
+`CityScreen` and `CityScene` components and created explicit Pirate starting, midgame, and
+full fixtures. Shipping zoom controls were operated visibly. No storage mutation, direct
+post-construction `GameState` edit, or synthetic visual reimplementation was used.
 
-The operator approved all eight exact files at evidence head
-`dc11b60738f4f14b896532bf2db323b2bd054f5c`; the approval is recorded in
-[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263). Approval
-carries forward only across docs/evidence-only commits while the bound source, CSS, art, and
-capture bytes remain exact.
+The operator approved these eight replacement files at evidence head
+`08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable record is
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289). The
+earlier approval at evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c` is retained as a non-reusable
+historical record in
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263) and does
+not approve the current bytes.
 
 The retained captures were taken after the production preview visibly settled with the
 city imagery and project fonts present. They confirm that empty foundations, dynamic
@@ -36,21 +38,21 @@ The live game reached:
 
 | File                                                  | State / viewport                                 |   Bytes | SHA-256                                                            |
 | ----------------------------------------------------- | ------------------------------------------------ | ------: | ------------------------------------------------------------------ |
-| `runtime-captures/starting-desktop-1440x900.jpg`      | Starting, desktop, 1×                            | 279,096 | `6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8` |
-| `runtime-captures/starting-phone-390x844.jpg`         | Starting, phone, 1×                              |  59,856 | `6bed727cfc3f50bc546388d5edfb875af34d610ffe96ceb9b4acfa81de60ff55` |
-| `runtime-captures/midgame-desktop-1440x900.jpg`       | Eight-building midgame, desktop, 1×              | 280,020 | `a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40` |
-| `runtime-captures/full-desktop-1440x900.jpg`          | Fully built, desktop, 1×                         | 284,730 | `77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7` |
-| `runtime-captures/full-phone-390x844.jpg`             | Fully built, phone, 1×                           |  62,095 | `ef6ef75e06cd51f0503b5b3294f315cb5b7143315ab2ce19a34c6e4c2cb4b373` |
-| `runtime-captures/full-phone-3x-center-390x844.jpg`   | Fully built, phone, 3× Town Hall/flag detail     |  61,467 | `16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254` |
-| `runtime-captures/full-phone-3x-shipyard-390x844.jpg` | Fully built, phone, 3× shoreline/shipyard detail |  48,222 | `3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d` |
-| `runtime-captures/full-desktop-3x-1440x900.jpg`       | Fully built, desktop, 3× Town Hall/flag detail   | 259,691 | `1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a` |
+| `runtime-captures/starting-desktop-1440x900.jpg`      | Starting, desktop, 1×                            | 238,120 | `fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4` |
+| `runtime-captures/starting-phone-390x844.jpg`         | Starting, phone, 1×                              |  52,961 | `d15dcb92c92f41639415e8f0933d6869c68f15e5ea2f7e8073f72865f83afd6d` |
+| `runtime-captures/midgame-desktop-1440x900.jpg`       | Eight-building midgame, desktop, 1×              | 238,547 | `3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3` |
+| `runtime-captures/full-desktop-1440x900.jpg`          | Fully built, desktop, 1×                         | 242,624 | `7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d` |
+| `runtime-captures/full-phone-390x844.jpg`             | Fully built, phone, 1×                           |  54,215 | `e67bf68f329bb5cabcd5fbf03cf47130c27a187555c720b9e08184da2b84d22e` |
+| `runtime-captures/full-phone-3x-center-390x844.jpg`   | Fully built, phone, 3× Town Hall/flag detail     |  51,971 | `e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696` |
+| `runtime-captures/full-phone-3x-shipyard-390x844.jpg` | Fully built, phone, 3× shoreline/shipyard detail |  41,210 | `b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e` |
+| `runtime-captures/full-desktop-3x-1440x900.jpg`       | Fully built, desktop, 3× Town Hall/flag detail   | 217,395 | `91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17` |
 
 Every retained capture is below the repository's 300 KiB per-image ceiling. JPEG is used
 only for review evidence; shipping assets remain the separately validated WebPs.
 
 ## Native inspection
 
-The integration owner inspected all eight retained JPEGs at native size after the city scene
+The integration owner inspected all eight replacement JPEGs at native size after the city scene
 and project fonts visibly settled. This is a visual review record, not a claim that capture
 automation programmatically awaited fonts or images.
 

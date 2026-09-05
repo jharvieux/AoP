@@ -1,6 +1,41 @@
 {
-  "schema": 2,
+  "schema": 3,
   "date": "2026-09-05",
+  "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "captureSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "captureStatus": "approved",
+  "approval": {
+    "status": "approved",
+    "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289"
+  },
+  "historicalApproval": {
+    "status": "historical-source-only",
+    "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": false
+  },
+  "supersededCapture": {
+    "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "recordHead": "b64ae4c02c3c31342e1fbf70f87b9c07203f86d2",
+    "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+    "approval": {
+      "status": "pending-direct-operator-approval",
+      "record": null
+    },
+    "reusable": false
+  },
+  "captureOrigin": {
+    "workflow": "truthful shipping-component import harness with visible shipping controls",
+    "harness": "docs/art/city-ui-v2/tools/runtime-harness",
+    "browser": "Codex in-app Browser (Chromium version not exposed)",
+    "faction": "pirates",
+    "programmaticFontOrImageAwaitClaimed": false,
+    "visualSettleInspection": "completed-by-integration-owner",
+    "nativeSizeInspection": "completed-by-integration-owner",
+    "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130"
+  },
   "shipping_sources": [
     {
       "path": "apps/web/src/CityScene.tsx",
@@ -29,7 +64,7 @@
   ],
   "stylesheet_source": {
     "path": "apps/web/src/styles.css",
-    "diagnostic_full_sha256": "4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c",
+    "diagnostic_full_sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0",
     "scope": {
       "kind": "city-scene-selector-token-closure-v1",
       "sha256": "1c56ca758104e1c0f75ec97912b6a429977e4c979634eed7bb69a3c570008766",
@@ -438,50 +473,50 @@
     {
       "path": "runtime-captures/full-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 284730,
-      "sha256": "77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7"
+      "bytes": 242624,
+      "sha256": "7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d"
     },
     {
       "path": "runtime-captures/full-desktop-3x-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 259691,
-      "sha256": "1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a"
+      "bytes": 217395,
+      "sha256": "91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17"
     },
     {
       "path": "runtime-captures/full-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 62095,
-      "sha256": "ef6ef75e06cd51f0503b5b3294f315cb5b7143315ab2ce19a34c6e4c2cb4b373"
+      "bytes": 54215,
+      "sha256": "e67bf68f329bb5cabcd5fbf03cf47130c27a187555c720b9e08184da2b84d22e"
     },
     {
       "path": "runtime-captures/full-phone-3x-center-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 61467,
-      "sha256": "16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254"
+      "bytes": 51971,
+      "sha256": "e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696"
     },
     {
       "path": "runtime-captures/full-phone-3x-shipyard-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 48222,
-      "sha256": "3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d"
+      "bytes": 41210,
+      "sha256": "b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e"
     },
     {
       "path": "runtime-captures/midgame-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 280020,
-      "sha256": "a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40"
+      "bytes": 238547,
+      "sha256": "3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3"
     },
     {
       "path": "runtime-captures/starting-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 279096,
-      "sha256": "6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8"
+      "bytes": 238120,
+      "sha256": "fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4"
     },
     {
       "path": "runtime-captures/starting-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 59856,
-      "sha256": "6bed727cfc3f50bc546388d5edfb875af34d610ffe96ceb9b4acfa81de60ff55"
+      "bytes": 52961,
+      "sha256": "d15dcb92c92f41639415e8f0933d6869c68f15e5ea2f7e8073f72865f83afd6d"
     }
   ]
 }

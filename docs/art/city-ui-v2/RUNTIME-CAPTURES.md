@@ -2,21 +2,25 @@
 
 ## Status and provenance
 
-These 20 captures were produced from issue #612 source head
-`45a206f760eacce50dc8dd1dc656c5d4e789cb3c`. `RUNTIME-CAPTURE-BINDINGS.json` validates that
+These 20 captures were produced from exact #613 target source
+`c1824f22bf14dca6d38f7519fd99affd789a8130`. `RUNTIME-CAPTURE-BINDINGS.json` validates that
 same head, its exact thirteen-file source inventory, and every retained capture byte. They
 show the repaired responsive layout, focus containment, reduced-motion behavior,
 topology-aware action gating, web-owned runtime art defaults, and measured reset fit.
 
-The Pirate session used normal UI play only: starting is round 1 with 2 visible buildings,
-midgame is round 13 with 8, and full is round 54 with all 14. No programmatic font/image await
-is claimed. The integration owner completed visual-settle and native-size inspection of the
-retained capture files.
+The capture server used a truthful harness that imports the shipping `CityScreen` and
+`CityScene` components and creates explicit Pirate fixtures: starting is round 1 with 2
+visible buildings, midgame is round 13 with 8, and full is round 54 with all 14. Shipping
+zoom and management controls were operated visibly. No programmatic font/image await is
+claimed. The integration owner inspected all retained files at native size after visible
+settling.
 
 Checkpoint 1 approved the dedicated city direction and subsequent portrait-phone framing
 refinement. Exact-head recapture and native-size review are complete. The operator approved
-checkpoint 2 for these exact bound bytes at evidence head
-`dc11b60738f4f14b896532bf2db323b2bd054f5c`; the approval is recorded in
+checkpoint 2 at evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable
+record is [issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230).
+The earlier approval at evidence head
+`dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
 [issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344).
 
 The operator accepted the current deterministic fingerprint `850a9013b70e38a7`;
@@ -31,26 +35,26 @@ All files are RGB, baseline 8-bit JFIF JPEGs and remain below the 300 KiB eviden
 
 | Capture                                 | State             | View / evidence                  |   Bytes | SHA-256                                                            |
 | --------------------------------------- | ----------------- | -------------------------------- | ------: | ------------------------------------------------------------------ |
-| `full-desktop-1440x900-3x-townhall.jpg` | Full · R54 · 14   | 1440×900 · 3× Town Hall          | 259,691 | `1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a` |
-| `full-desktop-1440x900.jpg`             | Full · R54 · 14   | 1440×900 · 1×                    | 284,730 | `77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7` |
-| `full-landscape-844x390.jpg`            | Full · R54 · 14   | 844×390 · 1×                     |  61,706 | `ccdcb81ed7d93bf1a3d72407e82222b95202371e0a24415ee7cd44b0e51146c2` |
-| `full-phone-320x568.jpg`                | Full · R54 · 14   | 320×568 · 1×                     |  45,447 | `eecf942501ac8411154a0fcd2a438ce24aacd905c183b0090954c9685e1f869d` |
-| `full-phone-375x812.jpg`                | Full · R54 · 14   | 375×812 · 1×                     |  59,002 | `bb42082cd65a63068d3571bad2fde4e02c1e2587e73b1c5ebe0ee216b126a562` |
-| `full-phone-390x844-3x-shipyard.jpg`    | Full · R54 · 14   | 390×844 · 3× Shipyard            |  48,222 | `3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d` |
-| `full-phone-390x844-3x-townhall.jpg`    | Full · R54 · 14   | 390×844 · 3× Town Hall           |  61,467 | `16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254` |
-| `full-phone-430x932.jpg`                | Full · R54 · 14   | 430×932 · 1×                     |  72,025 | `4a077ecaabc417ca929fc963544e9f46493685a90db2334a174e56351eeba176` |
-| `full-tablet-768x1024.jpg`              | Full · R54 · 14   | 768×1024 · 1×                    | 182,744 | `1c76b528702b68e455fd998870a484fe332f52ac52f5e9508fd97535498b336a` |
-| `midgame-desktop-1440x900.jpg`          | Mid · R13 · 8     | 1440×900 · 1×                    | 280,020 | `a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40` |
-| `midgame-phone-375x812.jpg`             | Mid · R13 · 8     | 375×812 · 1×                     |  58,483 | `03bea6f04ab0d9bf194d81790fa9dccb96b7c6b4bde249d870564b33a5905205` |
-| `panel-build-phone-375x812.jpg`         | Starting · R1 · 2 | 375×812 · Town Hall build        |  61,635 | `61e92d7b81d7ad3cb7099a520ce7cf358daab2ec45f16a8e1240bfec9203796a` |
-| `panel-recruit-tablet-768x1024.jpg`     | Full · R54 · 14   | 768×1024 · Cutthroat Den recruit | 193,802 | `c11d27874c39a3abcd5f8d0e35bbdc3573038ea255d9d1f4982143b6d1f8d1f4` |
-| `panel-tavern-desktop-1440x900.jpg`     | Full · R54 · 14   | 1440×900 · Grog House tavern     | 297,671 | `ec3c39d93583561d843b7f87bc8966a3ff210106917a0ced435c0f950800d04d` |
-| `starting-desktop-1440x900.jpg`         | Starting · R1 · 2 | 1440×900 · 1×                    | 279,096 | `6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8` |
-| `starting-landscape-844x390.jpg`        | Starting · R1 · 2 | 844×390 · 1×                     |  60,791 | `e3a8fad32144fc86f85bb7596f13fc255904f3a2a1e2171b851bdf474fbcc2d9` |
-| `starting-phone-320x568.jpg`            | Starting · R1 · 2 | 320×568 · 1×                     |  44,355 | `c134773ef86a8d6b3cf89bdaa0e6d5f2342d98f56f1396b8d0ed19d9aaa37916` |
-| `starting-phone-375x812.jpg`            | Starting · R1 · 2 | 375×812 · 1×                     |  57,484 | `5ceeb1714c979d3e9481288d0c237aa2200cd250c5be66bda2161b4c841c717d` |
-| `starting-phone-430x932.jpg`            | Starting · R1 · 2 | 430×932 · 1×                     |  70,325 | `f4c28d02163c144dc141ac9c76dfe9fa5764a38432eedd581d45030ed766520a` |
-| `starting-tablet-768x1024.jpg`          | Starting · R1 · 2 | 768×1024 · 1×                    | 177,147 | `25ca80b639df0d144f00b7e15ffa8e5094d7bd5196c1be0750d1dc87eba94d27` |
+| `full-desktop-1440x900-3x-townhall.jpg` | Full · R54 · 14   | 1440×900 · 3× Town Hall          | 217,395 | `91b31cfe44465978b82bf85223c0e36d8bc80e83bd88a86f8b00ecbda6d55c17` |
+| `full-desktop-1440x900.jpg`             | Full · R54 · 14   | 1440×900 · 1×                    | 242,624 | `7301275190ff760eb097f67675f65bba6b96ea382c6ec8b18f54b447794e248d` |
+| `full-landscape-844x390.jpg`            | Full · R54 · 14   | 844×390 · 1×                     |  52,941 | `5777edb860bc7214d246d09a37fd69df3f706f1c527fe5ceb79488aede94c8ed` |
+| `full-phone-320x568.jpg`                | Full · R54 · 14   | 320×568 · 1×                     |  41,234 | `af26aa1abc1f78e6a9c46e1ee2925fffd2d2cec354ff5c33a41598fc6cb4621d` |
+| `full-phone-375x812.jpg`                | Full · R54 · 14   | 375×812 · 1×                     |  51,875 | `1bd5eb07ace624f5111cbf48a4dcc0342806a992bec401ea9c07e387f58c23f9` |
+| `full-phone-390x844-3x-shipyard.jpg`    | Full · R54 · 14   | 390×844 · 3× Shipyard            |  41,210 | `b1378c52942f596428efb5f5c3721bf48301756a054d202705fd85a48c4a0b6e` |
+| `full-phone-390x844-3x-townhall.jpg`    | Full · R54 · 14   | 390×844 · 3× Town Hall           |  51,971 | `e4460ee838e11a45726195ce6da56f405b0ad153783822c481f224b83fcca696` |
+| `full-phone-430x932.jpg`                | Full · R54 · 14   | 430×932 · 1×                     |  62,741 | `48df14358afb0c7bfa8513a1a6f99ad8aba4526bc511c6cf966200d2a86a0c3c` |
+| `full-tablet-768x1024.jpg`              | Full · R54 · 14   | 768×1024 · 1×                    | 154,597 | `82b5e7067c838bbee6da44f34110f366f4ddc3d6823f9f5a18eab4dbc5833dc4` |
+| `midgame-desktop-1440x900.jpg`          | Mid · R13 · 8     | 1440×900 · 1×                    | 238,547 | `3fc99f09f5ba9449e8e93fe2345938116078e1f2b185a69390e0da33ee885ca3` |
+| `midgame-phone-375x812.jpg`             | Mid · R13 · 8     | 375×812 · 1×                     |  51,080 | `6d8764361e4bd49ebacc17e96d38153d6c237229bbd81fa3a419f472d45c5ea1` |
+| `panel-build-phone-375x812.jpg`         | Starting · R1 · 2 | 375×812 · Town Hall build        |  51,810 | `95b66e9f5cf758ea22aca524f800dcb5cc13937947e2e196eaf116af34e91003` |
+| `panel-recruit-tablet-768x1024.jpg`     | Full · R54 · 14   | 768×1024 · Cutthroat Den recruit | 161,810 | `7eb0c29c3a28105f190ad99c8da9b56cf7ee23b781a3335ae698fc1d5f402896` |
+| `panel-tavern-desktop-1440x900.jpg`     | Full · R54 · 14   | 1440×900 · Grog House tavern     | 273,475 | `852b20ae172701347a21879c9bec7b063107d1c32ca62c9e9157cd690afa484a` |
+| `starting-desktop-1440x900.jpg`         | Starting · R1 · 2 | 1440×900 · 1×                    | 238,120 | `fc53d522de957fa8aa97e22abb2e2db6c11842e07e5923f147952f73fc233fd4` |
+| `starting-landscape-844x390.jpg`        | Starting · R1 · 2 | 844×390 · 1×                     |  52,280 | `258ed3e62bcca2dc98e48ce3ede239989031083ad6807f8bbd31512a51b24b5e` |
+| `starting-phone-320x568.jpg`            | Starting · R1 · 2 | 320×568 · 1×                     |  40,314 | `80d349d1330e45c40fd73f81c1b2d2478d1cd04db2217a14b92dd5ba65b08cc8` |
+| `starting-phone-375x812.jpg`            | Starting · R1 · 2 | 375×812 · 1×                     |  49,178 | `5f7e9bbddd49a7542885a6b8a1e6c4d96f787c29e83705b8e9961053c9b0224b` |
+| `starting-phone-430x932.jpg`            | Starting · R1 · 2 | 430×932 · 1×                     |  61,637 | `64ec58c5d2766a8d3b77d819aeb2cca0809aea09baacd533414826db3c2c0810` |
+| `starting-tablet-768x1024.jpg`          | Starting · R1 · 2 | 768×1024 · 1×                    | 152,108 | `3f736acb8cbdbe8265f5cf0d386ef23bfd2a87f5bf7f2c6ad3ed16c749c8b6ae` |
 
 ## Mechanical boundary
 
@@ -58,6 +62,7 @@ All files are RGB, baseline 8-bit JFIF JPEGs and remain below the 300 KiB eviden
 counts and SHA-256 hashes; parses JPEG/JFIF structure, baseline precision, three-component RGB
 mode, and dimensions; enforces the 300 KiB ceiling; and rejects drift in rounds, 2/8/14 visible
 building counts, six breakpoint pairs, 1×/3× coverage, panel coverage, or checkpoint status.
-It also requires an exact captured-to-current source match and the
-`approved` status and exact approval record. A successful run validates the archive's
-integrity; it cannot independently grant or renew operator approval.
+It also requires an exact captured-to-current source match, completed integration-owner
+inspection, and the exact evidence-head plus permanent issue-comment approval binding. A
+successful run validates the archive's integrity; it cannot independently grant or renew
+operator approval.
