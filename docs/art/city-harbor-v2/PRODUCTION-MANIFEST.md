@@ -2,13 +2,14 @@
 
 ## Status
 
-Issue #608 checkpoint 1 and the Direction B city refinement are operator-approved. This
-package is the complete runtime/capture candidate for operator checkpoint 2, including
-the requested faction mast, pin, and V-brace physically mounted to Town Hall’s central
-dome. Refreshed live starting/midgame/full, phone, desktop, and maximum-zoom captures are
-bound to the exact shipping sources in `RUNTIME-CAPTURE-BINDINGS.json`. Integration-owner
-visual-settle and native-size review is complete; checkpoint 2 remains an explicit operator
-approval boundary.
+Issue #608 checkpoint 1, the Direction B city refinement, and refreshed checkpoint 2 are
+operator-approved. This package includes the requested faction mast, pin, and V-brace
+physically mounted to Town Hall’s central dome. Refreshed live starting/midgame/full, phone,
+desktop, and maximum-zoom captures are bound to the exact shipping sources in
+`RUNTIME-CAPTURE-BINDINGS.json`. Integration-owner visual-settle and native-size review is
+complete. The exact-byte approval is recorded in
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263) against
+evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c`.
 
 The production batch keeps the exact existing `SCENE_SLOTS` rectangles and content IDs.
 It replaces the shipping city URLs with WebP art for the backdrop, all fourteen building

@@ -14,8 +14,10 @@ is claimed. The integration owner completed visual-settle and native-size inspec
 retained capture files.
 
 Checkpoint 1 approved the dedicated city direction and subsequent portrait-phone framing
-refinement. Exact-head recapture and native-size review are complete; checkpoint 2 remains
-pending only until the operator approves these exact bound bytes.
+refinement. Exact-head recapture and native-size review are complete. The operator approved
+checkpoint 2 for these exact bound bytes at evidence head
+`dc11b60738f4f14b896532bf2db323b2bd054f5c`; the approval is recorded in
+[issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344).
 
 The operator accepted the current deterministic fingerprint `850a9013b70e38a7`;
 compatibility with pre-art multiplayer replays is not required yet. The content building URLs
@@ -57,5 +59,5 @@ counts and SHA-256 hashes; parses JPEG/JFIF structure, baseline precision, three
 mode, and dimensions; enforces the 300 KiB ceiling; and rejects drift in rounds, 2/8/14 visible
 building counts, six breakpoint pairs, 1×/3× coverage, panel coverage, or checkpoint status.
 It also requires an exact captured-to-current source match and the
-`current-awaiting-approval` status. A successful run validates the archive's integrity; it
-does not itself grant checkpoint-2 approval.
+`approved` status and exact approval record. A successful run validates the archive's
+integrity; it cannot independently grant or renew operator approval.

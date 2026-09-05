@@ -8,6 +8,12 @@ controls and one-building-per-round construction; the retained fully built save 
 reopened through the visible Continue action. No fixture, developer shortcut, storage
 mutation, or direct `GameState` edit was used.
 
+The operator approved all eight exact files at evidence head
+`dc11b60738f4f14b896532bf2db323b2bd054f5c`; the approval is recorded in
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263). Approval
+carries forward only across docs/evidence-only commits while the bound source, CSS, art, and
+capture bytes remain exact.
+
 The retained captures were taken after the production preview visibly settled with the
 city imagery and project fonts present. They confirm that empty foundations, dynamic
 building layers, active-only shadows, the Town Hall-mounted Pirate flag, labels,

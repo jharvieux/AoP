@@ -569,13 +569,14 @@ const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
 const approvalMarkers = [
   retainedMaterialBaseline.captured_on,
-  'prior three exact-source runtime frames',
+  'operator approved all three refreshed exact-source runtime frames',
   retainedMaterialBaseline.capture_head,
   captureRecord,
-  'historical approval',
-  'await renewed exact-byte approval',
-  'immutable material baseline intentionally remains',
-  'fail-closed',
+  'docs/evidence-only commits only while',
+  'complete schema-v3',
+  'full stylesheet',
+  'frozen capture states',
+  'requires renewed capture approval',
 ]
 for (const [name, source] of [
   ['README.md', spec],

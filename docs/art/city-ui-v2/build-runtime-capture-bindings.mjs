@@ -21,10 +21,10 @@ const record = (path) => {
 const binding = JSON.parse(readFileSync(bindingPath, 'utf8'))
 binding.sourceHead = sourceHead
 binding.captureSourceHead = sourceHead
-binding.captureStatus = 'current-awaiting-approval'
+binding.captureStatus = 'approved'
 binding.sourceTransition = {
   ...binding.sourceTransition,
-  classification: 'exact-source-recaptured-awaiting-approval',
+  classification: 'exact-source-recaptured-approved',
   recaptured: true,
 }
 binding.sourceFiles = binding.sourceFiles.map((entry) => ({

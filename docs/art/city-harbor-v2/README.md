@@ -1,10 +1,11 @@
 # Gilded Harbor city art — production candidate
 
-**Status:** checkpoint 1 and Direction B refinement approved; the issue #608 runtime
-candidate now includes the requested Town Hall flag mount. Deterministic evidence is
-complete, refreshed live captures are bound to the shipping sources, and integration-owner
-visual-settle and native-size review is complete. Operator checkpoint 2 remains a separate
-approval boundary.
+**Status:** checkpoint 1, Direction B refinement, and refreshed checkpoint 2 are approved.
+The issue #608 runtime candidate includes the requested Town Hall flag mount. Deterministic
+evidence is complete, refreshed live captures are bound to the shipping sources, and
+integration-owner visual-settle and native-size review is complete. The exact-byte approval
+is recorded in [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263)
+against evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c`.
 
 ![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
@@ -15,16 +16,12 @@ asset/theme-fallback tests. D-049's amendment remains the visual rule: layered h
 depth, warm limestone and timber, luminous water, reduced fortress dominance, and clear
 working-district silhouettes.
 
-## Approval question
+## Approved result
 
-**Does the complete starting-to-full city feel ready to ship—especially the Town Hall’s
-mounted faction flag, smaller phone read, recruitment progression, low fortification
-perimeter, and connected shoreline shipyard?**
-
-This is the checkpoint-2 approval question, not a claim that checkpoint 2 is already
-approved. Requested changes should name the visual role or overall balance that feels
-wrong; no code review is needed. See [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for
-the complete contract, inventory, evidence, budgets, and known boundary.
+The operator approved the complete starting-to-full city, including the Town Hall-mounted
+faction flag, smaller phone read, recruitment progression, low fortification perimeter, and
+connected shoreline Shipyard. See [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for the
+complete contract, inventory, evidence, budgets, and known boundary.
 
 ## Production review files
 

@@ -6,13 +6,15 @@ current responsive layout, interaction states, runtime art resolution, zoom extr
 management panels. Every source and capture byte is bound in the retained manifest.
 
 Checkpoint 1 approved the city direction and the follow-up portrait-phone framing
-refinement. Checkpoint 2 remains pending: these final bytes do not become approved merely by
-being present or passing the mechanical validator. The integration owner completed
-visual-settle and native-size inspection of the retained capture files.
+refinement. The operator approved checkpoint 2 against the exact 20 files committed at
+evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c`; the approval is recorded in
+[issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344). The
+integration owner completed visual-settle and native-size inspection of every retained file.
 
-The previous final-capture review was bound to a superseded source head. The current captures
-have been regenerated and inspected at native size, but checkpoint 2 remains pending until
-the operator explicitly approves these exact bound bytes.
+The previous final-capture review was bound to a superseded source head. These captures were
+regenerated from current source, inspected at native size, and explicitly approved. Approval
+carries forward only across docs/evidence-only commits while the bound source and capture
+bytes remain exact.
 
 The evidence set contains starting (round 1, 2 buildings), midgame (round 13, 8 buildings),
 and full (round 54, 14 buildings) Pirate city states reached through normal UI play. It covers

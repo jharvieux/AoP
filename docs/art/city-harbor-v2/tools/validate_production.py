@@ -518,6 +518,15 @@ def validate_runtime_captures() -> None:
         "runtime capture binding inventory drift"
     )
     record = (PACKAGE / "RUNTIME-CAPTURES.md").read_text()
+    approval_head = "dc11b60738f4f14b896532bf2db323b2bd054f5c"
+    approval_record = (
+        "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263"
+    )
+    for relative in ("README.md", "PRODUCTION-MANIFEST.md", "RUNTIME-CAPTURES.md"):
+        approval_source = (PACKAGE / relative).read_text()
+        assert approval_head in approval_source and approval_record in approval_source, (
+            f"runtime capture approval binding drift: {relative}"
+        )
     for name in RUNTIME_CAPTURE_NAMES:
         item = bound_captures[name]
         dimensions = tuple(item["dimensions"])

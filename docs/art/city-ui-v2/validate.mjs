@@ -345,13 +345,13 @@ const record = readFileSync(resolve(DOCS_DIR, 'RUNTIME-CAPTURES.md'), 'utf8')
 assert(binding.schema === 1 && binding.issue === 612, 'unexpected binding identity')
 assert(binding.sourceHead === SOURCE_HEAD, 'binding source head drift')
 assert(binding.captureSourceHead === CAPTURE_SOURCE_HEAD, 'capture source head drift')
-assert(binding.captureStatus === 'current-awaiting-approval', 'capture status drift')
+assert(binding.captureStatus === 'approved', 'capture status drift')
 assert(receipt.schema === 1 && receipt.issue === 612, 'unexpected receipt identity')
 assert(receipt.sourceHead === SOURCE_HEAD, 'receipt source head drift')
-assert(receipt.captureStatus === 'current-awaiting-approval', 'receipt capture status drift')
+assert(receipt.captureStatus === 'approved', 'receipt capture status drift')
 assert(receipt.captureOrigin.sourceHead === CAPTURE_SOURCE_HEAD, 'receipt capture origin drift')
 assert(
-  binding.sourceTransition.classification === 'exact-source-recaptured-awaiting-approval' &&
+  binding.sourceTransition.classification === 'exact-source-recaptured-approved' &&
     binding.sourceTransition.renderedMarkupChanged === true &&
     binding.sourceTransition.stylesChanged === true &&
     binding.sourceTransition.artChanged === false &&
@@ -361,7 +361,7 @@ assert(
 assert(
   receipt.sourceTransition.from === PRIOR_CAPTURE_SOURCE_HEAD &&
     receipt.sourceTransition.to === SOURCE_HEAD &&
-    receipt.sourceTransition.classification === 'exact-source-recaptured-awaiting-approval' &&
+    receipt.sourceTransition.classification === 'exact-source-recaptured-approved' &&
     receipt.sourceTransition.renderedMarkupChanged === true &&
     receipt.sourceTransition.stylesChanged === true &&
     receipt.sourceTransition.artChanged === false &&
@@ -387,7 +387,16 @@ assert(
   'integration-owner visual inspection record drift',
 )
 assert(receipt.checkpoints.checkpoint1.status === 'approved', 'checkpoint 1 status drift')
-assert(receipt.checkpoints.checkpoint2.status === 'pending', 'checkpoint 2 must remain pending')
+assert(receipt.checkpoints.checkpoint2.status === 'approved', 'checkpoint 2 status drift')
+assert(
+  binding.approval.status === 'approved' &&
+    binding.approval.evidenceHead === 'dc11b60738f4f14b896532bf2db323b2bd054f5c' &&
+    binding.approval.record ===
+      'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344' &&
+    receipt.checkpoints.checkpoint2.evidenceHead === binding.approval.evidenceHead &&
+    receipt.checkpoints.checkpoint2.record === binding.approval.record,
+  'checkpoint 2 approval binding drift',
+)
 assert(
   receipt.replayCompatibility.decision === 'accept-current-engine-version' &&
     receipt.replayCompatibility.engineVersion === ENGINE_VERSION &&
@@ -504,13 +513,12 @@ assert(
 
 assert(record.includes(SOURCE_HEAD), 'capture record source head drift')
 assert(
-  record.includes('checkpoint 2 remains') &&
-    record.includes('operator approves these exact bound bytes'),
+  record.includes('operator approved') && record.includes(binding.approval.record),
   'capture record checkpoint status drift',
 )
 for (const name of captureNames)
   assert(record.includes(`\`${name}\``), `capture missing from record: ${name}`)
 
 console.log(
-  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; current-awaiting-approval, checkpoint 2 pending.`,
+  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; checkpoint 2 approved and exact-bound.`,
 )
