@@ -70,12 +70,12 @@ The #610 chrome change itself added no static asset. Existing `apps/web/public/a
 - Web focused chrome tests: 6 files, 33 tests passed.
 - Shared tests: 5 files, 57 tests passed.
 - Engine tests: 37 files, 765 tests passed.
-- Web tests: 102 files, 905 tests passed.
+- Web tests: 101 files, 902 tests passed.
 - All package and web TypeScript projects passed.
 - Web production build passed and emitted the budget values above.
 - `node compose.mjs`, `node build-runtime-capture-bindings.mjs` and `node validate.mjs` validate deterministic proof/binding regeneration, exact runtime-source evidence, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.
 
-The isolated writer's first literal wrapper attempt could not replace read-only dependency links and exited with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; the equivalent repository-owned commands passed there. Independent exact-source verification later ran the literal `CI=true pnpm verify` gate successfully. The combined #610/#611 exact-source gate passes Prettier, all five TypeScript projects, 102 web files / 905 tests, 37 engine files / 765 tests, 5 shared files / 57 tests, and the production build.
+The isolated writer's first literal wrapper attempt could not replace read-only dependency links and exited with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; the equivalent repository-owned commands passed there. Independent exact-source verification later ran the literal `CI=true pnpm verify` gate successfully. The combined #610/#611 exact-source gate passes Prettier, all five TypeScript projects, 101 web files / 902 tests, 37 engine files / 765 tests, 5 shared files / 57 tests, and the production build.
 
 ## Exact-source capture binding
 
