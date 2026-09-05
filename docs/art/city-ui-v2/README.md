@@ -1,5 +1,10 @@
 # City UI v2 runtime evidence
 
+> **#613 renewal pending:** the inherited runtime pixels and approvals are historical until
+> the 37-frame cross-evidence procedure in
+> [`RUNTIME-EVIDENCE-RENEWAL.md`](RUNTIME-EVIDENCE-RENEWAL.md) completes against exact source
+> `a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`.
+
 This directory records issue #612's dedicated city overlay and 20 runtime JPEGs captured
 from exact source head `45a206f760eacce50dc8dd1dc656c5d4e789cb3c`. They cover the
 current responsive layout, interaction states, runtime art resolution, zoom extremes, and

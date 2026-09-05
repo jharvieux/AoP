@@ -1,0 +1,457 @@
+/**
+ * Validate the pending #613 cross-evidence boundary or build an unapproved capture proposal.
+ *
+ * This tool never edits retained evidence, approval records, bindings, or #610's material anchor.
+ */
+import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { lstatSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const packageRoot = dirname(fileURLToPath(import.meta.url))
+const repoRoot = resolve(packageRoot, '../../..')
+const manifestPath = join(packageRoot, 'RUNTIME-EVIDENCE-RENEWAL.json')
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+const maxCaptureBytes = 300 * 1024
+
+function fail(message) {
+  throw new Error(message)
+}
+
+function assert(condition, message) {
+  if (!condition) fail(message)
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function repoPath(path) {
+  const absolute = resolve(repoRoot, path)
+  assert(absolute.startsWith(`${repoRoot}${sep}`), `path escapes repository: ${path}`)
+  return absolute
+}
+
+function readRegular(path) {
+  const details = lstatSync(path)
+  assert(details.isFile() && !details.isSymbolicLink(), `expected regular file: ${path}`)
+  return readFileSync(path)
+}
+
+function git(args, options = {}) {
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: options.encoding ?? 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
+}
+
+function inspectJpeg(bytes, label) {
+  assert(bytes[0] === 0xff && bytes[1] === 0xd8, `${label}: missing JPEG SOI`)
+  assert(bytes.at(-2) === 0xff && bytes.at(-1) === 0xd9, `${label}: missing JPEG EOI`)
+  let offset = 2
+  let jfif = false
+  let frame
+  while (offset + 4 <= bytes.length) {
+    while (bytes[offset] === 0xff) offset += 1
+    const marker = bytes[offset]
+    offset += 1
+    if (marker === 0xd9 || marker === 0xda) break
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue
+    const length = bytes.readUInt16BE(offset)
+    assert(length >= 2 && offset + length <= bytes.length, `${label}: invalid JPEG segment`)
+    if (marker === 0xe0 && bytes.subarray(offset + 2, offset + 7).toString() === 'JFIF\0') {
+      jfif = true
+    }
+    if (marker === 0xc0) {
+      frame = {
+        precision: bytes[offset + 2],
+        height: bytes.readUInt16BE(offset + 3),
+        width: bytes.readUInt16BE(offset + 5),
+        components: bytes[offset + 7],
+      }
+      break
+    }
+    offset += length
+  }
+  assert(jfif && frame, `${label}: expected baseline JFIF`)
+  assert(frame.precision === 8 && frame.components === 3, `${label}: expected 8-bit RGB JPEG`)
+  return { width: frame.width, height: frame.height, format: 'jpeg-rgb' }
+}
+
+function inspectPng(bytes, label) {
+  assert(bytes.subarray(0, 8).equals(pngSignature), `${label}: expected PNG signature`)
+  assert(bytes.subarray(12, 16).toString('ascii') === 'IHDR', `${label}: missing PNG IHDR`)
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+    colorType: bytes[25],
+    format: 'png',
+  }
+}
+
+function inspectCapture(bytes, spec, label) {
+  assert(bytes.length <= maxCaptureBytes, `${label}: exceeds 300 KiB evidence ceiling`)
+  const observed = spec[3] === 'jpeg-rgb' ? inspectJpeg(bytes, label) : inspectPng(bytes, label)
+  assert(
+    observed.width === spec[1] && observed.height === spec[2],
+    `${label}: expected ${spec[1]}x${spec[2]}, got ${observed.width}x${observed.height}`,
+  )
+  if (spec[3] === 'png-rgb-2') {
+    assert(observed.colorType === 2, `${label}: expected PNG color type 2`)
+  }
+  if (spec[3] === 'png-indexed-3') {
+    assert(observed.colorType === 3, `${label}: expected PNG color type 3`)
+  }
+  return {
+    bytes: bytes.length,
+    sha256: sha256(bytes),
+    dimensions: [observed.width, observed.height],
+  }
+}
+
+function inspectHistoricalCapture(bytes, spec, label) {
+  assert(bytes.length <= maxCaptureBytes, `${label}: exceeds 300 KiB evidence ceiling`)
+  const observed = bytes.subarray(0, 8).equals(pngSignature)
+    ? inspectPng(bytes, label)
+    : inspectJpeg(bytes, label)
+  assert(
+    observed.width === spec[1] && observed.height === spec[2],
+    `${label}: expected ${spec[1]}x${spec[2]}, got ${observed.width}x${observed.height}`,
+  )
+  return {
+    bytes: bytes.length,
+    sha256: sha256(bytes),
+    dimensions: [observed.width, observed.height],
+  }
+}
+
+function validateManifest() {
+  assert(manifest.schema === 1 && manifest.issue === 613, 'unexpected renewal manifest identity')
+  assert(manifest.status === 'pending-renewal', 'renewal must remain pending before capture')
+  assert(
+    manifest.approval?.status === 'pending-direct-operator-approval' &&
+      manifest.approval.record === null,
+    'old approval must not be reused for #613 renewal',
+  )
+  assert(/^[0-9a-f]{40}$/.test(manifest.targetSourceHead), 'invalid target source head')
+  assert(manifest.sets.length === 4, 'expected four evidence sets')
+  const expectedCounts = new Map([
+    ['city-ui-v2', 20],
+    ['city-harbor-v2', 8],
+    ['gameplay-chrome-v2', 3],
+    ['world-map-terrain-v2', 6],
+  ])
+  const captureKeys = new Set()
+  let total = 0
+  for (const set of manifest.sets) {
+    assert(expectedCounts.get(set.id) === set.count, `${set.id}: unexpected required count`)
+    assert(set.captures.length === set.count, `${set.id}: capture inventory count drift`)
+    assert(set.historicalBinding.reusable === false, `${set.id}: old approval became reusable`)
+    assert(set.historicalBinding.approvalRecord, `${set.id}: missing historical approval record`)
+    assert(set.recipe.length > 100, `${set.id}: capture recipe is incomplete`)
+    for (const spec of set.captures) {
+      assert(spec.length === 4, `${set.id}: malformed capture specification`)
+      const key = `${set.id}/${spec[0]}`
+      assert(!captureKeys.has(key), `${set.id}: duplicate capture ${spec[0]}`)
+      captureKeys.add(key)
+      total += 1
+    }
+  }
+  assert(total === 37, `expected 37 captures, found ${total}`)
+}
+
+function validateTargetSource() {
+  try {
+    git(['cat-file', '-e', `${manifest.targetSourceHead}^{commit}`])
+    git(['merge-base', '--is-ancestor', manifest.targetSourceHead, 'HEAD'])
+  } catch {
+    fail('current evidence commit must descend from the exact #613 repaired source head')
+  }
+  for (const record of manifest.sourceCensus) {
+    const committed = git(['show', `${manifest.targetSourceHead}:${record.path}`], {
+      encoding: 'buffer',
+    })
+    const worktree = readRegular(repoPath(record.path))
+    for (const [label, bytes] of [
+      ['target commit', committed],
+      ['worktree', worktree],
+    ]) {
+      assert(bytes.length === record.bytes, `${record.path}: ${label} byte-count drift`)
+      assert(sha256(bytes) === record.sha256, `${record.path}: ${label} SHA-256 drift`)
+    }
+  }
+}
+
+function recordedCaptureMap(set) {
+  const bindingPath = repoPath(set.historicalBinding.path)
+  const binding = JSON.parse(readRegular(bindingPath))
+  const base = dirname(set.historicalBinding.path)
+  return new Map(
+    binding.captures.map((record) => {
+      const repositoryPath = record.path.startsWith('docs/') ? record.path : join(base, record.path)
+      return [repositoryPath, record]
+    }),
+  )
+}
+
+function validateHistoricalEvidence() {
+  for (const set of manifest.sets) {
+    const bindingBytes = readRegular(repoPath(set.historicalBinding.path))
+    assert(
+      sha256(bindingBytes) === set.historicalBinding.sha256,
+      `${set.id}: historical binding changed during pending preparation`,
+    )
+    const recorded = recordedCaptureMap(set)
+    const directoryNames = readdirSync(repoPath(set.captureRoot)).sort()
+    const expectedNames = set.captures.map(([name]) => name).sort()
+    assert(
+      JSON.stringify(directoryNames) === JSON.stringify(expectedNames),
+      `${set.id}: historical capture directory inventory drift`,
+    )
+    for (const spec of set.captures) {
+      const repositoryPath = join(set.captureRoot, spec[0])
+      const bytes = readRegular(repoPath(repositoryPath))
+      const observed = inspectHistoricalCapture(bytes, spec, repositoryPath)
+      const record = recorded.get(repositoryPath)
+      assert(record, `${set.id}: historical binding omitted ${repositoryPath}`)
+      const recordedDimensions = record.dimensions ?? [record.width, record.height]
+      assert(record.bytes === observed.bytes, `${repositoryPath}: historical byte record drift`)
+      assert(record.sha256 === observed.sha256, `${repositoryPath}: historical hash record drift`)
+      assert(
+        JSON.stringify(recordedDimensions) === JSON.stringify(observed.dimensions),
+        `${repositoryPath}: historical dimension record drift`,
+      )
+    }
+  }
+}
+
+function terrainRendererDigest() {
+  const paths = [
+    'apps/web/src/MapCanvas.tsx',
+    'apps/web/src/mapPresentation.ts',
+    ...readdirSync(repoPath('apps/web/public/art/world-map-v2/terrain'))
+      .filter((name) => name.endsWith('.webp'))
+      .sort()
+      .map((name) => `apps/web/public/art/world-map-v2/terrain/${name}`),
+  ]
+  return sha256(paths.map((path) => `${sha256(readRegular(repoPath(path)))}  ${path}\n`).join(''))
+}
+
+function staleState() {
+  const cityBinding = JSON.parse(
+    readRegular(repoPath('docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json')),
+  )
+  const citySourceRecords = new Map(cityBinding.sourceFiles.map((record) => [record.path, record]))
+  const cityChanged = manifest.sourceCensus
+    .filter((record) => citySourceRecords.has(record.path))
+    .filter((record) => citySourceRecords.get(record.path).sha256 !== record.sha256)
+    .map((record) => record.path)
+  assert(cityChanged.length > 0, 'city UI historical binding unexpectedly matches #613 source')
+
+  const harborBinding = JSON.parse(
+    readRegular(repoPath('docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json')),
+  )
+  const currentStylesheetHash = sha256(readRegular(repoPath('apps/web/src/styles.css')))
+  assert(
+    harborBinding.stylesheet_source.diagnostic_full_sha256 !== currentStylesheetHash,
+    'city harbor historical full stylesheet unexpectedly matches #613 source',
+  )
+
+  const chromeAnchor = manifest.sets.find(
+    (set) => set.id === 'gameplay-chrome-v2',
+  ).immutableMaterialAnchor
+  assert(
+    sha256(readRegular(repoPath(chromeAnchor.path))) === chromeAnchor.sha256,
+    '#610 immutable material anchor changed during pending renewal preparation',
+  )
+
+  const terrainReceipt = JSON.parse(
+    readRegular(repoPath('docs/art/world-map-v2/terrain/runtime-capture-receipt.json')),
+  )
+  const currentTerrainDigest = terrainRendererDigest()
+  assert(
+    terrainReceipt.runtime_binding.renderer_and_runtime_asset_digest !== currentTerrainDigest,
+    'terrain historical renderer digest unexpectedly matches #613 source',
+  )
+
+  return {
+    'city-ui-v2': {
+      status: 'stale-recapture-required',
+      changedBoundSources: cityChanged,
+    },
+    'city-harbor-v2': {
+      status: 'stale-recapture-required',
+      historicalFullStylesheetSha256: harborBinding.stylesheet_source.diagnostic_full_sha256,
+      targetFullStylesheetSha256: currentStylesheetHash,
+      note: 'The narrower city-scene CSS projection is unchanged, but this cross-evidence renewal intentionally binds all 37 frames to one final source.',
+    },
+    'gameplay-chrome-v2': {
+      status: 'stale-material-baseline-requires-new-pixels-and-approval',
+      immutableAnchorSha256: chromeAnchor.sha256,
+    },
+    'world-map-terrain-v2': {
+      status: 'stale-recapture-required',
+      historicalRendererDigest: terrainReceipt.runtime_binding.renderer_and_runtime_asset_digest,
+      targetRendererDigest: currentTerrainDigest,
+    },
+  }
+}
+
+function checkPending() {
+  validateManifest()
+  validateTargetSource()
+  validateHistoricalEvidence()
+  const stale = staleState()
+  console.log(
+    JSON.stringify(
+      {
+        status: manifest.status,
+        targetSourceHead: manifest.targetSourceHead,
+        requiredCaptureCount: 37,
+        sourceCensusCount: manifest.sourceCensus.length,
+        stale,
+        approval: manifest.approval,
+      },
+      null,
+      2,
+    ),
+  )
+  return stale
+}
+
+function parseArgs(args) {
+  const command = args[0]
+  if (
+    command === '--check-pending' ||
+    command === '--validate-approved' ||
+    command === '--self-test'
+  ) {
+    assert(args.length === 1, `${command} takes no additional arguments`)
+    return { command }
+  }
+  if (command !== '--proposal')
+    fail('usage: --check-pending | --validate-approved | --self-test | --proposal ...')
+  const values = new Map()
+  for (let index = 1; index < args.length; index += 2) {
+    const flag = args[index]
+    const value = args[index + 1]
+    assert(flag?.startsWith('--') && value !== undefined, `invalid proposal argument: ${flag}`)
+    assert(!values.has(flag), `duplicate proposal argument: ${flag}`)
+    values.set(flag, value)
+  }
+  const expected = ['--stage-root', '--output', '--source-head', '--captured-on', '--confirmation']
+  assert(
+    values.size === expected.length && expected.every((flag) => values.has(flag)),
+    `proposal requires ${expected.join(', ')}`,
+  )
+  assert(
+    values.get('--confirmation') === 'PREPARE_UNAPPROVED_CAPTURE_PROPOSAL',
+    'proposal confirmation mismatch',
+  )
+  assert(values.get('--source-head') === manifest.targetSourceHead, 'proposal source head mismatch')
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(values.get('--captured-on')), 'invalid capture date')
+  return { command, values }
+}
+
+function assertOutsideRepository(path, label) {
+  assert(isAbsolute(path), `${label} must be an absolute path`)
+  const resolved = resolve(path)
+  assert(
+    resolved !== repoRoot && !resolved.startsWith(`${repoRoot}${sep}`),
+    `${label} must remain outside the repository`,
+  )
+  return resolved
+}
+
+function buildProposal(values) {
+  checkPending()
+  const stageRoot = assertOutsideRepository(values.get('--stage-root'), 'stage root')
+  const output = assertOutsideRepository(values.get('--output'), 'proposal output')
+  assert(realpathSync(stageRoot) === stageRoot, 'stage root must be canonical')
+  const anchor = manifest.sets.find(
+    (set) => set.id === 'gameplay-chrome-v2',
+  ).immutableMaterialAnchor
+  const anchorBefore = sha256(readRegular(repoPath(anchor.path)))
+  const sets = manifest.sets.map((set) => ({
+    id: set.id,
+    issue: set.issue,
+    captureRoot: set.captureRoot,
+    captures: set.captures.map((spec) => {
+      const stagedPath = join(stageRoot, set.id, spec[0])
+      const observed = inspectCapture(readRegular(stagedPath), spec, stagedPath)
+      return {
+        path: join(set.captureRoot, spec[0]),
+        ...observed,
+        encoding: spec[3],
+      }
+    }),
+  }))
+  const proposal = {
+    schema: 1,
+    kind: 'unapproved-runtime-evidence-renewal-proposal',
+    issue: 613,
+    sourceHead: manifest.targetSourceHead,
+    capturedOn: values.get('--captured-on'),
+    captureCount: sets.reduce((total, set) => total + set.captures.length, 0),
+    sourceCensus: manifest.sourceCensus,
+    sets,
+    approval: { status: 'pending-direct-operator-approval', record: null },
+    materialAnchorGuard: {
+      path: anchor.path,
+      sha256: anchor.sha256,
+      changed: false,
+    },
+    nextStep:
+      'Replace retained capture bytes and update each native receipt/binding mechanically from this proposal; run every native validator; obtain direct operator approval for the exact new pixels; only then may a separately reviewed apply_patch renew #610 material and approval anchors.',
+  }
+  assert(proposal.captureCount === 37, 'proposal capture count drift')
+  assert(sha256(readRegular(repoPath(anchor.path))) === anchorBefore, '#610 anchor changed')
+  writeFileSync(output, `${JSON.stringify(proposal, null, 2)}\n`, { flag: 'wx' })
+  assert(sha256(readRegular(repoPath(anchor.path))) === anchorBefore, '#610 anchor changed')
+  console.log(`wrote unapproved 37-capture proposal to ${output}`)
+}
+
+function selfTest() {
+  validateManifest()
+  const jpegSet = manifest.sets.find((set) => set.id === 'city-ui-v2')
+  const jpegSpec = jpegSet.captures[0]
+  const jpeg = readRegular(repoPath(join(jpegSet.captureRoot, jpegSpec[0])))
+  inspectCapture(jpeg, jpegSpec, 'JPEG positive control')
+  const badJpeg = Buffer.from(jpeg)
+  badJpeg[0] = 0
+  try {
+    inspectCapture(badJpeg, jpegSpec, 'JPEG negative control')
+    fail('JPEG negative control escaped')
+  } catch (error) {
+    assert(String(error).includes('missing JPEG SOI'), `unexpected JPEG negative result: ${error}`)
+  }
+
+  const pngSet = manifest.sets.find((set) => set.id === 'gameplay-chrome-v2')
+  const pngSpec = pngSet.captures[0]
+  const png = readRegular(repoPath(join(pngSet.captureRoot, pngSpec[0])))
+  inspectCapture(png, pngSpec, 'PNG positive control')
+  const badPng = Buffer.from(png)
+  badPng[25] = 3
+  try {
+    inspectCapture(badPng, pngSpec, 'PNG negative control')
+    fail('PNG color-type negative control escaped')
+  } catch (error) {
+    assert(
+      String(error).includes('expected PNG color type 2'),
+      `unexpected PNG negative result: ${error}`,
+    )
+  }
+  console.log('PASS renewal negative controls: malformed JPEG and wrong PNG color type rejected')
+}
+
+const { command, values } = parseArgs(process.argv.slice(2))
+if (command === '--check-pending') checkPending()
+if (command === '--self-test') selfTest()
+if (command === '--proposal') buildProposal(values)
+if (command === '--validate-approved') {
+  checkPending()
+  fail('runtime evidence renewal is pending: 37 exact-source captures and direct approval required')
+}

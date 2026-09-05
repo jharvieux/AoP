@@ -17,6 +17,13 @@ from scipy import ndimage
 
 PACKAGE = Path(__file__).resolve().parents[1]
 REPOSITORY = PACKAGE.parents[2]
+RENEWAL_PATH = (
+    REPOSITORY
+    / "docs"
+    / "art"
+    / "city-ui-v2"
+    / "RUNTIME-EVIDENCE-RENEWAL.json"
+)
 RUNTIME_CITY = REPOSITORY / "apps" / "web" / "public" / "art" / "city"
 LAYOUT_PATH = REPOSITORY / "apps" / "web" / "src" / "citySceneLayout.json"
 LAYOUT = json.loads(LAYOUT_PATH.read_text())
@@ -478,6 +485,34 @@ def validate_stylesheet_scope_guardrails(binding_builder) -> dict[str, object]:
 
 
 def validate_runtime_captures() -> None:
+    if RENEWAL_PATH.is_file():
+        renewal = json.loads(RENEWAL_PATH.read_text())
+        renewal_set = next(
+            (
+                item
+                for item in renewal.get("sets", [])
+                if item.get("id") == "city-harbor-v2"
+            ),
+            None,
+        )
+        assert renewal_set is not None, (
+            "#613 renewal omits the city-harbor-v2 capture set"
+        )
+        assert renewal_set.get("count") == len(RUNTIME_CAPTURE_NAMES), (
+            "#613 city-harbor-v2 renewal count drift"
+        )
+        if renewal.get("status") == "pending-renewal":
+            raise AssertionError(
+                "#613 cross-evidence renewal pending: the eight historical city-art "
+                "captures and their old approval cannot validate the repaired source"
+            )
+        assert renewal.get("status") == "approved", "invalid #613 renewal status"
+        assert renewal.get("approval", {}).get("status") == "approved", (
+            "#613 renewal lacks direct operator approval"
+        )
+        assert renewal.get("approval", {}).get("record"), (
+            "#613 renewal lacks an operator approval record"
+        )
     capture_root = PACKAGE / "runtime-captures"
     assert {path.name for path in capture_root.iterdir() if path.is_file()} == set(
         RUNTIME_CAPTURE_NAMES

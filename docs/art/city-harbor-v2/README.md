@@ -1,5 +1,10 @@
 # Gilded Harbor city art — production candidate
 
+> **#613 renewal pending:** the eight retained runtime captures remain historical, but their
+> former approval cannot validate the repaired map/chrome source. The exact 37-frame renewal
+> inventory and no-write proposal tool live in
+> [`../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md`](../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md).
+
 **Status:** checkpoint 1, Direction B refinement, and refreshed checkpoint 2 are approved.
 The issue #608 runtime candidate includes the requested Town Hall flag mount. Deterministic
 evidence is complete, refreshed live captures are bound to the shipping sources, and

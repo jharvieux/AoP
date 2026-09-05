@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "issue": 613,
+  "status": "pending-renewal",
+  "targetSourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "policy": "Every listed frame must be recaptured from the exact target source. Historical pixels and approvals remain evidence for their former source only and cannot approve this renewal.",
+  "approval": {
+    "status": "pending-direct-operator-approval",
+    "record": null
+  },
+  "sourceCensus": [
+    {
+      "path": "apps/web/src/MapAlertRegion.test.tsx",
+      "bytes": 3076,
+      "sha256": "956fc120136798dfd1a9b018911e2aad6b2c68fc2c1c0ce744f9b66a552f393b"
+    },
+    {
+      "path": "apps/web/src/MapAlertRegion.tsx",
+      "bytes": 2517,
+      "sha256": "d8f79d809b24c200d909c52f8a07b77bcef6315c279ad4598479a11d8cbb90c5"
+    },
+    {
+      "path": "apps/web/src/MapCanvas.tsx",
+      "bytes": 105452,
+      "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+    },
+    {
+      "path": "apps/web/src/Minimap.test.tsx",
+      "bytes": 9135,
+      "sha256": "cbbc3c0b41a1d7e4207ff2fe843ac9cb38d63dec5ec3f54e0df1e100c7417330"
+    },
+    {
+      "path": "apps/web/src/Minimap.tsx",
+      "bytes": 11011,
+      "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
+    },
+    {
+      "path": "apps/web/src/mapCamera.test.ts",
+      "bytes": 6767,
+      "sha256": "41df4754516b171c7713b1846f7526ccd43479c385c20c1ecdd12e8d813f8cfd"
+    },
+    {
+      "path": "apps/web/src/mapCamera.ts",
+      "bytes": 7266,
+      "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+    },
+    {
+      "path": "apps/web/src/mapCursor.test.ts",
+      "bytes": 8714,
+      "sha256": "180ed0a173da45252f0dee20da9d4cb5c1812e7e342de756f6a155232356876b"
+    },
+    {
+      "path": "apps/web/src/mapCursor.ts",
+      "bytes": 4705,
+      "sha256": "0d85c560acc019d43a7d9b891c8a2b773714c06e35af8f272073a4f027dd0df9"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.test.ts",
+      "bytes": 18388,
+      "sha256": "06d463cf927d9a7d977260fa2866d8505595dd1e66675465073b0a4a1fa45a74"
+    },
+    {
+      "path": "apps/web/src/screens/GameScreen.tsx",
+      "bytes": 89200,
+      "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.test.ts",
+      "bytes": 23344,
+      "sha256": "3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.tsx",
+      "bytes": 61775,
+      "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
+    },
+    {
+      "path": "apps/web/src/styles.css",
+      "bytes": 88328,
+      "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+    }
+  ],
+  "sets": [
+    {
+      "id": "city-ui-v2",
+      "issue": 612,
+      "count": 20,
+      "historicalBinding": {
+        "path": "docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "ac2369ba6eb59510e29dabd0e6c3bb6a3ec8edddb34483836fa0ccf13c0c329a",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344",
+        "reusable": false
+      },
+      "captureRoot": "docs/art/city-ui-v2/runtime-captures",
+      "recipe": "Reuse the normal-UI Pirate save and the starting/midgame/full state, breakpoint, zoom, and panel matrix in RUNTIME-CAPTURES.md. Rebuild from the target source, settle visibly, inspect native-size output, and do not claim a programmatic font/image await.",
+      "captures": [
+        ["full-desktop-1440x900-3x-townhall.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-landscape-844x390.jpg", 844, 390, "jpeg-rgb"],
+        ["full-phone-320x568.jpg", 320, 568, "jpeg-rgb"],
+        ["full-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["full-phone-390x844-3x-shipyard.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-390x844-3x-townhall.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-430x932.jpg", 430, 932, "jpeg-rgb"],
+        ["full-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"],
+        ["midgame-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["midgame-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["panel-build-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["panel-recruit-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"],
+        ["panel-tavern-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-landscape-844x390.jpg", 844, 390, "jpeg-rgb"],
+        ["starting-phone-320x568.jpg", 320, 568, "jpeg-rgb"],
+        ["starting-phone-375x812.jpg", 375, 812, "jpeg-rgb"],
+        ["starting-phone-430x932.jpg", 430, 932, "jpeg-rgb"],
+        ["starting-tablet-768x1024.jpg", 768, 1024, "jpeg-rgb"]
+      ]
+    },
+    {
+      "id": "city-harbor-v2",
+      "issue": 608,
+      "count": 8,
+      "historicalBinding": {
+        "path": "docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "b696ffd1b2a921be740a9ef67c254edd7cfe71636f776ef926e427664207e0dd",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+        "reusable": false
+      },
+      "captureRoot": "docs/art/city-harbor-v2/runtime-captures",
+      "recipe": "Use the same normal-UI city session and 2/8/14-building state progression as the #612 set. Capture the two desktop state frames, two 390x844 state frames, full desktop/phone, and both 3x Town Hall/Shipyard checks listed in RUNTIME-CAPTURES.md after visible settling and native-size inspection.",
+      "captures": [
+        ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-desktop-3x-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["full-phone-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-3x-center-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["full-phone-3x-shipyard-390x844.jpg", 390, 844, "jpeg-rgb"],
+        ["midgame-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
+        ["starting-phone-390x844.jpg", 390, 844, "jpeg-rgb"]
+      ]
+    },
+    {
+      "id": "gameplay-chrome-v2",
+      "issue": 610,
+      "count": 3,
+      "historicalBinding": {
+        "path": "docs/art/gameplay-chrome-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        "sha256": "60b09cb87a52321c578ca818752178837b1d5c809e621df3f20e05c4442b015c",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5551752271",
+        "reusable": false
+      },
+      "immutableMaterialAnchor": {
+        "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+        "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
+        "mayChangeDuringPreparation": false
+      },
+      "captureRoot": "docs/art/gameplay-chrome-v2/runtime-captures",
+      "recipe": "Recreate the default-theme frozen states in RUNTIME-VERIFICATION.md: phone world with no city/course/event feed, full city with Shipyard inspector, and full city with Town Hall interaction states. Capture true PNG after visible settle and native inspection; retain the required PNG color type.",
+      "captures": [
+        ["runtime-phone-world-375x812.png", 375, 812, "png-rgb-2"],
+        ["runtime-city-inspector-1440x900.png", 1440, 900, "png-indexed-3"],
+        ["runtime-interaction-states-1440x960.png", 1440, 960, "png-indexed-3"]
+      ]
+    },
+    {
+      "id": "world-map-terrain-v2",
+      "issue": 611,
+      "count": 6,
+      "historicalBinding": {
+        "path": "docs/art/world-map-v2/terrain/runtime-capture-receipt.json",
+        "sha256": "24081cd29ef5ee5bba0f2633487dd7bc0c7ecaca4445cd1ea25883a469a38293",
+        "sourceHead": "272c8ded20d97f3ab770e803b1b4d819e5546527",
+        "approvalRecord": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944",
+        "reusable": false
+      },
+      "captureRoot": "docs/art/world-map-v2/terrain/runtime-captures",
+      "recipe": "Start one fresh-origin, default-theme, untouched round-1 xlarge 96x96 session. Without gameplay actions, capture overview, tactical, and detail on 1440x900 desktop and 390x844 phone using the fit/zoom/recenter sequence in RUNTIME-CAPTURES.md; settle after every final camera operation.",
+      "captures": [
+        ["desktop-overview.png", 1440, 900, "png"],
+        ["desktop-tactical.png", 1440, 900, "png"],
+        ["desktop-detail.png", 1440, 900, "png"],
+        ["phone-overview.png", 390, 844, "png"],
+        ["phone-tactical.png", 390, 844, "png"],
+        ["phone-detail.png", 390, 844, "png"]
+      ]
+    }
+  ]
+}
