@@ -479,6 +479,9 @@ def validate_stylesheet_scope_guardrails(binding_builder) -> dict[str, object]:
 
 def validate_runtime_captures() -> None:
     capture_root = PACKAGE / "runtime-captures"
+    assert {path.name for path in capture_root.iterdir() if path.is_file()} == set(
+        RUNTIME_CAPTURE_NAMES
+    ), "runtime capture directory inventory drift"
     captures = {path.name: path for path in capture_root.glob("*.jpg")}
     assert set(captures) == set(RUNTIME_CAPTURE_NAMES), "runtime capture inventory drift"
     binding = json.loads((PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json").read_text())
@@ -486,6 +489,9 @@ def validate_runtime_captures() -> None:
     binding_builder = load_module(
         "city_runtime_capture_binding",
         PACKAGE / "tools" / "build_runtime_capture_bindings.py",
+    )
+    assert "apps/web/src/cityArtRegistry.ts" in binding_builder.FULL_SHIPPING_SOURCES, (
+        "runtime capture binding must include the web-owned city art registry"
     )
     assert tuple(item["path"] for item in binding["shipping_sources"]) == (
         binding_builder.FULL_SHIPPING_SOURCES

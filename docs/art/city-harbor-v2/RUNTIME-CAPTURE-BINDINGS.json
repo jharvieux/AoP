@@ -1,10 +1,14 @@
 {
   "schema": 2,
-  "date": "2026-09-04",
+  "date": "2026-09-05",
   "shipping_sources": [
     {
       "path": "apps/web/src/CityScene.tsx",
-      "sha256": "02735501ccb30d7ab8e794dc9432acdb5605167f04ea0590d9a63c1933d62876"
+      "sha256": "552d1e21d28573b4070b588480911224d97b00cf80364d526959b5ea56fa42a2"
+    },
+    {
+      "path": "apps/web/src/cityArtRegistry.ts",
+      "sha256": "92d0fd188a3f24800404c096475148e2bbc94817c9bfa1fc7f88e89606686398"
     },
     {
       "path": "apps/web/src/citySceneLayout.json",
@@ -25,10 +29,10 @@
   ],
   "stylesheet_source": {
     "path": "apps/web/src/styles.css",
-    "diagnostic_full_sha256": "25adbef0255380fa49ecd8f182bf0817c7eb192194a6e21e1e8b206e8d2a6006",
+    "diagnostic_full_sha256": "4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c",
     "scope": {
       "kind": "city-scene-selector-token-closure-v1",
-      "sha256": "2f023b946b02ac837ced000ecbdf495d044b7733f6f41188219ebacf6f4f30d4",
+      "sha256": "1c56ca758104e1c0f75ec97912b6a429977e4c979634eed7bb69a3c570008766",
       "rules": [
         {
           "at_rules": [],
@@ -48,7 +52,11 @@
         },
         {
           "at_rules": [],
-          "selector": ".city-scene-section"
+          "selector": ".city-scene-nav"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene-frame"
         },
         {
           "at_rules": [],
@@ -69,6 +77,10 @@
         {
           "at_rules": [],
           "selector": ".city-scene__building:active"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building::after"
         },
         {
           "at_rules": ["@media (hover: hover) and (pointer: fine)"],
@@ -96,7 +108,15 @@
         },
         {
           "at_rules": [],
+          "selector": ".city-scene__building--selected"
+        },
+        {
+          "at_rules": [],
           "selector": ".city-scene__sprite"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__sprite.city-building-art"
         },
         {
           "at_rules": [],
@@ -117,6 +137,14 @@
         {
           "at_rules": [],
           "selector": ".city-scene__label"
+        },
+        {
+          "at_rules": [],
+          "selector": ".city-scene__building:focus-visible .city-scene__label, .city-scene__building--selected .city-scene__label"
+        },
+        {
+          "at_rules": ["@media (hover: hover) and (pointer: fine)"],
+          "selector": ".city-scene__building:hover .city-scene__label"
         },
         {
           "at_rules": [],
@@ -160,6 +188,10 @@
         },
         {
           "at_rules": [],
+          "selector": ".city-scene-zoom output"
+        },
+        {
+          "at_rules": [],
           "selector": ".city-scene-zoom button:disabled"
         },
         {
@@ -171,24 +203,50 @@
           "selector": ".city-scene__overflow"
         },
         {
-          "at_rules": [],
-          "selector": ".city-scene-nav"
-        },
-        {
-          "at_rules": [],
-          "selector": ".city-scene-nav:active"
-        },
-        {
-          "at_rules": [],
-          "selector": ".city-scene-nav--left"
-        },
-        {
-          "at_rules": [],
-          "selector": ".city-scene-nav--right"
-        },
-        {
           "at_rules": ["@media (hover: hover) and (pointer: fine)"],
-          "selector": ".city-scene-zoom button:not(:disabled):hover, .city-scene-nav:hover, .info-toggle:hover"
+          "selector": ".city-scene-zoom button:not(:disabled):hover, .city-overlay__navigation button:hover, .city-management__header button:hover, .info-toggle:hover"
+        },
+        {
+          "at_rules": [
+            "@media (min-width: 768px) and (max-width: 899px) and (orientation: portrait)"
+          ],
+          "selector": ".city-scene"
+        },
+        {
+          "at_rules": ["@media (max-width: 767px)"],
+          "selector": ".city-scene"
+        },
+        {
+          "at_rules": ["@media (max-width: 767px)"],
+          "selector": ".city-scene-zoom"
+        },
+        {
+          "at_rules": ["@media (max-width: 767px) and (orientation: portrait)"],
+          "selector": ".city-scene-frame"
+        },
+        {
+          "at_rules": ["@media (max-width: 767px) and (orientation: portrait)"],
+          "selector": ".city-scene-viewport"
+        },
+        {
+          "at_rules": ["@media (max-width: 374px)"],
+          "selector": ".city-scene-zoom"
+        },
+        {
+          "at_rules": ["@media (max-width: 374px)"],
+          "selector": ".city-scene-zoom output"
+        },
+        {
+          "at_rules": ["@media (max-height: 430px) and (orientation: landscape)"],
+          "selector": ".city-scene"
+        },
+        {
+          "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+          "selector": ".screen-transition, .title-screen, .main-menu__panel, .sheet, .sheet-backdrop, .city-overlay, .city-inspector, .city-scene__building, .city-scene__label, .city-scene-zoom button, .info-toggle, .action-toast, .spinner, .skeleton"
+        },
+        {
+          "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+          "selector": ".city-scene__building:active, .city-scene-zoom button:not(:disabled):active, .info-toggle:active"
         }
       ],
       "root_custom_properties": [
@@ -229,12 +287,20 @@
           "value": "#2a6a8f"
         },
         {
+          "name": "--color-brass",
+          "value": "#c9a227"
+        },
+        {
           "name": "--color-highlight",
           "value": "#f0cb66"
         },
         {
           "name": "--ease-standard",
           "value": "cubic-bezier(0.2, 0, 0, 1)"
+        },
+        {
+          "name": "--elevation-1",
+          "value": "0 2px 8px rgb(0 0 0 / 32%)"
         },
         {
           "name": "--elevation-2",
@@ -265,6 +331,14 @@
           "value": "12px"
         },
         {
+          "name": "--radius-pill",
+          "value": "999px"
+        },
+        {
+          "name": "--space-1",
+          "value": "4px"
+        },
+        {
           "name": "--space-2",
           "value": "8px"
         },
@@ -279,6 +353,10 @@
         {
           "name": "--stroke-focus",
           "value": "#c8962c"
+        },
+        {
+          "name": "--stroke-selected",
+          "value": "#c9a227"
         },
         {
           "name": "--stroke-standard",
@@ -311,6 +389,22 @@
         {
           "name": "--text-primary",
           "value": "#f3e5c2"
+        },
+        {
+          "name": "--text-secondary",
+          "value": "#e7d4ac"
+        },
+        {
+          "name": "--type-caption-size",
+          "value": "0.75rem"
+        },
+        {
+          "name": "--type-label-size",
+          "value": "0.875rem"
+        },
+        {
+          "name": "--type-numeric-size",
+          "value": "0.875rem"
         }
       ],
       "local_custom_properties": [
@@ -320,6 +414,7 @@
         }
       ],
       "component_custom_properties": [
+        "--city-fit-width",
         "--city-flag-cloth-left",
         "--city-flag-cloth-width",
         "--city-flag-height",
@@ -343,50 +438,50 @@
     {
       "path": "runtime-captures/full-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 196088,
-      "sha256": "a6d14c8099daef3f66c06a11e3dd5227f883db39fa6b0a61055726c472adb1b6"
+      "bytes": 284730,
+      "sha256": "77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7"
     },
     {
       "path": "runtime-captures/full-desktop-3x-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 265635,
-      "sha256": "4aa7a84647c413a353394f731ff68a07dcd7aad0cecead926cd0ca801ed47913"
+      "bytes": 259691,
+      "sha256": "1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a"
     },
     {
       "path": "runtime-captures/full-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 57466,
-      "sha256": "c8189037a52f4c56d8b6d8a3e9db658d62538d6a5dc42bb8dc1180a89cfa5274"
+      "bytes": 62095,
+      "sha256": "ef6ef75e06cd51f0503b5b3294f315cb5b7143315ab2ce19a34c6e4c2cb4b373"
     },
     {
       "path": "runtime-captures/full-phone-3x-center-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 78785,
-      "sha256": "3213ad4bc81e89f4978c29a820198662e5be2d2bc9634bae99a5199725ca8fd7"
+      "bytes": 61467,
+      "sha256": "16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254"
     },
     {
       "path": "runtime-captures/full-phone-3x-shipyard-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 61349,
-      "sha256": "9498bd55a5f77be3ee74614d65f0bba122ca3a9b358e9b0f83bd237d4be4dc2f"
+      "bytes": 48222,
+      "sha256": "3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d"
     },
     {
       "path": "runtime-captures/midgame-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 191844,
-      "sha256": "8aefcb4f27a51c4bc5da17fe65146ccedec86ccd0b63d4142fb6b41899333616"
+      "bytes": 280020,
+      "sha256": "a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40"
     },
     {
       "path": "runtime-captures/starting-desktop-1440x900.jpg",
       "dimensions": [1440, 900],
-      "bytes": 188959,
-      "sha256": "cf3ea9749f47e62cdacd8403771af885bf4fe2cc846dd9bcf7a8b0fa2329c648"
+      "bytes": 279096,
+      "sha256": "6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8"
     },
     {
       "path": "runtime-captures/starting-phone-390x844.jpg",
       "dimensions": [390, 844],
-      "bytes": 52150,
-      "sha256": "3278040cb365b79728a00adcd61cb212f3b853fefad53fe5ccd24839e5cab8a0"
+      "bytes": 59856,
+      "sha256": "6bed727cfc3f50bc546388d5edfb875af34d610ffe96ceb9b4acfa81de60ff55"
     }
   ]
 }

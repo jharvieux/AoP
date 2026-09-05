@@ -6,8 +6,9 @@ Issue #608 checkpoint 1 and the Direction B city refinement are operator-approve
 package is the complete runtime/capture candidate for operator checkpoint 2, including
 the requested faction mast, pin, and V-brace physically mounted to Town Hall’s central
 dome. Refreshed live starting/midgame/full, phone, desktop, and maximum-zoom captures are
-bound to the exact shipping sources in `RUNTIME-CAPTURE-BINDINGS.json`; checkpoint 2 does
-not claim approval until independent re-verification and explicit operator acceptance.
+bound to the exact shipping sources in `RUNTIME-CAPTURE-BINDINGS.json`. Integration-owner
+visual-settle and native-size review is complete; checkpoint 2 remains an explicit operator
+approval boundary.
 
 The production batch keeps the exact existing `SCENE_SLOTS` rectangles and content IDs.
 It replaces the shipping city URLs with WebP art for the backdrop, all fourteen building

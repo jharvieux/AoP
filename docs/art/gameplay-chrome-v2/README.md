@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — approved contract
 
-This directory contains the approved visual contract and deterministic review package for [issue #610](https://github.com/jharvieux/AoP/issues/610). The operator approved **Direction B — Gilded Harbor Diorama with the recommended city refinement** before runtime implementation began, then renewed approval for the three exact-source runtime captures on 2026-09-04 against the combined #610 chrome and #611 terrain material/capture bytes at `e547b55ced81d5f45fb110bf0b95a070b0c48274`. The mockups remain non-runtime evidence; the implemented CSS, components, vector primitives, and verification are recorded in [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md).
+This directory contains the approved visual contract and deterministic review package for [issue #610](https://github.com/jharvieux/AoP/issues/610). The operator approved **Direction B — Gilded Harbor Diorama with the recommended city refinement** before runtime implementation began. The prior exact-source runtime approval at `e547b55ced81d5f45fb110bf0b95a070b0c48274` no longer carries across the material #612 city-shell change; refreshed runtime candidates captured against source head `45a206f760eacce50dc8dd1dc656c5d4e789cb3c` await renewed exact-byte approval. The mockups remain non-runtime evidence; the implemented CSS, components, vector primitives, and verification are recorded in [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md).
 
 ## Review at native size
 
@@ -105,7 +105,7 @@ City uses the same HUD/dock type and panel grammar as map. Its selected-building
 
 Backdrop provenance is locked to the merged #607 review sources: `b-gilded-harbor-diorama-map-r1.webp` (`c80a488f0e2c02a4eaaabcc0e4b08fe481cd238bcc44b97dbf89f339e939c9f9`) and `b-gilded-harbor-diorama-full-r3.webp` (`eca94fde3859ed41ad1f8f2469c114c743c11d8861007414107c18f9d98f360d`). The latter remains fortress-heavy reference evidence only. Issue #608 has since delivered the approved layered city amendment; exact-head runtime captures, not this historical checkpoint backdrop, verify the shipping city art.
 
-Run `node compose.mjs && node build-runtime-capture-bindings.mjs && node validate.mjs` from this directory to recreate and validate the package. Run repository formatting afterward if the generated JSON layout changes.
+Before renewed approval, run `node compose.mjs` to recreate the deterministic visual proof and expect the normal binding builder/validator to reject the changed material baseline. After the operator approves the exact candidate bytes and the separate manual anchor patch lands, run `node build-runtime-capture-bindings.mjs` twice and `node validate.mjs`; then run repository formatting if the generated JSON layout changes.
 
 ## Approval record
 
@@ -113,4 +113,4 @@ Approved for implementation: parchment readability, `#c8962c` action/focus, `#c9
 
 The operative evidence boundary for the runtime record below is the immutable material-baseline anchor plus the complete schema-v3 source-tree inventory, build inputs, full stylesheet, runtime receipts/assets, frozen capture states, and capture bytes; the older scoped CSS projections are diagnostic only.
 
-On 2026-09-04, the operator renewed approval for all three exact-source runtime frames at `e547b55ced81d5f45fb110bf0b95a070b0c48274`; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5548488129). That approval carries across docs/evidence-only commits only while `RUNTIME-CAPTURE-BINDINGS.json` proves the complete schema-v3 source-tree inventory, build inputs, full stylesheet, runtime receipts/assets, frozen capture states, and capture bytes remain exact; any material bound-byte or inventory change requires renewed capture approval.
+On 2026-09-04, the operator renewed approval for the prior three exact-source runtime frames at `e547b55ced81d5f45fb110bf0b95a070b0c48274`; that historical approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5548488129). The #612 city-shell change altered bound material bytes, so that approval cannot authorize the refreshed candidates. The immutable material baseline intentionally remains anchored to the prior record until the operator approves the current three files at `45a206f760eacce50dc8dd1dc656c5d4e789cb3c`; the normal builder and validator therefore remain fail-closed in this preliminary evidence state.

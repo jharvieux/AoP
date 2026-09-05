@@ -28,10 +28,24 @@ const required = [
   ['mockups/token-type-icon-sheet-1440x960.svg', 1440, 960],
 ]
 const runtimeCaptureSpecs = [
-  ['runtime-phone-world-375x812.png', 375, 812],
-  ['runtime-city-inspector-1440x900.png', 1440, 900],
-  ['runtime-interaction-states-1440x960.png', 1440, 960],
+  ['runtime-phone-world-375x812.png', 375, 812, 2],
+  ['runtime-city-inspector-1440x900.png', 1440, 900, 3],
+  ['runtime-interaction-states-1440x960.png', 1440, 960, 3],
 ]
+const staleMislabeledJpegHashes = new Set([
+  '031438b05845e57bab6adb10637e85f013fabf5746c6cd2e49fe761a0f5dabf6',
+  'f91e51c0bdfb9f49365057dfe37f66b3f18802bd86b2c95814f53a89dad7c36d',
+  'ecb96cc50b19e1626f7ede53b4acd579326d127acf62147076359d7f82e66c04',
+])
+const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+function runtimePngMatches(source, width, height, colorType) {
+  return (
+    source.subarray(0, 8).equals(pngSignature) &&
+    source.readUInt32BE(16) === width &&
+    source.readUInt32BE(20) === height &&
+    source[25] === colorType
+  )
+}
 let failures = 0
 for (const [rel, w, h] of required) {
   const file = join(root, rel)
@@ -68,21 +82,22 @@ if (
   failures++
 }
 const runtimeReport = readFileSync(join(root, 'RUNTIME-VERIFICATION.md'), 'utf8')
-for (const [name, width, height] of runtimeCaptureSpecs) {
+for (const [name, width, height, expectedColorType] of runtimeCaptureSpecs) {
   const relative = `runtime-captures/${name}`
   const file = join(root, relative)
   const source = readFileSync(file)
   const bytes = source.byteLength
-  const png = source.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  const png = source.subarray(0, 8).equals(pngSignature)
   const dimensions = png && source.readUInt32BE(16) === width && source.readUInt32BE(20) === height
-  const rgb = png && [2, 6].includes(source[25])
+  const exactColorType = png && source[25] === expectedColorType
   const budget = bytes <= 300 * 1024
   const digest = createHash('sha256').update(source).digest('hex')
   const recorded = runtimeReport.includes(name) && runtimeReport.includes(digest)
   for (const [label, pass] of [
     ['PNG payload', png],
     ['dimensions', dimensions],
-    ['RGB/RGBA pixels', rgb],
+    [`PNG color type ${expectedColorType}`, exactColorType],
+    ['not a known mislabeled JPEG payload', !staleMislabeledJpegHashes.has(digest)],
     ['300 KiB review budget', budget],
     ['runtime report binding', recorded],
   ]) {
@@ -92,8 +107,25 @@ for (const [name, width, height] of runtimeCaptureSpecs) {
     }
   }
   console.log(
-    `PASS ${relative}: ${width}×${height}, ${bytes.toLocaleString()} bytes, sha256 ${digest}`,
+    `PASS ${relative}: ${width}×${height}, color type ${expectedColorType}, ${bytes.toLocaleString()} bytes, sha256 ${digest}`,
   )
+}
+const mislabeledJpegProbe = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46])
+if (runtimePngMatches(mislabeledJpegProbe, 375, 812, 2)) {
+  console.error('FAIL runtime capture negative control: mislabeled JPEG escaped PNG validation')
+  failures++
+} else {
+  console.log('PASS runtime capture negative control: mislabeled JPEG rejected')
+}
+const wrongColorTypeProbe = Buffer.from(
+  readFileSync(join(runtimeCaptureRoot, 'runtime-city-inspector-1440x900.png')),
+)
+wrongColorTypeProbe[25] = 2
+if (runtimePngMatches(wrongColorTypeProbe, 1440, 900, 3)) {
+  console.error('FAIL runtime capture negative control: altered PNG color type escaped')
+  failures++
+} else {
+  console.log('PASS runtime capture negative control: altered PNG color type rejected')
 }
 
 const retainedBinding = JSON.parse(readFileSync(bindingPath, 'utf8'))
@@ -122,6 +154,8 @@ const exactInventory =
   retainedBinding.schema === 3 &&
   JSON.stringify(Object.keys(retainedBinding).sort()) === JSON.stringify(expectedTopLevelKeys) &&
   JSON.stringify(retainedCaptureIds) === JSON.stringify(expectedCaptureIds) &&
+  JSON.stringify(retainedBinding.captures.map((capture) => capture.color_type)) ===
+    JSON.stringify(captureSpecs.map((capture) => capture.colorType)) &&
   JSON.stringify(retainedBinding.build_inputs.map((item) => item.path)) ===
     JSON.stringify(buildInputPaths) &&
   JSON.stringify(retainedBinding.runtime_assets.receipts.map((item) => item.path)) ===
@@ -229,6 +263,14 @@ if (bindingMatches(staleBinding)) {
   failures++
 } else {
   console.log('PASS runtime source binding negative control: stale manifest rejected')
+}
+const staleColorTypeBinding = structuredClone(retainedBinding)
+staleColorTypeBinding.captures[1].color_type = 2
+if (bindingMatches(staleColorTypeBinding)) {
+  console.error('FAIL runtime source binding negative control: capture color type escaped')
+  failures++
+} else {
+  console.log('PASS runtime source binding negative control: capture color type rejected')
 }
 
 const sourceDriftPath = 'apps/web/src/App.tsx'
@@ -507,6 +549,8 @@ const proposalHashesAfter = proposalArtifactHashes()
 if (
   verifiedProposal.notice.startsWith('PROPOSAL ONLY:') === false ||
   JSON.stringify(Object.keys(verifiedProposal.captures)) !== JSON.stringify(expectedCaptureIds) ||
+  JSON.stringify(Object.values(verifiedProposal.captures).map((capture) => capture.color_type)) !==
+    JSON.stringify(captureSpecs.map((capture) => capture.colorType)) ||
   verifiedProposal.bound_files.length < retainedBinding.shipping_sources.length ||
   verifiedProposal.comment.body_sha256 !==
     createHash('sha256').update(proposalComment.body).digest('hex') ||
@@ -525,14 +569,13 @@ const compose = readFileSync(join(root, 'compose.mjs'), 'utf8')
 const proofSources = required.map(([rel]) => [rel, readFileSync(join(root, rel), 'utf8')])
 const approvalMarkers = [
   retainedMaterialBaseline.captured_on,
-  'operator renewed approval for all three exact-source runtime frames',
+  'prior three exact-source runtime frames',
   retainedMaterialBaseline.capture_head,
   captureRecord,
-  'docs/evidence-only commits only while',
-  'complete schema-v3',
-  'full stylesheet',
-  'frozen capture states',
-  'requires renewed capture approval',
+  'historical approval',
+  'await renewed exact-byte approval',
+  'immutable material baseline intentionally remains',
+  'fail-closed',
 ]
 for (const [name, source] of [
   ['README.md', spec],
@@ -613,8 +656,8 @@ for (const marker of [
   }
 }
 for (const marker of [
-  '213 shipping source files',
-  '147 non-test files',
+  '215 shipping source files',
+  '149 non-test files',
   'all 29 engine source files',
   'all 19 shared source files',
   'all 18 content source files',

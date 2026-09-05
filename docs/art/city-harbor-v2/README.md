@@ -2,8 +2,9 @@
 
 **Status:** checkpoint 1 and Direction B refinement approved; the issue #608 runtime
 candidate now includes the requested Town Hall flag mount. Deterministic evidence is
-complete and refreshed live captures are bound to the shipping sources; independent
-re-verification remains before operator checkpoint 2.
+complete, refreshed live captures are bound to the shipping sources, and integration-owner
+visual-settle and native-size review is complete. Operator checkpoint 2 remains a separate
+approval boundary.
 
 ![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
