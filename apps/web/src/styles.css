@@ -320,9 +320,15 @@ button {
 }
 
 .map-container {
+  --map-safe-top: max(var(--space-3), env(safe-area-inset-top, 0px));
+  --map-safe-right: max(var(--space-3), env(safe-area-inset-right, 0px));
+  --map-safe-bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
+  --map-safe-left: max(var(--space-3), env(safe-area-inset-left, 0px));
+  --map-minimap-size: clamp(120px, 12vw, 150px);
   flex: 1;
   position: relative;
   min-height: 0;
+  overflow: hidden;
 }
 
 .map-container canvas {
@@ -332,12 +338,19 @@ button {
   touch-action: none;
 }
 
+.map-canvas-root {
+  isolation: isolate;
+}
+
+.map-overlay-region {
+  position: absolute;
+}
+
 /* Map navigation affordances (#346): zoom/recenter buttons and the minimap,
    overlaid on the Pixi canvas inside the position:relative .map-canvas-root. */
 .map-nav-controls {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--map-safe-top);
+  right: var(--map-safe-right);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -379,8 +392,7 @@ button {
    sticky touch preview is active (the touch equivalent of mouse hover, which
    already shows the dotted route live with no hint text needed). */
 .map-course-hint {
-  position: absolute;
-  bottom: var(--space-3);
+  bottom: calc(var(--map-safe-bottom) + 56px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 5;
@@ -400,9 +412,9 @@ button {
 }
 
 .map-minimap {
-  position: absolute;
-  bottom: var(--space-3);
-  right: var(--space-3);
+  right: var(--map-safe-right);
+  bottom: var(--map-safe-bottom);
+  width: var(--map-minimap-size);
   border: 1px solid var(--stroke-standard);
   border-radius: var(--radius-2);
   overflow: hidden;
@@ -410,26 +422,61 @@ button {
   z-index: 5;
   box-shadow: var(--elevation-2);
   background: var(--surface-canvas);
+  touch-action: manipulation;
 }
 
 .map-minimap canvas {
   display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .map-minimap__viewport {
   position: absolute;
-  border: 2px solid var(--color-highlight);
+  min-width: 4px;
+  min-height: 4px;
+  border: 3px double var(--color-highlight);
+  outline: 1px dashed var(--surface-canvas);
+  outline-offset: -4px;
   box-shadow: 0 0 0 1px var(--surface-canvas);
   pointer-events: none;
+}
+
+.map-minimap__viewport-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0 2px;
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.map-minimap__keyboard-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px dashed var(--stroke-focus);
+  background: color-mix(in srgb, var(--surface-canvas) 55%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.map-minimap:focus-visible .map-minimap__keyboard-cursor {
+  opacity: 1;
 }
 
 /* Turn-event feed (#346): a compact, non-interactive log of recent off-screen
    activity, top-left of the map so it clears the nav controls and minimap. */
 .turn-event-feed {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  max-width: 240px;
+  top: var(--map-safe-top);
+  left: var(--map-safe-left);
+  width: min(240px, calc(34% - var(--space-3)));
+  max-height: min(132px, 32%);
   margin: 0;
   padding: var(--space-2) var(--space-3);
   list-style: none;
@@ -445,6 +492,7 @@ button {
   box-shadow: var(--elevation-1);
   pointer-events: none;
   z-index: 4;
+  overflow: hidden;
 }
 
 .turn-event-feed li {
@@ -457,17 +505,26 @@ button {
   color: var(--color-brass);
 }
 
-/* Paused sail order (#372): a halted ship's Resume/Cancel prompt, top-center
-   over the map so it's noticed the turn it appears. */
-.sail-interrupt-banner {
+/* Halted sail/march orders share one bounded top-center card. Multiple
+   interruptions use a native selector inside the card instead of adding rows. */
+.map-alert-region {
   position: absolute;
-  top: var(--space-3);
+  top: var(--map-safe-top);
   left: 50%;
   transform: translateX(-50%);
   z-index: 5;
+  width: min(520px, calc(100% - 600px));
+  max-height: min(42%, 280px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.sail-interrupt-banner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
+  width: 100%;
   padding: var(--space-2) var(--space-3);
   font-size: var(--type-label-size);
   color: var(--text-primary);
@@ -479,23 +536,58 @@ button {
 }
 
 .sail-interrupt-banner .button-group {
+  flex: 0 0 auto;
   margin: 0;
+}
+
+.map-alert-picker {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.map-alert-count {
+  flex: 0 0 auto;
+  color: var(--text-warning);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.map-alert-picker select {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--stroke-standard);
+  border-radius: var(--radius-2);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+  font: inherit;
 }
 
 /* City roster (#373): a compact strip of the viewer's cities, bottom-left over
    the map. Only rendered when the viewer holds more than one city. */
 .city-roster {
-  position: absolute;
-  bottom: var(--space-3);
-  left: var(--space-3);
-  max-width: 60%;
+  bottom: var(--map-safe-bottom);
+  left: var(--map-safe-left);
+  max-width: calc(50% - var(--space-5));
+  max-height: 52px;
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   z-index: 4;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.city-roster > li {
+  flex: 0 0 auto;
 }
 
 .city-roster-entry {
@@ -970,6 +1062,119 @@ button.large {
   min-width: 0;
 }
 
+.gameplay-command-dock {
+  padding-right: max(var(--space-3), env(safe-area-inset-right, 0px));
+  padding-bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--space-3), env(safe-area-inset-left, 0px));
+}
+
+.map-command-layout {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(128px, 1.35fr) minmax(96px, 1fr);
+  align-items: stretch;
+  width: min(100%, 680px);
+  margin-inline: auto;
+}
+
+.map-command-layout > button,
+.map-command-more,
+.map-command-more__toggle {
+  min-width: 0;
+}
+
+.map-command-prominent {
+  border-color: var(--stroke-emphasized);
+  box-shadow: inset 0 0 0 1px var(--texture-parchment-hairline);
+}
+
+.map-command-more {
+  position: relative;
+}
+
+.map-command-more__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  height: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--stroke-standard);
+  border-radius: var(--radius-2);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--type-label-size);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  transition:
+    background-color var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    color var(--motion-standard) var(--ease-standard);
+}
+
+.map-command-more__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.map-command-more[open] > .map-command-more__toggle {
+  border-color: var(--stroke-selected);
+  background: var(--surface-inset);
+  box-shadow: 0 0 0 2px var(--selected-glow);
+}
+
+.map-command-more__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  z-index: 9;
+  display: grid;
+  gap: var(--space-2);
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 2 * var(--space-3)));
+  max-height: min(50vh, 360px);
+  padding: var(--space-2);
+  overflow: auto;
+  border: 1px solid var(--stroke-emphasized);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  box-shadow: var(--elevation-3);
+  overscroll-behavior: contain;
+}
+
+.map-command-more__menu > button {
+  width: 100%;
+}
+
+.map-command-more__toggle:focus-visible {
+  outline: 2px solid var(--stroke-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .map-command-more__toggle:hover {
+    border-color: var(--color-highlight);
+    color: var(--color-highlight);
+  }
+}
+
+@media (max-width: 1024px) {
+  .turn-event-feed {
+    max-height: 44px;
+  }
+
+  .turn-event-feed li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .map-alert-region {
+    top: calc(var(--map-safe-top) + 52px);
+    width: min(520px, calc(100% - 2 * var(--map-safe-left)));
+  }
+}
+
 @media (max-width: 599px) {
   .hud {
     min-height: 0;
@@ -1000,21 +1205,80 @@ button.large {
     font-size: var(--type-caption-size);
   }
 
+  .map-container {
+    --map-safe-top: max(var(--space-2), env(safe-area-inset-top, 0px));
+    --map-safe-right: max(var(--space-2), env(safe-area-inset-right, 0px));
+    --map-safe-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px));
+    --map-safe-left: max(var(--space-2), env(safe-area-inset-left, 0px));
+    --map-minimap-size: min(112px, 28vw);
+  }
+
+  .bottom-action-bar .map-command-layout {
+    grid-template-columns: minmax(72px, 1fr) minmax(104px, 1.25fr) minmax(72px, 1fr);
+  }
+
+  .map-command-layout > button,
+  .map-command-more__toggle {
+    padding-inline: var(--space-2);
+    font-size: var(--type-caption-size);
+  }
+
+  .map-nav-controls {
+    flex-direction: row;
+    gap: var(--space-1);
+  }
+
+  .turn-event-feed {
+    width: calc(100% - 220px);
+    min-width: 112px;
+    max-height: 84px;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .turn-event-feed li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .map-alert-region {
+    top: calc(var(--map-safe-top) + 52px);
+    width: calc(100% - var(--map-safe-left) - var(--map-safe-right));
+    max-height: min(38%, 216px);
+  }
+
   .sail-interrupt-banner {
-    top: var(--space-2);
-    width: calc(100% - 128px);
-    max-width: 420px;
     flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--type-caption-size);
   }
 
   .sail-interrupt-banner .button-group {
     width: 100%;
+    gap: var(--space-1);
+  }
+
+  .map-alert-picker {
+    width: 100%;
   }
 
   .city-roster {
-    bottom: var(--space-2);
-    left: var(--space-2);
-    max-width: calc(100% - 178px);
+    max-width: calc(100% - var(--map-minimap-size) - 3 * var(--space-2));
+  }
+
+  .city-roster-entry {
+    max-width: 148px;
+    padding-inline: var(--space-2);
+  }
+
+  .map-course-hint {
+    bottom: calc(var(--map-safe-bottom) + var(--map-minimap-size) + var(--space-2));
+    min-height: 44px;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--type-caption-size);
+  }
+
+  .map-command-more__menu {
+    min-width: min(220px, calc(100vw - 2 * var(--space-3)));
   }
 
   .sheet {
@@ -1024,8 +1288,30 @@ button.large {
 }
 
 @media (max-height: 419px) and (orientation: landscape) {
+  .map-container {
+    --map-minimap-size: min(96px, 20vw);
+  }
+
+  .map-nav-controls {
+    flex-direction: row;
+    gap: var(--space-1);
+  }
+
   .map-minimap {
-    display: none;
+    display: block;
+  }
+
+  .map-course-hint {
+    bottom: var(--map-safe-bottom);
+    max-width: 36%;
+  }
+
+  .city-roster {
+    max-width: 28%;
+  }
+
+  .map-alert-region {
+    max-height: calc(100% - var(--map-safe-top) - 112px);
   }
 }
 
@@ -3742,5 +4028,18 @@ button.primary.secondary {
   .city-scene-zoom button:not(:disabled):active,
   .info-toggle:active {
     transform: none;
+  }
+
+  .map-nav-button,
+  .city-roster-entry,
+  .map-command-more__toggle,
+  .gameplay-command-dock button {
+    transition: none;
+  }
+
+  .map-alert-region,
+  .city-roster,
+  .map-command-more__menu {
+    scroll-behavior: auto;
   }
 }

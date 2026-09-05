@@ -44,14 +44,21 @@ import {
   type DetailedPresentationBand,
   type StrategicMarkerFamily,
 } from './mapPresentation'
+import { cellCenter, cellPolygon, pixelToCell, visibleCellBounds } from './mapLayout'
 import {
-  cellCenter,
-  cellPolygon,
-  fitScale,
-  mapPixelExtent,
-  pixelToCell,
-  visibleCellBounds,
-} from './mapLayout'
+  MAP_CAMERA_CHANGE_EVENT,
+  MAP_CAMERA_PADDING_PX,
+  advanceCameraTransition,
+  cancelCameraTransition,
+  centerCameraOnTile,
+  clampCamera,
+  createCameraTransition,
+  fitMapCamera,
+  zoomCameraAt,
+  type CameraConfig,
+  type CameraTransition,
+  type CameraView,
+} from './mapCamera'
 import { loopStrokeRuns, smoothLoop, traceRegionLoops } from './paintedWorld'
 import { fleetCaptains } from './fleetVisibility'
 import { Minimap } from './Minimap'
@@ -89,11 +96,9 @@ import { UiIcon } from './uiIcons'
  */
 
 const TILE = 32
-// #512: the fixed floor for maps that already fit comfortably at this zoom — the
-// quadrupled boards (up to 96x96 = 3072px world) don't, so the *effective* floor
-// (see `clampScale` below) is whichever is smaller: this fixed value, or the scale
-// that fits the whole board in the viewport (`mapLayout`'s `fitScale`). Unchanged
-// behavior for every map that already fit at 0.4.
+// #512: the fixed floor for maps that already fit comfortably at this zoom. The
+// shared camera model may lower it to the padded whole-board fit scale for large
+// boards while retaining unchanged behavior for maps that already fit at 0.4.
 const MIN_SCALE = 0.4
 // Hard safety floor beneath the size-aware minimum, so a pathological viewport
 // (zero-size mid-mount, a folded/split-screen window) can never collapse the
@@ -358,6 +363,23 @@ export interface MapControls {
   centerOnFleet: () => void
   /** Zoom out (if needed) to the whole-board fit scale and center on the map (#512). */
   fitToMap: () => void
+  /** Keep keyboard navigation bounded while revealing its active tile. */
+  keepTileVisible: (tile: Coord) => void
+}
+
+function cameraConfig(map: GameMap, viewportWidth: number, viewportHeight: number): CameraConfig {
+  return {
+    topology: mapTopology(map),
+    mapWidth: map.width,
+    mapHeight: map.height,
+    tileSize: TILE,
+    viewportWidth,
+    viewportHeight,
+    padding: MAP_CAMERA_PADDING_PX,
+    minimumScale: MIN_SCALE,
+    absoluteMinimumScale: ABSOLUTE_MIN_SCALE,
+    maximumScale: MAX_SCALE,
+  }
 }
 
 interface MapCanvasProps {
@@ -508,6 +530,7 @@ export function MapCanvas(props: MapCanvasProps) {
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.currentTarget !== e.target) return
     if (!mapArtReadyRef.current) {
       e.preventDefault()
       return
@@ -524,14 +547,7 @@ export function MapCanvas(props: MapCanvasProps) {
     e.preventDefault()
     setCursor(next)
     dirtyRef.current = true
-    const view = viewRef.current
-    const container = containerRef.current
-    if (container) {
-      Object.assign(
-        view,
-        panToKeepTileVisible(view, next, TILE, container.clientWidth, container.clientHeight),
-      )
-    }
+    controlsRef.current?.keepTileVisible(next)
     announceTile(next)
   }
 
@@ -789,6 +805,9 @@ export function MapCanvas(props: MapCanvasProps) {
     // refs — this effect only re-runs when `app` changes.
     const lastCaptainPos = new Map<string, Coord>()
     const shipAnims = new Map<string, ShipAnim>()
+    const reducedMotionQuery = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')
+    let reducedMotion = reducedMotionQuery?.matches ?? false
+    let cameraMotion: CameraTransition | null = null
 
     // Navigation controls (#346): center the camera on a tile, on the viewer's
     // fleet, and zoom about the viewport center — the button/minimap analogs of
@@ -799,39 +818,64 @@ export function MapCanvas(props: MapCanvasProps) {
       h: containerRef.current?.clientHeight ?? pixiApp.renderer.height,
     })
 
-    // Size-aware minimum zoom (#512): the whole-board fit scale for the current
-    // map + viewport, so 96x96 boards can zoom out far enough to see the whole
-    // thing instead of clamping at the fixed `MIN_SCALE` a small map uses.
-    function minScale(): number {
+    function currentCameraConfig(): CameraConfig {
       const { w, h } = viewportSize()
-      const map = propsRef.current.map
-      const extent = mapPixelExtent(mapTopology(map), map.width, map.height, TILE)
-      return Math.max(ABSOLUTE_MIN_SCALE, Math.min(MIN_SCALE, fitScale(extent, w, h)))
+      return cameraConfig(propsRef.current.map, w, h)
     }
 
-    const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(minScale(), s))
+    function sameCamera(a: CameraView, b: CameraView): boolean {
+      return a.x === b.x && a.y === b.y && a.scale === b.scale
+    }
 
-    function zoomAt(screenX: number, screenY: number, targetScale: number) {
-      const clamped = clampScale(targetScale)
-      const worldX = (screenX - view.x) / view.scale
-      const worldY = (screenY - view.y) / view.scale
-      view.scale = clamped
-      view.x = screenX - worldX * clamped
-      view.y = screenY - worldY * clamped
+    function publishCamera(next: CameraView, requestDraw = true) {
+      const bounded = clampCamera(next, currentCameraConfig())
+      if (sameCamera(view, bounded)) return
+      Object.assign(view, bounded)
+      if (requestDraw) dirtyRef.current = true
+      containerRef.current?.dispatchEvent(new Event(MAP_CAMERA_CHANGE_EVENT))
+    }
+
+    function stopCameraMotion() {
+      if (!cameraMotion) return
+      const frozen = cancelCameraTransition(cameraMotion)
+      cameraMotion = null
+      publishCamera(frozen)
+    }
+
+    function moveCamera(target: CameraView, animate = true) {
+      const bounded = clampCamera(target, currentCameraConfig())
+      if (sameCamera(view, bounded)) {
+        cameraMotion = null
+        return
+      }
+      if (reducedMotion || !animate) {
+        cameraMotion = null
+        publishCamera(bounded)
+        return
+      }
+      cameraMotion = createCameraTransition(view, bounded)
       dirtyRef.current = true
     }
 
-    function centerOn(tile: Coord) {
-      const { w, h } = viewportSize()
-      const c = cellCenter(mapTopology(propsRef.current.map), tile.x, tile.y, TILE)
-      view.x = w / 2 - c.x * view.scale
-      view.y = h / 2 - c.y * view.scale
-      dirtyRef.current = true
+    function zoomAt(screenX: number, screenY: number, targetScale: number, animate = false) {
+      const target = zoomCameraAt(
+        view,
+        { x: screenX, y: screenY },
+        targetScale,
+        currentCameraConfig(),
+      )
+      if (animate) moveCamera(target)
+      else publishCamera(target)
     }
+
+    function centerOn(tile: Coord, animate = true) {
+      moveCamera(centerCameraOnTile(view, tile, currentCameraConfig()), animate)
+    }
+
     controlsRef.current = {
       zoomBy: (factor) => {
         const { w, h } = viewportSize()
-        zoomAt(w / 2, h / 2, view.scale * factor)
+        zoomAt(w / 2, h / 2, view.scale * factor, true)
       },
       centerOn,
       centerOnFleet: () => {
@@ -843,15 +887,13 @@ export function MapCanvas(props: MapCanvasProps) {
         centerOn(target.position)
       },
       fitToMap: () => {
+        moveCamera(fitMapCamera(currentCameraConfig()))
+      },
+      keepTileVisible: (tile) => {
+        stopCameraMotion()
         const { w, h } = viewportSize()
-        const map = propsRef.current.map
-        const extent = mapPixelExtent(mapTopology(map), map.width, map.height, TILE)
-        // clampScale re-derives the same fit scale as this frame's floor, so this
-        // lands exactly on it (never fights its own clamp).
-        view.scale = clampScale(fitScale(extent, w, h))
-        view.x = w / 2 - (extent.width / 2) * view.scale
-        view.y = h / 2 - (extent.height / 2) * view.scale
-        dirtyRef.current = true
+        const position = panToKeepTileVisible(view, tile, TILE, w, h)
+        publishCamera({ ...view, ...position })
       },
     }
     // Mirror to the parent's ref (#373) so out-of-canvas UI can recenter too.
@@ -892,6 +934,8 @@ export function MapCanvas(props: MapCanvasProps) {
       const cityFactionOf =
         configuredCityFactionOf ??
         ((ownerId: string) => (ownerId === 'neutral' ? undefined : factionOf(ownerId)))
+      // Game/map replacement can change the valid extent without a renderer resize.
+      publishCamera(view, false)
       const artReady = ensureMapArtReady()
       world.visible = artReady
       world.position.set(view.x, view.y)
@@ -1660,7 +1704,12 @@ export function MapCanvas(props: MapCanvasProps) {
         const lastPos = lastCaptainPos.get(cap.id)
         if (lastPos && !coordsEqual(lastPos, cap.position)) {
           const path = findPath(map, lastPos, cap.position)
-          if (path && path.length >= 2 && path.length <= MAX_ANIMATED_PATH_TILES) {
+          if (
+            !reducedMotion &&
+            path &&
+            path.length >= 2 &&
+            path.length <= MAX_ANIMATED_PATH_TILES
+          ) {
             shipAnims.set(cap.id, { path, elapsedMs: 0, durationMs: shipAnimDurationMs(path) })
           } else {
             shipAnims.delete(cap.id)
@@ -1988,6 +2037,7 @@ export function MapCanvas(props: MapCanvasProps) {
         const c = cursorRef.current
         strokeCell(highlight, c.x, c.y, { width: 2, color: CURSOR_COLOR })
       }
+      if (reducedMotion) resetAmbientMotion()
     }
 
     const canvas = pixiApp.canvas
@@ -2097,6 +2147,7 @@ export function MapCanvas(props: MapCanvasProps) {
 
     function onPointerDown(e: PointerEvent) {
       if (!mapArtReadyRef.current) return
+      stopCameraMotion()
       canvas.setPointerCapture(e.pointerId)
       pointers.set(e.pointerId, toCanvasPoint(e))
       moved = false
@@ -2147,9 +2198,7 @@ export function MapCanvas(props: MapCanvasProps) {
         const dx = p.x - dragStart.x
         const dy = p.y - dragStart.y
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true
-        view.x = dragStart.viewX + dx
-        view.y = dragStart.viewY + dy
-        dirtyRef.current = true
+        publishCamera({ x: dragStart.viewX + dx, y: dragStart.viewY + dy, scale: view.scale })
       }
     }
 
@@ -2183,6 +2232,7 @@ export function MapCanvas(props: MapCanvasProps) {
     function onWheel(e: WheelEvent) {
       e.preventDefault()
       if (!mapArtReadyRef.current) return
+      stopCameraMotion()
       const rect = canvas.getBoundingClientRect()
       zoomAt(e.clientX - rect.left, e.clientY - rect.top, view.scale * Math.exp(-e.deltaY * 0.001))
     }
@@ -2191,7 +2241,27 @@ export function MapCanvas(props: MapCanvasProps) {
     // (resizeTo: container in usePixiApp) without moving the camera or
     // touching props, so the dirty flag needs its own nudge here too.
     function onResize() {
+      // Resize is not direct input: keep any short programmatic move alive so
+      // startup/orientation layout does not strand the view between origin and
+      // target. publishCamera still re-clamps every frame against the new size.
+      publishCamera(view)
       layoutScreenOverlays()
+      dirtyRef.current = true
+    }
+
+    function onReducedMotionChange() {
+      const next = reducedMotionQuery?.matches ?? false
+      if (next === reducedMotion) return
+      reducedMotion = next
+      if (reducedMotion) {
+        if (cameraMotion) {
+          const target = cameraMotion.to
+          cameraMotion = null
+          publishCamera(target)
+        }
+        shipAnims.clear()
+        resetAmbientMotion()
+      }
       dirtyRef.current = true
     }
 
@@ -2202,6 +2272,7 @@ export function MapCanvas(props: MapCanvasProps) {
     canvas.addEventListener('pointerleave', onPointerLeave)
     canvas.addEventListener('wheel', onWheel, { passive: false })
     pixiApp.renderer.on('resize', onResize)
+    reducedMotionQuery?.addEventListener('change', onReducedMotionChange)
 
     // Living map (#298): a small always-on layer, independent of the
     // dirty-redraw guard below — subtle water/port shimmer, gentle ship bob,
@@ -2210,7 +2281,24 @@ export function MapCanvas(props: MapCanvasProps) {
     // fill commands), so it stays cheap enough for the mobile budget even
     // though — unlike `draw()` — it runs whether or not anything is dirty.
     let ambientMs = 0
+    function resetAmbientMotion() {
+      for (const [key, { sprite, kind }] of ambientTileSpritesRef.current) {
+        const base = propsRef.current.visibleKeys.has(key) ? 1 : 0.5
+        const swing = kind === 'water' ? 0.12 : 0.06
+        sprite.alpha = base * (1 - swing / 2)
+      }
+      for (const { sprite, baseX, baseY } of causticSpritesRef.current.values()) {
+        sprite.position.set(baseX, baseY)
+        sprite.alpha = 0.05 * 0.55
+      }
+      for (const { sprite, baseX, baseY } of shipSpritesRef.current.values()) {
+        sprite.position.set(baseX, baseY)
+      }
+      selectionPulse.alpha = hasSelectionRef.current ? 1 : 0
+    }
+
     function animateAmbient(deltaMs: number) {
+      if (reducedMotion) return
       ambientMs += deltaMs
       const t = ambientMs / 1000
       for (const [key, { sprite, kind }] of ambientTileSpritesRef.current) {
@@ -2252,8 +2340,13 @@ export function MapCanvas(props: MapCanvasProps) {
     // `dirtyRef` is clean. The ambient tick above is exempt from this guard
     // entirely by design — that's the whole point of #298.
     function tick(ticker: Ticker) {
-      animateAmbient(ticker.deltaMS)
-      const animating = shipAnims.size > 0
+      if (cameraMotion) {
+        const frame = advanceCameraTransition(cameraMotion, ticker.deltaMS)
+        cameraMotion = frame.transition
+        publishCamera(frame.view)
+      }
+      if (!reducedMotion) animateAmbient(ticker.deltaMS)
+      const animating = !reducedMotion && shipAnims.size > 0
       if (!dirtyRef.current && !animating) return
       dirtyRef.current = false
       draw(ticker.deltaMS)
@@ -2278,6 +2371,7 @@ export function MapCanvas(props: MapCanvasProps) {
       canvas.removeEventListener('pointerleave', onPointerLeave)
       canvas.removeEventListener('wheel', onWheel)
       if (pixiApp.renderer) pixiApp.renderer.off('resize', onResize)
+      reducedMotionQuery?.removeEventListener('change', onReducedMotionChange)
       if (pixiApp.stage) pixiApp.stage.removeChild(world, light, vignette)
       world.destroy({ children: true })
       light.destroy()
@@ -2315,13 +2409,15 @@ export function MapCanvas(props: MapCanvasProps) {
       aria-busy={!mapArtReady}
       tabIndex={0}
       onKeyDown={onKeyDown}
-      onFocus={() => {
+      onFocus={(e) => {
+        if (e.currentTarget !== e.target) return
         if (!mapArtReadyRef.current) return
         hasFocusRef.current = true
         dirtyRef.current = true
         announceTile(cursor)
       }}
-      onBlur={() => {
+      onBlur={(e) => {
+        if (e.currentTarget !== e.target) return
         hasFocusRef.current = false
         dirtyRef.current = true
       }}
@@ -2330,7 +2426,12 @@ export function MapCanvas(props: MapCanvasProps) {
 
       {/* Navigation affordances (#346): zoom, recenter-on-fleet, and a minimap —
           all optional overlays over the Pixi canvas, driven via controlsRef. */}
-      <div className="map-nav-controls">
+      <div
+        className="map-nav-controls map-overlay-region map-overlay-region--navigation"
+        data-map-overlay-region="navigation"
+        role="group"
+        aria-label="Map navigation"
+      >
         <button
           type="button"
           className="map-nav-button"
@@ -2385,10 +2486,17 @@ export function MapCanvas(props: MapCanvasProps) {
         onJump={(tile) => {
           if (mapArtReadyRef.current) controlsRef.current?.centerOn(tile)
         }}
+        onFit={() => {
+          if (mapArtReadyRef.current) controlsRef.current?.fitToMap()
+        }}
       />
 
       {touchPreviewHint && (
-        <div className="map-course-hint" role="status">
+        <div
+          className="map-course-hint map-overlay-region map-overlay-region--route"
+          data-map-overlay-region="route"
+          role="status"
+        >
           {touchPreviewHint}
         </div>
       )}

@@ -24,7 +24,8 @@ import { MatchChatPanel } from '../components/MatchChatPanel'
 import { Spinner } from '../components/Spinner'
 import { CityScreen } from '../CityScreen'
 import { findViewerCaptainAtCity } from '../cityDocking'
-import { MapCanvas } from '../MapCanvas'
+import { MapAlertRegion, type MapAlertItem } from '../MapAlertRegion'
+import { MapCanvas, type MapControls } from '../MapCanvas'
 import { submitApproachAndEngage } from '../multiplayer/approachAndEngage'
 import { browserResyncTransport } from '../multiplayer/browserTransports'
 import {
@@ -158,6 +159,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
 
   const pokeTimerRef = useRef<number | null>(null)
   const prevViewRef = useRef<PlayerView | null>(null)
+  const mapControlsRef = useRef<MapControls | null>(null)
   // Whether any view has ever loaded — ref, not state, because `refetch` is
   // captured once by the mount effect and must not read a stale `live`.
   const hasLoadedRef = useRef(false)
@@ -921,6 +923,23 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
     setSelectedCaptainId(null)
   }
 
+  const haltedOrders: MapAlertItem[] = [
+    ...interruptedCaptains.map((captain) => ({
+      id: `captain:${captain.id}`,
+      name: captain.name,
+      message: `${captain.name} halted: new contact sighted`,
+      onResume: () => resumeSailOrder(captain.id),
+      onCancel: () => cancelSailOrder(captain.id),
+    })),
+    ...interruptedParties.map((party) => ({
+      id: `party:${party.id}`,
+      name: party.name,
+      message: `${party.name} halted: new contact or blocked route`,
+      onResume: () => resumeMarchOrder(party.id),
+      onCancel: () => cancelMarchOrder(party.id),
+    })),
+  ]
+
   const seatName = (seat: number) =>
     view.players.find((p) => p.id === `seat-${seat}`)?.name ?? `Seat ${seat}`
 
@@ -993,42 +1012,55 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
           cityFactionOf={(ownerId) =>
             ownerId === 'neutral' ? undefined : board.factionOf(ownerId)
           }
+          controlsRef={mapControlsRef}
         />
         {/* Item find (#502) — the multiplayer twin of GameScreen's turn-event
             feed entry, reusing its styling for one transient line. */}
         {itemFound && (
-          <ul className="turn-event-feed" aria-label="Recent events">
+          <ul
+            className="turn-event-feed map-overlay-region map-overlay-region--events"
+            data-map-overlay-region="events"
+            aria-label="Recent events"
+          >
             <li>Found: {ITEMS[itemFound.itemId]?.name ?? itemFound.itemId}</li>
           </ul>
         )}
-        {myTurn &&
-          interruptedCaptains.map((cap) => (
-            <div key={cap.id} className="sail-interrupt-banner" role="status">
-              <span>{cap.name} halted: new contact sighted</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
-        {myTurn &&
-          interruptedParties.map((p) => (
-            <div key={p.id} className="sail-interrupt-banner" role="status">
-              <span>{p.name} halted: new contact or blocked route</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
+        {myTurn && <MapAlertRegion orders={haltedOrders} />}
+        {myCities.length > 1 && (
+          <ul
+            className="city-roster map-overlay-region map-overlay-region--roster"
+            data-map-overlay-region="roster"
+            aria-label="Your cities"
+          >
+            {myCities.map((city) => {
+              const current = city.id === (openCityId ?? firstOwnCityId)
+              return (
+                <li key={city.id}>
+                  <button
+                    type="button"
+                    className={current ? 'city-roster-entry selected' : 'city-roster-entry'}
+                    aria-current={current ? 'true' : undefined}
+                    onClick={() => {
+                      mapControlsRef.current?.centerOn(city.position)
+                      setOpenCityId(city.id)
+                    }}
+                  >
+                    <span className="city-roster-name">{city.name}</span>
+                    <span
+                      className={
+                        city.builtThisRound ? 'city-roster-built done' : 'city-roster-built'
+                      }
+                      aria-label={city.builtThisRound ? 'Built this round' : 'Idle this round'}
+                      title={city.builtThisRound ? 'Built this round' : 'Idle this round'}
+                    >
+                      <UiIcon name={city.builtThisRound ? 'constructed' : 'idle'} size={16} />
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="bottom-action-bar gameplay-command-dock" data-gameplay-chrome="command-dock">
@@ -1061,9 +1093,10 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             )}
           </div>
         )}
-        <div className="button-group">
+        <div className="button-group map-command-layout" role="group" aria-label="Map commands">
           <button
-            className="secondary"
+            type="button"
+            className="secondary map-command-prominent"
             onClick={() => {
               tapFeedback()
               if (firstOwnCityId) setOpenCityId(firstOwnCityId)
@@ -1073,25 +1106,7 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             City
           </button>
           <button
-            className="secondary"
-            onClick={() => {
-              tapFeedback()
-              setDiplomacyOpen(true)
-            }}
-            disabled={view.status !== 'active'}
-          >
-            Diplomacy
-          </button>
-          <button
-            className="secondary"
-            onClick={() => {
-              tapFeedback()
-              setChatOpen(true)
-            }}
-          >
-            Chat
-          </button>
-          <button
+            type="button"
             className="primary"
             onClick={() => {
               tapFeedback()
@@ -1104,32 +1119,70 @@ export function MatchScreen({ matchId, onBack }: MatchScreenProps) {
             <UiIcon name="endTurn" />
             {myTurn ? 'End Turn' : 'Waiting…'}
           </button>
-          {view.status === 'active' &&
-            (!confirmingResign ? (
-              <button className="secondary" onClick={() => setConfirmingResign(true)}>
-                Resign
+          <details className="map-command-more">
+            <summary className="map-command-more__toggle">
+              <UiIcon name="more" />
+              More
+            </summary>
+            <div className="map-command-more__menu" role="group" aria-label="More commands">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  tapFeedback()
+                  setDiplomacyOpen(true)
+                }}
+                disabled={view.status !== 'active'}
+              >
+                Diplomacy
               </button>
-            ) : (
-              <>
-                <button
-                  className="danger"
-                  disabled={!myTurn || submitting}
-                  onClick={() => {
-                    impactFeedback()
-                    setConfirmingResign(false)
-                    void submit(matchAction.resign(view))
-                  }}
-                >
-                  Confirm Resign
-                </button>
-                <button className="secondary" onClick={() => setConfirmingResign(false)}>
-                  Cancel
-                </button>
-              </>
-            ))}
-          <button className="secondary" onClick={onBack}>
-            Leave
-          </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  tapFeedback()
+                  setChatOpen(true)
+                }}
+              >
+                Chat
+              </button>
+              {view.status === 'active' &&
+                (!confirmingResign ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setConfirmingResign(true)}
+                  >
+                    Resign
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={!myTurn || submitting}
+                      onClick={() => {
+                        impactFeedback()
+                        setConfirmingResign(false)
+                        void submit(matchAction.resign(view))
+                      }}
+                    >
+                      Confirm Resign
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setConfirmingResign(false)}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ))}
+              <button type="button" className="secondary" onClick={onBack}>
+                Leave
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 

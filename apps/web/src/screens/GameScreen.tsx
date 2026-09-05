@@ -38,6 +38,7 @@ import { portDefenderCount } from '../portDefenders'
 import { classifyRangeOverlay, type RangeOverlay } from '../shipRange'
 import { BattleBoardSheet } from '../BattleBoardSheet'
 import { BoardingCommandSheet } from '../BoardingCommandSheet'
+import { MapAlertRegion, type MapAlertItem } from '../MapAlertRegion'
 import {
   probeBoardingBattle,
   probeCityAssault,
@@ -1677,6 +1678,23 @@ export function GameScreen({
     },
   }
 
+  const haltedOrders: MapAlertItem[] = [
+    ...interruptedCaptains.map((captain) => ({
+      id: `captain:${captain.id}`,
+      name: captain.name,
+      message: `${captain.name} halted: new contact sighted`,
+      onResume: () => resumeSailOrder(captain.id),
+      onCancel: () => cancelSailOrder(captain.id),
+    })),
+    ...interruptedParties.map((party) => ({
+      id: `party:${party.id}`,
+      name: party.name,
+      message: `${party.name} halted: new contact or blocked route`,
+      onResume: () => resumeMarchOrder(party.id),
+      onCancel: () => cancelMarchOrder(party.id),
+    })),
+  ]
+
   return (
     <div className="game-screen-container gameplay-chrome" data-gameplay-chrome="screen">
       <GameplayHud
@@ -1741,49 +1759,27 @@ export function GameScreen({
           controlsRef={mapControlsRef}
         />
         {eventFeed.length > 0 && (
-          <ul className="turn-event-feed" aria-label="Recent events">
+          <ul
+            className="turn-event-feed map-overlay-region map-overlay-region--events"
+            data-map-overlay-region="events"
+            aria-label="Recent events"
+          >
             {eventFeed.map((e) => (
               <li key={e.id}>{e.text}</li>
             ))}
           </ul>
         )}
-        {/* Paused sail orders (#372): a ship halted on a new sighting waits here
-            for Resume (continue, re-baselining the contacts it now sees) or
-            Cancel (drop the course). */}
-        {isViewerTurn &&
-          interruptedCaptains.map((cap) => (
-            <div key={cap.id} className="sail-interrupt-banner" role="status">
-              <span>{cap.name} halted: new contact sighted</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeSailOrder(cap.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelSailOrder(cap.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
-        {/* Paused march orders (#482): the land twin of the banner above — a
-            column halts on a new sighting OR a route another party now blocks. */}
-        {isViewerTurn &&
-          interruptedParties.map((p) => (
-            <div key={p.id} className="sail-interrupt-banner" role="status">
-              <span>{p.name} halted: new contact or blocked route</span>
-              <div className="button-group">
-                <button type="button" className="secondary" onClick={() => resumeMarchOrder(p.id)}>
-                  Resume
-                </button>
-                <button type="button" className="secondary" onClick={() => cancelMarchOrder(p.id)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ))}
+        {/* Sail and march interruptions share one bounded selector card, so a
+            burst of halted orders cannot grow into the route-hint region. */}
+        {isViewerTurn && <MapAlertRegion orders={haltedOrders} />}
         {/* City roster (#373): only when the viewer holds more than one city —
             a single-city game keeps the unchanged "City" button and no strip. */}
         {viewerCities.length > 1 && (
-          <ul className="city-roster" aria-label="Your cities">
+          <ul
+            className="city-roster map-overlay-region map-overlay-region--roster"
+            data-map-overlay-region="roster"
+            aria-label="Your cities"
+          >
             {viewerCities.map((c) => (
               <li key={c.id}>
                 <button
@@ -1849,9 +1845,10 @@ export function GameScreen({
             {idleCityHint}
           </div>
         )}
-        <div className="button-group">
+        <div className="button-group map-command-layout" role="group" aria-label="Map commands">
           <button
-            className="secondary"
+            type="button"
+            className="secondary map-command-prominent"
             onClick={() => {
               tapFeedback()
               setCityOpen(true)
@@ -1860,37 +1857,51 @@ export function GameScreen({
           >
             City
           </button>
-          <button
-            className="secondary"
-            onClick={() => {
-              tapFeedback()
-              setSavesOpen(true)
-            }}
-          >
-            Saves
-          </button>
-          <button className="primary" onClick={endTurn} disabled={player.isAI}>
+          <button type="button" className="primary" onClick={endTurn} disabled={player.isAI}>
             <UiIcon name="endTurn" />
             {player.isAI ? 'AI thinking…' : 'End Turn'}
           </button>
-          {!confirmingResign ? (
-            <button
-              className="secondary"
-              onClick={() => setConfirmingResign(true)}
-              disabled={player.isAI}
-            >
-              Resign
-            </button>
-          ) : (
-            <>
-              <button className="danger" onClick={resign} disabled={player.isAI}>
-                Confirm Resign
+          <details className="map-command-more">
+            <summary className="map-command-more__toggle">
+              <UiIcon name="more" />
+              More
+            </summary>
+            <div className="map-command-more__menu" role="group" aria-label="More commands">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  tapFeedback()
+                  setSavesOpen(true)
+                }}
+              >
+                Saves
               </button>
-              <button className="secondary" onClick={() => setConfirmingResign(false)}>
-                Cancel
-              </button>
-            </>
-          )}
+              {!confirmingResign ? (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setConfirmingResign(true)}
+                  disabled={player.isAI}
+                >
+                  Resign
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="danger" onClick={resign} disabled={player.isAI}>
+                    Confirm Resign
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setConfirmingResign(false)}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
         </div>
       </div>
 

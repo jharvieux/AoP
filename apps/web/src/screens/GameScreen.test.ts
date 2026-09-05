@@ -1,14 +1,45 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createElement } from 'react'
-import { GAME_SETUP } from '@aop/content'
+import { GAME_SETUP, buildContentCatalog } from '@aop/content'
 import { createGame, hexDistance, type Captain, type GameConfig, type GameMap } from '@aop/engine'
 import type { Coord } from '@aop/shared'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../MapCanvas', () => ({
-  MapCanvas: () => null,
-}))
+vi.mock('../MapCanvas', async () => {
+  const { createElement: element } = await import('react')
+  return {
+    MapCanvas: (props: {
+      captains: Array<{ ownerId: string; position: Coord }>
+      viewerId: string
+      onTileClick: (x: number, y: number) => void
+    }) => {
+      const ownCaptain = props.captains.find((captain) => captain.ownerId === props.viewerId)
+      return element('div', { 'data-testid': 'map-collision-fixture' }, [
+        element(
+          'button',
+          {
+            key: 'select-fixture-unit',
+            type: 'button',
+            onClick: () => {
+              if (ownCaptain) props.onTileClick(ownCaptain.position.x, ownCaptain.position.y)
+            },
+          },
+          'Select fixture unit',
+        ),
+        element('div', { key: 'navigation', 'data-map-overlay-region': 'navigation' }),
+        element('div', {
+          key: 'minimap',
+          'data-map-overlay-region': 'minimap',
+          role: 'button',
+          tabIndex: 0,
+          'aria-label': 'Map overview fixture',
+        }),
+        element('div', { key: 'route', 'data-map-overlay-region': 'route' }),
+      ])
+    },
+  }
+})
 vi.mock('../theme/ThemeContext', () => ({
   useTheme: () => ({
     factionName: (_id: string, fallback: string) => fallback,
@@ -34,6 +65,8 @@ import {
   findViewerCaptainAtCity,
   GameScreen,
 } from './GameScreen'
+
+afterEach(cleanup)
 
 /**
  * #385: `viewerCaptainAtCity` gates recruit/load-troops/unload-troops/
@@ -301,5 +334,156 @@ describe('GameScreen', () => {
     fireEvent.click(secondButton)
     expect(firstButton.getAttribute('aria-current')).toBeNull()
     expect(secondButton.getAttribute('aria-current')).toBe('true')
+  })
+
+  it('renders the complete overlay collision-state fixture at every required viewport', () => {
+    const config: GameConfig = {
+      seed: 7,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      players: [
+        { id: 'player-0', name: 'Anne', faction: 'pirates', isAI: false },
+        { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+      ],
+    }
+    const game = createGame(config)
+    const firstCity = game.cities.find((city) => city.ownerId === 'player-0')!
+    const ownCaptain = game.captains.find((captain) => captain.ownerId === 'player-0')!
+    const secondInterruptedCaptain = {
+      ...ownCaptain,
+      id: 'player-0-captain-2',
+      name: 'Calico Jack',
+      sailOrder: {
+        destination: { ...ownCaptain.position },
+        knownContactIds: [],
+        interrupted: true,
+      },
+    }
+    const collisionGame = {
+      ...game,
+      config: { ...game.config, content: buildContentCatalog() },
+      players: game.players.map((player) =>
+        player.id === 'player-0'
+          ? { ...player, resources: { gold: 999, timber: 999, iron: 999, rum: 999 } }
+          : player,
+      ),
+      cities: [...game.cities, { ...firstCity, id: 'player-0-city-2', name: 'Second Harbor' }],
+      captains: [
+        ...game.captains.map((captain) =>
+          captain.id === ownCaptain.id
+            ? {
+                ...captain,
+                sailOrder: {
+                  destination: { ...captain.position },
+                  knownContactIds: [],
+                  interrupted: true,
+                },
+              }
+            : captain,
+        ),
+        secondInterruptedCaptain,
+      ],
+    }
+
+    const onAction = vi.fn()
+
+    render(
+      createElement(GameScreen, {
+        game: collisionGame,
+        battleReport: null,
+        onDismissBattleReport: vi.fn(),
+        itemFound: { itemId: 'fixture-item' },
+        onAction,
+        onSaveSlot: async () => undefined,
+        onLoadSlot: async () => undefined,
+        onWatchSlot: vi.fn(),
+        autosaveFailing: false,
+      }),
+    )
+
+    const requiredViewports = [
+      [375, 667],
+      [390, 844],
+      [844, 390],
+      [768, 1024],
+      [1024, 768],
+      [1440, 900],
+    ]
+    const expectedRegions = ['alerts', 'events', 'minimap', 'navigation', 'roster', 'route']
+    for (const [width, height] of requiredViewports) {
+      Object.defineProperties(window, {
+        innerWidth: { configurable: true, value: width },
+        innerHeight: { configurable: true, value: height },
+      })
+      window.dispatchEvent(new Event('resize'))
+      expect(
+        Array.from(document.querySelectorAll('[data-map-overlay-region]'))
+          .map((node) => node.getAttribute('data-map-overlay-region'))
+          .sort(),
+      ).toEqual(expectedRegions)
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Select fixture unit' }))
+
+    const alerts = screen.getByRole('region', { name: '2 halted orders' })
+    expect(alerts.querySelectorAll('.sail-interrupt-banner')).toHaveLength(1)
+    const picker = screen.getByRole('combobox', { name: 'Choose halted order' })
+    expect(picker.querySelectorAll('option')).toHaveLength(2)
+    fireEvent.change(picker, { target: { value: `captain:${secondInterruptedCaptain.id}` } })
+    fireEvent.click(screen.getByRole('button', { name: `Resume ${secondInterruptedCaptain.name}` }))
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'setSailOrder',
+      playerId: 'player-0',
+      captainId: secondInterruptedCaptain.id,
+      destination: secondInterruptedCaptain.sailOrder.destination,
+    })
+    expect(screen.getByRole('list', { name: 'Recent events' })).not.toBeNull()
+    expect(screen.getByRole('list', { name: 'Your cities' })).not.toBeNull()
+    expect(document.querySelector('.selection-info')?.textContent).toMatch(/Movement/)
+    expect(screen.getByText(/idle cit(?:y|ies) can still build/)).not.toBeNull()
+  })
+
+  it('keeps City and End Turn visible while preserving Saves and resign confirmation under More', () => {
+    const config: GameConfig = {
+      seed: 7,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      players: [
+        { id: 'player-0', name: 'Anne', faction: 'pirates', isAI: false },
+        { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+      ],
+    }
+    render(
+      createElement(GameScreen, {
+        game: createGame(config),
+        battleReport: null,
+        onDismissBattleReport: vi.fn(),
+        itemFound: null,
+        onAction: vi.fn(),
+        onSaveSlot: async () => undefined,
+        onLoadSlot: async () => undefined,
+        onWatchSlot: vi.fn(),
+        autosaveFailing: false,
+      }),
+    )
+
+    const layout = document.querySelector<HTMLElement>('.map-command-layout')!
+    const visible = Array.from(layout.children)
+      .filter((child) => child.tagName === 'BUTTON')
+      .map((button) => button.textContent?.trim())
+    expect(visible).toEqual(['City', 'End Turn'])
+
+    const more = layout.querySelector<HTMLDetailsElement>('.map-command-more')!
+    expect(more.querySelector('summary')?.textContent).toMatch(/More/)
+    const menu = more.querySelector<HTMLElement>('.map-command-more__menu')!
+    const button = (name: string) =>
+      Array.from(menu.querySelectorAll('button')).find((item) => item.textContent?.trim() === name)!
+    expect(button('Saves')).not.toBeNull()
+    expect(button('Resign')).not.toBeNull()
+
+    fireEvent.click(button('Resign'))
+    expect(button('Confirm Resign')).not.toBeNull()
+    expect(button('Cancel')).not.toBeNull()
+    fireEvent.click(button('Cancel'))
+    expect(button('Resign')).not.toBeNull()
   })
 })
