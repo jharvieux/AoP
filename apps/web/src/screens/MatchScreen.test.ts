@@ -283,7 +283,9 @@ describe('#613 map overlay and command contract', () => {
     )
     expect(stylesSource).toMatch(/\.city-roster\s*\{[^}]*overflow-x: auto/s)
     expect(stylesSource).toContain('.turn-event-feed li:nth-child(n + 3)')
-    expect(stylesSource).toMatch(/@media \(max-height: 419px\)[\s\S]*?\.map-minimap\s*\{\s*display: block;/)
+    expect(stylesSource).toMatch(
+      /@media \(max-height: 419px\)[\s\S]*?\.map-minimap\s*\{\s*display: block;/,
+    )
     expect(stylesSource).toMatch(/\.map-alert-picker\s*\{[^}]*min-width: 0/s)
     expect(stylesSource).toMatch(/\.map-alert-picker select\s*\{[^}]*min-height: 44px/s)
   })
