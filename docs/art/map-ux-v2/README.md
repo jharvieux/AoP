@@ -3,9 +3,9 @@
 This package records issue #613's responsive map overlays, accessible minimap, bounded camera,
 command hierarchy, city-overlay focus lifecycle, fog/privacy behavior, and reduced-motion
 contract. The captures came from source commit
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2` (tree
-`71328fc4b018f021686ecefcd21f89a0ffc04c6a`) in the Codex in-app Browser at device pixel
-ratio 1.
+`c1824f22bf14dca6d38f7519fd99affd789a8130` (tree
+`68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d`) in the Codex in-app Browser. The 375 × 667
+frame used DPR 2; the other six frames used DPR 1.
 
 ## Required viewport set
 
@@ -18,7 +18,10 @@ ratio 1.
 
 The separate [multiplayer compact-landscape proof](runtime-captures/map-phone-landscape-mp-844x390.jpg)
 shows the authoritative sanitized `PlayerView`, two halted orders in one selector card, all six
-overlay regions, and the command dock together at 844 × 390.
+overlay regions, the command dock, and the expanded resign confirmation together at 844 × 390.
+Its measured Confirm Resign, Cancel, and Leave actions are fully contained after the compact-menu
+repair. The required SP 844 × 390 frame records the equivalent confirmation geometry; the desktop
+frame records More open.
 
 The route hint and multiplayer event feed are explicit collision-fixture portals around the real
 production `GameScreen`/`MatchScreen`, `MapCanvas`, minimap, alert, roster, navigation, and command
@@ -29,20 +32,21 @@ the only multiplayer seams replaced by deterministic evidence stubs.
 ## Approval boundary
 
 The seven images are final exact-source **candidate** captures. This package does not claim
-operator approval. It also does not claim a touch recording: no physical or simulator device was
-connected and the in-app Browser has neither multitouch emulation nor video recording. The
-drag/pinch/minimap/recenter/fit/route recording therefore remains a pending external acceptance
-gate.
+operator approval. It does not attach or claim durable integration of a touch recording. A separate
+exact-source iPhone Simulator XCTest and contiguous MOV did pass drag, pinch, minimap navigation,
+fleet recenter, fit, and route preview/confirmation. That external candidate is bound here by its
+metadata SHA-256 (`1618a296…`) and original MOV SHA-256 (`06523603…`); a 920,404-byte GitHub-safe
+derivative (`5ce7e920…`) is also identified. Upload/linking remains a pending integration gate.
 
 The operator approved an M5 MacBook Air with Chrome as the available desktop performance
 reference and accepted that physical-phone performance measurements are unavailable. That ruling
-does not waive the touch recording or the functional phone, keyboard, accessibility, privacy, and
-safe-layout evidence recorded here.
+does not waive durable touch-evidence integration or the functional phone, keyboard,
+accessibility, privacy, and safe-layout evidence recorded here.
 
-The single-player frames were captured before an MP-only fixture correction removed an impossible
-hidden enemy captain. That correction does not share state with or alter the SP fixture. Both MP
-frames were recaptured after the correction. The current harness retains the final SP and
-sanitized MP states and binds all evidence material to the frozen application source.
+All seven frames were captured fresh after the MP-only fixture correction removed an impossible
+hidden enemy captain and after the compact multiplayer More-menu containment repair. The current
+harness retains the final SP and sanitized MP states and binds all evidence material to the frozen
+application source. No pixel from either superseded source head is retained.
 
 See [RUNTIME-VERIFICATION.md](RUNTIME-VERIFICATION.md) for measurements and interaction results,
 [RUNTIME-MEASUREMENTS.json](RUNTIME-MEASUREMENTS.json) for the literal browser observations, and
@@ -55,5 +59,6 @@ node docs/art/map-ux-v2/tools/build-receipt.mjs
 node docs/art/map-ux-v2/validate.mjs
 ```
 
-The validator rejects source, harness, receipt, capture, dimension, budget, approval, touch-gate,
-viewport, or supplemental-MP-proof drift.
+The validator rejects source/archive, harness, receipt, capture, dimension, budget, approval,
+touch-integration, viewport, DPR, overlay-geometry, More-menu containment, action clipping, or
+supplemental-MP-proof drift.

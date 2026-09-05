@@ -2,47 +2,47 @@
 
 ## Exact-source capture states
 
-Every retained frame reported the requested inner dimensions at DPR 1, `aria-busy=false`, no
+Every retained frame reported the requested inner dimensions, `aria-busy=false`, no
 `.map-canvas-error`, no document overflow, zero pairwise intersections among the six map overlay
 regions, no undersized visible direct target, and a 44 CSS px minimum direct target. Rectangles are
-`[x, y, width, height]` CSS pixels.
+`[x, y, width, height]` CSS pixels. The 375 × 667 frame used DPR 2; every other frame used DPR 1.
 
-| Viewport   | Mode            | Map                         | Events                     | Alerts                 | Navigation              | Roster                      | Minimap                                 | Route                             | Dock                        |
-| ---------- | --------------- | --------------------------- | -------------------------- | ---------------------- | ----------------------- | --------------------------- | --------------------------------------- | --------------------------------- | --------------------------- |
-| 375 × 667  | SP              | `[0,104.5938,375,472.6094]` | `[8,112.5938,155,47.5938]` | `[8,164.5938,359,102]` | `[179,112.5938,188,44]` | `[8,517.2031,246,52]`       | `[262,464.2031,105,105]`                | `[93.75,412.2031,187.5,44]`       | `[0,577.2031,375,89.7969]`  |
-| 390 × 844  | SP              | `[0,104.5938,390,649.6094]` | `[8,112.5938,170,47.5938]` | `[8,164.5938,374,102]` | `[194,112.5938,188,44]` | `[8,702.2031,247.5234,44]`  | `[272.8047,637.0078,109.1953,109.1953]` | `[97.5,585.0078,195,44]`          | `[0,754.2031,390,89.7969]`  |
-| 844 × 390  | SP              | `[0,64,844,236.203]`        | `[12,76,240,44]`           | `[162,128,520,62]`     | `[644,76,188,44]`       | `[12,236.203,236.3125,52]`  | `[736,192.203,96,96]`                   | `[300.0742,240.203,243.8516,48]`  | `[0,300.203,844,89.797]`    |
-| 768 × 1024 | SP              | `[0,64,768,870.2031]`       | `[12,76,240,44]`           | `[124,128,520,62]`     | `[712,76,44,200]`       | `[12,878.2031,263.5234,44]` | `[636,802.2031,120,120]`                | `[262.0742,818.2031,243.8516,48]` | `[0,934.2031,768,89.7969]`  |
-| 1024 × 768 | MP              | `[0,64,1024,639]`           | `[12,76,240,44]`           | `[252,128,520,62]`     | `[968,76,44,200]`       | `[12,647,234.2734,44]`      | `[889.125,586.0078,122.875,104.9922]`   | `[390.0742,587,243.8516,48]`      | `[0,703,1024,65]`           |
-| 1440 × 900 | SP              | `[0,69.7969,1440,740.4063]` | `[12,81.7969,240,55.5938]` | `[460,81.7969,520,62]` | `[1384,81.7969,44,200]` | `[12,754.2031,263.5234,44]` | `[1278,648.2031,150,150]`               | `[598.0742,694.2031,243.8516,48]` | `[0,810.2031,1440,89.7969]` |
-| 844 × 390  | MP supplemental | `[0,64,844,261]`            | `[12,76,240,44]`           | `[162,128,520,62]`     | `[644,76,188,44]`       | `[12,269,234.2734,44]`      | `[736,230.9766,96,82.0234]`             | `[300.0742,265,243.8516,48]`      | `[0,325,844,65]`            |
+| Viewport   | Mode         | Events                     | Alerts                 | Navigation              | Roster                      | Minimap                                 | Route                             | Dock                         |
+| ---------- | ------------ | -------------------------- | ---------------------- | ----------------------- | --------------------------- | --------------------------------------- | --------------------------------- | ---------------------------- |
+| 375 × 667  | SP           | `[8,112.5938,155,47.5938]` | `[8,164.5938,359,102]` | `[179,112.5938,188,44]` | `[8,517.2031,246,52]`       | `[262,464.2031,105,105]`                | `[93.75,412.2031,187.5,44]`       | `[0,577.2031,375,89.7969]`   |
+| 390 × 844  | SP focus     | `[8,112.0938,170,47.5938]` | `[8,164.0938,374,102]` | `[194,112.0938,188,44]` | `[8,701.7031,247.5234,44]`  | `[272.8047,636.5078,109.1953,109.1953]` | `[97.5,584.5078,195,44]`          | `[0,754.2031,390,89.7969]`   |
+| 844 × 390  | SP confirm   | `[12,76,240,44]`           | `[162,128,520,62]`     | `[644,76,188,44]`       | `[12,192.2031,236.3125,52]` | `[736,148.2031,96,96]`                  | `[300.0742,196.2031,243.8516,48]` | `[0,256.2031,844,133.7969]`  |
+| 768 × 1024 | SP           | `[12,76,240,44]`           | `[124,128,520,62]`     | `[712,76,44,200]`       | `[12,878.2031,263.5234,44]` | `[636,802.2031,120,120]`                | `[262.0742,818.2031,243.8516,48]` | `[0,934.2031,768,89.7969]`   |
+| 1024 × 768 | MP           | `[12,76,240,44]`           | `[252,128,520,62]`     | `[968,76,44,200]`       | `[12,647,234.2734,44]`      | `[889.125,586.0078,122.875,104.9922]`   | `[390.0742,587,243.8516,48]`      | `[0,703,1024,65]`            |
+| 1440 × 900 | SP More open | `[12,81.7969,240,55.5938]` | `[460,81.7969,520,62]` | `[1384,81.7969,44,200]` | `[12,710.2031,263.5234,44]` | `[1278,604.2031,150,150]`               | `[598.0742,650.2031,243.8516,48]` | `[0,766.2031,1440,133.7969]` |
+| 844 × 390  | MP confirm   | `[12,76,240,44]`           | `[162,128,520,62]`     | `[644,76,188,44]`       | `[12,225,234.2734,44]`      | `[736,186.9766,96,82.0234]`             | `[300.0742,221,243.8516,48]`      | `[0,281,844,109]`            |
 
-At 844 × 390, City measured 198.203 × 44 and End Turn 267.586 × 44. At 1440 ×
-900, More remained a 198.211 × 44 visible target and its open menu visibly retained Saves and
-Resign. Compact landscapes use a horizontal 188 × 44 navigation row. Every frame preserves a
-useful central interaction area, and every overlay stays within the map and safe-layout offsets.
-The in-app Browser does not emulate nonzero notch insets; these live rectangles used zero
-environment insets, while the four `env(safe-area-inset-*)` anchors remain source/test verified.
+The SP compact More menu was `[542,290,220,44]` in both open and confirm states. Its confirm state
+contained Saves `[546,290,47.8203,44]`, Confirm Resign `[597.8203,290,96.8438,44]`, and Cancel
+`[698.6641,290,52.6563,44]`. The MP confirm menu was `[422.0625,290,339.9375,44]` and fully
+contained Diplomacy, Chat, Confirm Resign, Cancel, and Leave; Leave ended at x=758, 86 px inside
+the 844 px document edge. The desktop open menu was `[840,800,220,44]` and retained Saves and
+Resign. Each open/confirm menu had zero intersections with the six overlay regions, all visible
+actions were at least 44 CSS px high, and City plus End Turn remained visible in every frame.
 
-## Live minimap, camera, and city observations
+The in-app Browser does not emulate nonzero notch insets; these rectangles used zero environment
+insets, while the four `env(safe-area-inset-*)` anchors remain source/test verified.
 
-At 390 × 844 the focused minimap showed a static focus outline, a dashed keyboard cursor, and the
-literal `View` label inside a double/dashed viewport boundary, so the viewport cue does not depend
-on color. ArrowRight plus Enter changed the selected region and viewport; Home restored the full
-`0%, 0%, 100%, 100%` fit. A pointer click focused the minimap and changed the viewport from
-`38.3464%, 0%, 25.3906%, 42.3177%` to
-`2.92969%, 59.0495%, 25.3906%, 40.9505%` without unbounding the page.
+## Exact-source minimap, camera, and city evidence
 
-A direct canvas drag during a live zoom transition left the viewport at
-`2.60417%, 61.5104%, 20.3125%, 33.8542%`; the values were byte-identical after 400 ms. A separate
-zoom followed by wheel input left it at `8.32284%, 70.7022%, 8.7666%, 14.611%`, again identical
-after 400 ms. Those supported mouse paths interrupted the programmatic move and remained inside
-the 0–100% minimap bounds. Pure camera tests cover every clamp path, square/hex geometry,
-map-smaller-than-viewport centering, and the repaired hex keyboard keep-visible falsifier.
+At 390 × 844 the focused minimap showed a `2px solid rgb(200, 150, 44)` outline, accessible name
+`Map overview`, and the literal `View` label inside a double/dashed viewport boundary. The cue
+therefore does not depend on color. Independent exact-head browser verification also confirmed
+that Enter moved the viewport and a hidden keyboard target was announced as `Tile column 31, row
+31, unexplored` without disclosing hidden contents.
 
-City opened exactly one role=`dialog`, moved focus to Return to world map, and made the underlying
-game screen inert. Closing it removed the dialog and inert state and restored focus to the exact
-City button that launched it.
+The current exact-head source and regression tests cover pointer/wheel cancellation before camera
+mutation, every square/hex clamp path, map-smaller-than-viewport centering, and the repaired hex
+keyboard keep-visible falsifier. They also cover the city overlay's single-dialog layering,
+underlying-map inert state, close lifecycle, and focus restoration to City. The prior live numeric
+camera and dialog observations were deliberately not carried across the source-head change; this
+package labels these current-head claims as source/test evidence rather than a new live numeric
+recheck.
 
 ## Fog and privacy
 
@@ -57,27 +57,29 @@ tracked separately in [#623](https://github.com/jharvieux/AoP/issues/623).
 ## Reduced motion and input limits
 
 The in-app Browser does not expose media-query emulation, touch-device emulation, multitouch, or
-video recording. No live reduced-motion, pinch, or physical-touch claim is made. Focused source
-and regression falsifiers verify that reduced motion makes programmatic camera targets immediate,
-clears travel, skips ambient ticker writes, preserves one static high-contrast selection state,
-and removes nonessential DOM motion. Pointer down/wheel cancel camera transition state before
-mutation; touch first-tap preview/second-tap confirmation, pointer capture, pinch distinction,
-keyboard cursor, and live announcements remain regression-covered.
+video recording. No IAB reduced-motion or touch claim is made. Focused source and regression
+falsifiers verify that reduced motion makes programmatic camera targets immediate, clears travel,
+skips ambient ticker writes, preserves one static high-contrast selection state, and removes
+nonessential DOM motion.
 
-The requested physical-touch recording covering drag, pinch, minimap navigation, fleet recenter,
-fit, and route confirmation remains a **pending external gate**. A mouse drag, wheel, minimap
-pointer/keyboard, city lifecycle, and all layout measurements were observed live, but they are not
-substituted for that recording.
+A separate exact-`c1824f22` iPhone 17 Pro Simulator run used native press-and-drag and
+`XCUIElement.pinch`, then navigated the minimap, recentered on the fleet, fit the map, and completed
+the two-tap route preview/confirmation flow in one contiguous 38.86-second MOV. XCTest passed 1/1.
+The original 1206 × 2622 MOV is SHA-256 `06523603…`; its metadata is SHA-256 `1618a296…`. A
+720 × 1566 GitHub-safe derivative is SHA-256 `5ce7e920…`. Those files remain external to this
+evidence commit, so durable attachment/linking is truthfully **pending integration**, not PASS.
 
 ## Verification
 
 - Independent exact-source verification passed at application source
-  `a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`, tree
-  `71328fc4b018f021686ecefcd21f89a0ffc04c6a`, including the repaired hex cursor falsifier.
-- Focused map/chrome regression passed: **5 files / 67 tests**.
+  `c1824f22bf14dca6d38f7519fd99affd789a8130`, tree
+  `68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d`, archive SHA-256
+  `0464a34facfca2b4838983fccb0faa90932212d1c6e27932cca936f0f9e27903`.
+- The verifier's full application gate passed: shared **5 files / 57 tests**, engine **37 / 765**,
+  web **108 / 1007**, typechecks, Prettier, and build.
 - All seven JPEG/JFIF RGB captures are below 300 KiB.
 - The deterministic receipt rebuild and validator pass with negative controls for source, material,
-  hash, dimensions, budgets, required viewports, supplemental MP proof, approval, and the open
-  touch gate.
+  archive, hash, dimensions, budgets, required viewports/DPRs, overlay collisions, More-menu
+  containment, action clipping, supplemental MP proof, approval, and the pending touch integration.
 
-Operator approval and the external physical-touch recording are intentionally not claimed here.
+Operator approval and durable touch-artifact integration are intentionally not claimed here.

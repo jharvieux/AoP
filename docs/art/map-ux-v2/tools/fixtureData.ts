@@ -1,7 +1,7 @@
 import { GAME_SETUP, buildContentCatalog } from '@aop/content'
 import { createGame, type GameConfig, type GameState, type PlayerView } from '@aop/engine'
 
-export const SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
+export const SOURCE_HEAD = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
 
 export function singlePlayerCollisionGame(): GameState {
   const config: GameConfig = {

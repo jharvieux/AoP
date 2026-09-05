@@ -2,8 +2,9 @@
   "schema": "aop-map-ux-runtime-captures-v2",
   "issue": 613,
   "captured_on": "2026-09-05",
-  "source_head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
-  "source_tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+  "source_archive_sha256": "0464a34facfca2b4838983fccb0faa90932212d1c6e27932cca936f0f9e27903",
   "browser": "Codex in-app Browser (Chrome)",
   "desktop_reference": "M5 MacBook Air",
   "harness": {
@@ -13,7 +14,7 @@
       {
         "path": "docs/art/map-ux-v2/tools/fixtureData.ts",
         "bytes": 4595,
-        "sha256": "10dba4142024ac46b342e4241bc83216ad9e277f508d9ca3e86e290bba342b6e"
+        "sha256": "87ff2f339f00b54b5b65cbcba29f5fc3af44e51409fbbca4fd00c481f20e665e"
       },
       {
         "path": "docs/art/map-ux-v2/tools/index.html",
@@ -90,8 +91,8 @@
     },
     {
       "path": "apps/web/src/MapCanvas.tsx",
-      "bytes": 105452,
-      "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+      "bytes": 105347,
+      "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
     },
     {
       "path": "apps/web/src/Minimap.tsx",
@@ -114,14 +115,29 @@
       "sha256": "41df4754516b171c7713b1846f7526ccd43479c385c20c1ecdd12e8d813f8cfd"
     },
     {
+      "path": "apps/web/src/mapCommandLayout.test.ts",
+      "bytes": 21011,
+      "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+    },
+    {
+      "path": "apps/web/src/mapCursor.ts",
+      "bytes": 5090,
+      "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
+    },
+    {
+      "path": "apps/web/src/mapCursor.test.ts",
+      "bytes": 9902,
+      "sha256": "c067dedd45ed128878903631c6cd8a6b1018737abd7397ba71309cf5d83a8b24"
+    },
+    {
       "path": "apps/web/src/screens/GameScreen.tsx",
-      "bytes": 89200,
-      "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+      "bytes": 89340,
+      "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
     },
     {
       "path": "apps/web/src/screens/GameScreen.test.ts",
-      "bytes": 18388,
-      "sha256": "06d463cf927d9a7d977260fa2866d8505595dd1e66675465073b0a4a1fa45a74"
+      "bytes": 20731,
+      "sha256": "d00ac460c521bc94b3c4e1db89c221b47b74af092dab4d71374d846d1722679b"
     },
     {
       "path": "apps/web/src/screens/MatchScreen.tsx",
@@ -134,15 +150,25 @@
       "sha256": "3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d"
     },
     {
+      "path": "apps/web/src/singlePlayerPresentation.ts",
+      "bytes": 3053,
+      "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+    },
+    {
+      "path": "apps/web/src/singlePlayerPresentation.test.ts",
+      "bytes": 7504,
+      "sha256": "02d5f89f2935a32a66ec4684bde608d6fb4a59dea3bef19b952a63632d7114ea"
+    },
+    {
       "path": "apps/web/src/styles.css",
-      "bytes": 88328,
-      "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+      "bytes": 89210,
+      "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
     }
   ],
   "measurements": {
     "path": "docs/art/map-ux-v2/RUNTIME-MEASUREMENTS.json",
-    "bytes": 9057,
-    "sha256": "44572b8fc4768c425863610cbbddcc2a2086ef8685e3a20bbbcee5fdcc9d11d6"
+    "bytes": 11972,
+    "sha256": "cbcf03f19932bef4382c0cb5a51e78439604571db671414d729bb02553a35552"
   },
   "approval": {
     "captures_operator_approved": false,
@@ -151,8 +177,32 @@
   },
   "capability_gates": {
     "touch_recording": {
-      "status": "pending-external",
-      "reason": "No connected physical/simulator device; IAB exposes no multitouch video recording."
+      "status": "pending-integration",
+      "reason": "The exact-source Simulator run passed, but its MOV and metadata are not attached to this package.",
+      "external_candidate": {
+        "status": "recorded-and-xctest-passed; pending durable integration",
+        "attached_to_this_package": false,
+        "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "metadata_path": "/private/tmp/aop-613-touch-final-c1824f2/metadata/artifact-metadata.json",
+        "metadata_sha256": "1618a296f6a48c8b4151a294ab7d6ded2e63a99f8bb39389ff9e6d7e6ad7dad2",
+        "recording_path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2.mov",
+        "recording_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
+        "recording_bytes": 19337683,
+        "duration_seconds": 38.86,
+        "dimensions_pixels": [1206, 2622],
+        "frame_count": 2293,
+        "upload_candidate": {
+          "path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2-github.mp4",
+          "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
+          "bytes": 920404,
+          "duration_seconds": 38.876947,
+          "dimensions_pixels": [720, 1566],
+          "frame_count": 2249,
+          "codec": "H.264 High / yuv420p / BT.709"
+        },
+        "harness_head": "d4c3ef1e0f0aea21c858fed37baf68b5e0abf405",
+        "harness_binding_sha256": "7ef355a8e088daf20614014ed0a9ef481eab64146977fab044a844cb8bd9389b"
+      }
     }
   },
   "captures": [
@@ -163,8 +213,8 @@
       "mode": "single-player",
       "state": "full collision fixture",
       "primary": true,
-      "bytes": 30602,
-      "sha256": "50641d4a05a9f677eabd352257e571aead88c9eaa58c1043821dc1aeefb9512b"
+      "bytes": 34086,
+      "sha256": "59b2ef2393fdb78b78ad848ddbf69c7f89aa9b5fc0ccee48a63684d464b057d1"
     },
     {
       "path": "runtime-captures/map-phone-minimap-focus-390x844.jpg",
@@ -173,18 +223,18 @@
       "mode": "single-player",
       "state": "full collision fixture; minimap keyboard focus",
       "primary": true,
-      "bytes": 39053,
-      "sha256": "f1d1bdb91b2a2784eeb0b6eee3ce8a397e2eaee65f7dc331f7d46e6bd75e0fd3"
+      "bytes": 39048,
+      "sha256": "b2ae86e49f0befc601a176bd62655e6d56f7e9a3c3b8ca1f5b2c3087b2e1c4ba"
     },
     {
       "path": "runtime-captures/map-phone-landscape-844x390.jpg",
       "width": 844,
       "height": 390,
       "mode": "single-player",
-      "state": "full collision fixture; compact horizontal navigation",
+      "state": "full collision fixture; compact More resign confirmation",
       "primary": true,
-      "bytes": 38500,
-      "sha256": "29806c9a0f737b40ed72fd424f5fefd1c02090ddf05e7018b5c27951be700f55"
+      "bytes": 41059,
+      "sha256": "5b588009d532ddcb9e67c11e8d203ae404b3308f69dd215144e6feb095bc0f15"
     },
     {
       "path": "runtime-captures/map-tablet-portrait-768x1024.jpg",
@@ -193,8 +243,8 @@
       "mode": "single-player",
       "state": "full collision fixture",
       "primary": true,
-      "bytes": 50212,
-      "sha256": "dabbb114b7335daa0f5fc76e11c499c73fe509b951a776507dd2eba16b19515c"
+      "bytes": 49615,
+      "sha256": "1d12b2a9f56aaf86b8803cb43b7b593389be8c595cddac821a57c04a52bddf90"
     },
     {
       "path": "runtime-captures/map-tablet-landscape-1024x768.jpg",
@@ -203,8 +253,8 @@
       "mode": "multiplayer",
       "state": "sanitized PlayerView; two halted orders and route fixture",
       "primary": true,
-      "bytes": 55793,
-      "sha256": "f4b1d895d0ea029e93b97144b8d8f38fe29b36105a58c9473d4489a8151bd7b3"
+      "bytes": 55839,
+      "sha256": "6abad01d8bed6aac809522f9cd206cd5d53efe9653039a9bb2034ec547bd9bd3"
     },
     {
       "path": "runtime-captures/map-desktop-more-1440x900.jpg",
@@ -213,19 +263,19 @@
       "mode": "single-player",
       "state": "full collision fixture; More commands open",
       "primary": true,
-      "bytes": 63711,
-      "sha256": "1e6ed7d2968090c66ea49d736c45e92d546be38fadd0e43de8cfb587541d7405"
+      "bytes": 61920,
+      "sha256": "63b8884acfac02450ad5fe3bf14ff5a280925812cdf7552f163a5997835a9b24"
     },
     {
       "path": "runtime-captures/map-phone-landscape-mp-844x390.jpg",
       "width": 844,
       "height": 390,
       "mode": "multiplayer",
-      "state": "sanitized PlayerView; two halted orders and route fixture",
+      "state": "sanitized PlayerView; two halted orders, route fixture, and compact More confirmation",
       "primary": false,
-      "bytes": 39489,
-      "sha256": "9c1556d912be75c4cdda9c7f77942109aae7f00776058710d815c5f3d1d3c57e"
+      "bytes": 42212,
+      "sha256": "821f4562890163835e0e1e4c6f7fe5f2193862e3733d7400531b6d75d2dc3f9f"
     }
   ],
-  "binding_sha256": "dc52db5f4605b04fe8adc8fc027cf2ebbb0cd9ac28669689939b837abf0e585a"
+  "binding_sha256": "418d0f4bf0e87eae23c272df70b40ee6baf0e0aa536c0c609bdae578259428aa"
 }
