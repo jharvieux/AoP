@@ -1,16 +1,17 @@
 # Gilded Harbor city art — production candidate
 
-> **#613 renewal pending:** the eight retained runtime captures remain historical, but their
-> former approval cannot validate the repaired map/chrome source. The exact 37-frame renewal
-> inventory and no-write proposal tool live in
+> **#613 runtime approval pending:** the eight replacement captures were produced and
+> inspected against exact source `a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`, but their
+> historical approval cannot approve these new pixels. The exact 37-frame renewal record lives in
 > [`../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md`](../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md).
 
-**Status:** checkpoint 1, Direction B refinement, and refreshed checkpoint 2 are approved.
-The issue #608 runtime candidate includes the requested Town Hall flag mount. Deterministic
-evidence is complete, refreshed live captures are bound to the shipping sources, and
-integration-owner visual-settle and native-size review is complete. The exact-byte approval
-is recorded in [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263)
-against evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c`.
+**Status:** checkpoint 1 and the Direction B art refinement remain approved. The issue #608
+runtime candidate includes the requested Town Hall flag mount. Deterministic evidence is
+complete, and the replacement live captures are bound to the target shipping sources with
+integration-owner visual-settle and native-size review complete. Direct approval of the new
+capture bytes is pending. The approval at evidence head
+`dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263).
 
 ![Production state contact sheet](proofs/production-state-contact-1600x620.webp)
 
@@ -21,12 +22,14 @@ asset/theme-fallback tests. D-049's amendment remains the visual rule: layered h
 depth, warm limestone and timber, luminous water, reduced fortress dominance, and clear
 working-district silhouettes.
 
-## Approved result
+## Approved art result
 
-The operator approved the complete starting-to-full city, including the Town Hall-mounted
-faction flag, smaller phone read, recruitment progression, low fortification perimeter, and
-connected shoreline Shipyard. See [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for the
-complete contract, inventory, evidence, budgets, and known boundary.
+The operator approved the underlying complete starting-to-full city direction, including the
+Town Hall-mounted faction flag, smaller phone read, recruitment progression, low
+fortification perimeter, and connected shoreline Shipyard. The newly captured runtime pixels
+showing that result remain pending direct approval. See
+[PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for the complete contract, inventory,
+evidence, budgets, and known boundary.
 
 ## Production review files
 

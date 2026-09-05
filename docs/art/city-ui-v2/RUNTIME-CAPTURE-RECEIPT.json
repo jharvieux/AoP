@@ -1,23 +1,24 @@
 {
   "schema": 1,
   "issue": 612,
-  "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
-  "captureStatus": "approved",
-  "capturedOn": "2026-09-04",
+  "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "captureStatus": "captured-pending-direct-operator-approval",
+  "capturedOn": "2026-09-05",
   "captureOrigin": {
-    "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
-    "workflow": "normal UI only",
+    "workflow": "truthful shipping-component import harness with visible shipping controls",
+    "harness": "docs/art/city-ui-v2/tools/runtime-harness",
     "browser": "Codex in-app Browser (Chromium version not exposed)",
     "faction": "pirates",
     "programmaticFontOrImageAwaitClaimed": false,
     "visualSettleInspection": "completed-by-integration-owner",
-    "nativeSizeInspection": "completed-by-integration-owner"
+    "nativeSizeInspection": "completed-by-integration-owner",
+    "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
   },
   "sourceTransition": {
-    "from": "59c82c623dc046c68cec53548903e69af09456a8",
-    "to": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
-    "classification": "exact-source-recaptured-approved",
-    "changedBehavior": "Backdrop dismissal, responsive focus containment, topology-aware docking, reduced motion, responsive layout, and web-owned art defaults",
+    "from": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "to": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+    "classification": "exact-source-recaptured-pending-approval",
+    "changedBehavior": "World-map chrome, responsive overlay, camera, minimap, and reduced-motion source changed; city evidence was renewed because shared MatchScreen and stylesheet inputs changed.",
     "renderedMarkupChanged": true,
     "stylesChanged": true,
     "artChanged": false,
@@ -41,10 +42,17 @@
       "scope": "Dedicated city direction plus the portrait-phone framing refinement"
     },
     "checkpoint2": {
-      "status": "approved",
-      "scope": "Exact-head recapture, native-size review, and approval for the current source",
-      "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
-      "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344"
+      "status": "pending-direct-operator-approval",
+      "scope": "Exact-source recapture and native-size review complete; direct approval for these pixels pending",
+      "evidenceHead": null,
+      "record": null,
+      "historicalApproval": {
+        "status": "historical-source-only",
+        "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344",
+        "reusable": false
+      }
     }
   },
   "coverage": {

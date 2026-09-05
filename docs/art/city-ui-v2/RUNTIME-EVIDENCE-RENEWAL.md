@@ -2,16 +2,18 @@
 
 ## Status
 
-The 37 runtime captures inherited from issues #608, #610, #611, and #612 are historical
-evidence for their former source revisions. They remain byte-for-byte in the repository, but
-their approvals do **not** carry to repaired #613 source
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`.
+All approvals inherited from issues #608, #610, #611, and #612 are historical evidence for
+their former source revisions and do **not** carry to repaired #613 source
+`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2`. The 28 city UI and city-art targets have now
+been replaced with 22 fresh browser frames, including six byte-identical cross-set copies.
+They have passed native inspection, but direct operator approval remains pending. The three
+gameplay-chrome and six terrain replacements remain separate #613 work.
 
 `RUNTIME-EVIDENCE-RENEWAL.json` is the fail-loud pending record. It binds the 14 source and
-test inputs changed by #613, records the four historical binding identities, and declares an
-exact inventory of 20 city UI frames, 8 city-art frames, 3 gameplay-chrome frames, and 6
-terrain frames. Direct operator approval is deliberately null until the replacement pixels
-exist.
+test inputs changed by #613, records the four historical binding identities, declares the
+exact 37-frame inventory, and records per-set renewal progress. Direct operator approval is
+deliberately null until all replacement pixels are reviewable and the operator approves the
+exact final evidence head.
 
 Run the pending-state check from the repository root:
 
@@ -19,10 +21,11 @@ Run the pending-state check from the repository root:
 node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --check-pending
 ```
 
-The command succeeds only when the target source census and all 37 historical files are
-intact, #610's immutable material anchor is unchanged, every former approval is marked
-non-reusable, and each evidence set is provably stale for the final #613 source. The approval
-gate is a separate failing-direction check:
+The command succeeds only when the target source census is intact, every former approval is
+marked non-reusable, each renewed set matches its exact pending binding, each unrenewed set
+still matches its historical binding, and #610's immutable material anchor is unchanged. It
+also rejects reuse of any historical city pixel and verifies the six declared cross-set
+copies. The approval gate is a separate failing-direction check:
 
 ```bash
 node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --validate-approved
@@ -33,22 +36,23 @@ approval, and reviewed receipt updates are complete.
 
 ## Capture recipe
 
-Build and serve the exact target source with a fresh origin. Use the normal UI and the
-retained default-theme states; do not mutate storage or `GameState`, use a fixture shortcut,
-or claim that fonts/images were programmatically awaited. After every final camera, zoom,
-panel, or viewport operation, wait for a visibly settled frame and inspect the saved file at
-native size.
+Build and serve the exact target source with a fresh origin. Use the normal UI or a truthful
+import harness around shipping components and content; never substitute a synthetic visual
+reimplementation or mutate a fixture after construction. Do not claim that fonts/images were
+programmatically awaited. After every final camera, zoom, panel, or viewport operation, wait
+for a visibly settled frame and inspect the saved file at native size.
 
 Capture these sets in this order so one city session can supply the shared states:
 
-1. **#612 city UI (20 JPEGs):** use the exact 2-building round-1, 8-building round-13, and
-   14-building round-54 Pirate states from `RUNTIME-CAPTURES.md`. Reproduce the six 1×
-   starting/full breakpoints (320×568, 375×812, 430×932, 768×1024, 844×390, 1440×900),
-   the two midgame frames, the three 3× checks, and the build/recruit/tavern panel frames.
-2. **#608 city art (8 JPEGs):** in the same session, retain starting and full desktop/phone,
-   midgame desktop, and the full desktop/phone 3× Town Hall and Shipyard checks. Inspect the
-   mounted faction flag, construction truth, alpha edges, backdrop seams, and dry-shore to
-   waterward Shipyard connection.
+1. **#612 city UI (20 JPEGs, captured):** the truthful shipping-component harness created the
+   exact 2-building round-1, 8-building round-13, and 14-building round-54 Pirate states from
+   `RUNTIME-CAPTURES.md`. It covered the six 1× starting/full breakpoints (320×568, 375×812,
+   430×932, 768×1024, 844×390, 1440×900), two midgame frames, three 3× checks, and the
+   build/recruit/tavern panels through visible shipping controls.
+2. **#608 city art (8 JPEGs, captured):** six shared browser frames were copied
+   byte-identically from the #612 batch; the 390×844 starting/full views were captured in the
+   same harness session. Native review covered the mounted faction flag, construction truth,
+   alpha edges, backdrop seams, and dry-shore to waterward Shipyard connection.
 3. **#610 gameplay chrome (3 true PNGs):** recreate the three frozen states in
    `../gameplay-chrome-v2/RUNTIME-VERIFICATION.md`: 375×812 phone world, 1440×900 Shipyard
    inspector, and 1440×960 Town Hall interaction states. Preserve PNG color type 2 for the
@@ -94,8 +98,9 @@ captures, bindings, receipts, reports, approval fields, or
 
 1. Land the final #613 source and re-run `--check-pending`. If any source byte changes from
    the target census, refresh this preparation before capturing.
-2. Capture all 37 frames, generate the unapproved proposal, and independently inspect the
-   exact staged bytes.
+2. Capture all 37 frames, generate unapproved proposals, and independently inspect the exact
+   staged bytes. The city batch uses the stricter 22-frame/28-target validator documented in
+   `tools/runtime-harness/README.md`.
 3. Replace the four retained capture sets and mechanically update their native receipts,
    bindings, and reports from the proposal. Do not copy an old approval record forward.
 4. Run the #612, #608, #610, and #611 native validators plus the repository verification

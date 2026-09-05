@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "targetSourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+  "states": {
+    "starting": {
+      "round": 1,
+      "buildings": ["townhall", "barracks"],
+      "resources": { "gold": 1000, "timber": 0, "iron": 0, "rum": 0 },
+      "unitAvailability": { "deckhand": 8 }
+    },
+    "midgame": {
+      "round": 13,
+      "buildings": [
+        "townhall",
+        "barracks",
+        "tavern",
+        "tradehouse",
+        "sawmill",
+        "distillery",
+        "ironmine",
+        "palisade"
+      ],
+      "resources": { "gold": 2520, "timber": 127, "iron": 5, "rum": 136 },
+      "unitAvailability": { "deckhand": 88 }
+    },
+    "full": {
+      "round": 54,
+      "buildings": [
+        "townhall",
+        "sawmill",
+        "ironmine",
+        "distillery",
+        "tradehouse",
+        "barracks",
+        "garrisonHall",
+        "fortressArmory",
+        "grandArsenal",
+        "palisade",
+        "stoneWall",
+        "citadel",
+        "shipyard",
+        "tavern"
+      ],
+      "resources": { "gold": 2520, "timber": 127, "iron": 5, "rum": 136 },
+      "unitAvailability": {
+        "deckhand": 88,
+        "cutthroat": 55,
+        "swivel-gunner": 44,
+        "buccaneer": 33,
+        "dread-corsair": 11
+      }
+    }
+  },
+  "captures": [
+    {
+      "id": "starting-phone-320",
+      "state": "starting",
+      "viewport": [320, 568],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/starting-phone-320x568.jpg"]
+    },
+    {
+      "id": "starting-phone-375",
+      "state": "starting",
+      "viewport": [375, 812],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/starting-phone-375x812.jpg"]
+    },
+    {
+      "id": "starting-phone-390",
+      "state": "starting",
+      "viewport": [390, 844],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-harbor-v2/runtime-captures/starting-phone-390x844.jpg"]
+    },
+    {
+      "id": "starting-phone-430",
+      "state": "starting",
+      "viewport": [430, 932],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/starting-phone-430x932.jpg"]
+    },
+    {
+      "id": "starting-tablet",
+      "state": "starting",
+      "viewport": [768, 1024],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/starting-tablet-768x1024.jpg"]
+    },
+    {
+      "id": "starting-landscape",
+      "state": "starting",
+      "viewport": [844, 390],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/starting-landscape-844x390.jpg"]
+    },
+    {
+      "id": "starting-desktop",
+      "state": "starting",
+      "viewport": [1440, 900],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/starting-desktop-1440x900.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/starting-desktop-1440x900.jpg"
+      ]
+    },
+    {
+      "id": "panel-build-phone",
+      "state": "starting",
+      "viewport": [375, 812],
+      "zoom": 1,
+      "panel": "townhall",
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/panel-build-phone-375x812.jpg"]
+    },
+    {
+      "id": "midgame-phone",
+      "state": "midgame",
+      "viewport": [375, 812],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/midgame-phone-375x812.jpg"]
+    },
+    {
+      "id": "midgame-desktop",
+      "state": "midgame",
+      "viewport": [1440, 900],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/midgame-desktop-1440x900.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/midgame-desktop-1440x900.jpg"
+      ]
+    },
+    {
+      "id": "full-phone-320",
+      "state": "full",
+      "viewport": [320, 568],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg"]
+    },
+    {
+      "id": "full-phone-375",
+      "state": "full",
+      "viewport": [375, 812],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg"]
+    },
+    {
+      "id": "full-phone-390",
+      "state": "full",
+      "viewport": [390, 844],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-harbor-v2/runtime-captures/full-phone-390x844.jpg"]
+    },
+    {
+      "id": "full-phone-430",
+      "state": "full",
+      "viewport": [430, 932],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/full-phone-430x932.jpg"]
+    },
+    {
+      "id": "full-tablet",
+      "state": "full",
+      "viewport": [768, 1024],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/full-tablet-768x1024.jpg"]
+    },
+    {
+      "id": "full-landscape",
+      "state": "full",
+      "viewport": [844, 390],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/full-landscape-844x390.jpg"]
+    },
+    {
+      "id": "full-desktop",
+      "state": "full",
+      "viewport": [1440, 900],
+      "zoom": 1,
+      "panel": null,
+      "focus": null,
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/full-desktop-1440x900.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/full-desktop-1440x900.jpg"
+      ]
+    },
+    {
+      "id": "panel-recruit-tablet",
+      "state": "full",
+      "viewport": [768, 1024],
+      "zoom": 1,
+      "panel": "barracks",
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/panel-recruit-tablet-768x1024.jpg"]
+    },
+    {
+      "id": "panel-tavern-desktop",
+      "state": "full",
+      "viewport": [1440, 900],
+      "zoom": 1,
+      "panel": "tavern",
+      "focus": null,
+      "targets": ["docs/art/city-ui-v2/runtime-captures/panel-tavern-desktop-1440x900.jpg"]
+    },
+    {
+      "id": "full-desktop-3x-townhall",
+      "state": "full",
+      "viewport": [1440, 900],
+      "zoom": 3,
+      "panel": null,
+      "focus": "townhall",
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/full-desktop-1440x900-3x-townhall.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/full-desktop-3x-1440x900.jpg"
+      ]
+    },
+    {
+      "id": "full-phone-3x-townhall",
+      "state": "full",
+      "viewport": [390, 844],
+      "zoom": 3,
+      "panel": null,
+      "focus": "townhall",
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/full-phone-390x844-3x-townhall.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/full-phone-3x-center-390x844.jpg"
+      ]
+    },
+    {
+      "id": "full-phone-3x-shipyard",
+      "state": "full",
+      "viewport": [390, 844],
+      "zoom": 3,
+      "panel": null,
+      "focus": "shipyard",
+      "targets": [
+        "docs/art/city-ui-v2/runtime-captures/full-phone-390x844-3x-shipyard.jpg",
+        "docs/art/city-harbor-v2/runtime-captures/full-phone-3x-shipyard-390x844.jpg"
+      ]
+    }
+  ]
+}

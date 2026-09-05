@@ -151,6 +151,40 @@ function validateManifest() {
     assert(set.captures.length === set.count, `${set.id}: capture inventory count drift`)
     assert(set.historicalBinding.reusable === false, `${set.id}: old approval became reusable`)
     assert(set.historicalBinding.approvalRecord, `${set.id}: missing historical approval record`)
+    if (set.renewal) {
+      assert(
+        set.renewal.status === 'captured-pending-direct-operator-approval',
+        `${set.id}: invalid renewal status`,
+      )
+      assert(
+        set.renewal.sourceHead === manifest.targetSourceHead,
+        `${set.id}: renewal source head drift`,
+      )
+      assert(/^\d{4}-\d{2}-\d{2}$/.test(set.renewal.capturedOn), `${set.id}: invalid capture date`)
+      assert(/^[0-9a-f]{64}$/.test(set.renewal.bindingSha256), `${set.id}: invalid binding hash`)
+      assert(
+        set.renewal.historicalPixelsReused === false,
+        `${set.id}: historical pixel reuse record drift`,
+      )
+      assert(
+        set.renewal.visualSettleInspection === 'completed-by-integration-owner' &&
+          set.renewal.nativeSizeInspection === 'completed-by-integration-owner',
+        `${set.id}: native inspection record drift`,
+      )
+      assert(
+        set.renewal.approval?.status === 'pending-direct-operator-approval' &&
+          set.renewal.approval.record === null,
+        `${set.id}: replacement pixels must remain unapproved`,
+      )
+      assert(
+        /^[0-9a-f]{40}$/.test(set.historicalBinding.evidenceHead),
+        `${set.id}: historical evidence head missing`,
+      )
+      assert(
+        /^[0-9a-f]{40}$/.test(set.historicalBinding.recordHead),
+        `${set.id}: historical binding record head missing`,
+      )
+    }
     assert(set.recipe.length > 100, `${set.id}: capture recipe is incomplete`)
     for (const spec of set.captures) {
       assert(spec.length === 4, `${set.id}: malformed capture specification`)
@@ -185,9 +219,7 @@ function validateTargetSource() {
   }
 }
 
-function recordedCaptureMap(set) {
-  const bindingPath = repoPath(set.historicalBinding.path)
-  const binding = JSON.parse(readRegular(bindingPath))
+function recordedCaptureMap(set, binding) {
   const base = dirname(set.historicalBinding.path)
   return new Map(
     binding.captures.map((record) => {
@@ -200,11 +232,29 @@ function recordedCaptureMap(set) {
 function validateHistoricalEvidence() {
   for (const set of manifest.sets) {
     const bindingBytes = readRegular(repoPath(set.historicalBinding.path))
-    assert(
-      sha256(bindingBytes) === set.historicalBinding.sha256,
-      `${set.id}: historical binding changed during pending preparation`,
-    )
-    const recorded = recordedCaptureMap(set)
+    const binding = JSON.parse(bindingBytes)
+    if (set.renewal) {
+      assert(
+        sha256(bindingBytes) === set.renewal.bindingSha256,
+        `${set.id}: renewed pending binding drift`,
+      )
+      assert(binding.sourceHead === manifest.targetSourceHead, `${set.id}: source head drift`)
+      assert(
+        binding.captureStatus === 'captured-pending-direct-operator-approval',
+        `${set.id}: capture status drift`,
+      )
+      assert(
+        binding.approval?.status === 'pending-direct-operator-approval' &&
+          binding.approval.record === null,
+        `${set.id}: renewed binding approval must remain pending`,
+      )
+    } else {
+      assert(
+        sha256(bindingBytes) === set.historicalBinding.sha256,
+        `${set.id}: historical binding changed during pending preparation`,
+      )
+    }
+    const recorded = recordedCaptureMap(set, binding)
     const directoryNames = readdirSync(repoPath(set.captureRoot)).sort()
     const expectedNames = set.captures.map(([name]) => name).sort()
     assert(
@@ -214,7 +264,9 @@ function validateHistoricalEvidence() {
     for (const spec of set.captures) {
       const repositoryPath = join(set.captureRoot, spec[0])
       const bytes = readRegular(repoPath(repositoryPath))
-      const observed = inspectHistoricalCapture(bytes, spec, repositoryPath)
+      const observed = set.renewal
+        ? inspectCapture(bytes, spec, repositoryPath)
+        : inspectHistoricalCapture(bytes, spec, repositoryPath)
       const record = recorded.get(repositoryPath)
       assert(record, `${set.id}: historical binding omitted ${repositoryPath}`)
       const recordedDimensions = record.dimensions ?? [record.width, record.height]
@@ -224,6 +276,46 @@ function validateHistoricalEvidence() {
         JSON.stringify(recordedDimensions) === JSON.stringify(observed.dimensions),
         `${repositoryPath}: historical dimension record drift`,
       )
+    }
+
+    if (set.renewal) {
+      const historicalBytes = git(
+        ['show', `${set.historicalBinding.recordHead}:${set.historicalBinding.path}`],
+        { encoding: 'buffer' },
+      )
+      assert(
+        sha256(historicalBytes) === set.historicalBinding.sha256,
+        `${set.id}: historical binding provenance drift`,
+      )
+      const historical = recordedCaptureMap(set, JSON.parse(historicalBytes))
+      for (const spec of set.captures) {
+        const repositoryPath = join(set.captureRoot, spec[0])
+        assert(
+          sha256(readRegular(repoPath(repositoryPath))) !== historical.get(repositoryPath).sha256,
+          `${repositoryPath}: historical capture bytes were reused`,
+        )
+      }
+    }
+  }
+
+  const renewedCitySets = manifest.sets.filter(
+    (set) => ['city-ui-v2', 'city-harbor-v2'].includes(set.id) && set.renewal,
+  )
+  if (renewedCitySets.length === 2) {
+    const fixtures = JSON.parse(
+      readRegular(repoPath('docs/art/city-ui-v2/tools/runtime-harness/fixtures.json')),
+    )
+    const cityTargets = fixtures.captures.flatMap((capture) => capture.targets)
+    assert(cityTargets.length === 28, 'renewed city target count drift')
+    assert(
+      new Set(cityTargets.map((path) => sha256(readRegular(repoPath(path))))).size === 22,
+      'renewed city batch must contain exactly 22 unique browser frames',
+    )
+    const shared = fixtures.captures.filter((capture) => capture.targets.length === 2)
+    assert(shared.length === 6, 'renewed city shared-copy count drift')
+    for (const capture of shared) {
+      const [left, right] = capture.targets.map((path) => readRegular(repoPath(path)))
+      assert(left.equals(right), `${capture.id}: cross-set copies differ`)
     }
   }
 }
@@ -241,24 +333,71 @@ function terrainRendererDigest() {
 }
 
 function staleState() {
+  const citySet = manifest.sets.find((set) => set.id === 'city-ui-v2')
   const cityBinding = JSON.parse(
     readRegular(repoPath('docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json')),
   )
-  const citySourceRecords = new Map(cityBinding.sourceFiles.map((record) => [record.path, record]))
-  const cityChanged = manifest.sourceCensus
-    .filter((record) => citySourceRecords.has(record.path))
-    .filter((record) => citySourceRecords.get(record.path).sha256 !== record.sha256)
-    .map((record) => record.path)
-  assert(cityChanged.length > 0, 'city UI historical binding unexpectedly matches #613 source')
+  let cityState
+  if (citySet.renewal) {
+    assert(cityBinding.sourceHead === manifest.targetSourceHead, 'city UI renewal source drift')
+    assert(
+      cityBinding.captureStatus === 'captured-pending-direct-operator-approval',
+      'city UI renewal status drift',
+    )
+    cityState = {
+      status: citySet.renewal.status,
+      captureCount: citySet.count,
+      directOperatorApproval: citySet.renewal.approval,
+    }
+  } else {
+    const citySourceRecords = new Map(
+      cityBinding.sourceFiles.map((record) => [record.path, record]),
+    )
+    const cityChanged = manifest.sourceCensus
+      .filter((record) => citySourceRecords.has(record.path))
+      .filter((record) => citySourceRecords.get(record.path).sha256 !== record.sha256)
+      .map((record) => record.path)
+    assert(cityChanged.length > 0, 'city UI historical binding unexpectedly matches #613 source')
+    cityState = {
+      status: 'stale-recapture-required',
+      changedBoundSources: cityChanged,
+    }
+  }
 
+  const harborSet = manifest.sets.find((set) => set.id === 'city-harbor-v2')
   const harborBinding = JSON.parse(
     readRegular(repoPath('docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json')),
   )
   const currentStylesheetHash = sha256(readRegular(repoPath('apps/web/src/styles.css')))
-  assert(
-    harborBinding.stylesheet_source.diagnostic_full_sha256 !== currentStylesheetHash,
-    'city harbor historical full stylesheet unexpectedly matches #613 source',
-  )
+  let harborState
+  if (harborSet.renewal) {
+    assert(
+      harborBinding.sourceHead === manifest.targetSourceHead &&
+        harborBinding.stylesheet_source.diagnostic_full_sha256 === currentStylesheetHash,
+      'city harbor renewal source drift',
+    )
+    assert(
+      harborBinding.captureStatus === 'captured-pending-direct-operator-approval',
+      'city harbor renewal status drift',
+    )
+    harborState = {
+      status: harborSet.renewal.status,
+      captureCount: harborSet.count,
+      directOperatorApproval: harborSet.renewal.approval,
+      note: 'The narrower city-scene CSS projection remained stable, while fresh pixels intentionally bind this set to the complete #613 target stylesheet.',
+    }
+  } else {
+    assert(
+      harborBinding.stylesheet_source.diagnostic_full_sha256 !== currentStylesheetHash,
+      'city harbor historical full stylesheet unexpectedly matches #613 source',
+    )
+    harborState = {
+      status: 'stale-recapture-required',
+      historicalFullStylesheetSha256: harborBinding.stylesheet_source.diagnostic_full_sha256,
+      targetFullStylesheetSha256: currentStylesheetHash,
+      note: 'The narrower city-scene CSS projection is unchanged, but this cross-evidence renewal intentionally binds all 37 frames to one final source.',
+    }
+  }
 
   const chromeAnchor = manifest.sets.find(
     (set) => set.id === 'gameplay-chrome-v2',
@@ -278,16 +417,8 @@ function staleState() {
   )
 
   return {
-    'city-ui-v2': {
-      status: 'stale-recapture-required',
-      changedBoundSources: cityChanged,
-    },
-    'city-harbor-v2': {
-      status: 'stale-recapture-required',
-      historicalFullStylesheetSha256: harborBinding.stylesheet_source.diagnostic_full_sha256,
-      targetFullStylesheetSha256: currentStylesheetHash,
-      note: 'The narrower city-scene CSS projection is unchanged, but this cross-evidence renewal intentionally binds all 37 frames to one final source.',
-    },
+    'city-ui-v2': cityState,
+    'city-harbor-v2': harborState,
     'gameplay-chrome-v2': {
       status: 'stale-material-baseline-requires-new-pixels-and-approval',
       immutableAnchorSha256: chromeAnchor.sha256,
@@ -305,12 +436,17 @@ function checkPending() {
   validateTargetSource()
   validateHistoricalEvidence()
   const stale = staleState()
+  const capturedCount = manifest.sets
+    .filter((set) => set.renewal)
+    .reduce((total, set) => total + set.count, 0)
   console.log(
     JSON.stringify(
       {
         status: manifest.status,
         targetSourceHead: manifest.targetSourceHead,
         requiredCaptureCount: 37,
+        capturedPendingApprovalCount: capturedCount,
+        remainingCaptureCount: 37 - capturedCount,
         sourceCensusCount: manifest.sourceCensus.length,
         stale,
         approval: manifest.approval,
@@ -453,5 +589,7 @@ if (command === '--self-test') selfTest()
 if (command === '--proposal') buildProposal(values)
 if (command === '--validate-approved') {
   checkPending()
-  fail('runtime evidence renewal is pending: 37 exact-source captures and direct approval required')
+  fail(
+    'runtime evidence renewal is pending: outstanding exact-source captures and direct approval required',
+  )
 }

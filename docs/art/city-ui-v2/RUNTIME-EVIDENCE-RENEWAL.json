@@ -89,11 +89,29 @@
         "path": "docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json",
         "sha256": "ac2369ba6eb59510e29dabd0e6c3bb6a3ec8edddb34483836fa0ccf13c0c329a",
         "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "recordHead": "edb3e5b0f07bf7a7fa1c7f540ba8d9ec94497307",
         "approvalRecord": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344",
         "reusable": false
       },
+      "renewal": {
+        "status": "captured-pending-direct-operator-approval",
+        "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "d2959600f4ded5ea3357990a355e2faec6e167b27928d065a70a4de77c5a66db",
+        "workflow": "truthful shipping-component import harness with visible shipping controls",
+        "uniqueBrowserFramesInSharedCityBatch": 22,
+        "sharedCrossSetCopies": 6,
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-integration-owner",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "pending-direct-operator-approval",
+          "record": null
+        }
+      },
       "captureRoot": "docs/art/city-ui-v2/runtime-captures",
-      "recipe": "Reuse the normal-UI Pirate save and the starting/midgame/full state, breakpoint, zoom, and panel matrix in RUNTIME-CAPTURES.md. Rebuild from the target source, settle visibly, inspect native-size output, and do not claim a programmatic font/image await.",
+      "recipe": "Use the truthful shipping-component harness and the starting/midgame/full state, breakpoint, zoom, and panel matrix in RUNTIME-CAPTURES.md. Build from the target source, operate shipping panel and zoom controls visibly, settle visibly, inspect native-size output, and do not claim a programmatic font/image await.",
       "captures": [
         ["full-desktop-1440x900-3x-townhall.jpg", 1440, 900, "jpeg-rgb"],
         ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
@@ -125,11 +143,29 @@
         "path": "docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json",
         "sha256": "b696ffd1b2a921be740a9ef67c254edd7cfe71636f776ef926e427664207e0dd",
         "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+        "recordHead": "edb3e5b0f07bf7a7fa1c7f540ba8d9ec94497307",
         "approvalRecord": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
         "reusable": false
       },
+      "renewal": {
+        "status": "captured-pending-direct-operator-approval",
+        "sourceHead": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "73a2cad9a38940a46731d30dedce32a35e1a1baaf2f6001c6688efbeeeb088f1",
+        "workflow": "truthful shipping-component import harness with visible shipping controls",
+        "uniqueBrowserFramesInSharedCityBatch": 22,
+        "sharedCrossSetCopies": 6,
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-integration-owner",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "pending-direct-operator-approval",
+          "record": null
+        }
+      },
       "captureRoot": "docs/art/city-harbor-v2/runtime-captures",
-      "recipe": "Use the same normal-UI city session and 2/8/14-building state progression as the #612 set. Capture the two desktop state frames, two 390x844 state frames, full desktop/phone, and both 3x Town Hall/Shipyard checks listed in RUNTIME-CAPTURES.md after visible settling and native-size inspection.",
+      "recipe": "Use the same truthful shipping-component harness and 2/8/14-building state progression as the #612 set. Capture the two desktop state frames, two 390x844 state frames, full desktop/phone, and both 3x Town Hall/Shipyard checks listed in RUNTIME-CAPTURES.md after visible settling and native-size inspection.",
       "captures": [
         ["full-desktop-1440x900.jpg", 1440, 900, "jpeg-rgb"],
         ["full-desktop-3x-1440x900.jpg", 1440, 900, "jpeg-rgb"],

@@ -6,8 +6,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Iterator
 
@@ -23,6 +24,16 @@ FULL_SHIPPING_SOURCES = (
 )
 STYLESHEET_PATH = "apps/web/src/styles.css"
 STYLESHEET_SCOPE_KIND = "city-scene-selector-token-closure-v1"
+SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+PRIOR_SOURCE_HEAD = "45a206f760eacce50dc8dd1dc656c5d4e789cb3c"
+PENDING_STATUS = "captured-pending-direct-operator-approval"
+HISTORICAL_APPROVAL = {
+    "status": "historical-source-only",
+    "sourceHead": PRIOR_SOURCE_HEAD,
+    "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": False,
+}
 GENERIC_SELECTORS = frozenset(
     {
         "button",
@@ -235,23 +246,78 @@ def build_stylesheet_binding() -> dict[str, object]:
 def main() -> None:
     from PIL import Image
 
+    assert len(sys.argv) == 5, (
+        "usage: build_runtime_capture_bindings.py --proposal /absolute/proposal.json "
+        "--inspection-confirmation INTEGRATION_OWNER_INSPECTED_EXACT_CITY_PIXELS"
+    )
+    assert sys.argv[1] == "--proposal" and sys.argv[3] == "--inspection-confirmation"
+    assert sys.argv[4] == "INTEGRATION_OWNER_INSPECTED_EXACT_CITY_PIXELS"
+    proposal_path = Path(sys.argv[2])
+    assert proposal_path.is_absolute() and proposal_path.resolve() == proposal_path
+    proposal = json.loads(proposal_path.read_text())
+    assert proposal["schema"] == 1
+    assert proposal["kind"] == "unapproved-city-runtime-evidence-proposal"
+    assert proposal["sourceHead"] == SOURCE_HEAD
+    assert proposal["targetCount"] == 28 and proposal["uniqueBrowserFrames"] == 22
+    assert proposal["approval"] == {
+        "status": "pending-direct-operator-approval",
+        "record": None,
+    }
+    proposal_captures = {item["path"]: item for item in proposal["captures"]}
+
+    subprocess.run(
+        ["git", "merge-base", "--is-ancestor", SOURCE_HEAD, "HEAD"],
+        cwd=REPOSITORY,
+        check=True,
+    )
+    for relative in (*FULL_SHIPPING_SOURCES, STYLESHEET_PATH):
+        target = subprocess.run(
+            ["git", "show", f"{SOURCE_HEAD}:{relative}"],
+            cwd=REPOSITORY,
+            check=True,
+            capture_output=True,
+        ).stdout
+        assert target == (REPOSITORY / relative).read_bytes(), (
+            f"{relative}: worktree differs from target source"
+        )
+
     captures = []
     for path in sorted((PACKAGE / "runtime-captures").glob("*.jpg")):
         with Image.open(path) as image:
             assert image.format == "JPEG" and image.mode == "RGB"
             dimensions = list(image.size)
-        captures.append(
-            {
-                "path": str(path.relative_to(PACKAGE)),
-                "dimensions": dimensions,
-                "bytes": path.stat().st_size,
-                "sha256": sha256(path),
-            }
-        )
+        repository_path = str(path.relative_to(REPOSITORY))
+        proposal_entry = proposal_captures.get(repository_path)
+        assert proposal_entry is not None, f"proposal omitted {repository_path}"
+        observed = {
+            "path": str(path.relative_to(PACKAGE)),
+            "dimensions": dimensions,
+            "bytes": path.stat().st_size,
+            "sha256": sha256(path),
+        }
+        assert proposal_entry["dimensions"] == dimensions
+        assert proposal_entry["bytes"] == observed["bytes"]
+        assert proposal_entry["sha256"] == observed["sha256"]
+        captures.append(observed)
 
     payload = {
-        "schema": 2,
-        "date": date.today().isoformat(),
+        "schema": 3,
+        "date": proposal["capturedOn"],
+        "sourceHead": SOURCE_HEAD,
+        "captureSourceHead": SOURCE_HEAD,
+        "captureStatus": PENDING_STATUS,
+        "approval": {
+            "status": "pending-direct-operator-approval",
+            "evidenceHead": None,
+            "record": None,
+        },
+        "historicalApproval": HISTORICAL_APPROVAL,
+        "captureOrigin": {
+            **proposal["captureOrigin"],
+            "sourceHead": SOURCE_HEAD,
+            "visualSettleInspection": "completed-by-integration-owner",
+            "nativeSizeInspection": "completed-by-integration-owner",
+        },
         "shipping_sources": [
             {"path": relative, "sha256": sha256(REPOSITORY / relative)}
             for relative in FULL_SHIPPING_SOURCES
@@ -263,7 +329,7 @@ def main() -> None:
     output.write_text(json.dumps(payload, indent=2) + "\n")
     print(
         f"bound {len(captures)} captures to {len(FULL_SHIPPING_SOURCES)} full sources "
-        "and the city stylesheet dependency closure"
+        "and the city stylesheet dependency closure; direct operator approval remains pending"
     )
 
 

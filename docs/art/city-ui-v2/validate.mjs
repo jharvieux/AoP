@@ -5,12 +5,20 @@ import { fileURLToPath } from 'node:url'
 
 const DOCS_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(DOCS_DIR, '../../..')
-const SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
+const SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
 const CAPTURE_SOURCE_HEAD = SOURCE_HEAD
-const PRIOR_CAPTURE_SOURCE_HEAD = '59c82c623dc046c68cec53548903e69af09456a8'
+const PRIOR_CAPTURE_SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3c'
 const ENGINE_VERSION = '850a9013b70e38a7'
 const CAPTURE_ROOT = 'docs/art/city-ui-v2/runtime-captures'
 const MAX_CAPTURE_BYTES = 300 * 1024
+const PENDING_STATUS = 'captured-pending-direct-operator-approval'
+const HISTORICAL_APPROVAL = {
+  status: 'historical-source-only',
+  sourceHead: PRIOR_CAPTURE_SOURCE_HEAD,
+  evidenceHead: 'dc11b60738f4f14b896532bf2db323b2bd054f5c',
+  record: 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344',
+  reusable: false,
+}
 
 const EXPECTED_STATES = [
   { id: 'starting', round: 1, visibleBuildings: 2 },
@@ -69,23 +77,23 @@ const EXPECTED_SOURCES = {
     '30a05428054db5a2e3fd4f91d0717afa09ee6d937b8b01a86af9438d58a82596',
   ],
   'apps/web/src/screens/MatchScreen.test.ts': [
-    7167,
-    'e670d76a35831abc96634c9afa0caecc127ffcd4ce400d7cbbee113be7ba62c8',
+    23344,
+    '3eefd0b416ea2cdcb68715d431a9f9014faf172031f94d3fadebb08e529bee3d',
   ],
   'apps/web/src/screens/MatchScreen.tsx': [
-    59590,
-    '85a049ef89fda9c6508b0264e73e9081f1660e611ff78aad8939fafd901a0cfe',
+    61775,
+    '085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f',
   ],
   'apps/web/src/styles.css': [
-    81187,
-    '4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c',
+    88328,
+    'f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7',
   ],
 }
 
 const EXPECTED_CAPTURES = {
   'full-desktop-1440x900-3x-townhall.jpg': [
-    259691,
-    '1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a',
+    221797,
+    '704a3449008342fa57cf3d6ea5879d7096c046ebce4c3495b9e122c72ce2e6e0',
     1440,
     900,
     'full',
@@ -93,8 +101,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-desktop-1440x900.jpg': [
-    284730,
-    '77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7',
+    241364,
+    'da8e255f134f82135bd97bfc1e6a6f49ba5fcd0591ad80a78661804c6e006928',
     1440,
     900,
     'full',
@@ -102,8 +110,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-landscape-844x390.jpg': [
-    61706,
-    'ccdcb81ed7d93bf1a3d72407e82222b95202371e0a24415ee7cd44b0e51146c2',
+    52781,
+    '895d4625963f4ee8a1ce6e99f38c03e49cecedbce0807c7506b402a25dd30f84',
     844,
     390,
     'full',
@@ -111,8 +119,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-320x568.jpg': [
-    45447,
-    'eecf942501ac8411154a0fcd2a438ce24aacd905c183b0090954c9685e1f869d',
+    38621,
+    '3f5e41425d7e1142f70cce767ed6fba616595fc671034168430f52b26767a264',
     320,
     568,
     'full',
@@ -120,8 +128,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-375x812.jpg': [
-    59002,
-    'bb42082cd65a63068d3571bad2fde4e02c1e2587e73b1c5ebe0ee216b126a562',
+    50981,
+    '0fe1503c04391be42c00424e7d9483e50727f78d3ddb73704dd509baf5206661',
     375,
     812,
     'full',
@@ -129,8 +137,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-shipyard.jpg': [
-    48222,
-    '3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d',
+    40114,
+    'b698c7a907aa11c04aa118448cc9cf99b2cde71ea71a509163a3ec6a7d541cc2',
     390,
     844,
     'full',
@@ -138,8 +146,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-390x844-3x-townhall.jpg': [
-    61467,
-    '16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254',
+    51196,
+    'd50a451d33471ab40a195301f0fb362e45be2d6b3c32b881b7082daa7330ef22',
     390,
     844,
     'full',
@@ -147,8 +155,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-phone-430x932.jpg': [
-    72025,
-    '4a077ecaabc417ca929fc963544e9f46493685a90db2334a174e56351eeba176',
+    62789,
+    '0dc33f5afebc093e12af527308e14a9dfebb5733c1c68c914d232f976cf05f17',
     430,
     932,
     'full',
@@ -156,8 +164,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'full-tablet-768x1024.jpg': [
-    182744,
-    '1c76b528702b68e455fd998870a484fe332f52ac52f5e9508fd97535498b336a',
+    153542,
+    '3d480fb6d46bbe08a3241e7122fc810579448dcd64c4bbd611f9b2f5ce45922d',
     768,
     1024,
     'full',
@@ -165,8 +173,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-desktop-1440x900.jpg': [
-    280020,
-    'a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40',
+    237477,
+    'cbc12a310450ab6c85641df6e6b28983fa87143020a447d54e29fef365b11af7',
     1440,
     900,
     'midgame',
@@ -174,8 +182,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'midgame-phone-375x812.jpg': [
-    58483,
-    '03bea6f04ab0d9bf194d81790fa9dccb96b7c6b4bde249d870564b33a5905205',
+    50191,
+    'fa7dbb0c601dcdc909d3ba9649a32e2fc3fcb718ee6989685435a1dbacba3f63',
     375,
     812,
     'midgame',
@@ -183,8 +191,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'panel-build-phone-375x812.jpg': [
-    61635,
-    '61e92d7b81d7ad3cb7099a520ce7cf358daab2ec45f16a8e1240bfec9203796a',
+    51780,
+    '0169a94304e2b290bb16cfb2c17d1f23a77e69b8c9ad1dc34af81212bee43ece',
     375,
     812,
     'starting',
@@ -192,8 +200,8 @@ const EXPECTED_CAPTURES = {
     'build',
   ],
   'panel-recruit-tablet-768x1024.jpg': [
-    193802,
-    'c11d27874c39a3abcd5f8d0e35bbdc3573038ea255d9d1f4982143b6d1f8d1f4',
+    160632,
+    '5d9987ddb9ab1aa78f0381f6ee32f623942b105f22da2b9aa731843714a9afd1',
     768,
     1024,
     'full',
@@ -201,8 +209,8 @@ const EXPECTED_CAPTURES = {
     'recruit',
   ],
   'panel-tavern-desktop-1440x900.jpg': [
-    297671,
-    'ec3c39d93583561d843b7f87bc8966a3ff210106917a0ced435c0f950800d04d',
+    272056,
+    '2cc5987466b3de6e3606373b8ce78c5ef4f0c67b5388e34d9ff6393b36bb4951',
     1440,
     900,
     'full',
@@ -210,8 +218,8 @@ const EXPECTED_CAPTURES = {
     'tavern',
   ],
   'starting-desktop-1440x900.jpg': [
-    279096,
-    '6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8',
+    237116,
+    'b5cae3bfd07ab97c8aa6eaba53162d2bdaa49c8eeef3921254350e112b523678',
     1440,
     900,
     'starting',
@@ -219,8 +227,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-landscape-844x390.jpg': [
-    60791,
-    'e3a8fad32144fc86f85bb7596f13fc255904f3a2a1e2171b851bdf474fbcc2d9',
+    52166,
+    'd91261606e2dc8d6329fee5a577f3868c9948c06a39eae13980ff9fe8e299684',
     844,
     390,
     'starting',
@@ -228,8 +236,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-320x568.jpg': [
-    44355,
-    'c134773ef86a8d6b3cf89bdaa0e6d5f2342d98f56f1396b8d0ed19d9aaa37916',
+    39234,
+    '937a41c847e8381a3d192626f9cf59953280ea6a7a56dc2a823fd07d9bffb66c',
     320,
     568,
     'starting',
@@ -237,8 +245,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-375x812.jpg': [
-    57484,
-    '5ceeb1714c979d3e9481288d0c237aa2200cd250c5be66bda2161b4c841c717d',
+    49774,
+    'c04ae7255cd87ce24d672a448c3585c2820bf8854d8ccc24e5d523392f7c062a',
     375,
     812,
     'starting',
@@ -246,8 +254,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-phone-430x932.jpg': [
-    70325,
-    'f4c28d02163c144dc141ac9c76dfe9fa5764a38432eedd581d45030ed766520a',
+    61707,
+    'e16c1a0eb2523638cbb937ecb95a36d701b5fe755b1514206b3e9a5562637dde',
     430,
     932,
     'starting',
@@ -255,8 +263,8 @@ const EXPECTED_CAPTURES = {
     null,
   ],
   'starting-tablet-768x1024.jpg': [
-    177147,
-    '25ca80b639df0d144f00b7e15ffa8e5094d7bd5196c1be0750d1dc87eba94d27',
+    151148,
+    'c2360bb976eebfbbf65a4d4836fd75f57427c9fe2e0a28ff1c6a868689ab81b2',
     768,
     1024,
     'starting',
@@ -345,13 +353,13 @@ const record = readFileSync(resolve(DOCS_DIR, 'RUNTIME-CAPTURES.md'), 'utf8')
 assert(binding.schema === 1 && binding.issue === 612, 'unexpected binding identity')
 assert(binding.sourceHead === SOURCE_HEAD, 'binding source head drift')
 assert(binding.captureSourceHead === CAPTURE_SOURCE_HEAD, 'capture source head drift')
-assert(binding.captureStatus === 'approved', 'capture status drift')
+assert(binding.captureStatus === PENDING_STATUS, 'capture status drift')
 assert(receipt.schema === 1 && receipt.issue === 612, 'unexpected receipt identity')
 assert(receipt.sourceHead === SOURCE_HEAD, 'receipt source head drift')
-assert(receipt.captureStatus === 'approved', 'receipt capture status drift')
+assert(receipt.captureStatus === PENDING_STATUS, 'receipt capture status drift')
 assert(receipt.captureOrigin.sourceHead === CAPTURE_SOURCE_HEAD, 'receipt capture origin drift')
 assert(
-  binding.sourceTransition.classification === 'exact-source-recaptured-approved' &&
+  binding.sourceTransition.classification === 'exact-source-recaptured-pending-approval' &&
     binding.sourceTransition.renderedMarkupChanged === true &&
     binding.sourceTransition.stylesChanged === true &&
     binding.sourceTransition.artChanged === false &&
@@ -361,7 +369,7 @@ assert(
 assert(
   receipt.sourceTransition.from === PRIOR_CAPTURE_SOURCE_HEAD &&
     receipt.sourceTransition.to === SOURCE_HEAD &&
-    receipt.sourceTransition.classification === 'exact-source-recaptured-approved' &&
+    receipt.sourceTransition.classification === 'exact-source-recaptured-pending-approval' &&
     receipt.sourceTransition.renderedMarkupChanged === true &&
     receipt.sourceTransition.stylesChanged === true &&
     receipt.sourceTransition.artChanged === false &&
@@ -375,7 +383,15 @@ assert(
   'required breakpoint inventory drift',
 )
 
-assert(receipt.captureOrigin.workflow === 'normal UI only', 'capture workflow drift')
+assert(
+  receipt.captureOrigin.workflow ===
+    'truthful shipping-component import harness with visible shipping controls',
+  'capture workflow drift',
+)
+assert(
+  receipt.captureOrigin.harness === 'docs/art/city-ui-v2/tools/runtime-harness',
+  'capture harness drift',
+)
 assert(receipt.captureOrigin.faction === 'pirates', 'capture faction drift')
 assert(
   receipt.captureOrigin.programmaticFontOrImageAwaitClaimed === false,
@@ -387,14 +403,18 @@ assert(
   'integration-owner visual inspection record drift',
 )
 assert(receipt.checkpoints.checkpoint1.status === 'approved', 'checkpoint 1 status drift')
-assert(receipt.checkpoints.checkpoint2.status === 'approved', 'checkpoint 2 status drift')
 assert(
-  binding.approval.status === 'approved' &&
-    binding.approval.evidenceHead === 'dc11b60738f4f14b896532bf2db323b2bd054f5c' &&
-    binding.approval.record ===
-      'https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344' &&
-    receipt.checkpoints.checkpoint2.evidenceHead === binding.approval.evidenceHead &&
-    receipt.checkpoints.checkpoint2.record === binding.approval.record,
+  receipt.checkpoints.checkpoint2.status === 'pending-direct-operator-approval',
+  'checkpoint 2 status drift',
+)
+assert(
+  binding.approval.status === 'pending-direct-operator-approval' &&
+    binding.approval.evidenceHead === null &&
+    binding.approval.record === null &&
+    receipt.checkpoints.checkpoint2.evidenceHead === null &&
+    receipt.checkpoints.checkpoint2.record === null &&
+    stable(binding.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
+    stable(receipt.checkpoints.checkpoint2.historicalApproval) === stable(HISTORICAL_APPROVAL),
   'checkpoint 2 approval binding drift',
 )
 assert(
@@ -513,12 +533,12 @@ assert(
 
 assert(record.includes(SOURCE_HEAD), 'capture record source head drift')
 assert(
-  record.includes('operator approved') && record.includes(binding.approval.record),
+  /pending\s+direct\s+operator\s+approval/.test(record),
   'capture record checkpoint status drift',
 )
 for (const name of captureNames)
   assert(record.includes(`\`${name}\``), `capture missing from record: ${name}`)
 
 console.log(
-  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; checkpoint 2 approved and exact-bound.`,
+  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; native inspection complete and direct operator approval pending.`,
 )

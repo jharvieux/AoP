@@ -72,6 +72,15 @@ RUNTIME_CAPTURE_NAMES = (
     "full-phone-3x-shipyard-390x844.jpg",
     "full-desktop-3x-1440x900.jpg",
 )
+RUNTIME_SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+RUNTIME_PENDING_STATUS = "captured-pending-direct-operator-approval"
+RUNTIME_HISTORICAL_APPROVAL = {
+    "status": "historical-source-only",
+    "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263",
+    "reusable": False,
+}
 
 
 def sha256(path: Path) -> str:
@@ -485,6 +494,7 @@ def validate_stylesheet_scope_guardrails(binding_builder) -> dict[str, object]:
 
 
 def validate_runtime_captures() -> None:
+    renewal_set = None
     if RENEWAL_PATH.is_file():
         renewal = json.loads(RENEWAL_PATH.read_text())
         renewal_set = next(
@@ -501,17 +511,29 @@ def validate_runtime_captures() -> None:
         assert renewal_set.get("count") == len(RUNTIME_CAPTURE_NAMES), (
             "#613 city-harbor-v2 renewal count drift"
         )
-        if renewal.get("status") == "pending-renewal":
-            raise AssertionError(
-                "#613 cross-evidence renewal pending: the eight historical city-art "
-                "captures and their old approval cannot validate the repaired source"
-            )
-        assert renewal.get("status") == "approved", "invalid #613 renewal status"
-        assert renewal.get("approval", {}).get("status") == "approved", (
-            "#613 renewal lacks direct operator approval"
+        assert renewal.get("status") == "pending-renewal", (
+            "invalid #613 renewal status"
         )
-        assert renewal.get("approval", {}).get("record"), (
-            "#613 renewal lacks an operator approval record"
+        assert renewal.get("approval") == {
+            "status": "pending-direct-operator-approval",
+            "record": None,
+        }, "#613 direct approval must remain pending"
+        set_renewal = renewal_set.get("renewal")
+        assert set_renewal is not None, (
+            "#613 city-harbor-v2 replacement capture record is missing"
+        )
+        assert set_renewal.get("status") == RUNTIME_PENDING_STATUS
+        assert set_renewal.get("sourceHead") == RUNTIME_SOURCE_HEAD
+        assert set_renewal.get("historicalPixelsReused") is False
+        assert set_renewal.get("approval") == {
+            "status": "pending-direct-operator-approval",
+            "record": None,
+        }, "city-harbor-v2 direct approval must remain pending"
+        assert set_renewal.get("visualSettleInspection") == (
+            "completed-by-integration-owner"
+        )
+        assert set_renewal.get("nativeSizeInspection") == (
+            "completed-by-integration-owner"
         )
     capture_root = PACKAGE / "runtime-captures"
     assert {path.name for path in capture_root.iterdir() if path.is_file()} == set(
@@ -519,8 +541,33 @@ def validate_runtime_captures() -> None:
     ), "runtime capture directory inventory drift"
     captures = {path.name: path for path in capture_root.glob("*.jpg")}
     assert set(captures) == set(RUNTIME_CAPTURE_NAMES), "runtime capture inventory drift"
-    binding = json.loads((PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json").read_text())
-    assert binding["schema"] == 2
+    binding_path = PACKAGE / "RUNTIME-CAPTURE-BINDINGS.json"
+    binding = json.loads(binding_path.read_text())
+    assert binding["schema"] == 3
+    assert binding["sourceHead"] == RUNTIME_SOURCE_HEAD
+    assert binding["captureSourceHead"] == RUNTIME_SOURCE_HEAD
+    assert binding["captureStatus"] == RUNTIME_PENDING_STATUS
+    assert binding["approval"] == {
+        "status": "pending-direct-operator-approval",
+        "evidenceHead": None,
+        "record": None,
+    }, "runtime direct approval must remain pending"
+    assert binding["historicalApproval"] == RUNTIME_HISTORICAL_APPROVAL
+    assert binding["captureOrigin"]["workflow"] == (
+        "truthful shipping-component import harness with visible shipping controls"
+    )
+    assert binding["captureOrigin"]["sourceHead"] == RUNTIME_SOURCE_HEAD
+    assert binding["captureOrigin"]["programmaticFontOrImageAwaitClaimed"] is False
+    assert binding["captureOrigin"]["visualSettleInspection"] == (
+        "completed-by-integration-owner"
+    )
+    assert binding["captureOrigin"]["nativeSizeInspection"] == (
+        "completed-by-integration-owner"
+    )
+    if renewal_set is not None:
+        assert sha256(binding_path) == renewal_set["renewal"]["bindingSha256"], (
+            "#613 city-harbor-v2 renewal binding drift"
+        )
     binding_builder = load_module(
         "city_runtime_capture_binding",
         PACKAGE / "tools" / "build_runtime_capture_bindings.py",
@@ -531,10 +578,24 @@ def validate_runtime_captures() -> None:
     assert tuple(item["path"] for item in binding["shipping_sources"]) == (
         binding_builder.FULL_SHIPPING_SOURCES
     ), "runtime capture full-source inventory drift"
+    subprocess.run(
+        ["git", "merge-base", "--is-ancestor", RUNTIME_SOURCE_HEAD, "HEAD"],
+        cwd=REPOSITORY,
+        check=True,
+    )
     for source in binding["shipping_sources"]:
         path = REPOSITORY / source["path"]
         assert sha256(path) == source["sha256"], (
             f"runtime captures are stale for shipping source: {source['path']}"
+        )
+        target = subprocess.run(
+            ["git", "show", f"{RUNTIME_SOURCE_HEAD}:{source['path']}"],
+            cwd=REPOSITORY,
+            check=True,
+            capture_output=True,
+        ).stdout
+        assert target == path.read_bytes(), (
+            f"runtime source does not match exact target: {source['path']}"
         )
     expected_scope = validate_stylesheet_scope_guardrails(binding_builder)
     stylesheet_binding = binding["stylesheet_source"]
@@ -545,6 +606,19 @@ def validate_runtime_captures() -> None:
     full_hash = stylesheet_binding["diagnostic_full_sha256"]
     assert isinstance(full_hash, str) and len(full_hash) == 64
     int(full_hash, 16)
+    stylesheet_path = REPOSITORY / binding_builder.STYLESHEET_PATH
+    assert full_hash == sha256(stylesheet_path), (
+        "runtime captures are stale for the exact target stylesheet"
+    )
+    target_stylesheet = subprocess.run(
+        ["git", "show", f"{RUNTIME_SOURCE_HEAD}:{binding_builder.STYLESHEET_PATH}"],
+        cwd=REPOSITORY,
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert target_stylesheet == stylesheet_path.read_bytes(), (
+        "runtime stylesheet does not match exact target"
+    )
     assert stylesheet_binding["scope"] == expected_scope, (
         "runtime captures are stale for the city stylesheet dependency closure"
     )
@@ -553,15 +627,39 @@ def validate_runtime_captures() -> None:
         "runtime capture binding inventory drift"
     )
     record = (PACKAGE / "RUNTIME-CAPTURES.md").read_text()
-    approval_head = "dc11b60738f4f14b896532bf2db323b2bd054f5c"
-    approval_record = (
-        "https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263"
-    )
+    approval_head = RUNTIME_HISTORICAL_APPROVAL["evidenceHead"]
+    approval_record = RUNTIME_HISTORICAL_APPROVAL["record"]
     for relative in ("README.md", "PRODUCTION-MANIFEST.md", "RUNTIME-CAPTURES.md"):
         approval_source = (PACKAGE / relative).read_text()
         assert approval_head in approval_source and approval_record in approval_source, (
-            f"runtime capture approval binding drift: {relative}"
+            f"runtime capture historical approval record drift: {relative}"
         )
+        assert RUNTIME_SOURCE_HEAD in approval_source, (
+            f"runtime target source record drift: {relative}"
+        )
+        assert "pending" in approval_source.lower(), (
+            f"runtime pending approval status drift: {relative}"
+        )
+
+    historical_binding_bytes = subprocess.run(
+        [
+            "git",
+            "show",
+            f"{approval_head}:docs/art/city-harbor-v2/RUNTIME-CAPTURE-BINDINGS.json",
+        ],
+        cwd=REPOSITORY,
+        check=True,
+        capture_output=True,
+    ).stdout
+    if renewal_set is not None:
+        assert hashlib.sha256(historical_binding_bytes).hexdigest() == (
+            renewal_set["historicalBinding"]["sha256"]
+        ), "historical city-harbor-v2 binding record drift"
+    historical_binding = json.loads(historical_binding_bytes)
+    historical_captures = {
+        Path(item["path"]).name: item for item in historical_binding["captures"]
+    }
+
     for name in RUNTIME_CAPTURE_NAMES:
         item = bound_captures[name]
         dimensions = tuple(item["dimensions"])
@@ -571,9 +669,15 @@ def validate_runtime_captures() -> None:
         assert path.stat().st_size == byte_count, f"runtime capture byte drift: {name}"
         assert byte_count <= MAX_BYTES, f"runtime capture exceeds 300 KiB: {name}"
         assert sha256(path) == digest, f"runtime capture hash drift: {name}"
+        assert digest != historical_captures[name]["sha256"], (
+            f"historical runtime pixel was reused: {name}"
+        )
         with Image.open(path) as image:
             assert image.format == "JPEG" and image.mode == "RGB"
             assert image.size == dimensions, f"runtime capture dimension drift: {name}"
+            assert "jfif" in image.info and not image.info.get("progressive", False), (
+                f"runtime capture must be baseline JFIF: {name}"
+            )
         assert name in record and digest in record, f"runtime capture record drift: {name}"
 
 
