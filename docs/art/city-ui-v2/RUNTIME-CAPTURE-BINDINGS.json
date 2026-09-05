@@ -1,0 +1,381 @@
+{
+  "schema": 1,
+  "issue": 612,
+  "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+  "captureSourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+  "captureStatus": "approved",
+  "approval": {
+    "status": "approved",
+    "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344"
+  },
+  "sourceTransition": {
+    "classification": "exact-source-recaptured-approved",
+    "renderedMarkupChanged": true,
+    "stylesChanged": true,
+    "artChanged": false,
+    "recaptured": true
+  },
+  "sourceFiles": [
+    {
+      "path": "apps/web/src/App.test.ts",
+      "bytes": 4125,
+      "sha256": "fa7b1e07500689d1ec7ca2996cc290cace370cd98c9b1afce5f7febd08964cb5"
+    },
+    {
+      "path": "apps/web/src/App.tsx",
+      "bytes": 18715,
+      "sha256": "127da1e279878d3176ea78dfb13309391f077bfa999df9dc6be759dbec913762"
+    },
+    {
+      "path": "apps/web/src/CityScene.test.tsx",
+      "bytes": 29321,
+      "sha256": "a12d568b4789c810421219bac84408902e7f208f719d66e9c62776bf2b642be1"
+    },
+    {
+      "path": "apps/web/src/CityScene.tsx",
+      "bytes": 16568,
+      "sha256": "552d1e21d28573b4070b588480911224d97b00cf80364d526959b5ea56fa42a2"
+    },
+    {
+      "path": "apps/web/src/CityScreen.tsx",
+      "bytes": 14893,
+      "sha256": "cc0a30af02bb29735f561956ec0038f027647ac1764f93bee7870d05e22e95fe"
+    },
+    {
+      "path": "apps/web/src/cityArtAssets.test.ts",
+      "bytes": 6918,
+      "sha256": "7f9559468bbd36067cf7493caf84bf00d59d2d4d54423527711bb39313f8d0be"
+    },
+    {
+      "path": "apps/web/src/cityArtRegistry.ts",
+      "bytes": 1475,
+      "sha256": "92d0fd188a3f24800404c096475148e2bbc94817c9bfa1fc7f88e89606686398"
+    },
+    {
+      "path": "apps/web/src/cityDocking.ts",
+      "bytes": 713,
+      "sha256": "8fe001856dcb7a98f89f7cf6108c6522c35de7b82834e9b8a07f4eb8afbc1bfe"
+    },
+    {
+      "path": "apps/web/src/cityModals.test.tsx",
+      "bytes": 7941,
+      "sha256": "c668407c8bf94314b4ec9d447a0fff4a299de187f7cee12e4ff218a2c433bfa6"
+    },
+    {
+      "path": "apps/web/src/cityModals.tsx",
+      "bytes": 37375,
+      "sha256": "30a05428054db5a2e3fd4f91d0717afa09ee6d937b8b01a86af9438d58a82596"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.test.ts",
+      "bytes": 7167,
+      "sha256": "e670d76a35831abc96634c9afa0caecc127ffcd4ce400d7cbbee113be7ba62c8"
+    },
+    {
+      "path": "apps/web/src/screens/MatchScreen.tsx",
+      "bytes": 59590,
+      "sha256": "85a049ef89fda9c6508b0264e73e9081f1660e611ff78aad8939fafd901a0cfe"
+    },
+    {
+      "path": "apps/web/src/styles.css",
+      "bytes": 81187,
+      "sha256": "4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c"
+    }
+  ],
+  "states": [
+    { "id": "starting", "round": 1, "visibleBuildings": 2 },
+    { "id": "midgame", "round": 13, "visibleBuildings": 8 },
+    { "id": "full", "round": 54, "visibleBuildings": 14 }
+  ],
+  "requiredBreakpoints": [
+    { "id": "phone-320", "width": 320, "height": 568 },
+    { "id": "phone-375", "width": 375, "height": 812 },
+    { "id": "phone-430", "width": 430, "height": 932 },
+    { "id": "tablet-768", "width": 768, "height": 1024 },
+    { "id": "landscape-844", "width": 844, "height": 390 },
+    { "id": "desktop-1440", "width": 1440, "height": 900 }
+  ],
+  "captures": [
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-desktop-1440x900-3x-townhall.jpg",
+      "bytes": 259691,
+      "sha256": "1a4d19074ed92035e3bbdc80916bb04b381ebc759f35902fa9670e42d4252b3a",
+      "width": 1440,
+      "height": 900,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 3,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-desktop-1440x900.jpg",
+      "bytes": 284730,
+      "sha256": "77b19a10b843d00bc5c40850d940e4b16575e2964b89c6d6042fb39c2bba9eb7",
+      "width": 1440,
+      "height": 900,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-landscape-844x390.jpg",
+      "bytes": 61706,
+      "sha256": "ccdcb81ed7d93bf1a3d72407e82222b95202371e0a24415ee7cd44b0e51146c2",
+      "width": 844,
+      "height": 390,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-phone-320x568.jpg",
+      "bytes": 45447,
+      "sha256": "eecf942501ac8411154a0fcd2a438ce24aacd905c183b0090954c9685e1f869d",
+      "width": 320,
+      "height": 568,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-phone-375x812.jpg",
+      "bytes": 59002,
+      "sha256": "bb42082cd65a63068d3571bad2fde4e02c1e2587e73b1c5ebe0ee216b126a562",
+      "width": 375,
+      "height": 812,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-phone-390x844-3x-shipyard.jpg",
+      "bytes": 48222,
+      "sha256": "3d0c90a5d59cf7ed4e44702188246a431451924bdeb6f1ea43549c65a4d3cc2d",
+      "width": 390,
+      "height": 844,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 3,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-phone-390x844-3x-townhall.jpg",
+      "bytes": 61467,
+      "sha256": "16eaaef6d6782417a9d55456bb9c9d80fecb46f5d81904d390591066ed5f3254",
+      "width": 390,
+      "height": 844,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 3,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-phone-430x932.jpg",
+      "bytes": 72025,
+      "sha256": "4a077ecaabc417ca929fc963544e9f46493685a90db2334a174e56351eeba176",
+      "width": 430,
+      "height": 932,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/full-tablet-768x1024.jpg",
+      "bytes": 182744,
+      "sha256": "1c76b528702b68e455fd998870a484fe332f52ac52f5e9508fd97535498b336a",
+      "width": 768,
+      "height": 1024,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/midgame-desktop-1440x900.jpg",
+      "bytes": 280020,
+      "sha256": "a422de677228c6b8de6dadc9c8dec306b45af369c0b8f369237d1420e58e7c40",
+      "width": 1440,
+      "height": 900,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "midgame",
+      "round": 13,
+      "visibleBuildings": 8,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/midgame-phone-375x812.jpg",
+      "bytes": 58483,
+      "sha256": "03bea6f04ab0d9bf194d81790fa9dccb96b7c6b4bde249d870564b33a5905205",
+      "width": 375,
+      "height": 812,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "midgame",
+      "round": 13,
+      "visibleBuildings": 8,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/panel-build-phone-375x812.jpg",
+      "bytes": 61635,
+      "sha256": "61e92d7b81d7ad3cb7099a520ce7cf358daab2ec45f16a8e1240bfec9203796a",
+      "width": 375,
+      "height": 812,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": "build"
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/panel-recruit-tablet-768x1024.jpg",
+      "bytes": 193802,
+      "sha256": "c11d27874c39a3abcd5f8d0e35bbdc3573038ea255d9d1f4982143b6d1f8d1f4",
+      "width": 768,
+      "height": 1024,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": "recruit"
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/panel-tavern-desktop-1440x900.jpg",
+      "bytes": 297671,
+      "sha256": "ec3c39d93583561d843b7f87bc8966a3ff210106917a0ced435c0f950800d04d",
+      "width": 1440,
+      "height": 900,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "full",
+      "round": 54,
+      "visibleBuildings": 14,
+      "zoom": 1,
+      "panel": "tavern"
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-desktop-1440x900.jpg",
+      "bytes": 279096,
+      "sha256": "6b8f8fdca0cc81de38db160cd4684837645057ceb77db15374c7c387a3c271c8",
+      "width": 1440,
+      "height": 900,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-landscape-844x390.jpg",
+      "bytes": 60791,
+      "sha256": "e3a8fad32144fc86f85bb7596f13fc255904f3a2a1e2171b851bdf474fbcc2d9",
+      "width": 844,
+      "height": 390,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-phone-320x568.jpg",
+      "bytes": 44355,
+      "sha256": "c134773ef86a8d6b3cf89bdaa0e6d5f2342d98f56f1396b8d0ed19d9aaa37916",
+      "width": 320,
+      "height": 568,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-phone-375x812.jpg",
+      "bytes": 57484,
+      "sha256": "5ceeb1714c979d3e9481288d0c237aa2200cd250c5be66bda2161b4c841c717d",
+      "width": 375,
+      "height": 812,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-phone-430x932.jpg",
+      "bytes": 70325,
+      "sha256": "f4c28d02163c144dc141ac9c76dfe9fa5764a38432eedd581d45030ed766520a",
+      "width": 430,
+      "height": 932,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    },
+    {
+      "path": "docs/art/city-ui-v2/runtime-captures/starting-tablet-768x1024.jpg",
+      "bytes": 177147,
+      "sha256": "25ca80b639df0d144f00b7e15ffa8e5094d7bd5196c1be0750d1dc87eba94d27",
+      "width": 768,
+      "height": 1024,
+      "encoding": "JPEG/JFIF",
+      "colorMode": "RGB",
+      "state": "starting",
+      "round": 1,
+      "visibleBuildings": 2,
+      "zoom": 1,
+      "panel": null
+    }
+  ]
+}

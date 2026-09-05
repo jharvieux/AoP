@@ -156,8 +156,8 @@
   --color-target-ring: #e8a33c;
   --color-merchant: #e0b64f;
 
-  /* Graphical city scene (#429): backdrop bands and the per-category
-     placeholder building colors, pending real building art. */
+  /* Graphical city scene (#429): backdrop bands and category colors retained
+     as deterministic fallbacks behind resolved building artwork. */
   --city-sky: #7fa8c9;
   --city-sky-low: #b5cbdd;
   --city-ground: #6b7a3f;
@@ -1513,33 +1513,171 @@ button.primary.secondary {
   min-width: 0;
 }
 
-/* Graphical city scene (#429). Placeholder blocks stand in for building art;
-   the layout, category coloring, and tap targets are the real design. */
-.city-scene-section {
-  position: relative;
-  margin-bottom: var(--space-2);
+/* Dedicated city destination (#612): one modal boundary, one scenic stage,
+   and one bounded inspector/drawer. The world map remains mounted but inert. */
+.city-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  overflow: hidden;
+  background: var(--surface-scrim);
+  animation: sheet-backdrop-enter var(--motion-emphasized) var(--ease-standard);
 }
 
-/* Scrollable viewport around the scene: at zoom 1 the scene is sized to fit
-   entirely (no scrolling, even on desktop — operator feedback); zoomed in,
-   panning is plain scroll. */
+.city-overlay__shell {
+  position: relative;
+  width: min(100%, 1440px);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background:
+    linear-gradient(112deg, var(--texture-parchment-faint), transparent 24%), var(--surface-panel);
+  border: 1px solid var(--stroke-emphasized);
+  box-shadow: var(--elevation-3);
+  color: var(--text-primary);
+}
+
+.city-overlay__header {
+  z-index: 3;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(190px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--stroke-emphasized);
+  background: var(--surface-overlay);
+  box-shadow: var(--elevation-1);
+}
+
+.city-overlay__identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.city-overlay__identity > div {
+  min-width: 0;
+}
+
+.city-overlay__identity h1 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--type-title-size);
+  font-weight: 400;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-overlay__identity h1 + span {
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.city-overlay__faction-mark {
+  width: 10px;
+  height: 38px;
+  flex: none;
+  border: 1px solid var(--stroke-emphasized);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 2px var(--surface-inset);
+}
+
+.city-overlay__header .resource-hud {
+  justify-content: center;
+}
+
+.city-overlay__navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.city-overlay__navigation button,
+.city-management__header button {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.city-scene-nav {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.city-overlay__navigation button:active,
+.city-management__header button:active {
+  background: var(--surface-inset);
+}
+
+.city-overlay__body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  overflow: hidden;
+}
+
+.city-overlay__scene-column {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow: hidden;
+  background: var(--surface-canvas);
+}
+
+.city-scene-frame {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
 .city-scene-viewport {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
   overflow: auto;
-  /* Slightly above the scene's own 62vh cap so the zoomed scene scrolls
-     INSIDE this box and the zoom buttons below stay reachable, instead of
-     the whole sheet scrolling them away. */
-  max-height: 64vh;
+  overscroll-behavior: contain;
+  border: 1px solid var(--stroke-standard);
   border-radius: var(--radius-3);
+  background: var(--surface-canvas);
+  scrollbar-color: var(--stroke-emphasized) var(--surface-inset);
 }
 
 .city-scene {
   --city-zoom: 1;
 
   position: relative;
-  /* Fit the whole 16:11 scene: full sheet width on narrow screens, capped by
-     viewport height on desktop so opening the city never starts scrolled. */
-  width: calc(var(--city-zoom) * min(100%, 62vh * 16 / 11));
-  margin-inline: auto;
+  width: calc(var(--city-zoom) * var(--city-fit-width, min(100%, (100dvh - 268px) * 16 / 11)));
+  flex: none;
+  margin: auto;
   aspect-ratio: 16 / 11;
   container-type: inline-size;
   border: 1px solid var(--stroke-standard);
@@ -1563,12 +1701,13 @@ button.primary.secondary {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 4px;
+  padding: 0;
   border: 1px solid rgb(0 0 0 / 45%);
   border-radius: var(--radius-1) var(--radius-1) 2px 2px;
   box-shadow: inset 0 6px 0 rgb(0 0 0 / 25%);
   color: var(--text-primary);
   cursor: pointer;
+  touch-action: manipulation;
   transition:
     filter var(--motion-standard) var(--ease-standard),
     transform var(--motion-fast) var(--ease-standard);
@@ -1594,6 +1733,21 @@ button.primary.secondary {
 .city-scene__building:active {
   filter: brightness(1.08);
   transform: scale(0.98);
+}
+
+.city-scene__building::after {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface-canvas);
+  border-radius: 50%;
+  background: var(--color-brass);
+  box-shadow: var(--elevation-1);
+  content: '';
+  pointer-events: none;
+  z-index: 3;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1627,6 +1781,12 @@ button.primary.secondary {
   box-shadow: none;
 }
 
+.city-scene__building--selected {
+  outline: 3px solid var(--stroke-selected);
+  outline-offset: 2px;
+  filter: brightness(1.08);
+}
+
 /* Building art (#447): layered over the category-colored block set above, which
    shows through only until the sprite loads (or again if it 404s — CityScene
    tracks load state and drops the `--art` modifier). */
@@ -1635,10 +1795,64 @@ button.primary.secondary {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: bottom;
   pointer-events: none;
   z-index: 1;
+}
+
+.city-building-art {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--stroke-standard);
+  border-radius: var(--radius-2);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+}
+
+.city-scene__sprite.city-building-art {
+  position: absolute;
+}
+
+.city-building-art--economy {
+  background: var(--city-building-economy);
+}
+
+.city-building-art--recruitment {
+  background: var(--city-building-recruitment);
+}
+
+.city-building-art--fortification {
+  background: var(--city-building-fortification);
+}
+
+.city-building-art--shipyard {
+  background: var(--city-building-shipyard);
+}
+
+.city-building-art__image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+.city-building-art__fallback {
+  display: inline-grid;
+  place-items: center;
+}
+
+.city-building-art--loaded {
+  border-color: transparent;
+  background: transparent;
+}
+
+.city-building-art--loaded .city-building-art__fallback {
+  visibility: hidden;
 }
 
 .city-scene__sprite--tower {
@@ -1685,18 +1899,36 @@ button.primary.secondary {
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: rgb(0 0 0 / 55%);
-  color: #fff;
-  /* Scales with the scene (cqw = % of scene width) so chips stay in
-     proportion from phone width up to a zoomed-in desktop scene. */
-  font-size: clamp(0.42rem, 1.5cqw, 0.68rem);
+  max-width: max-content;
+  padding: 3px 7px;
+  border: 1px solid var(--stroke-emphasized);
+  border-radius: var(--radius-pill);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font-size: clamp(var(--type-caption-size), 1.5cqw, var(--type-label-size));
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
   z-index: 2;
+}
+
+.city-scene__building:focus-visible .city-scene__label,
+.city-scene__building--selected .city-scene__label {
+  opacity: 1;
+  transform: translate(-50%, -12px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .city-scene__building:hover .city-scene__label {
+    opacity: 1;
+    transform: translate(-50%, -12px);
+  }
 }
 
 /* Town-hall faction flag: the mast terminates in a visible V-brace on the
@@ -1783,6 +2015,7 @@ button.primary.secondary {
 
 .city-scene-zoom {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
@@ -1805,6 +2038,14 @@ button.primary.secondary {
     transform var(--motion-fast) var(--ease-standard);
 }
 
+.city-scene-zoom output {
+  min-width: 52px;
+  color: var(--text-secondary);
+  font-size: var(--type-numeric-size);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .city-scene-zoom button:disabled {
   background: var(--surface-disabled);
   border-color: var(--stroke-disabled);
@@ -1823,40 +2064,115 @@ button.primary.secondary {
   margin-top: 8px;
 }
 
-.city-scene-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  min-width: 44px;
-  min-height: 44px;
+.city-status-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: var(--space-2);
+}
+
+.city-status-card {
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--stroke-standard);
-  border-radius: 50%;
-  background: var(--surface-overlay);
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 1;
-  transition:
-    background-color var(--motion-standard) var(--ease-standard),
-    border-color var(--motion-standard) var(--ease-standard),
-    color var(--motion-standard) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard);
-}
-
-.city-scene-nav:active {
+  border-radius: var(--radius-2);
   background: var(--surface-inset);
+  color: var(--text-muted);
+  font-size: var(--type-caption-size);
 }
 
-.city-scene-nav--left {
-  left: 6px;
+.city-status-card strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--type-label-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.city-scene-nav--right {
-  right: 6px;
+.city-status-card__label {
+  color: var(--color-brass);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-/* Placeholder building graphic inside management modals (#431). */
+.city-status-card--action {
+  min-width: 112px;
+  padding: var(--space-1);
+}
+
+.city-status-card--action button {
+  min-width: 104px;
+  min-height: 44px;
+}
+
+.city-inspector {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--stroke-emphasized);
+  background: var(--surface-panel);
+}
+
+.city-inspector__empty {
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.city-inspector__empty h2,
+.city-inspector__empty p {
+  margin: 0;
+}
+
+.city-inspector__empty h2,
+.city-management__header h2 {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--type-title-size);
+  font-weight: 400;
+}
+
+.city-management {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.city-management__header {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--stroke-standard);
+  background: var(--surface-overlay);
+}
+
+.city-management__header h2 {
+  margin: 0;
+}
+
+.city-management__content {
+  min-height: 0;
+  padding: 0 var(--space-3) var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--stroke-emphasized) var(--surface-inset);
+}
+
+/* Resolved building artwork inside management panels (#612). */
 .building-modal__intro {
   display: flex;
   align-items: center;
@@ -1865,29 +2181,9 @@ button.primary.secondary {
 }
 
 .building-graphic {
-  display: inline-block;
-  width: 56px;
-  height: 56px;
+  width: 88px;
+  height: 88px;
   flex-shrink: 0;
-  border: 1px solid rgb(0 0 0 / 45%);
-  border-radius: 6px;
-  box-shadow: inset 0 8px 0 rgb(0 0 0 / 25%);
-}
-
-.building-graphic--economy {
-  background: var(--city-building-economy);
-}
-
-.building-graphic--recruitment {
-  background: var(--city-building-recruitment);
-}
-
-.building-graphic--fortification {
-  background: var(--city-building-fortification);
-}
-
-.building-graphic--shipyard {
-  background: var(--city-building-shipyard);
 }
 
 /* Town-hall build modal rows (#430): full tree with greyed-out unmet
@@ -1914,8 +2210,8 @@ button.primary.secondary {
 }
 
 .build-row .building-graphic {
-  width: 40px;
-  height: 40px;
+  width: 52px;
+  height: 52px;
 }
 
 .build-row__text {
@@ -1924,6 +2220,26 @@ button.primary.secondary {
   gap: 2px;
   min-width: 0;
   flex: 1;
+}
+
+.resource-cost,
+.resource-cost > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.resource-cost {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.resource-cost img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .build-row__build {
@@ -1992,7 +2308,8 @@ button.primary.secondary {
 
 @media (hover: hover) and (pointer: fine) {
   .city-scene-zoom button:not(:disabled):hover,
-  .city-scene-nav:hover,
+  .city-overlay__navigation button:hover,
+  .city-management__header button:hover,
   .info-toggle:hover {
     border-color: var(--color-highlight);
     color: var(--color-highlight);
@@ -2022,6 +2339,283 @@ button.primary.secondary {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* 768px tablets and larger retain a bounded side inspector. */
+@media (min-width: 768px) {
+  .city-overlay__shell {
+    max-height: 1000px;
+    border-radius: var(--radius-3);
+  }
+}
+
+/* Portrait tablets keep the harbor dominant and place one bounded inspector
+   below it. The scene and management content each own one non-nested scroll
+   region when their contents exceed the available row. */
+@media (min-width: 768px) and (max-width: 899px) and (orientation: portrait) {
+  .city-overlay__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(240px, 30dvh);
+  }
+
+  .city-inspector {
+    border-top: 1px solid var(--stroke-emphasized);
+    border-left: 0;
+  }
+
+  .city-scene {
+    width: calc(var(--city-zoom) * min(100%, (70dvh - 208px) * 16 / 11));
+  }
+}
+
+/* 1440px desktop: wider scenic stage without allowing the inspector to sprawl. */
+@media (min-width: 1200px) {
+  .city-overlay {
+    padding: var(--space-3);
+  }
+
+  .city-overlay__body {
+    grid-template-columns: minmax(0, 1fr) 390px;
+  }
+
+  .city-overlay__scene-column {
+    padding: var(--space-3);
+  }
+}
+
+/* Phone shell (320/375/430 families): one drawer shares the city modal boundary. */
+@media (max-width: 767px) {
+  .city-overlay__shell {
+    border: 0;
+  }
+
+  .city-overlay__header {
+    min-height: 116px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .city-overlay__header .resource-hud {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: var(--space-1);
+  }
+
+  .city-overlay__header .resource-hud__item {
+    justify-content: center;
+    padding-inline: var(--space-1);
+  }
+
+  .city-overlay__header .resource-hud__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .city-overlay__body {
+    display: block;
+  }
+
+  .city-overlay__scene-column {
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding: var(--space-1);
+  }
+
+  .city-overlay__scene-column[inert] {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .city-scene {
+    width: calc(var(--city-zoom) * 100%);
+  }
+
+  .city-scene-zoom {
+    margin-top: 0;
+  }
+
+  .city-status-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    gap: var(--space-1);
+  }
+
+  .city-status-card {
+    min-height: 52px;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .city-status-card--action {
+    min-width: 88px;
+  }
+
+  .city-status-card--action button {
+    min-width: 80px;
+  }
+
+  .city-inspector {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 4;
+    max-height: min(50dvh, calc(100% - 96px));
+    border-top: 1px solid var(--stroke-emphasized);
+    border-left: 0;
+    border-radius: var(--radius-4) var(--radius-4) 0 0;
+    box-shadow: var(--elevation-3);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(100%);
+    transition:
+      opacity var(--motion-standard) var(--ease-standard),
+      transform var(--motion-emphasized) var(--ease-emphasized);
+  }
+
+  .city-inspector--open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .city-management {
+    max-height: min(50dvh, calc(100dvh - 188px));
+  }
+
+  .build-row__main {
+    flex-wrap: wrap;
+  }
+
+  .build-row__text {
+    flex-basis: calc(100% - 112px);
+  }
+
+  .build-row__build {
+    flex: 1 1 100%;
+  }
+}
+
+/* Portrait phones keep the fitted harbor at the top instead of centering it
+   inside a tall letterbox. The fixed viewport still exposes both-axis panning
+   at elevated zoom levels. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .city-scene-frame {
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  .city-scene-viewport {
+    width: 100%;
+    aspect-ratio: 16 / 11;
+  }
+}
+
+/* 320px compact phones: retain 44px controls and trade decorative copy first. */
+@media (max-width: 374px) {
+  .city-overlay__identity h1 {
+    max-width: 136px;
+    font-size: 1.2rem;
+  }
+
+  .city-overlay__faction-mark {
+    height: 30px;
+  }
+
+  .city-overlay__navigation {
+    gap: 0;
+  }
+
+  .city-scene-zoom {
+    justify-content: center;
+    gap: var(--space-1);
+  }
+
+  .city-scene-zoom output {
+    min-width: 40px;
+  }
+
+  .city-status-card strong {
+    max-width: 90px;
+  }
+}
+
+/* 375px phones receive the standard compact composition. */
+@media (min-width: 375px) and (max-width: 429px) {
+  .city-overlay__identity h1 {
+    max-width: 178px;
+  }
+}
+
+/* 430px phones can preserve the full city identity line. */
+@media (min-width: 430px) and (max-width: 767px) {
+  .city-overlay__identity h1 {
+    max-width: 230px;
+  }
+}
+
+/* 844×390 and similar landscape phones: short header, shallow drawer. */
+@media (max-height: 430px) and (orientation: landscape) {
+  .city-overlay__header {
+    min-height: 64px;
+    grid-template-columns: minmax(170px, auto) minmax(0, 1fr) auto;
+  }
+
+  .city-overlay__header .resource-hud {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .city-overlay__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(292px, 36vw);
+  }
+
+  .city-inspector {
+    position: static;
+    max-height: none;
+    border-top: 0;
+    border-left: 1px solid var(--stroke-emphasized);
+    border-radius: 0;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .city-management {
+    max-height: none;
+  }
+
+  .city-scene {
+    width: calc(var(--city-zoom) * min(100%, (100dvh - 190px) * 16 / 11));
+  }
+
+  .city-status-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    gap: var(--space-1);
+  }
+
+  .city-status-card {
+    min-height: 48px;
+    padding: 2px var(--space-2);
+    line-height: 1.05;
+  }
+
+  .city-status-card--action {
+    min-width: 88px;
+    padding: 2px;
+  }
+
+  .city-status-card--action button {
+    min-width: 80px;
+    min-height: 44px;
+  }
 }
 
 .battle-intro {
@@ -3131,9 +3725,22 @@ button.primary.secondary {
   .main-menu__panel,
   .sheet,
   .sheet-backdrop,
+  .city-overlay,
+  .city-inspector,
+  .city-scene__building,
+  .city-scene__label,
+  .city-scene-zoom button,
+  .info-toggle,
   .action-toast,
   .spinner,
   .skeleton {
     animation: none;
+    transition: none;
+  }
+
+  .city-scene__building:active,
+  .city-scene-zoom button:not(:disabled):active,
+  .info-toggle:active {
+    transform: none;
   }
 }

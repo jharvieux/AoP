@@ -15,6 +15,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 REPOSITORY = PACKAGE.parents[2]
 FULL_SHIPPING_SOURCES = (
     "apps/web/src/CityScene.tsx",
+    "apps/web/src/cityArtRegistry.ts",
     "apps/web/src/citySceneLayout.json",
     "packages/content/src/buildings.ts",
     "packages/content/src/factions.ts",

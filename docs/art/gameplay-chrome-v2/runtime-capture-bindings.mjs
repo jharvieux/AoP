@@ -34,8 +34,9 @@ export const frozenCaptureState = {
       city_phase: null,
       building_inspector: null,
       selected_building: null,
-      selected_unit: 'player flagship and current hex',
-      visible_state: 'resources, minimap, command dock, and traveled dotted course',
+      selected_unit: null,
+      visible_state:
+        'resources, minimap, command dock, four map controls, and settled home-island fleet cluster; no course or event feed',
     },
     'city-inspector': {
       mounted_screen: 'GameScreen',
@@ -44,7 +45,8 @@ export const frozenCaptureState = {
       building_inspector: 'Shipyard',
       selected_building: 'Shipyard',
       selected_unit: null,
-      visible_state: 'selected Shipyard task sheet open',
+      visible_state:
+        'dedicated right-side Shipyard inspector open; selected Shipyard in scene; flagship upgrade rows visible',
     },
     'interaction-states': {
       mounted_screen: 'GameScreen',
@@ -54,7 +56,7 @@ export const frozenCaptureState = {
       selected_building: 'Town Hall',
       selected_unit: null,
       visible_state:
-        'Town Hall sheet open; close focused; info hovered but collapsed; Build controls disabled with slash',
+        'dedicated right-side Town Hall inspector open; close focused; info hovered but collapsed; Build controls disabled with slash',
     },
   },
 }
@@ -143,6 +145,7 @@ export const captureSpecs = [
     id: 'phone-world',
     path: 'docs/art/gameplay-chrome-v2/runtime-captures/runtime-phone-world-375x812.png',
     dimensions: [375, 812],
+    colorType: 2,
     runtimeSources: worldSources,
     selectorFamilies: worldSelectorFamilies,
     componentPropertyProviders: [],
@@ -152,6 +155,7 @@ export const captureSpecs = [
     id: 'city-inspector',
     path: 'docs/art/gameplay-chrome-v2/runtime-captures/runtime-city-inspector-1440x900.png',
     dimensions: [1440, 900],
+    colorType: 3,
     runtimeSources: citySources,
     selectorFamilies: citySelectorFamilies,
     componentPropertyProviders: ['apps/web/src/CityScene.tsx'],
@@ -161,6 +165,7 @@ export const captureSpecs = [
     id: 'interaction-states',
     path: 'docs/art/gameplay-chrome-v2/runtime-captures/runtime-interaction-states-1440x960.png',
     dimensions: [1440, 960],
+    colorType: 3,
     runtimeSources: citySources,
     selectorFamilies: citySelectorFamilies,
     componentPropertyProviders: ['apps/web/src/CityScene.tsx'],
@@ -669,6 +674,7 @@ function computeRuntimeCaptureBindings(
       id: spec.id,
       ...record(spec.path, overrides),
       dimensions: spec.dimensions,
+      color_type: spec.colorType,
       frozen_state: spec.id,
     })),
     diagnostics: {
@@ -822,9 +828,9 @@ export function prepareRuntimeCaptureBaselineProposal({
   const binding = computeRuntimeCaptureBindings(buildOptions, nextBaseline)
   const evidence = inspectRuntimeCaptureProposalComment({ captureRecord, comment })
   const captures = Object.fromEntries(
-    binding.captures.map(({ id, path, bytes, sha256: digest, dimensions }) => [
+    binding.captures.map(({ id, path, bytes, sha256: digest, dimensions, color_type }) => [
       id,
-      { path, bytes, sha256: digest, dimensions },
+      { path, bytes, sha256: digest, dimensions, color_type },
     ]),
   )
   return {

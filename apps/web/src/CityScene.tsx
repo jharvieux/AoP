@@ -1,17 +1,18 @@
 import { BUILDINGS, FACTIONS, buildingDisplayName } from '@aop/content'
 import type { FactionId } from '@aop/shared'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { cityArtRegistry, cityBuildingArtUrl } from './cityArtRegistry'
 import citySceneLayout from './citySceneLayout.json'
 import { buildingContentId, cityBackdropContentId, factionFlagContentId } from './mapSprites'
 import { useTheme } from './theme/ThemeContext'
+import { UiIcon } from './uiIcons'
 
 /**
  * Graphical city scene (#429, art wired in #447): every constructed building
  * drawn in a fixed scene layout, data-driven from `city.buildings`. Each slot
- * renders its `BUILDINGS[id].spriteUrl` art (theme-pack override via
- * `resolveSpriteUrl` wins when set); the category-colored placeholder block
- * shows only until the art loads, and returns as the fallback if the art
- * 404s or a building has no sprite yet.
+ * renders web-owned production art (theme-pack overrides win when set); the
+ * category-colored placeholder block shows only until the art loads, and
+ * returns as the fallback if both the override and production art fail.
  */
 
 /** The backdrop image behind the whole scene (#447). Falls back to the
@@ -104,6 +105,59 @@ function FallbackImage({
   )
 }
 
+interface CityBuildingArtProps {
+  buildingId: string
+  className?: string
+  onArtStateChange?: (loaded: boolean) => void
+}
+
+/**
+ * Theme-aware building artwork shared by the scene and management panel.
+ * The candidate order is deliberately override → shipping asset → visible
+ * CSS fallback, so a broken theme can never remove the control or its name.
+ */
+export function CityBuildingArt({
+  buildingId,
+  className = '',
+  onArtStateChange,
+}: CityBuildingArtProps) {
+  const { spriteUrl: themeSpriteUrl } = useTheme()
+  const def = BUILDINGS[buildingId]
+  const [artLoaded, setArtLoaded] = useState(false)
+  const candidates = spriteCandidates(
+    themeSpriteUrl,
+    buildingContentId(buildingId),
+    cityBuildingArtUrl(buildingId),
+  )
+
+  function report(loaded: boolean) {
+    setArtLoaded(loaded)
+    onArtStateChange?.(loaded)
+  }
+
+  return (
+    <span
+      className={`city-building-art city-building-art--${def?.category ?? 'economy'}${
+        artLoaded ? ' city-building-art--loaded' : ''
+      }${className ? ` ${className}` : ''}`}
+      aria-hidden
+    >
+      {candidates.length > 0 && (
+        <FallbackImage
+          key={candidates.join('|')}
+          className="city-building-art__image"
+          candidates={candidates}
+          onLoad={() => report(true)}
+          onAttemptError={() => report(false)}
+        />
+      )}
+      <span className="city-building-art__fallback">
+        <UiIcon name="city" />
+      </span>
+    </span>
+  )
+}
+
 /** The faction flag flown on the town hall (#428/#429). Routes through the
  * theme-pack override chain (#459) the same way building sprites do — a
  * theme pack's faction art wins over `FactionDef.flagSpriteUrl` when set.
@@ -148,6 +202,7 @@ interface SceneBuildingProps {
   id: string
   slot: SceneSlot
   faction: FactionId
+  selected: boolean
   onOpenBuilding: (buildingId: string) => void
 }
 
@@ -155,17 +210,16 @@ interface SceneBuildingProps {
  * until the sprite has actually loaded (operator feedback: the colored
  * squares must not frame the transparent cutout art) — and comes back if the
  * art 404s, so every building always has a visible tap target. */
-function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps) {
+function SceneBuilding({ id, slot, faction, selected, onOpenBuilding }: SceneBuildingProps) {
   const { spriteUrl: themeSpriteUrl } = useTheme()
   const [artLoaded, setArtLoaded] = useState(false)
   const def = BUILDINGS[id]!
-  const spriteUrls = spriteCandidates(themeSpriteUrl, buildingContentId(id), def.spriteUrl)
   const towerUrls =
     id === 'citadel'
       ? spriteCandidates(
           themeSpriteUrl,
           buildingContentId('citadel:tower'),
-          def.cornerTowerSpriteUrl,
+          cityArtRegistry.citadelTower,
         )
       : []
   return (
@@ -173,7 +227,10 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
       type="button"
       className={`city-scene__building city-scene__building--${def.category}${
         artLoaded ? ' city-scene__building--art' : ''
-      }`}
+      }${selected ? ' city-scene__building--selected' : ''}`}
+      data-building-id={id}
+      aria-label={`Manage ${buildingDisplayName(id, faction)}`}
+      aria-pressed={selected}
       style={
         {
           left: `${slot.left}%`,
@@ -191,15 +248,11 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
       }
       onClick={() => onOpenBuilding(id)}
     >
-      {spriteUrls.length > 0 && (
-        <FallbackImage
-          key={spriteUrls.join('|')}
-          className="city-scene__sprite"
-          candidates={spriteUrls}
-          onLoad={() => setArtLoaded(true)}
-          onAttemptError={() => setArtLoaded(false)}
-        />
-      )}
+      <CityBuildingArt
+        buildingId={id}
+        className="city-scene__sprite"
+        onArtStateChange={setArtLoaded}
+      />
       {towerUrls.length > 0 && (
         <FallbackImage
           key={towerUrls.join('|')}
@@ -221,6 +274,7 @@ function SceneBuilding({ id, slot, faction, onOpenBuilding }: SceneBuildingProps
 interface CitySceneProps {
   buildings: readonly string[]
   faction: FactionId
+  selectedBuildingId?: string | null
   onOpenBuilding: (buildingId: string) => void
 }
 
@@ -230,10 +284,17 @@ interface CitySceneProps {
  * scrollable viewport, so panning is ordinary scroll/drag. */
 const ZOOM_STOPS = citySceneLayout.zoomStops
 
-export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps) {
+export function CityScene({
+  buildings,
+  faction,
+  selectedBuildingId = null,
+  onOpenBuilding,
+}: CitySceneProps) {
   const { spriteUrl: themeSpriteUrl } = useTheme()
   const [zoomIndex, setZoomIndex] = useState(0)
   const [failedBackdropOverride, setFailedBackdropOverride] = useState<string>()
+  const [fitWidth, setFitWidth] = useState<number>()
+  const viewportRef = useRef<HTMLDivElement>(null)
   const known = buildings.filter((id) => BUILDINGS[id])
   const placed = known
     .filter((id) => SCENE_SLOTS[id])
@@ -251,14 +312,68 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
   const showBackdropOverride =
     Boolean(backdropOverride) && backdropOverride !== failedBackdropOverride
   const zoom = ZOOM_STOPS[zoomIndex]!
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const measureFit = () => {
+      const nextWidth = Math.min(viewport.clientWidth, (viewport.clientHeight * 16) / 11)
+      if (nextWidth > 0) setFitWidth((current) => (current === nextWidth ? current : nextWidth))
+    }
+
+    measureFit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measureFit)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
+
+  function recenter() {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    viewport.scrollTo({
+      left: Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2),
+      top: Math.max(0, (viewport.scrollHeight - viewport.clientHeight) / 2),
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    })
+  }
+
+  function resetView() {
+    setZoomIndex(0)
+    const viewport = viewportRef.current
+    if (viewport) viewport.scrollTo({ left: 0, top: 0 })
+  }
+
   return (
-    <>
-      <div className="city-scene-viewport">
+    <div className="city-scene-frame">
+      <div
+        ref={viewportRef}
+        className="city-scene-viewport"
+        role="region"
+        aria-label="City scene. Use arrow keys to pan when zoomed."
+        tabIndex={0}
+        onKeyDown={(event) => {
+          const amount = 48
+          if (event.key === 'ArrowLeft') viewportRef.current?.scrollBy({ left: -amount })
+          else if (event.key === 'ArrowRight') viewportRef.current?.scrollBy({ left: amount })
+          else if (event.key === 'ArrowUp') viewportRef.current?.scrollBy({ top: -amount })
+          else if (event.key === 'ArrowDown') viewportRef.current?.scrollBy({ top: amount })
+          else return
+          event.preventDefault()
+        }}
+      >
         <div
           className="city-scene"
           role="group"
           aria-label="City buildings"
-          style={{ '--city-zoom': zoom } as React.CSSProperties}
+          style={
+            {
+              '--city-fit-width': fitWidth === undefined ? undefined : `${fitWidth}px`,
+              '--city-zoom': zoom,
+            } as React.CSSProperties
+          }
         >
           {showBackdropOverride && backdropOverride ? (
             <FallbackImage
@@ -298,6 +413,7 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
               id={id}
               slot={SCENE_SLOTS[id]!}
               faction={faction}
+              selected={id === selectedBuildingId}
               onOpenBuilding={onOpenBuilding}
             />
           ))}
@@ -310,15 +426,24 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
           disabled={zoomIndex === 0}
           onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
         >
-          −
+          <UiIcon name="zoomOut" />
         </button>
+        <output aria-live="polite" aria-label="City zoom level">
+          {Math.round(zoom * 100)}%
+        </output>
         <button
           type="button"
           aria-label="Zoom in"
           disabled={zoomIndex === ZOOM_STOPS.length - 1}
           onClick={() => setZoomIndex((i) => Math.min(ZOOM_STOPS.length - 1, i + 1))}
         >
-          +
+          <UiIcon name="zoomIn" />
+        </button>
+        <button type="button" aria-label="Recenter city" onClick={recenter}>
+          <UiIcon name="recenterFleet" />
+        </button>
+        <button type="button" aria-label="Reset city view" onClick={resetView}>
+          <UiIcon name="fit" />
         </button>
       </div>
       {overflow.length > 0 && (
@@ -328,6 +453,7 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
               key={id}
               type="button"
               className="building-option"
+              aria-pressed={id === selectedBuildingId}
               onClick={() => onOpenBuilding(id)}
             >
               {buildingDisplayName(id, faction)}
@@ -335,6 +461,6 @@ export function CityScene({ buildings, faction, onOpenBuilding }: CitySceneProps
           ))}
         </div>
       )}
-    </>
+    </div>
   )
 }

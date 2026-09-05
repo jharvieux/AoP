@@ -1,4 +1,4 @@
-import { buildingDisplayName } from '@aop/content'
+import { FACTIONS, buildingDisplayName } from '@aop/content'
 import type {
   BoardOrder,
   Captain,
@@ -9,12 +9,14 @@ import type {
   StandingOrder,
 } from '@aop/engine'
 import type { FactionId, ResourcePool } from '@aop/shared'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { captainAshoreState } from './captainAshore'
 import { tapFeedback } from './audio/feedback'
-import { BottomSheet } from './components/BottomSheet'
 import { CityScene } from './CityScene'
-import { CityBuildingModal } from './cityModals'
+import { CityBuildingModal, playerFacingName } from './cityModals'
+import { ResourceHud } from './ResourceHud'
+import { useTheme } from './theme/ThemeContext'
+import { UiIcon } from './uiIcons'
 
 interface CityScreenProps {
   city: CityState
@@ -62,6 +64,19 @@ interface CityScreenProps {
   onDepositItem: (itemId: string) => void
 }
 
+const FOCUSABLE_SELECTOR = [
+  'button:not(:disabled)',
+  '[href]',
+  'input:not(:disabled)',
+  'select:not(:disabled)',
+  'textarea:not(:disabled)',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+const NATIVE_BACK_EVENT = 'aop:native-back'
+const PHONE_LAYOUT_QUERY = '(max-width: 767px)'
+const CITY_NAV_TARGET_STYLE = { minWidth: 44, minHeight: 44 } satisfies React.CSSProperties
+
 /**
  * Graphical city screen (#429): the constructed buildings drawn as a scene,
  * each one a tap target opening its management modal (construction at the
@@ -83,110 +98,306 @@ export function CityScreen(props: CityScreenProps) {
     onGarrisonCaptain,
     onUngarrisonCaptain,
   } = props
+  const { factionName } = useTheme()
   const [openBuildingId, setOpenBuildingId] = useState<string | null>(null)
+  const [phoneLayout, setPhoneLayout] = useState(false)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const buildingTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const titleId = useId()
+  const garrisonHintId = useId()
 
-  // Cycling to another city closes any open building modal — the next city
-  // may not even have that building.
+  useEffect(() => {
+    if (!window.matchMedia) return
+    const phoneQuery = window.matchMedia(PHONE_LAYOUT_QUERY)
+    const updatePhoneLayout = () => setPhoneLayout(phoneQuery.matches)
+    updatePhoneLayout()
+    phoneQuery.addEventListener('change', updatePhoneLayout)
+    return () => phoneQuery.removeEventListener('change', updatePhoneLayout)
+  }, [])
+
+  useEffect(() => {
+    const overlay = overlayRef.current
+    if (!overlay) return
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const siblings: HTMLElement[] = []
+    let branch: HTMLElement = overlay
+    while (branch.parentElement) {
+      const parent = branch.parentElement
+      siblings.push(
+        ...[...parent.children].filter(
+          (element): element is HTMLElement => element instanceof HTMLElement && element !== branch,
+        ),
+      )
+      if (parent === document.body) break
+      branch = parent
+    }
+    const previousSiblings = siblings.map((element) => ({
+      element,
+      inert: element.hasAttribute('inert'),
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }))
+    const previousOverflow = document.body.style.overflow
+
+    for (const element of siblings) {
+      element.setAttribute('inert', '')
+      element.setAttribute('aria-hidden', 'true')
+    }
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+
+    return () => {
+      for (const state of previousSiblings) {
+        if (!state.inert) state.element.removeAttribute('inert')
+        if (state.ariaHidden === null) state.element.removeAttribute('aria-hidden')
+        else state.element.setAttribute('aria-hidden', state.ariaHidden)
+      }
+      document.body.style.overflow = previousOverflow
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [])
+
+  // A selection cannot carry between cities: the next city may not contain it.
   useEffect(() => {
     setOpenBuildingId(null)
+    buildingTriggerRef.current = null
   }, [city.id])
+
+  useEffect(() => {
+    if (!openBuildingId) return
+    overlayRef.current?.querySelector<HTMLButtonElement>('[data-city-detail-close]')?.focus()
+  }, [openBuildingId])
 
   function openBuilding(buildingId: string) {
     tapFeedback()
+    buildingTriggerRef.current =
+      [
+        ...(overlayRef.current?.querySelectorAll<HTMLButtonElement>('[data-building-id]') ?? []),
+      ].find((button) => button.dataset.buildingId === buildingId) ?? null
     setOpenBuildingId(buildingId)
   }
 
+  const closeBuilding = useCallback(() => {
+    setOpenBuildingId(null)
+    queueMicrotask(() => {
+      if (buildingTriggerRef.current?.isConnected) buildingTriggerRef.current.focus()
+    })
+  }, [])
+
+  const dismissTopLayer = useCallback(() => {
+    if (openBuildingId) closeBuilding()
+    else onClose()
+  }, [closeBuilding, onClose, openBuildingId])
+
+  useEffect(() => {
+    function handleNativeBack(event: Event) {
+      event.preventDefault()
+      dismissTopLayer()
+    }
+    window.addEventListener(NATIVE_BACK_EVENT, handleNativeBack)
+    return () => window.removeEventListener(NATIVE_BACK_EVENT, handleNativeBack)
+  }, [dismissTopLayer])
+
   const canCycle = !!onSelectCity && !!cities && cities.length > 1
+  const cityIndex = cities?.findIndex((candidate) => candidate.id === city.id) ?? -1
   function cycleCity(delta: number) {
-    if (!canCycle) return
-    const index = cities.findIndex((c) => c.id === city.id)
-    const next = cities[(index + delta + cities.length) % cities.length]
+    if (!canCycle || cityIndex < 0) return
+    const next = cities[(cityIndex + delta + cities.length) % cities.length]
     if (next && next.id !== city.id) {
       tapFeedback()
       onSelectCity(next.id)
     }
   }
 
+  const garrisoned = city.garrisonCaptainId
+    ? captains.find((candidate) => candidate.id === city.garrisonCaptainId)
+    : undefined
+  const dockedAshore = captain ? captainAshoreState(captain, parties) : null
+  const canGarrison = !!captain && !dockedAshore && city.garrisonCaptainId === undefined
+  const selectedName = openBuildingId
+    ? buildingDisplayName(openBuildingId, faction)
+    : 'Harbor command'
+  const phoneDrawerOpen = phoneLayout && openBuildingId !== null
+
   return (
-    <BottomSheet title={city.name} onClose={onClose}>
-      <section className="city-scene-section">
-        <CityScene buildings={city.buildings} faction={faction} onOpenBuilding={openBuilding} />
-        {canCycle && (
-          <>
-            <button
-              type="button"
-              className="city-scene-nav city-scene-nav--left"
-              aria-label="Previous city"
-              onClick={() => cycleCity(-1)}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className="city-scene-nav city-scene-nav--right"
-              aria-label="Next city"
-              onClick={() => cycleCity(1)}
-            >
-              ›
-            </button>
-          </>
-        )}
-      </section>
-      <p className="building-option__hint">
-        Tap a building to manage it — construction happens at the{' '}
-        {buildingDisplayName('townhall', faction)}.
-      </p>
-      <p className="building-option__hint">
-        {captain
-          ? `${captain.name} is docked here.`
-          : 'No captain docked — sail one alongside the city to load troops or refit a ship.'}
-      </p>
-      {(() => {
-        const garrisoned = city.garrisonCaptainId
-          ? captains.find((c) => c.id === city.garrisonCaptainId)
-          : undefined
-        const dockedAshore = captain ? captainAshoreState(captain, parties) : null
-        const canGarrison = !!captain && !dockedAshore && city.garrisonCaptainId === undefined
-        return (
-          <div className="garrison-row">
-            <span className="garrison-row__name">
-              {garrisoned ? `Garrisoned: ${garrisoned.name}` : 'No garrisoned captain'}
-            </span>
-            <span className="garrison-row__counts">
-              {portDefenderCount} ship{portDefenderCount === 1 ? '' : 's'} in port defend this city
-            </span>
-            <div className="garrison-row__actions">
-              {garrisoned ? (
-                <button
-                  onClick={() => {
-                    tapFeedback()
-                    onUngarrisonCaptain()
-                  }}
-                >
-                  Ungarrison
-                </button>
-              ) : (
-                <button
-                  disabled={!canGarrison}
-                  onClick={() => {
-                    tapFeedback()
-                    onGarrisonCaptain()
-                  }}
-                >
-                  Garrison
-                </button>
-              )}
+    <div
+      ref={overlayRef}
+      className="city-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      data-city-overlay
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dismissTopLayer()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          dismissTopLayer()
+          return
+        }
+        if (event.key !== 'Tab') return
+        const focusScope = phoneDrawerOpen
+          ? overlayRef.current?.querySelector<HTMLElement>('.city-inspector--open')
+          : overlayRef.current
+        const focusable = [...(focusScope?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])]
+        if (focusable.length === 0) return
+        const first = focusable[0]!
+        const last = focusable[focusable.length - 1]!
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }}
+    >
+      <div className="city-overlay__shell">
+        <header className="city-overlay__header">
+          <div className="city-overlay__identity">
+            <span
+              className="city-overlay__faction-mark"
+              style={{ backgroundColor: FACTIONS[faction].primaryColor }}
+              aria-hidden
+            />
+            <div>
+              <h1 id={titleId}>{playerFacingName(city.name)}</h1>
+              <span>{factionName(faction, FACTIONS[faction].name)} harbor</span>
             </div>
           </div>
-        )
-      })()}
-      {openBuildingId && (
-        <CityBuildingModal
-          {...props}
-          buildingId={openBuildingId}
-          onClose={() => setOpenBuildingId(null)}
-        />
-      )}
-    </BottomSheet>
+
+          <ResourceHud resources={props.resources} />
+
+          <div className="city-overlay__navigation" role="group" aria-label="City navigation">
+            {canCycle && (
+              <>
+                <button
+                  type="button"
+                  className="city-scene-nav"
+                  aria-label="Previous city"
+                  style={CITY_NAV_TARGET_STYLE}
+                  onClick={() => cycleCity(-1)}
+                >
+                  <UiIcon name="previous" />
+                </button>
+                <span aria-live="polite">
+                  {cityIndex + 1}/{cities.length}
+                </span>
+                <button
+                  type="button"
+                  className="city-scene-nav"
+                  aria-label="Next city"
+                  style={CITY_NAV_TARGET_STYLE}
+                  onClick={() => cycleCity(1)}
+                >
+                  <UiIcon name="next" />
+                </button>
+              </>
+            )}
+            <button
+              ref={closeRef}
+              type="button"
+              className="city-overlay__close"
+              aria-label="Return to world map"
+              onClick={onClose}
+            >
+              <UiIcon name="close" />
+            </button>
+          </div>
+        </header>
+
+        <main className="city-overlay__body">
+          <section
+            className="city-overlay__scene-column"
+            aria-label="City location"
+            aria-hidden={phoneDrawerOpen ? true : undefined}
+            inert={phoneDrawerOpen}
+            style={phoneDrawerOpen ? { pointerEvents: 'none' } : undefined}
+          >
+            <CityScene
+              key={city.id}
+              buildings={city.buildings}
+              faction={faction}
+              selectedBuildingId={openBuildingId}
+              onOpenBuilding={openBuilding}
+            />
+            <div className="city-status-strip" aria-label="Harbor status">
+              <div className="city-status-card">
+                <span className="city-status-card__label">Captain</span>
+                <strong>{captain ? playerFacingName(captain.name) : 'None docked'}</strong>
+                <span id={garrisonHintId}>
+                  {!captain
+                    ? 'Dock a captain to manage ships'
+                    : dockedAshore
+                      ? 'Ashore with a landing party'
+                      : 'Available in harbor'}
+                </span>
+              </div>
+              <div className="city-status-card">
+                <span className="city-status-card__label">Defense</span>
+                <strong>
+                  {garrisoned ? playerFacingName(garrisoned.name) : 'No garrison captain'}
+                </strong>
+                <span>
+                  {portDefenderCount} ship{portDefenderCount === 1 ? '' : 's'} in port
+                </span>
+              </div>
+              <div className="city-status-card city-status-card--action">
+                {garrisoned ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      tapFeedback()
+                      onUngarrisonCaptain()
+                    }}
+                  >
+                    Ungarrison
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!canGarrison}
+                    aria-describedby={!canGarrison ? garrisonHintId : undefined}
+                    title={
+                      !captain
+                        ? 'Dock a captain to garrison this city.'
+                        : dockedAshore
+                          ? 'A captain ashore cannot be garrisoned.'
+                          : undefined
+                    }
+                    onClick={() => {
+                      tapFeedback()
+                      onGarrisonCaptain()
+                    }}
+                  >
+                    Garrison
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <aside
+            className={`city-inspector${openBuildingId ? ' city-inspector--open' : ''}`}
+            aria-label={selectedName}
+          >
+            {openBuildingId ? (
+              <CityBuildingModal {...props} buildingId={openBuildingId} onClose={closeBuilding} />
+            ) : (
+              <div className="city-inspector__empty">
+                <UiIcon name="city" size={28} />
+                <h2>Harbor command</h2>
+                <p>
+                  Select a constructed building to manage it. New construction begins at the{' '}
+                  {buildingDisplayName('townhall', faction)}.
+                </p>
+              </div>
+            )}
+          </aside>
+        </main>
+      </div>
+    </div>
   )
 }

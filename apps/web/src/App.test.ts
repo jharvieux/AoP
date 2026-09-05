@@ -1,5 +1,8 @@
+// @vitest-environment jsdom
+
 import { createGame, RULES_VERSION, type Action, type GameConfig } from '@aop/engine'
 import { describe, expect, it, vi } from 'vitest'
+import { handleNativeBack, NATIVE_BACK_EVENT } from './App'
 import appSource from './App.tsx?raw'
 import { saveGameArguments } from './appSave'
 import { replayOriginFromSave } from './loadSave'
@@ -98,5 +101,25 @@ describe('App save call sites (#565)', () => {
     expect(appSource).toContain(
       'saveGame(...saveGameArguments(slotId, game, actionLog, replayOrigin))',
     )
+  })
+})
+
+describe('App native back routing', () => {
+  it('lets the active city layer consume native back before the App fallback', () => {
+    const fallback = vi.fn()
+    window.addEventListener(NATIVE_BACK_EVENT, (event) => event.preventDefault(), { once: true })
+
+    expect(handleNativeBack('game', fallback)).toBe(true)
+    expect(fallback).not.toHaveBeenCalled()
+  })
+
+  it('preserves the existing non-city fallback and root-screen behavior', () => {
+    const fallback = vi.fn()
+
+    expect(handleNativeBack('game', fallback)).toBe(true)
+    expect(fallback).toHaveBeenCalledOnce()
+    expect(handleNativeBack('menu', fallback)).toBe(false)
+    expect(handleNativeBack('title', fallback)).toBe(false)
+    expect(fallback).toHaveBeenCalledOnce()
   })
 })

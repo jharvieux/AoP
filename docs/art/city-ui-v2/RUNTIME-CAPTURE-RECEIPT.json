@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "issue": 612,
+  "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+  "captureStatus": "approved",
+  "capturedOn": "2026-09-04",
+  "captureOrigin": {
+    "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "workflow": "normal UI only",
+    "browser": "Codex in-app Browser (Chromium version not exposed)",
+    "faction": "pirates",
+    "programmaticFontOrImageAwaitClaimed": false,
+    "visualSettleInspection": "completed-by-integration-owner",
+    "nativeSizeInspection": "completed-by-integration-owner"
+  },
+  "sourceTransition": {
+    "from": "59c82c623dc046c68cec53548903e69af09456a8",
+    "to": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+    "classification": "exact-source-recaptured-approved",
+    "changedBehavior": "Backdrop dismissal, responsive focus containment, topology-aware docking, reduced motion, responsive layout, and web-owned art defaults",
+    "renderedMarkupChanged": true,
+    "stylesChanged": true,
+    "artChanged": false,
+    "recaptured": true
+  },
+  "replayCompatibility": {
+    "decision": "accept-current-engine-version",
+    "engineVersion": "850a9013b70e38a7",
+    "preArtReplayCompatibilityRequired": false,
+    "contentBuildingUrlsRetained": true,
+    "runtimeCityDefaults": "web-owned-registry"
+  },
+  "states": [
+    { "id": "starting", "round": 1, "visibleBuildings": 2 },
+    { "id": "midgame", "round": 13, "visibleBuildings": 8 },
+    { "id": "full", "round": 54, "visibleBuildings": 14 }
+  ],
+  "checkpoints": {
+    "checkpoint1": {
+      "status": "approved",
+      "scope": "Dedicated city direction plus the portrait-phone framing refinement"
+    },
+    "checkpoint2": {
+      "status": "approved",
+      "scope": "Exact-head recapture, native-size review, and approval for the current source",
+      "evidenceHead": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+      "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344"
+    }
+  },
+  "coverage": {
+    "requiredBreakpoints": ["320x568", "375x812", "430x932", "768x1024", "844x390", "1440x900"],
+    "zoomLevels": [1, 3],
+    "managementPanels": ["build", "recruit", "tavern"],
+    "captureCount": 20
+  },
+  "artifacts": {
+    "record": "docs/art/city-ui-v2/RUNTIME-CAPTURES.md",
+    "binding": "docs/art/city-ui-v2/RUNTIME-CAPTURE-BINDINGS.json",
+    "captureDirectory": "docs/art/city-ui-v2/runtime-captures"
+  }
+}
