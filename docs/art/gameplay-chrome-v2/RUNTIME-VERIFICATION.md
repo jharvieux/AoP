@@ -1,6 +1,6 @@
 # Gameplay chrome v2 — runtime verification
 
-This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded. On 2026-09-04, the operator approved all three exact-source runtime frames at `f1dea84d0d489ef52db3944c47748a708ba40004`; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5544612671).
+This report binds the #610 runtime implementation to the approved Direction B checkpoint and the final exact-source runtime evidence captured after fonts and art assets loaded. On 2026-09-04, the operator renewed approval for all three exact-source runtime frames at `e547b55ced81d5f45fb110bf0b95a070b0c48274`, including the combined #611 terrain renderer; the approval is recorded in [issue #610](https://github.com/jharvieux/AoP/issues/610#issuecomment-5548488129).
 
 ## Implemented contract
 
@@ -59,33 +59,33 @@ Production build output from this worktree:
 | Chunk                       |        Raw |       Gzip |         Limit |
 | --------------------------- | ---------: | ---------: | ------------: |
 | CSS                         |  48.82 KiB |   9.65 KiB | 850 / 260 KiB |
-| App entry                   | 652.69 KiB | 190.06 KiB | 850 / 260 KiB |
+| App entry                   | 662.71 KiB | 193.27 KiB | 850 / 260 KiB |
 | Pixi vendor                 | 537.84 KiB | 155.60 KiB | 850 / 260 KiB |
 | Largest remaining app chunk | 447.01 KiB | 146.56 KiB | 850 / 260 KiB |
 
-No static asset was added. Existing `apps/web/public/art/ui` totals **161,783 bytes**; its largest file is `skull-emblem.svg` at **118,320 bytes**, below the 300 KiB per-asset ceiling. The authored vector family is code-only; `uiIcons.ts` is 6,147 bytes before final formatting.
+The #610 chrome change itself added no static asset. Existing `apps/web/public/art/ui` totals **161,783 bytes**; its largest file is `skull-emblem.svg` at **118,320 bytes**, below the 300 KiB per-asset ceiling. The later #611 terrain assets and their budgets are independently bound by the runtime-art receipt. The authored vector family is code-only; `uiIcons.ts` is 6,147 bytes before final formatting.
 
 ## Verification run
 
 - Web focused chrome tests: 6 files, 33 tests passed.
 - Shared tests: 5 files, 57 tests passed.
 - Engine tests: 37 files, 765 tests passed.
-- Web tests: 100 files, 862 tests passed.
+- Web tests: 102 files, 905 tests passed.
 - All package and web TypeScript projects passed.
 - Web production build passed and emitted the budget values above.
 - `node compose.mjs`, `node build-runtime-capture-bindings.mjs` and `node validate.mjs` validate deterministic proof/binding regeneration, exact runtime-source evidence, semantic source/proof parity, 18 proof controls, the 40/31 runtime token census, vector markers, raw-glyph removal and GameScreen/MatchScreen parity.
 
-The isolated writer's first literal wrapper attempt could not replace read-only dependency links and exited with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; the equivalent repository-owned commands passed there. Independent exact-source verification later ran the literal `CI=true pnpm verify` gate successfully: Prettier, all five TypeScript projects, 100 web files / 862 tests, 37 engine files / 765 tests, 5 shared files / 57 tests, and the production build all passed.
+The isolated writer's first literal wrapper attempt could not replace read-only dependency links and exited with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`; the equivalent repository-owned commands passed there. Independent exact-source verification later ran the literal `CI=true pnpm verify` gate successfully. The combined #610/#611 exact-source gate passes Prettier, all five TypeScript projects, 102 web files / 905 tests, 37 engine files / 765 tests, 5 shared files / 57 tests, and the production build.
 
 ## Exact-source capture binding
 
-`RUNTIME-CAPTURE-BINDINGS.json` is a conservative schema-v3 tree manifest for all three PNGs. Its acceptance boundary contains **212 shipping source files**: 146 non-test files recursively discovered under `apps/web/src`, all 29 engine source files, all 19 shared source files and all 18 content source files. It separately binds **22 web/package build inputs**, including the HTML entry, PWA worker/manifest/icons, workspace/dependency resolution, package exports, TypeScript/Vite configuration and Vite helpers. Exact sorted inventories make an added, removed or renamed shipping file fail, while exact byte counts and SHA-256 values catch content changes in the active shell, theme resolver, helpers, Canvas components and package leaves.
+`RUNTIME-CAPTURE-BINDINGS.json` is a conservative schema-v3 tree manifest for all three PNGs. Its acceptance boundary contains **213 shipping source files**: 147 non-test files recursively discovered under `apps/web/src`, all 29 engine source files, all 19 shared source files and all 18 content source files. It separately binds **22 web/package build inputs**, including the HTML entry, PWA worker/manifest/icons, workspace/dependency resolution, package exports, TypeScript/Vite configuration and Vite helpers. Exact sorted inventories make an added, removed or renamed shipping file fail, while exact byte counts and SHA-256 values catch content changes in the active shell, theme resolver, helpers, Canvas components and package leaves.
 
 The boundary also binds the full `apps/web/src/styles.css` bytes as acceptance evidence, not merely a hand-selected selector projection. That deliberately conservative choice catches broad selectors, cascade/order changes, keyframes, tokens and future rules even when a selector does not name a gameplay component. The older per-frame selector/token projections remain diagnostic only. An explicit Canvas audit records 34 calls and 28 unique MapCanvas/Minimap tokens; it identifies the 26 values that schema v2 failed to include in its acceptance projection and checks their CSS, typed fallback and call-site fallback parity.
 
 The two runtime-art receipts and all **96** referenced public assets are exact-bound; per-frame asset inventories remain 54 for phone world and 52 for each city frame. Fonts, resource/action art, world tiles, faction flags and every receipt-selected world/city output are covered. The manifest also records the frozen default/no-override theme and mounted `GameScreen` state for each frame: closed city with selected flagship/hex and course; full city with selected Shipyard inspector; and full city with selected Town Hall inspector plus focus, hover, collapsed-info and disabled states.
 
-`RUNTIME-MATERIAL-BASELINE.json` closes the generator trust gap: it is a non-generated anchor containing the `f1dea84` capture head, a SHA-256 identity for the external capture record and the immutable SHA-256/byte count/census of the complete schema-v3 material projection. The normal builder recomputes and compares that projection before writing `RUNTIME-CAPTURE-BINDINGS.json`; it cannot update the anchor. Consequently, changing a shipping source or inventory and then running the builder stops with material-baseline drift instead of silently carrying the old capture identity onto new runtime bytes.
+`RUNTIME-MATERIAL-BASELINE.json` closes the generator trust gap: it is a non-generated anchor containing the `e547b55` capture head, a SHA-256 identity for the external capture record and the immutable SHA-256/byte count/census of the complete schema-v3 material projection. The normal builder recomputes and compares that projection before writing `RUNTIME-CAPTURE-BINDINGS.json`; it cannot update the anchor. Consequently, changing a shipping source or inventory and then running the builder stops with material-baseline drift instead of silently carrying the old capture identity onto new runtime bytes.
 
 The distinct `renew-runtime-capture-baseline.mjs` operation is proposal-only and structurally unable to update either evidence file. It requires a completely clean tracked and untracked worktree, then proves the requested local HEAD equals its same-named upstream, hosted branch and hosted PR head. It computes material and capture facts from the worktree, verifies every recorded file byte against `git show HEAD:path`, and checks the repository state again around the external lookup. It accepts only a resolvable canonical `github.com/jharvieux/AoP/issues/610#issuecomment-N` whose GitHub API `html_url`, issue identity and numeric ID match and whose author association is `OWNER`. The opaque comment body is not machine-interpreted as permission: the utility prints its URL, author and SHA-256 beside the exact head/material/capture facts for manual review.
 
@@ -99,15 +99,15 @@ The supervisor rebuilt the production preview after the source freeze, waited fo
 
 | File                                                                                                  | Dimensions |   Bytes | SHA-256                                                            |
 | ----------------------------------------------------------------------------------------------------- | ---------: | ------: | ------------------------------------------------------------------ |
-| [`runtime-phone-world-375x812.png`](runtime-captures/runtime-phone-world-375x812.png)                 |  375 × 812 | 184,381 | `06e830d837b0112c0612ca8e7aa9f9c990907f7628132ce0ebbdc6616fa13bb1` |
-| [`runtime-city-inspector-1440x900.png`](runtime-captures/runtime-city-inspector-1440x900.png)         | 1440 × 900 | 228,700 | `15d83da5c065cad5a5b9363d50b2bac11fe830b274d19d11fcb5fb2853fcae13` |
-| [`runtime-interaction-states-1440x960.png`](runtime-captures/runtime-interaction-states-1440x960.png) | 1440 × 960 | 279,832 | `9dc5f8aace3163724a87f534677efa2201347155ff27bfe3cf48ff1e4460cdbe` |
+| [`runtime-phone-world-375x812.png`](runtime-captures/runtime-phone-world-375x812.png)                 |  375 × 812 | 240,148 | `2d68a767e85256253a1a2ec025227d4ae3bf30120ec7d334fb1a15616e71becd` |
+| [`runtime-city-inspector-1440x900.png`](runtime-captures/runtime-city-inspector-1440x900.png)         | 1440 × 900 | 265,087 | `3fbd466006a79c45ef9f0723fef3438cd3578c6a79b993b4bf818b948faf9a7b` |
+| [`runtime-interaction-states-1440x960.png`](runtime-captures/runtime-interaction-states-1440x960.png) | 1440 × 960 | 266,698 | `5d333268a47ff10995308ef0cc191c002fa7f6b0e037ec5e3119e60ea8133e29` |
 
-All three are true RGB PNGs. They total **692,913 bytes**; the largest is 279,832 bytes, so every review capture remains below 300 KiB and no byte belongs to the shipping runtime bundle.
+All three are true RGB PNGs. They total **771,933 bytes**; the largest is 266,698 bytes, so every review capture remains below 300 KiB and no byte belongs to the shipping runtime bundle.
 
 ### Measured composition and states
 
-- **Phone world map:** the viewport is 375 × 812 and the playable map rectangle is approximately `[0, 104, 375, 644]`, or 241,500 px². The 104 px HUD and the status/command-dock region at `[0, 724, 375, 88]` are required rows. Non-required in-map chrome consists of the event feed near `[12, 117, 114, 137]`, four 44 × 44 navigation controls within `[319, 117, 44, 200]`, and the minimap near `[212, 582, 151, 129]`. Their measured union is approximately 42,600 px², or **17.6%** of playable map area. The frame shows current Direction B art, the selected flagship and hex, traveled dotted course, resources, minimap, and the complete command dock. The smallest direct target is 44 × 44.
+- **Phone world map:** the viewport is 375 × 812 and the playable map rectangle is approximately `[0, 104, 375, 644]`, or 241,500 px². The 104 px HUD and the status/command-dock region at `[0, 724, 375, 88]` are required rows. This settled frame has no event-feed entries. Non-required in-map chrome consists of four 44 × 44 navigation controls within `[319, 117, 44, 200]` and the minimap near `[212, 582, 151, 129]`. Their measured union is approximately 27,223 px², or **11.3%** of playable map area. The frame shows current Direction B terrain, the selected flagship and hex, traveled dotted course, resources, minimap, and the complete command dock. The smallest direct target is 44 × 44.
 - **City inspector:** the viewport is 1440 × 900. The city art layer behind the selected Shipyard task is approximately `[306, 181, 812, 488]`; the required building-inspector BottomSheet begins near y=205 and extends to the bottom. The real implementation uses the existing full-width task sheet rather than the checkpoint's aspirational right rail, so the capture demonstrates the shipped inspector surface honestly without claiming that later city-shell layout. Its close and action targets are at least 44 × 44.
 - **Interaction evidence:** the viewport is 1440 × 960 and the required Town Hall BottomSheet occupies y=193–960. The capture freezes a 52 × 52 keyboard-focused close control, a 44 × 44 hovered info control, the open/selected Town Hall context, and disabled Build controls with their non-color slash, all at least 44 px high. Pressed is inherently transient and is verified by the runtime `:active` rules/tests plus the approved static state sheet; it is not falsely claimed as frozen in this frame.
 
