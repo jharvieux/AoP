@@ -60,4 +60,20 @@ describe('single-player and multiplayer city mounting parity', () => {
     expect(stylesSource).toContain('max-height: min(50dvh, calc(100% - 96px))')
     expect(stylesSource).toContain('@media (prefers-reduced-motion: reduce)')
   })
+
+  it('keeps the fitted harbor at the top of portrait phones without disabling zoom panning', () => {
+    const start = stylesSource.indexOf('@media (max-width: 767px) and (orientation: portrait)')
+    const end = stylesSource.indexOf('/* 320px compact phones', start)
+
+    expect(start).toBeGreaterThanOrEqual(0)
+    expect(end).toBeGreaterThan(start)
+
+    const portraitPhoneStyles = stylesSource.slice(start, end)
+    expect(portraitPhoneStyles).toContain('.city-scene-frame')
+    expect(portraitPhoneStyles).toContain('grid-template-rows: auto auto')
+    expect(portraitPhoneStyles).toContain('align-content: start')
+    expect(portraitPhoneStyles).toContain('.city-scene-viewport')
+    expect(portraitPhoneStyles).toContain('width: 100%')
+    expect(portraitPhoneStyles).toContain('aspect-ratio: 16 / 11')
+  })
 })

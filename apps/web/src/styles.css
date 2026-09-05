@@ -2477,6 +2477,21 @@ button.primary.secondary {
   }
 }
 
+/* Portrait phones keep the fitted harbor at the top instead of centering it
+   inside a tall letterbox. The fixed viewport still exposes both-axis panning
+   at elevated zoom levels. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .city-scene-frame {
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  .city-scene-viewport {
+    width: 100%;
+    aspect-ratio: 16 / 11;
+  }
+}
+
 /* 320px compact phones: retain 44px controls and trade decorative copy first. */
 @media (max-width: 374px) {
   .city-overlay__identity h1 {
