@@ -1,16 +1,12 @@
 # Three-band runtime captures
 
-All six captures come from one untouched round-1 96×96 square-map session with five seats,
-default/no-override theme, and no gameplay action between frames. The browser origin was fresh so
-the development service worker could not substitute an older same-path terrain asset. Exact image
-hashes, camera procedures, canvas sizes, and limitations are in `runtime-capture-receipt.json`. The
-receipt binds the combined terrain and shared-chrome renderer plus runtime terrain assets at
-`090cb97bb8f93fd35d774014f7bb945bd9b6162d`; any bound-source or capture-byte change invalidates
-this evidence.
-
-The New Game UI creates a seeded deterministic map but does not expose that seed. These images
-therefore bind the same live session and renderer/art digest, while the separately recorded seed-611
-square/hex trace binds repeatable map and terrain-selection checksums.
+All six current captures come from one fresh-origin, continuous, untouched round-1 96×96 square-map
+fixture session with five seats, deterministic seed 611, default/no-override theme, and no gameplay
+action between frames. They were captured from runtime/source ancestor
+`c1824f22bf14dca6d38f7519fd99affd789a8130` and reviewed at evidence head
+`08717289778883d7adca6ff7a6f15b20fb7c6b25`. Their byte-exact promotion is committed here while
+the permanent issue-comment record and replacement `runtime-capture-receipt.json` approval binding
+remain pending. The retained historical receipt therefore fails closed against these promoted bytes.
 
 ## Desktop — 1440×900
 
@@ -42,15 +38,13 @@ square/hex trace binds repeatable map and terrain-selection checksums.
 
 ## Interaction smoke
 
-The same largest-map session completed 22 bidirectional pan drags, 12 zoom-button transitions
-through overview/tactical/detail, and two fleet recenters on the phone viewport. The browser console
-reported no warning or error. The in-app backend did not expose Performance Timeline entries, so no
-browser frame-time percentile is claimed; the reproducible CPU/draw-work trace is recorded in
-`PERFORMANCE.md`.
+The same largest-map session completed 15 zoom-button transitions, four center actions, and two Fit
+actions across the phone and desktop capture sequence. The in-app backend did not expose
+Performance Timeline entries, so no browser frame-time percentile is claimed; the reproducible
+CPU/draw-work trace and phone-device limitation are recorded in `PERFORMANCE.md`.
 
-The operator approved these exact six combined frames on 2026-09-04 at source head
-`272c8ded20d97f3ab770e803b1b4d819e5546527`; the durable record is
-[issue comment 5546965944](https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944).
-That approval carries across docs/evidence-only commits only while the receipt's renderer/runtime
-asset digest and all six capture hashes remain exact. Any material bound-byte change requires renewed
-approval.
+The operator approved these exact six combined frames in the active session on 2026-09-05. They are
+byte-exact with combined candidate digest
+`86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db`; the permanent issue #611
+comment URL and separate receipt renewal are still pending. Until those land, the terrain validator
+intentionally rejects the historical renderer/capture binding rather than reusing the prior approval.

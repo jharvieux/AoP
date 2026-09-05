@@ -12,7 +12,7 @@ The post-change trace walked panning camera positions in all three bands. It cou
 presentation branches that feed Pixi: visible cell visits, terrain selections, decal sprites, and
 ambient glint/caustic/port sprites. Timing includes coastline/exploration tracing plus deterministic
 terrain selection, but excludes GPU submission and entity drawing. Values are local wall-clock
-observations, not device guarantees.
+observations from the available M5 MacBook Air/Chrome desktop reference, not device guarantees.
 
 ## Determinism
 
@@ -65,12 +65,14 @@ The baseline painted-geometry-only medians/p95s were 3.220/3.498 ms for square a
 18.844/21.217 ms for hex. Similar overview CPU time is expected because loop tracing is preserved;
 the material saving is the eliminated 9,216-cell Pixi reconstruction and empty ambient update set.
 
-## Browser smoke limitation
+## Browser and phone-performance limitation
 
-The repaired browser session exercised the phone's largest map across all three bands with 22 pan
-drags, 12 zoom actions, and two recenters, and logged no warning or error. Its six phone/desktop
-captures and exact repaired renderer/art digest are bound in `runtime-capture-receipt.json` and pass
-the asset checker. The browser backend did not expose Performance Timeline entries, so this evidence
-deliberately does not claim browser FPS or frame-time percentiles. A device/DevTools trace may be
-added later without changing the runtime candidate; the checked-in draw-work and CPU trace remains
+The final in-app Browser capture session exercised the largest map across all three bands with 15
+zoom actions, four center actions, and two Fit actions without a gameplay mutation. The browser
+backend did not expose Performance Timeline entries, so this evidence deliberately does not claim
+browser FPS or frame-time percentiles. The M5 MacBook Air/Chrome measurements above are the accepted
+available performance reference. The iPhone 17 Pro Simulator touch run verifies native press, drag,
+pinch, minimap, recenter, Fit, and course-confirmation behavior, but it is not a physical-phone
+performance trace; no physical-iPhone frame-time claim is made. A device/DevTools trace may be added
+later without changing the runtime candidate, while the checked-in draw-work and CPU trace remains
 the fail-loud performance evidence available here.
