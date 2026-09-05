@@ -31,6 +31,24 @@ const historical = {
   },
 }
 
+const approvedRenewal = {
+  chrome_material_anchor: '2343b68c79cefaaa0f1b9a13a0e93ea49149da805026d6fa8acb8c90c0af25ce',
+  chrome_binding: '0c8f70c3401592c2d4fb69355dc5105614c23562260f64910dd167d7e5b6fc75',
+  terrain_receipt: 'b5bee695068d5bd15c342e78f1a5e4312d7627029d851d93b643d11997660e37',
+}
+
+function assertCoherentAnchorState(records) {
+  const historicalState = records.every(
+    ({ item, observedSha256 }) => observedSha256 === item.sha256,
+  )
+  const approvedState = records.every(
+    ({ id, observedSha256 }) => observedSha256 === approvedRenewal[id],
+  )
+  if (!historicalState && !approvedState) {
+    throw new Error('historical anchors are neither the coherent proposal set nor approved renewal')
+  }
+}
+
 const buildInputPaths = [
   'package.json',
   'pnpm-lock.yaml',
@@ -218,13 +236,17 @@ export function buildCaptureReady() {
       throw new Error(`More command repair declaration missing: ${declaration}`)
     }
   }
-  const history = Object.values(historical).map((item) => ({
+  const observedHistory = Object.entries(historical).map(([id, item]) => ({
+    id,
+    item,
+    observedSha256: sha256(regularFile(item.path)),
+  }))
+  assertCoherentAnchorState(observedHistory)
+  const history = observedHistory.map(({ item }) => ({
     ...item,
-    observed_sha256: sha256(regularFile(item.path)),
+    observed_sha256: item.sha256,
   }))
   for (const item of history) {
-    if (item.observed_sha256 !== item.sha256)
-      throw new Error(`${item.path}: historical anchor drift`)
     if (item.reusable !== false)
       throw new Error(`${item.path}: historical approval became reusable`)
   }
@@ -319,6 +341,15 @@ function expectRejected(label, expected, mutate) {
   throw new Error(`negative control accepted ${label}`)
 }
 
+function expectAnchorStateRejected(label, records) {
+  try {
+    assertCoherentAnchorState(records)
+  } catch {
+    return
+  }
+  throw new Error(`negative control accepted ${label}`)
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const first = buildCaptureReady()
   const second = buildCaptureReady()
@@ -347,6 +378,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   expectRejected('historical approval reuse', first, (record) => {
     record.historical_approvals[0].reusable = true
   })
+  const approvedRecords = Object.entries(historical).map(([id, item]) => ({
+    id,
+    item,
+    observedSha256: approvedRenewal[id],
+  }))
+  expectAnchorStateRejected('mixed historical/approved anchor state', [
+    { ...approvedRecords[0], observedSha256: approvedRecords[0].item.sha256 },
+    ...approvedRecords.slice(1),
+  ])
+  expectAnchorStateRejected(
+    'unknown anchor state',
+    approvedRecords.map((record) => ({ ...record, observedSha256: '0'.repeat(64) })),
+  )
   console.log(
     `capture-ready PASS: ${first.source.shipping_file_count} shipping files, ${first.source.runtime_asset_count} assets, binding ${first.binding_sha256}; deterministic/negative controls PASS`,
   )

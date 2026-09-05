@@ -1,8 +1,8 @@
 {
   "schema": 3,
   "capture_baseline": {
-    "captured_on": "2026-09-04",
-    "source_head": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
+    "captured_on": "2026-09-05",
+    "source_head": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
     "policy": "This evidence baseline carries across evidence-only commits only while the immutable material-baseline anchor and complete schema-v3 shipping-source, build-input, stylesheet, runtime-asset, frozen-state, and capture inventories remain byte-exact."
   },
   "binding_boundary": {
@@ -88,14 +88,19 @@
       "sha256": "7b415c0ecf4c971bfc6454053edcf32aa9a27c76b4702b4a9964a65f0ad27833"
     },
     {
+      "path": "apps/web/src/MapAlertRegion.tsx",
+      "bytes": 2517,
+      "sha256": "d8f79d809b24c200d909c52f8a07b77bcef6315c279ad4598479a11d8cbb90c5"
+    },
+    {
       "path": "apps/web/src/MapCanvas.tsx",
-      "bytes": 101915,
-      "sha256": "49983be44b6e5d37fdd8e22f60ab509e0d226983379f5946e64e0c8bb1c2adb5"
+      "bytes": 105347,
+      "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
     },
     {
       "path": "apps/web/src/Minimap.tsx",
-      "bytes": 8390,
-      "sha256": "e1e3b1fde4bae3fce9f7d66dee2a842b4b192de857b00f9573b559cbf1c1a1f7"
+      "bytes": 11011,
+      "sha256": "e01c3f2f17ff95d7943313b0dfbec4ac08554bcb71bdd5a723ab903bcbadab0b"
     },
     {
       "path": "apps/web/src/ResourceHud.tsx",
@@ -363,9 +368,14 @@
       "sha256": "6abc5ee19af614070da48eba3a9d784b46e28f050cf11799de3c29a05571ee39"
     },
     {
+      "path": "apps/web/src/mapCamera.ts",
+      "bytes": 7266,
+      "sha256": "e213248e04b84611891fda88d2e26811325775118d4d0092bb7f0ee27f214711"
+    },
+    {
       "path": "apps/web/src/mapCursor.ts",
-      "bytes": 4317,
-      "sha256": "81a3186b6edcc1d624bd283855b235d1b3e72e02364eb52170cfdc046c4f3e0f"
+      "bytes": 5090,
+      "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
     },
     {
       "path": "apps/web/src/mapEditor/CommunityLibraryPanel.tsx",
@@ -664,8 +674,8 @@
     },
     {
       "path": "apps/web/src/screens/GameScreen.tsx",
-      "bytes": 88933,
-      "sha256": "2a087630a861241105adaeab88eca70c5b02fe39627468fab247a397e74618e6"
+      "bytes": 89340,
+      "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
     },
     {
       "path": "apps/web/src/screens/LeaderboardScreen.tsx",
@@ -689,8 +699,8 @@
     },
     {
       "path": "apps/web/src/screens/MatchScreen.tsx",
-      "bytes": 59590,
-      "sha256": "85a049ef89fda9c6508b0264e73e9081f1660e611ff78aad8939fafd901a0cfe"
+      "bytes": 61775,
+      "sha256": "085a53c54f8c6687452d48fb6afc044e736a3a1431c60dc068b00514bd0e285f"
     },
     {
       "path": "apps/web/src/screens/NewGameSetup.tsx",
@@ -738,14 +748,19 @@
       "sha256": "e5bbf3aa8535fdacdb356db1aaaf10e40a075f2b089a5bbeaabfa599eb6e4171"
     },
     {
+      "path": "apps/web/src/singlePlayerPresentation.ts",
+      "bytes": 3053,
+      "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+    },
+    {
       "path": "apps/web/src/storage.ts",
       "bytes": 6527,
       "sha256": "8fdcdfe3b2069ce096b6f5b5d509994b707ef96394043bc42d6f8977d30bc035"
     },
     {
       "path": "apps/web/src/styles.css",
-      "bytes": 81187,
-      "sha256": "4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c"
+      "bytes": 89210,
+      "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
     },
     {
       "path": "apps/web/src/textureLoader.ts",
@@ -1242,8 +1257,8 @@
   ],
   "stylesheet_source": {
     "path": "apps/web/src/styles.css",
-    "bytes": 81187,
-    "sha256": "4b0aa5ae77339cb2977605573eeca91d8ce7a850dee72391ecd45c27c2e7f35c",
+    "bytes": 89210,
+    "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0",
     "acceptance": "full exact-file hash; scoped-selector projections are diagnostic only"
   },
   "canvas_token_census": {
@@ -2116,8 +2131,8 @@
     {
       "id": "phone-world",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-phone-world-375x812.png",
-      "bytes": 86297,
-      "sha256": "87349453bf99dc66ff4252f69e727ae40a61b6a016f2e94b8dfd1fb2129e1840",
+      "bytes": 137822,
+      "sha256": "cb6b686837c2258682f54936e92fd777df1a3b29787c4318293ec68468ba92a5",
       "dimensions": [375, 812],
       "color_type": 2,
       "frozen_state": "phone-world"
@@ -2125,8 +2140,8 @@
     {
       "id": "city-inspector",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-city-inspector-1440x900.png",
-      "bytes": 242636,
-      "sha256": "e64f66065aa8b165b2af57cde63f05dd1a79d3ab807c22be785f97d2bb7d2523",
+      "bytes": 247242,
+      "sha256": "f03d02ff4cd42f44cdf83702155bd512d646c999dfa4fcc3bf1694ce90c17ad9",
       "dimensions": [1440, 900],
       "color_type": 3,
       "frozen_state": "city-inspector"
@@ -2134,8 +2149,8 @@
     {
       "id": "interaction-states",
       "path": "docs/art/gameplay-chrome-v2/runtime-captures/runtime-interaction-states-1440x960.png",
-      "bytes": 283680,
-      "sha256": "3b90fecc8c013c97bbaec22c0dcd45d001f7675a5030a6a6223e68592780e72c",
+      "bytes": 293704,
+      "sha256": "9ab69ff52ef5cfbb308a254832be581f668f76fc20b9e9251a49d5a96756af55",
       "dimensions": [1440, 960],
       "color_type": 3,
       "frozen_state": "interaction-states"
@@ -2146,7 +2161,7 @@
       {
         "id": "phone-world",
         "kind": "gameplay-runtime-capture-selector-token-closure-v1",
-        "sha256": "51b4aca8d7a8306bcc72f3beeef98187bbbab5668cb1af9a16dd6fff6ab7b1c2",
+        "sha256": "51279d1708d9bc8acac41d42a53575e96b0f41977dce081a30796cdc2e771167",
         "selector_families": [
           ".button-group",
           ".game-screen-container",
@@ -2224,7 +2239,7 @@
           {
             "at_rules": [],
             "selector": ".map-container",
-            "body_sha256": "a18b4cb7d3249f5eaff5680d3ff3e781fe013a148f1741484fb3e62f2cc614c7"
+            "body_sha256": "790e6981be816e5e9065e41eb642303019c97c8183d8ea751529e53b9905e533"
           },
           {
             "at_rules": [],
@@ -2233,8 +2248,13 @@
           },
           {
             "at_rules": [],
+            "selector": ".map-canvas-root",
+            "body_sha256": "85b23f51e2910ebb770a3d9c3c46cc53826b4663ce27f948fdce2bd36a073c0d"
+          },
+          {
+            "at_rules": [],
             "selector": ".map-nav-controls",
-            "body_sha256": "433a012a5580872cc3240b32faafd4b5453e40f76d337b0a4e4fa0a7e06a69c9"
+            "body_sha256": "5bba3d2aadb0e0858c084b7b3bf9a5cabdc4b6052a1ead12fffeb08ed14ee3f0"
           },
           {
             "at_rules": [],
@@ -2254,27 +2274,42 @@
           {
             "at_rules": [],
             "selector": ".map-course-hint",
-            "body_sha256": "2de3e287ec6a32d8f247583cb845a87ec8269676e758b31e9a2cd60e76e8fef0"
+            "body_sha256": "4d0712274ed9c400e74b4391585e3702f6f393208d42d4b5aea095b57f51428d"
           },
           {
             "at_rules": [],
             "selector": ".map-minimap",
-            "body_sha256": "cc815292cad339f229aaf3020aae8e691bafc726171ba0e6e8dbe9cf9a17047a"
+            "body_sha256": "709548fdcc8d88e57227c7d08060fa96f7edbdad37a5ea9a4dbd82178644a05f"
           },
           {
             "at_rules": [],
             "selector": ".map-minimap canvas",
-            "body_sha256": "aa75644121bba56bb5ee1061230d240a97c40775c6bedd263516bafae33a3945"
+            "body_sha256": "07a4a483a52d04d6c53a9596be65f0cbba9356799c91ce759f55c1bd410cab9d"
           },
           {
             "at_rules": [],
             "selector": ".map-minimap__viewport",
-            "body_sha256": "bd08cc8d4aea43713987bef48c5d86fb8d6acee955f872a8318a12913d0a8ceb"
+            "body_sha256": "3fa8a1b09001b0107456f1487664923ff5cd65be329e9850f35d465b697e7138"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap__viewport-label",
+            "body_sha256": "1e8004ba8f288c0739c9d9f7473b2db87ffc16f9a7802034d362f4ce2aee417a"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap__keyboard-cursor",
+            "body_sha256": "073d31c739550b677ca1ecb44d2f6aa02dbc819a2f4ed8ed69cb288ccf93331d"
+          },
+          {
+            "at_rules": [],
+            "selector": ".map-minimap:focus-visible .map-minimap__keyboard-cursor",
+            "body_sha256": "e0f6e463b00c99cc893510dbd280960c8dcc9ed0ce7830a0c1e77ecbef45cb42"
           },
           {
             "at_rules": [],
             "selector": ".turn-event-feed",
-            "body_sha256": "ed1362eef854b6103ca7154befce06e0decb0718fb7b240c1955b091ae2dc189"
+            "body_sha256": "edb51cf14e79076032d9a6b9a6c83d480e9c604b6d442cd7cfef8b2ec1489ea0"
           },
           {
             "at_rules": [],
@@ -2289,17 +2324,22 @@
           {
             "at_rules": [],
             "selector": ".sail-interrupt-banner",
-            "body_sha256": "df4989587614ac8588358bb304c0a7c3964ec69a4cf58fa8de6fc96cb08b2dc0"
+            "body_sha256": "87753d042219238295dd4a63bb7f6e7b046531d0888948d9663f84a97e20effb"
           },
           {
             "at_rules": [],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+            "body_sha256": "954d14a11931a00e0a65a79416ff7134a992a512cf84dd1ec2ce9c86cb64330b"
           },
           {
             "at_rules": [],
             "selector": ".city-roster",
-            "body_sha256": "baa06695547c6cd003456997c8ce044ac73ccb34ea920867338576c737613bce"
+            "body_sha256": "72b42a7d71b0c0081ffc78dda10dbd7ef4709ae2283262b9f2d6f201e98592c7"
+          },
+          {
+            "at_rules": [],
+            "selector": ".city-roster > li",
+            "body_sha256": "9bed860e32d231c5496bd438412273e1395b9c6b35a4b7e48110c4d32b67dfcc"
           },
           {
             "at_rules": [],
@@ -2457,6 +2497,21 @@
             "body_sha256": "fae5bd6137486c5ecf0b914ba3272a4ee9584f269b4611b7bb9bd46902ffcbac"
           },
           {
+            "at_rules": [],
+            "selector": ".gameplay-command-dock",
+            "body_sha256": "293ed39b9c328608a89edc4f95943aedb880e6f96b157c58934ae45641d395bc"
+          },
+          {
+            "at_rules": ["@media (max-width: 1024px)"],
+            "selector": ".turn-event-feed",
+            "body_sha256": "ef4950f5d8d362a1b72b774574636b6386104ca27cf99e9da6c465e28ede2c6c"
+          },
+          {
+            "at_rules": ["@media (max-width: 1024px)"],
+            "selector": ".turn-event-feed li:nth-child(n + 3)",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
             "at_rules": ["@media (max-width: 599px)"],
             "selector": ".hud",
             "body_sha256": "db1108b34890c48b73b455e19d09280071aab74ff0a7274129c3fb6ae15bc3fd"
@@ -2488,23 +2543,78 @@
           },
           {
             "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".map-container",
+            "body_sha256": "bfd3d64ab45e17d31f0b6c22cc1a9c8060cb186724b70aefabf481182a2f05e6"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".bottom-action-bar .map-command-layout",
+            "body_sha256": "c841932d9976f516dc1c5eafc4d68e6349c1e54706b8437c7653d627d15b681f"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".map-nav-controls",
+            "body_sha256": "18819f303845cbabc34629ffae997d2e54f2cd3d51214d416a6fa3c2d5ff983f"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".turn-event-feed",
+            "body_sha256": "9b25eb4e18be78580b9c18fee47951aecd8d92d38729cdab5fcf489128956a87"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".turn-event-feed li:nth-child(n + 3)",
+            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
             "selector": ".sail-interrupt-banner",
-            "body_sha256": "86bc102d21d5a68f5540b8b9b0349a5e936f88ec07d23e67fc56bc3594dd888d"
+            "body_sha256": "4607550db27f317af1c36b1ec47c08de219a2be43487488f21e9aeba7c432d21"
           },
           {
             "at_rules": ["@media (max-width: 599px)"],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+            "body_sha256": "462db3ce2b0a80ba40e827a26f5af246bd8066dabeb29b96f4a6b54602dbcdba"
           },
           {
             "at_rules": ["@media (max-width: 599px)"],
             "selector": ".city-roster",
-            "body_sha256": "04d675fa9a87a63ded937eccee7f3b1dde77afbac9abf5ae042c3a83f97db82f"
+            "body_sha256": "36655c4a615106a22da14cd5d39540379fc0bbbfba168a809587df6ef07ebf76"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".city-roster-entry",
+            "body_sha256": "cb97e37b4e5ff3d6695332c6264a37241afd12c2af2870c7f2d6cb62194dfce3"
+          },
+          {
+            "at_rules": ["@media (max-width: 599px)"],
+            "selector": ".map-course-hint",
+            "body_sha256": "eaf30640a8e59b1008c296a70d58c8f3b6477c3f0bcad86b5e0e8457f66f35e7"
+          },
+          {
+            "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
+            "selector": ".map-container",
+            "body_sha256": "48a330ed89b2cfa9fe05df69562cb1534a54c9156eedea98886e4954b3f0ad78"
+          },
+          {
+            "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
+            "selector": ".map-nav-controls",
+            "body_sha256": "18819f303845cbabc34629ffae997d2e54f2cd3d51214d416a6fa3c2d5ff983f"
           },
           {
             "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
             "selector": ".map-minimap",
-            "body_sha256": "6e22c58a7a6a60cb561e65df900d413de098d3f7cdb78e92019f81064e585288"
+            "body_sha256": "aa75644121bba56bb5ee1061230d240a97c40775c6bedd263516bafae33a3945"
+          },
+          {
+            "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
+            "selector": ".map-course-hint",
+            "body_sha256": "e6009c45a7768b2da582fe6549871f98be2ad8599d5671da157f237d4a389d27"
+          },
+          {
+            "at_rules": ["@media (max-height: 419px) and (orientation: landscape)"],
+            "selector": ".city-roster",
+            "body_sha256": "834d3c69fbb5dc946b903c9d06e9fd515ba20046e6b55f520f6ce29640958b55"
           },
           {
             "at_rules": ["@media (min-width: 600px)"],
@@ -2580,6 +2690,16 @@
             "at_rules": [],
             "selector": ".map-canvas-error__detail",
             "body_sha256": "0fdefd986e495a5115a831218fbf6aa3010cc85f8b22abeaba47db5072efb367"
+          },
+          {
+            "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+            "selector": ".map-nav-button, .city-roster-entry, .map-command-more__toggle, .gameplay-command-dock button",
+            "body_sha256": "426c09a8d0220f1681d0ffc7dc0beeb6d105b5aa66a4cd895db4e8e7f7751ab6"
+          },
+          {
+            "at_rules": ["@media (prefers-reduced-motion: reduce)"],
+            "selector": ".map-alert-region, .city-roster, .map-command-more__menu",
+            "body_sha256": "3d6d7a3c5255b269c7e11c9ae051c18de28ece97a233ddcb65cc431c663a4462"
           }
         ],
         "root_custom_properties": [
@@ -2606,6 +2726,7 @@
           { "name": "--space-2", "value": "8px" },
           { "name": "--space-3", "value": "12px" },
           { "name": "--space-4", "value": "16px" },
+          { "name": "--space-5", "value": "24px" },
           { "name": "--stroke-danger", "value": "#a6402f" },
           { "name": "--stroke-disabled", "value": "#796f61" },
           { "name": "--stroke-focus", "value": "#c8962c" },
@@ -2632,13 +2753,46 @@
           { "name": "--type-numeric-size", "value": "0.875rem" },
           { "name": "--type-title-size", "value": "clamp(1.35rem, 2.5vw, 2rem)" }
         ],
-        "local_custom_properties": [],
+        "local_custom_properties": [
+          {
+            "name": "--map-minimap-size",
+            "values": ["clamp(120px, 12vw, 150px)", "min(112px, 28vw)", "min(96px, 20vw)"]
+          },
+          {
+            "name": "--map-safe-bottom",
+            "values": [
+              "max(var(--space-2), env(safe-area-inset-bottom, 0px))",
+              "max(var(--space-3), env(safe-area-inset-bottom, 0px))"
+            ]
+          },
+          {
+            "name": "--map-safe-left",
+            "values": [
+              "max(var(--space-2), env(safe-area-inset-left, 0px))",
+              "max(var(--space-3), env(safe-area-inset-left, 0px))"
+            ]
+          },
+          {
+            "name": "--map-safe-right",
+            "values": [
+              "max(var(--space-2), env(safe-area-inset-right, 0px))",
+              "max(var(--space-3), env(safe-area-inset-right, 0px))"
+            ]
+          },
+          {
+            "name": "--map-safe-top",
+            "values": [
+              "max(var(--space-2), env(safe-area-inset-top, 0px))",
+              "max(var(--space-3), env(safe-area-inset-top, 0px))"
+            ]
+          }
+        ],
         "component_custom_properties": []
       },
       {
         "id": "city-inspector",
         "kind": "gameplay-runtime-capture-selector-token-closure-v1",
-        "sha256": "223604d067c99b9c25679c1ae7430489f6bfa17780dd23694dfb0f3dc4072878",
+        "sha256": "4659dd8047d38a19f7f4ec16edafd71b5acc221b2467bf1e05eb2b8d653c7383",
         "selector_families": [
           ".button-group",
           ".game-screen-container",
@@ -2713,7 +2867,7 @@
           {
             "at_rules": [],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+            "body_sha256": "954d14a11931a00e0a65a79416ff7134a992a512cf84dd1ec2ce9c86cb64330b"
           },
           {
             "at_rules": [],
@@ -2853,7 +3007,7 @@
           {
             "at_rules": ["@media (max-width: 599px)"],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+            "body_sha256": "462db3ce2b0a80ba40e827a26f5af246bd8066dabeb29b96f4a6b54602dbcdba"
           },
           {
             "at_rules": ["@media (max-width: 599px)"],
@@ -3502,7 +3656,7 @@
       {
         "id": "interaction-states",
         "kind": "gameplay-runtime-capture-selector-token-closure-v1",
-        "sha256": "2af55893790a1e0f8df01206df9343069f5fffe313a9ee7640917fd723d453ad",
+        "sha256": "aeaed09786b5c1494aa4f8555f43533e23a32dd885e09b8315dec2fe3226a162",
         "selector_families": [
           ".button-group",
           ".game-screen-container",
@@ -3577,7 +3731,7 @@
           {
             "at_rules": [],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "02419cffd4a239def8ce4ef652709d2ecfa4d74b0ce22cb6b8a9a0a1791a1ded"
+            "body_sha256": "954d14a11931a00e0a65a79416ff7134a992a512cf84dd1ec2ce9c86cb64330b"
           },
           {
             "at_rules": [],
@@ -3717,7 +3871,7 @@
           {
             "at_rules": ["@media (max-width: 599px)"],
             "selector": ".sail-interrupt-banner .button-group",
-            "body_sha256": "37ab52c9d67ae001c268e59fc0a6d48715f1d9f4450f11ce68bddedc23bb18f2"
+            "body_sha256": "462db3ce2b0a80ba40e827a26f5af246bd8066dabeb29b96f4a6b54602dbcdba"
           },
           {
             "at_rules": ["@media (max-width: 599px)"],
@@ -4368,9 +4522,9 @@
   "material_baseline": {
     "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
     "bytes": 612,
-    "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
-    "capture_head": "dc11b60738f4f14b896532bf2db323b2bd054f5c",
-    "capture_record_sha256": "146f1ed8cf0ecbdb0f56475841ca210cbdfe9f0de29d66608d15cabe4b49b25c",
-    "material_sha256": "b59a1640a08e63f8a33e4b6fd875cffff9bdbc83d694c0a23c3660e5d9a8f8aa"
+    "sha256": "2343b68c79cefaaa0f1b9a13a0e93ea49149da805026d6fa8acb8c90c0af25ce",
+    "capture_head": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+    "capture_record_sha256": "6226328a71cb1e396fab7b121454bf38f538eac03f6f6caa4a05f16a7436928a",
+    "material_sha256": "37e0bc426ae2fabc80d4d1115121727bb241505071e337a34b5b1f12ba5d62f8"
   }
 }
