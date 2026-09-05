@@ -179,6 +179,33 @@ function contains(outer: DOMRect, inner: DOMRect): boolean {
   )
 }
 
+function anchoredChildRect(
+  containingBlock: DOMRect,
+  size: readonly [width: number, height: number],
+  style: CSSStyleDeclaration,
+): DOMRect {
+  if (style.position !== 'absolute') {
+    throw new Error(`Expected an absolutely positioned child, got ${style.position}`)
+  }
+  const right = resolvedPixels(style.right, style)
+  const top = resolvedPixels(style.top, style)
+  return domRect([
+    containingBlock.right - right - size[0],
+    containingBlock.top + top,
+    size[0],
+    size[1],
+  ])
+}
+
+function horizontalButtonRects(menu: DOMRect, widths: readonly number[]): DOMRect[] {
+  let left = menu.left + 4
+  return widths.map((width) => {
+    const rect = domRect([left, menu.top, width, 44])
+    left = rect.right + 4
+    return rect
+  })
+}
+
 function collisionElements(root: ParentNode): Element[] {
   return [
     ...root.querySelectorAll('[data-map-overlay-region]'),
@@ -232,6 +259,43 @@ function commandFixture(mode: 'sp' | 'mp', state: 'closed' | 'open' | 'confirm')
 }
 
 describe('#613 in-flow map command geometry', () => {
+  it('anchors the menu to the positioned details box while reserving its row in flow', () => {
+    const style = document.createElement('style')
+    style.textContent = stylesSource
+    document.head.append(style)
+
+    try {
+      const root = commandFixture('mp', 'confirm')
+      const details = root.querySelector<HTMLDetailsElement>('.map-command-more')!
+      const summary = root.querySelector<HTMLElement>('.map-command-more__toggle')!
+      const menu = root.querySelector<HTMLElement>('.map-command-more__menu')!
+      const detailsStyle = getComputedStyle(details)
+      const menuStyle = getComputedStyle(menu)
+
+      expect(menu.parentElement).toBe(details)
+      expect(detailsStyle.position).toBe('relative')
+      expect(detailsStyle.minHeight).toBe('88px')
+      expect(menuStyle.position).toBe('absolute')
+      expect(menuStyle.top).toBe('0px')
+      expect(menuStyle.right).toBe('0px')
+      expect(menuStyle.height).toBe('44px')
+      expect(getComputedStyle(summary).height).toBe('44px')
+
+      const detailsRect = domRect([563.7891, 290, 198.2109, 88])
+      const menuRect = anchoredChildRect(detailsRect, [339.9375, 44], menuStyle)
+      expect(menuRect.right).toBe(detailsRect.right)
+      expect(menuRect.bottom).toBe(detailsRect.top + 44)
+      expect(menuRect.bottom).toBe(detailsRect.bottom - 44)
+
+      summary.click()
+      expect(details.open).toBe(false)
+      expect(getComputedStyle(details).minHeight).not.toBe('88px')
+    } finally {
+      style.remove()
+      document.body.replaceChildren()
+    }
+  })
+
   it('keeps closed, open, and confirm menus collision-free in every SP/MP viewport', () => {
     const style = document.createElement('style')
     style.textContent = stylesSource
@@ -255,8 +319,9 @@ describe('#613 in-flow map command geometry', () => {
           expect(getComputedStyle(menuButton).minHeight, `${frame.label} menu target`).toBe('44px')
 
           const menuStyle = getComputedStyle(menu)
-          expect(menuStyle.position, `${frame.label} menu positioning`).toBe('static')
-          expect(menuStyle.alignSelf, `${frame.label} menu containment`).toBe('flex-end')
+          expect(menuStyle.position, `${frame.label} menu positioning`).toBe('absolute')
+          expect(menuStyle.top, `${frame.label} menu vertical anchor`).toBe('0px')
+          expect(menuStyle.right, `${frame.label} menu horizontal anchor`).toBe('0px')
           expect(menuStyle.gridAutoFlow, `${frame.label} menu direction`).toBe('column')
           expect(menuStyle.overflowX, `${frame.label} bounded overflow`).toBe('auto')
           expect(menuStyle.maxWidth, `${frame.label} safe left inset`).toContain(
@@ -285,7 +350,8 @@ describe('#613 in-flow map command geometry', () => {
             const layoutRight = (viewportWidth + layoutWidth) / 2
             const intrinsicWidth = frame.mode === 'mp' && state === 'confirm' ? 339.9375 : 220
             const menuWidth = Math.min(intrinsicWidth, viewportWidth - 24)
-            const menuBox = domRect([layoutRight - menuWidth, mapBottom + 8, menuWidth, menuHeight])
+            const detailsBox = domRect([layoutRight - 96, mapBottom + 8, 96, 88])
+            const menuBox = anchoredChildRect(detailsBox, [menuWidth, menuHeight], menuStyle)
             setRect(menu, [menuBox.x, menuBox.y, menuBox.width, menuBox.height])
             expect(
               contains(
@@ -342,39 +408,27 @@ describe('#613 in-flow map command geometry', () => {
       `
       const buttons = [...menu.querySelectorAll<HTMLElement>('button')]
       const menuStyle = getComputedStyle(menu)
-      expect(menuStyle.alignSelf).toBe('flex-end')
+      expect(menuStyle.position).toBe('absolute')
+      expect(menuStyle.right).toBe('0px')
+      expect(menuStyle.top).toBe('0px')
 
       const escapedMenu = domRect([563.7891, 289, 339.9375, 44])
-      const escapedButtons = [
-        domRect([567.7891, 289, 70, 44]),
-        domRect([641.7891, 289, 44, 44]),
-        domRect([689.7891, 289, 101.3828, 44]),
-        domRect([795.1719, 289, 52.6562, 44]),
-        domRect([851.8281, 289, 47.8985, 44]),
-      ]
       const safeDock = domRect([12, 281, 820, 109])
 
       expect(escapedMenu.right).toBeCloseTo(903.7266, 4)
-      expect(escapedButtons.some((button) => !contains(safeDock, button))).toBe(true)
+      expect(contains(safeDock, escapedMenu)).toBe(false)
 
-      const commandLayoutRight = 762
-      const alignmentShift = commandLayoutRight - escapedMenu.right
-      const containedMenu = domRect([
-        escapedMenu.x + alignmentShift,
-        escapedMenu.y,
-        escapedMenu.width,
-        escapedMenu.height,
-      ])
-      setRect(menu, [containedMenu.x, containedMenu.y, containedMenu.width, containedMenu.height])
-      for (const [index, button] of buttons.entries()) {
-        const escaped = escapedButtons[index]!
-        setRect(button, [escaped.x + alignmentShift, escaped.y, escaped.width, escaped.height])
-      }
+      const detailsRect = domRect([563.7891, 290, 198.2109, 88])
+      const containedMenu = anchoredChildRect(detailsRect, [339.9375, 44], menuStyle)
+      const buttonRects = horizontalButtonRects(
+        containedMenu,
+        [74.5469, 44, 96.8438, 52.6563, 47.9063],
+      )
 
       expect(contains(safeDock, containedMenu)).toBe(true)
       expect(buttons).toHaveLength(5)
-      for (const button of buttons) {
-        const rect = button.getBoundingClientRect()
+      for (const [index, button] of buttons.entries()) {
+        const rect = buttonRects[index]!
         expect(contains(safeDock, rect), button.textContent ?? 'confirm action').toBe(true)
         expect(contains(containedMenu, rect), button.textContent ?? 'confirm action').toBe(true)
         expect(rect.width, button.textContent ?? 'confirm action').toBeGreaterThanOrEqual(44)
@@ -386,10 +440,9 @@ describe('#613 in-flow map command geometry', () => {
       )!
       const dockGrowth = resolvedPixels(menuStyle.height, menuStyle)
       for (const [name, box] of Object.entries(frame.regions) as [RegionName, Box][]) {
-        const element = root.querySelector(`[data-map-overlay-region="${name}"]`)!
-        setRect(element, BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+        const region = domRect(BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+        expect(intersectionArea(region, containedMenu), name).toBe(0)
       }
-      expect(positiveIntersections(collisionElements(root))).toEqual([])
     } finally {
       style.remove()
       document.body.replaceChildren()
@@ -406,7 +459,8 @@ describe('#613 in-flow map command geometry', () => {
       state: 'open' | 'confirm'
       frameLabel: string
       escapedMenu: Box
-      escapedButtons: Box[]
+      details: Box
+      buttonWidths: number[]
       labels: string[]
     }> = [
       {
@@ -414,10 +468,8 @@ describe('#613 in-flow map command geometry', () => {
         state: 'open',
         frameLabel: '375x667 SP',
         escapedMenu: [259.9219, 541.2031, 220, 44],
-        escapedButtons: [
-          [263.9219, 541.2031, 44, 44],
-          [311.9219, 541.2031, 50, 44],
-        ],
+        details: [259.9219, 567, 103.0625, 88],
+        buttonWidths: [47.8281, 52.0625],
         labels: ['Saves', 'Resign'],
       },
       {
@@ -425,11 +477,8 @@ describe('#613 in-flow map command geometry', () => {
         state: 'confirm',
         frameLabel: '375x667 SP',
         escapedMenu: [259.9219, 541.2031, 220, 44],
-        escapedButtons: [
-          [263.9219, 541.2031, 44, 44],
-          [311.9219, 541.2031, 100.664, 44],
-          [416.5859, 541.2031, 52.6563, 44],
-        ],
+        details: [259.9219, 567, 103.0625, 88],
+        buttonWidths: [47.8281, 96.8438, 52.6563],
         labels: ['Saves', 'Confirm Resign', 'Cancel'],
       },
       {
@@ -437,10 +486,8 @@ describe('#613 in-flow map command geometry', () => {
         state: 'open',
         frameLabel: '390x844 SP',
         escapedMenu: [270.3047, 718.2031, 220, 44],
-        escapedButtons: [
-          [274.3047, 718.2031, 44, 44],
-          [322.3047, 718.2031, 50, 44],
-        ],
+        details: [270.2969, 744, 107.7031, 88],
+        buttonWidths: [47.8281, 52.0625],
         labels: ['Saves', 'Resign'],
       },
       {
@@ -448,11 +495,8 @@ describe('#613 in-flow map command geometry', () => {
         state: 'confirm',
         frameLabel: '390x844 SP',
         escapedMenu: [270.3047, 718.2031, 220, 44],
-        escapedButtons: [
-          [274.3047, 718.2031, 44, 44],
-          [322.3047, 718.2031, 100.6641, 44],
-          [426.9688, 718.2031, 52.6562, 44],
-        ],
+        details: [270.2969, 744, 107.7031, 88],
+        buttonWidths: [47.8281, 96.8438, 52.6563],
         labels: ['Saves', 'Confirm Resign', 'Cancel'],
       },
     ]
@@ -466,7 +510,9 @@ describe('#613 in-flow map command geometry', () => {
           .join('')
         const buttons = [...menu.querySelectorAll<HTMLElement>('button')]
         const menuStyle = getComputedStyle(menu)
-        expect(menuStyle.alignSelf, example.label).toBe('flex-end')
+        expect(menuStyle.position, example.label).toBe('absolute')
+        expect(menuStyle.right, example.label).toBe('0px')
+        expect(menuStyle.top, example.label).toBe('0px')
 
         const frame = COLLISION_FRAMES.find((candidate) => candidate.label === example.frameLabel)!
         const dockGrowth = resolvedPixels(menuStyle.height, menuStyle)
@@ -478,32 +524,15 @@ describe('#613 in-flow map command geometry', () => {
           frame.viewport[1] - mapBottom,
         ])
         const escapedMenu = domRect(example.escapedMenu)
-        const escapedButtons = example.escapedButtons.map(domRect)
-        expect(
-          !contains(safeDock, escapedMenu) ||
-            escapedButtons.some((button) => !contains(safeDock, button)),
-          `${example.label} negative control`,
-        ).toBe(true)
+        expect(contains(safeDock, escapedMenu), `${example.label} negative control`).toBe(false)
 
-        const layoutWidth = Math.min(680, frame.viewport[0] - 24)
-        const layoutRight = (frame.viewport[0] + layoutWidth) / 2
-        const alignmentShift = layoutRight - escapedMenu.right
-        const containedMenu = domRect([
-          escapedMenu.x + alignmentShift,
-          escapedMenu.y,
-          escapedMenu.width,
-          escapedMenu.height,
-        ])
-        setRect(menu, [containedMenu.x, containedMenu.y, containedMenu.width, containedMenu.height])
-        for (const [index, button] of buttons.entries()) {
-          const escaped = escapedButtons[index]!
-          setRect(button, [escaped.x + alignmentShift, escaped.y, escaped.width, escaped.height])
-        }
+        const containedMenu = anchoredChildRect(domRect(example.details), [220, 44], menuStyle)
+        const buttonRects = horizontalButtonRects(containedMenu, example.buttonWidths)
 
         expect(contains(safeDock, containedMenu), `${example.label} menu`).toBe(true)
         expect(buttons).toHaveLength(example.labels.length)
-        for (const button of buttons) {
-          const rect = button.getBoundingClientRect()
+        for (const [index, button] of buttons.entries()) {
+          const rect = buttonRects[index]!
           expect(contains(safeDock, rect), `${example.label} ${button.textContent}`).toBe(true)
           expect(contains(containedMenu, rect), `${example.label} ${button.textContent}`).toBe(true)
           expect(rect.width, `${example.label} ${button.textContent}`).toBeGreaterThanOrEqual(44)
@@ -511,10 +540,9 @@ describe('#613 in-flow map command geometry', () => {
         }
 
         for (const [name, box] of Object.entries(frame.regions) as [RegionName, Box][]) {
-          const element = root.querySelector(`[data-map-overlay-region="${name}"]`)!
-          setRect(element, BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+          const region = domRect(BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+          expect(intersectionArea(region, containedMenu), `${example.label} ${name}`).toBe(0)
         }
-        expect(positiveIntersections(collisionElements(root)), example.label).toEqual([])
       }
     } finally {
       style.remove()

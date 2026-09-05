@@ -1094,6 +1094,10 @@ button.large {
   justify-content: flex-end;
 }
 
+.map-command-more[open] {
+  min-height: 88px;
+}
+
 .map-command-more__toggle {
   display: flex;
   align-items: center;
@@ -1129,9 +1133,9 @@ button.large {
 }
 
 .map-command-more__menu {
-  position: static;
-  order: -1;
-  align-self: flex-end;
+  position: absolute;
+  top: 0;
+  right: 0;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: max-content;
