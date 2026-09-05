@@ -1131,7 +1131,7 @@ button.large {
 .map-command-more__menu {
   position: static;
   order: -1;
-  align-self: end;
+  align-self: flex-end;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: max-content;

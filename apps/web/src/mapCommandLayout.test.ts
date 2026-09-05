@@ -170,6 +170,15 @@ function intersectionArea(a: DOMRect, b: DOMRect): number {
   return width * height
 }
 
+function contains(outer: DOMRect, inner: DOMRect): boolean {
+  return (
+    inner.left >= outer.left &&
+    inner.right <= outer.right &&
+    inner.top >= outer.top &&
+    inner.bottom <= outer.bottom
+  )
+}
+
 function collisionElements(root: ParentNode): Element[] {
   return [
     ...root.querySelectorAll('[data-map-overlay-region]'),
@@ -247,6 +256,7 @@ describe('#613 in-flow map command geometry', () => {
 
           const menuStyle = getComputedStyle(menu)
           expect(menuStyle.position, `${frame.label} menu positioning`).toBe('static')
+          expect(menuStyle.alignSelf, `${frame.label} menu containment`).toBe('flex-end')
           expect(menuStyle.gridAutoFlow, `${frame.label} menu direction`).toBe('column')
           expect(menuStyle.overflowX, `${frame.label} bounded overflow`).toBe('auto')
           expect(menuStyle.maxWidth, `${frame.label} safe left inset`).toContain(
@@ -273,7 +283,17 @@ describe('#613 in-flow map command geometry', () => {
             const [viewportWidth] = frame.viewport
             const layoutWidth = Math.min(680, viewportWidth - 24)
             const layoutRight = (viewportWidth + layoutWidth) / 2
-            setRect(menu, [layoutRight - layoutWidth, mapBottom + 8, layoutWidth, menuHeight])
+            const intrinsicWidth = frame.mode === 'mp' && state === 'confirm' ? 339.9375 : 220
+            const menuWidth = Math.min(intrinsicWidth, viewportWidth - 24)
+            const menuBox = domRect([layoutRight - menuWidth, mapBottom + 8, menuWidth, menuHeight])
+            setRect(menu, [menuBox.x, menuBox.y, menuBox.width, menuBox.height])
+            expect(
+              contains(
+                domRect([12, mapBottom, viewportWidth - 24, frame.viewport[1] - mapBottom]),
+                menuBox,
+              ),
+              `${frame.label} ${state} dock containment`,
+            ).toBe(true)
           }
 
           expect(positiveIntersections(collisionElements(root)), `${frame.label} ${state}`).toEqual(
@@ -303,5 +323,202 @@ describe('#613 in-flow map command geometry', () => {
 
     summary.click()
     expect(details.open).toBe(false)
+  })
+
+  it('contains every compact MP confirm action inside the safe dock', () => {
+    const style = document.createElement('style')
+    style.textContent = stylesSource
+    document.head.append(style)
+
+    try {
+      const root = commandFixture('mp', 'confirm')
+      const menu = root.querySelector<HTMLElement>('.map-command-more__menu')!
+      menu.innerHTML = `
+        <button class="secondary">Diplomacy</button>
+        <button class="secondary">Chat</button>
+        <button class="danger">Confirm Resign</button>
+        <button class="secondary">Cancel</button>
+        <button class="danger">Leave</button>
+      `
+      const buttons = [...menu.querySelectorAll<HTMLElement>('button')]
+      const menuStyle = getComputedStyle(menu)
+      expect(menuStyle.alignSelf).toBe('flex-end')
+
+      const escapedMenu = domRect([563.7891, 289, 339.9375, 44])
+      const escapedButtons = [
+        domRect([567.7891, 289, 70, 44]),
+        domRect([641.7891, 289, 44, 44]),
+        domRect([689.7891, 289, 101.3828, 44]),
+        domRect([795.1719, 289, 52.6562, 44]),
+        domRect([851.8281, 289, 47.8985, 44]),
+      ]
+      const safeDock = domRect([12, 281, 820, 109])
+
+      expect(escapedMenu.right).toBeCloseTo(903.7266, 4)
+      expect(escapedButtons.some((button) => !contains(safeDock, button))).toBe(true)
+
+      const commandLayoutRight = 762
+      const alignmentShift = commandLayoutRight - escapedMenu.right
+      const containedMenu = domRect([
+        escapedMenu.x + alignmentShift,
+        escapedMenu.y,
+        escapedMenu.width,
+        escapedMenu.height,
+      ])
+      setRect(menu, [containedMenu.x, containedMenu.y, containedMenu.width, containedMenu.height])
+      for (const [index, button] of buttons.entries()) {
+        const escaped = escapedButtons[index]!
+        setRect(button, [escaped.x + alignmentShift, escaped.y, escaped.width, escaped.height])
+      }
+
+      expect(contains(safeDock, containedMenu)).toBe(true)
+      expect(buttons).toHaveLength(5)
+      for (const button of buttons) {
+        const rect = button.getBoundingClientRect()
+        expect(contains(safeDock, rect), button.textContent ?? 'confirm action').toBe(true)
+        expect(contains(containedMenu, rect), button.textContent ?? 'confirm action').toBe(true)
+        expect(rect.width, button.textContent ?? 'confirm action').toBeGreaterThanOrEqual(44)
+        expect(rect.height, button.textContent ?? 'confirm action').toBeGreaterThanOrEqual(44)
+      }
+
+      const frame = COLLISION_FRAMES.find((candidate) =>
+        candidate.label.includes('MP supplemental'),
+      )!
+      const dockGrowth = resolvedPixels(menuStyle.height, menuStyle)
+      for (const [name, box] of Object.entries(frame.regions) as [RegionName, Box][]) {
+        const element = root.querySelector(`[data-map-overlay-region="${name}"]`)!
+        setRect(element, BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+      }
+      expect(positiveIntersections(collisionElements(root))).toEqual([])
+    } finally {
+      style.remove()
+      document.body.replaceChildren()
+    }
+  })
+
+  it('contains narrow-phone SP open and confirm actions inside the safe dock', () => {
+    const style = document.createElement('style')
+    style.textContent = stylesSource
+    document.head.append(style)
+
+    const cases: Array<{
+      label: string
+      state: 'open' | 'confirm'
+      frameLabel: string
+      escapedMenu: Box
+      escapedButtons: Box[]
+      labels: string[]
+    }> = [
+      {
+        label: '375x667 SP open',
+        state: 'open',
+        frameLabel: '375x667 SP',
+        escapedMenu: [259.9219, 541.2031, 220, 44],
+        escapedButtons: [
+          [263.9219, 541.2031, 44, 44],
+          [311.9219, 541.2031, 50, 44],
+        ],
+        labels: ['Saves', 'Resign'],
+      },
+      {
+        label: '375x667 SP confirm',
+        state: 'confirm',
+        frameLabel: '375x667 SP',
+        escapedMenu: [259.9219, 541.2031, 220, 44],
+        escapedButtons: [
+          [263.9219, 541.2031, 44, 44],
+          [311.9219, 541.2031, 100.664, 44],
+          [416.5859, 541.2031, 52.6563, 44],
+        ],
+        labels: ['Saves', 'Confirm Resign', 'Cancel'],
+      },
+      {
+        label: '390x844 SP open',
+        state: 'open',
+        frameLabel: '390x844 SP',
+        escapedMenu: [270.3047, 718.2031, 220, 44],
+        escapedButtons: [
+          [274.3047, 718.2031, 44, 44],
+          [322.3047, 718.2031, 50, 44],
+        ],
+        labels: ['Saves', 'Resign'],
+      },
+      {
+        label: '390x844 SP confirm',
+        state: 'confirm',
+        frameLabel: '390x844 SP',
+        escapedMenu: [270.3047, 718.2031, 220, 44],
+        escapedButtons: [
+          [274.3047, 718.2031, 44, 44],
+          [322.3047, 718.2031, 100.6641, 44],
+          [426.9688, 718.2031, 52.6562, 44],
+        ],
+        labels: ['Saves', 'Confirm Resign', 'Cancel'],
+      },
+    ]
+
+    try {
+      for (const example of cases) {
+        const root = commandFixture('sp', example.state)
+        const menu = root.querySelector<HTMLElement>('.map-command-more__menu')!
+        menu.innerHTML = example.labels
+          .map((label) => `<button class="secondary">${label}</button>`)
+          .join('')
+        const buttons = [...menu.querySelectorAll<HTMLElement>('button')]
+        const menuStyle = getComputedStyle(menu)
+        expect(menuStyle.alignSelf, example.label).toBe('flex-end')
+
+        const frame = COLLISION_FRAMES.find((candidate) => candidate.label === example.frameLabel)!
+        const dockGrowth = resolvedPixels(menuStyle.height, menuStyle)
+        const mapBottom = frame.map[1] + frame.map[3] - dockGrowth
+        const safeDock = domRect([
+          12,
+          mapBottom,
+          frame.viewport[0] - 24,
+          frame.viewport[1] - mapBottom,
+        ])
+        const escapedMenu = domRect(example.escapedMenu)
+        const escapedButtons = example.escapedButtons.map(domRect)
+        expect(
+          !contains(safeDock, escapedMenu) ||
+            escapedButtons.some((button) => !contains(safeDock, button)),
+          `${example.label} negative control`,
+        ).toBe(true)
+
+        const layoutWidth = Math.min(680, frame.viewport[0] - 24)
+        const layoutRight = (frame.viewport[0] + layoutWidth) / 2
+        const alignmentShift = layoutRight - escapedMenu.right
+        const containedMenu = domRect([
+          escapedMenu.x + alignmentShift,
+          escapedMenu.y,
+          escapedMenu.width,
+          escapedMenu.height,
+        ])
+        setRect(menu, [containedMenu.x, containedMenu.y, containedMenu.width, containedMenu.height])
+        for (const [index, button] of buttons.entries()) {
+          const escaped = escapedButtons[index]!
+          setRect(button, [escaped.x + alignmentShift, escaped.y, escaped.width, escaped.height])
+        }
+
+        expect(contains(safeDock, containedMenu), `${example.label} menu`).toBe(true)
+        expect(buttons).toHaveLength(example.labels.length)
+        for (const button of buttons) {
+          const rect = button.getBoundingClientRect()
+          expect(contains(safeDock, rect), `${example.label} ${button.textContent}`).toBe(true)
+          expect(contains(containedMenu, rect), `${example.label} ${button.textContent}`).toBe(true)
+          expect(rect.width, `${example.label} ${button.textContent}`).toBeGreaterThanOrEqual(44)
+          expect(rect.height, `${example.label} ${button.textContent}`).toBeGreaterThanOrEqual(44)
+        }
+
+        for (const [name, box] of Object.entries(frame.regions) as [RegionName, Box][]) {
+          const element = root.querySelector(`[data-map-overlay-region="${name}"]`)!
+          setRect(element, BOTTOM_ANCHORED_REGIONS.has(name) ? moveUp(box, dockGrowth) : box)
+        }
+        expect(positiveIntersections(collisionElements(root)), example.label).toEqual([])
+      }
+    } finally {
+      style.remove()
+      document.body.replaceChildren()
+    }
   })
 })
