@@ -6,39 +6,76 @@
     "status": "pending-direct-operator-approval",
     "record": null
   },
-  "source_head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
-  "source_tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
-  "candidate_digest": "7d300d1e6010953bbcbfd89697cb764f35b9285560c4232fd32ee90cb860beba",
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
+  "candidate_digest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
   "capture_ready": {
     "path": "docs/art/gameplay-chrome-v2/renewal-fixture/CAPTURE-READY.json",
-    "bytes": 91380,
-    "sha256": "d399b2be29eda5a3ca24c9316da91e497207d34cdaf73304cf8fa0ba6303cbb4"
+    "bytes": 92800,
+    "sha256": "35fe7ee027e16a5c2e00583aa5e6621ba4414558122934a86185afad945a0e93"
   },
-  "capture_ready_binding": "6678cab608897369cfa5ca08cfd36a71f3eddfad9da49fc8756ddc46e774abb3",
+  "capture_ready_binding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1",
   "source_material": {
     "algorithm": "sha256",
-    "sha256": "d73e22c3d03110d8884b74c684fe6def907993b11f9f3eb4b25a0aa68fe798ed",
-    "bytes": 47818
+    "sha256": "660f3330994e60a819cb6125818df4c2c72325d5e8ed8d68a5c56b6fdacb128d",
+    "bytes": 47959
   },
   "renderer_material": {
     "algorithm": "sha256",
-    "sha256": "f5955173d179f6919f5c6c7e127af3cb43f63df7ce58de7293cd030e3f71e423",
+    "sha256": "11210617b874cad4202650b545c21f2bd1010fd68326e05ee92cd161e8614eb2",
     "bytes": 18357
   },
   "fixture_material": {
     "algorithm": "sha256",
-    "sha256": "227c6258629eee7e8f26d6c0e5c4358fd84be3ff99e75f56ccceaf15a1fc9c82",
+    "sha256": "10570ec83e4577bcc5a853a7f8a1087bf93b443de1ea9ed1d776615ff569549d",
     "bytes": 795
+  },
+  "more_command_repair": {
+    "policy": "Exact repaired shipping command component/style bytes and their zero-intersection regression test; live open/confirm geometry is bound by the proposal observations.",
+    "required_styles": [
+      ".map-command-layout {",
+      "align-items: end;",
+      ".map-command-more[open] {",
+      "min-height: 88px;",
+      ".map-command-more__menu {",
+      "position: absolute;",
+      "top: 0;",
+      "right: 0;",
+      "grid-auto-flow: column;",
+      "overflow-x: auto;"
+    ],
+    "files": [
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+      },
+      {
+        "path": "apps/web/src/mapCommandLayout.test.ts",
+        "bytes": 21011,
+        "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+      }
+    ],
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "6546842865cf6021e38ee34f52c14072260212589d5c134719100175ef5a3278",
+      "bytes": 402
+    }
   },
   "ingestion": {
     "path": "docs/art/gameplay-chrome-v2/renewal-candidates/INGESTION.json",
     "bytes": 6528,
-    "sha256": "d6470484c0379438fa0f4f1cd92bb5570242d47004531ea88778a9a4a874f4c0"
+    "sha256": "bb6ae4765c090c6373bca22250bc34a49709ec80bd356052cfd73a57b6967c6f"
   },
   "observations": {
     "path": "docs/art/gameplay-chrome-v2/renewal-candidates/OBSERVATIONS.json",
-    "bytes": 9147,
-    "sha256": "29158d3ccc5ccc666e83dc6324e3d6a3a43ac02dc3babf3a3f0847a299767026"
+    "bytes": 12675,
+    "sha256": "3d4906d018527f0c803a72ba28a704c93ca2dff634125eaaa0a6faf52d4025cc"
   },
   "historical_approvals_reusable": false,
   "immutable_chrome_material_anchor": {
@@ -55,20 +92,20 @@
       "set": "gameplay-chrome-v2",
       "scene": "chrome-world",
       "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-phone-world-375x812.png",
-      "bytes": 132682,
-      "sha256": "95ca834f76f57ba77465a6a77e1f27e0d72046f2a0048f749e2b4475903adce7",
+      "bytes": 137822,
+      "sha256": "cb6b686837c2258682f54936e92fd777df1a3b29787c4318293ec68468ba92a5",
       "dimensions": [375, 812],
       "png_color_type": 2,
       "encoding": {
         "palette_colors": null,
-        "decoded_rgb_sha256": "27352456e769b79325b171bd93b9a492c38c65ed4c6c616cc799dba243ccd05c",
+        "decoded_rgb_sha256": "a34a500439f62c1d7ad6d608bce5a564fdb6d66423224d68823e4c4cb7496808",
         "rgb_rmse": 0
       },
       "observation": {
         "id": "chrome-phone-world",
         "scene": "chrome-world",
         "viewport": [375, 812],
-        "device_pixel_ratio": 1,
+        "device_pixel_ratio": 2,
         "settle_ms": 1200,
         "measurements": {
           "document_client": [375, 812],
@@ -76,6 +113,8 @@
           "busy": false,
           "map_error": false,
           "fonts_status": "loaded",
+          "loaded_images": 4,
+          "total_images": 4,
           "incomplete_images": 0,
           "undersized_direct_targets": 0,
           "minimum_direct_target": 44
@@ -95,14 +134,14 @@
       "set": "gameplay-chrome-v2",
       "scene": "chrome-city",
       "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-city-inspector-1440x900.png",
-      "bytes": 243256,
-      "sha256": "c2e3212dfe59b7afc454b1336c60af38aeab79f916878efe093297e405d4ff8f",
+      "bytes": 247242,
+      "sha256": "f03d02ff4cd42f44cdf83702155bd512d646c999dfa4fcc3bf1694ce90c17ad9",
       "dimensions": [1440, 900],
       "png_color_type": 3,
       "encoding": {
         "palette_colors": 40,
-        "decoded_rgb_sha256": "44deb3b68c0735cc906e85c41b93f5aa5c6323f9677d0f87c3b4c7a929472a63",
-        "rgb_rmse": 9.405708
+        "decoded_rgb_sha256": "3e90bae4a5f0bb4c66610a6261761b1a06c8fa712e158376d38accdb5a26381a",
+        "rgb_rmse": 9.262423
       },
       "observation": {
         "id": "chrome-city-inspector",
@@ -122,9 +161,10 @@
           "undersized_direct_targets": 0,
           "minimum_direct_target": 44,
           "overlay_rect": [0, 0, 1440, 900],
-          "scene_rect": [25, 101, 1000, 692.8125],
+          "scene_rect": [25, 101, 1000, 696.3125],
           "inspector_rect": [1037, 89, 390, 798],
-          "selected_building": "Shipyard"
+          "selected_building": "Shipyard",
+          "focused_control": "Close building details"
         },
         "native_inspection": {
           "original_size": true,
@@ -142,14 +182,14 @@
       "set": "gameplay-chrome-v2",
       "scene": "chrome-city",
       "path": "docs/art/gameplay-chrome-v2/renewal-candidates/runtime-interaction-states-1440x960.png",
-      "bytes": 292600,
-      "sha256": "95c5215c2856197ed1b238f109f58ec1718ffba2f161a59c2521caa9d4184f58",
+      "bytes": 293704,
+      "sha256": "9ab69ff52ef5cfbb308a254832be581f668f76fc20b9e9251a49d5a96756af55",
       "dimensions": [1440, 960],
       "png_color_type": 3,
       "encoding": {
         "palette_colors": 40,
-        "decoded_rgb_sha256": "ca32632245520b033bf4adeaacf966c0b4581e4ee02174c0c1296d6da939fac7",
-        "rgb_rmse": 9.714534
+        "decoded_rgb_sha256": "f39df46a3183a73ee3618dc3dfe90e218aa4923bc764ae20eb104b40055c1a91",
+        "rgb_rmse": 9.759014
       },
       "observation": {
         "id": "chrome-interaction-states",
@@ -169,7 +209,7 @@
           "undersized_direct_targets": 0,
           "minimum_direct_target": 44,
           "overlay_rect": [0, 0, 1440, 960],
-          "scene_rect": [26, 104.34375, 998, 686.125],
+          "scene_rect": [25, 101, 1000, 756.3125],
           "inspector_rect": [1037, 89, 390, 858],
           "selected_building": "Town Hall",
           "focused_control": "Close building details",

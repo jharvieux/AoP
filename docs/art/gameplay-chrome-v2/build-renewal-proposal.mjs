@@ -28,7 +28,7 @@ const specs = [
     dimensions: [375, 812],
     colorType: 2,
     scene: 'chrome-world',
-    devicePixelRatio: 1,
+    devicePixelRatio: 2,
   },
   {
     id: 'chrome-city-inspector',
@@ -107,8 +107,12 @@ function validateObservation(frame, spec) {
     throw new Error(`${spec.id}: document overflow`)
   }
   if (
+    measured.busy ||
     measured.map_error ||
     measured.fonts_status !== 'loaded' ||
+    !Number.isInteger(measured.total_images) ||
+    measured.total_images < 1 ||
+    measured.loaded_images !== measured.total_images ||
     measured.incomplete_images !== 0
   ) {
     throw new Error(`${spec.id}: runtime was not visibly complete`)
@@ -128,6 +132,100 @@ function validateObservation(frame, spec) {
     frame.native_inspection?.map_error
   ) {
     throw new Error(`${spec.id}: native inspection did not pass`)
+  }
+}
+
+function validateRectangle(value, label) {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 4 ||
+    value.some((part) => !Number.isFinite(part)) ||
+    value[2] <= 0 ||
+    value[3] <= 0
+  ) {
+    throw new Error(`${label}: invalid measured rectangle`)
+  }
+}
+
+function rectangleContains(outer, inner) {
+  const [outerX, outerY, outerWidth, outerHeight] = outer
+  const [innerX, innerY, innerWidth, innerHeight] = inner
+  return (
+    innerX >= outerX &&
+    innerY >= outerY &&
+    innerX + innerWidth <= outerX + outerWidth &&
+    innerY + innerHeight <= outerY + outerHeight
+  )
+}
+
+function validateMoreState(frame, expectedState) {
+  if (
+    frame.id !== `desktop-more-${expectedState}` ||
+    frame.scene !== 'chrome-world' ||
+    JSON.stringify(frame.viewport) !== JSON.stringify([1440, 900]) ||
+    frame.device_pixel_ratio !== 1 ||
+    frame.settle_ms < 1200
+  ) {
+    throw new Error(`More ${expectedState}: capture boundary drift`)
+  }
+  const measured = frame.measurements
+  if (
+    JSON.stringify(measured.document_client) !== JSON.stringify(frame.viewport) ||
+    JSON.stringify(measured.document_scroll) !== JSON.stringify(frame.viewport) ||
+    measured.busy ||
+    measured.map_error ||
+    measured.fonts_status !== 'loaded' ||
+    !Number.isInteger(measured.total_images) ||
+    measured.total_images < 1 ||
+    measured.loaded_images !== measured.total_images ||
+    measured.incomplete_images !== 0 ||
+    measured.undersized_direct_targets !== 0 ||
+    measured.minimum_direct_target < 44
+  ) {
+    throw new Error(`More ${expectedState}: runtime completeness drift`)
+  }
+  const geometry = measured.more
+  if (
+    geometry?.state !== expectedState ||
+    geometry.open !== true ||
+    geometry.menu_within_viewport !== true ||
+    geometry.menu_within_command_dock !== true ||
+    !Array.isArray(geometry.positive_intersections) ||
+    geometry.positive_intersections.length !== 0
+  ) {
+    throw new Error(`More ${expectedState}: escaped or intersecting menu`)
+  }
+  validateRectangle(measured.command_dock, `More ${expectedState} command dock`)
+  validateRectangle(geometry.details, `More ${expectedState} details`)
+  validateRectangle(geometry.toggle, `More ${expectedState} toggle`)
+  validateRectangle(geometry.menu, `More ${expectedState} menu`)
+  if (geometry.toggle[2] < 44 || geometry.toggle[3] < 44 || geometry.menu[3] !== 44) {
+    throw new Error(`More ${expectedState}: toggle/menu geometry drift`)
+  }
+  const expectedActions =
+    expectedState === 'open' ? ['Saves', 'Resign'] : ['Saves', 'Confirm Resign', 'Cancel']
+  if (
+    JSON.stringify(geometry.actions.map((action) => action.label)) !==
+    JSON.stringify(expectedActions)
+  ) {
+    throw new Error(`More ${expectedState}: action identity drift`)
+  }
+  const viewport = [0, 0, ...frame.viewport]
+  if (
+    !rectangleContains(viewport, geometry.menu) ||
+    !rectangleContains(measured.command_dock, geometry.menu) ||
+    !rectangleContains(geometry.details, geometry.toggle)
+  ) {
+    throw new Error(`More ${expectedState}: measured containment drift`)
+  }
+  for (const action of geometry.actions) {
+    validateRectangle(action.rect, `More ${expectedState} ${action.label}`)
+    if (action.rect[2] < 44 || action.rect[3] < 44) {
+      throw new Error(`More ${expectedState}: undersized ${action.label}`)
+    }
+    if (!rectangleContains(geometry.menu, action.rect)) {
+      throw new Error(`More ${expectedState}: ${action.label} escaped the menu`)
+    }
   }
 }
 
@@ -163,6 +261,34 @@ function validateObservations(observations) {
     const frame = byId.get(spec.id)
     if (!frame) throw new Error(`${spec.id}: observation missing`)
     validateObservation(frame, spec)
+  }
+  if (!Array.isArray(observations.more_states) || observations.more_states.length !== 2) {
+    throw new Error('More open/confirm observation count drift')
+  }
+  const moreStates = new Map(observations.more_states.map((frame) => [frame.id, frame]))
+  if (moreStates.size !== 2) throw new Error('duplicate More observation identity')
+  for (const state of ['open', 'confirm']) {
+    const frame = moreStates.get(`desktop-more-${state}`)
+    if (!frame) throw new Error(`More ${state}: observation missing`)
+    validateMoreState(frame, state)
+  }
+  const supplemental = observations.more_supplemental
+  if (
+    supplemental?.status !== 'captured-for-separate-map-ux-evidence' ||
+    supplemental.state !== 'confirm' ||
+    supplemental.raw_format !== 'JPEG' ||
+    JSON.stringify(supplemental.raw_dimensions) !== JSON.stringify([1440, 900]) ||
+    supplemental.raw_bytes !== 47351 ||
+    supplemental.raw_sha256 !==
+      '8660a4d5ba63ce2db2b39a2e25b97158390f4e8d8bde5ed32942c3927d8fc481' ||
+    supplemental.committed_in_this_proposal !== false ||
+    !supplemental.native_inspection?.original_size ||
+    !supplemental.native_inspection?.actions_complete ||
+    supplemental.native_inspection?.clipped_label ||
+    supplemental.native_inspection?.missing_image ||
+    supplemental.native_inspection?.positive_intersections !== 0
+  ) {
+    throw new Error('More supplemental observation drift')
   }
 }
 
@@ -217,6 +343,7 @@ export function buildProposal() {
     source_material: captureReady.source.material,
     renderer_material: captureReady.renderer.material,
     fixture_material: captureReady.fixture.material,
+    more_command_repair: captureReady.more_command_repair,
     ingestion_file: ingestionFile,
     ingestion_digest: ingestion.ingestion_digest,
     observations_file: observationsFile,
@@ -237,6 +364,7 @@ export function buildProposal() {
     source_material: captureReady.source.material,
     renderer_material: captureReady.renderer.material,
     fixture_material: captureReady.fixture.material,
+    more_command_repair: captureReady.more_command_repair,
     ingestion: ingestionFile,
     observations: observationsFile,
     historical_approvals_reusable: false,
@@ -278,6 +406,17 @@ function expectRejected(label, expected, mutate) {
   throw new Error(`proposal negative control accepted ${label}`)
 }
 
+function expectObservationRejected(label, expected, mutate) {
+  const candidate = structuredClone(expected)
+  mutate(candidate)
+  try {
+    validateObservations(candidate)
+  } catch {
+    return
+  }
+  throw new Error(`observation negative control accepted ${label}`)
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const first = buildProposal()
   const second = buildProposal()
@@ -301,6 +440,22 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   })
   expectRejected('capture hash drift', first.terrain, (proposal) => {
     proposal.captures[0].sha256 = '0'.repeat(64)
+  })
+  expectRejected('More repair binding omission', first.chrome, (proposal) => {
+    delete proposal.more_command_repair
+  })
+  const observations = JSON.parse(readFileSync(observationsPath, 'utf8'))
+  expectObservationRejected('More menu intersection', observations, (candidate) => {
+    candidate.more_states[1].measurements.more.positive_intersections.push({
+      with: 'route',
+      area: 1,
+    })
+  })
+  expectObservationRejected('More menu viewport escape', observations, (candidate) => {
+    candidate.more_states[1].measurements.more.menu_within_viewport = false
+  })
+  expectObservationRejected('More menu measured dock escape', observations, (candidate) => {
+    candidate.more_states[1].measurements.more.menu[1] = 700
   })
   console.log(
     `renewal proposal PASS: 3 chrome + 6 terrain true PNGs; candidate ${first.chrome.candidate_digest}; deterministic/negative controls PASS; approval remains pending`,

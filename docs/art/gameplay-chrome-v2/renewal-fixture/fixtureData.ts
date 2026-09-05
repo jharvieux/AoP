@@ -1,8 +1,8 @@
 import { BUILDINGS, GAME_SETUP, buildContentCatalog } from '@aop/content'
 import { createGame, type GameConfig, type GameState } from '@aop/engine'
 
-export const SOURCE_HEAD = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
-export const SOURCE_TREE = '71328fc4b018f021686ecefcd21f89a0ffc04c6a'
+export const SOURCE_HEAD = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
+export const SOURCE_TREE = '68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d'
 export const TERRAIN_SEED = 611
 
 const players: GameConfig['players'] = [

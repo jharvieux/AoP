@@ -7,30 +7,33 @@
 The frames were captured on 2026-09-05 from one fresh-origin, continuous, untouched default
 theme session: deterministic seed 611, xlarge 96×96 square map, five seats, Pirates human,
 round 1. No gameplay action occurred between captures. The source ancestor is
-`a5a8fd5f8c522ebddfb146510b492bcea1c28ee2` (tree
-`71328fc4b018f021686ecefcd21f89a0ffc04c6a`).
+`c1824f22bf14dca6d38f7519fd99affd789a8130` (tree
+`68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d`).
 
 The combined chrome-and-terrain candidate digest is
-`7d300d1e6010953bbcbfd89697cb764f35b9285560c4232fd32ee90cb860beba`.
+`86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db`.
 `PROPOSAL.json` deliberately remains an unapproved proposal with a null approval record.
 
 ## Native-size candidates
 
 | Candidate                                                   | DPR | Measured band evidence |  Bytes | SHA-256                                                            |
 | ----------------------------------------------------------- | --: | ---------------------- | -----: | ------------------------------------------------------------------ |
-| [Desktop overview](renewal-candidates/desktop-overview.png) |   1 | Fit; full-map overview | 31,531 | `e7df1f36edc36f8cae0007735ca5442b20b8330b7151f5275d6321743694849e` |
-| [Desktop tactical](renewal-candidates/desktop-tactical.png) |   1 | 25.875944 px/tile      | 43,289 | `a1c7a3134badde5e07c1c55d93e398ef1a24f62654c7b1723a3508882c33b7a8` |
-| [Desktop detail](renewal-candidates/desktop-detail.png)     |   1 | 49.4159 px/tile        | 65,805 | `3ef4069bd3cbd12524a1ab7cc3ec3d045b3e0832b48cfdd5eb4caaa649b295c6` |
+| [Desktop overview](renewal-candidates/desktop-overview.png) |   1 | Fit; overview          | 31,531 | `e7df1f36edc36f8cae0007735ca5442b20b8330b7151f5275d6321743694849e` |
+| [Desktop tactical](renewal-candidates/desktop-tactical.png) |   1 | Center map; tactical   | 43,284 | `1ecbb403c51473c1f05b5debd64e559f3e7220ca73b05b154b83b2b55cb0eb9e` |
+| [Desktop detail](renewal-candidates/desktop-detail.png)     |   1 | Center map; detail     | 65,770 | `29517b2e105e93de1375dc8fe35b369579266f9c4207294627ffc98a4adf12eb` |
 | [Phone overview](renewal-candidates/phone-overview.png)     |   2 | Fit; full-map overview | 21,486 | `62bb619068c5abcbd7d429480127069e7610cddbeff0b36628e0796f0f05e408` |
-| [Phone tactical](renewal-candidates/phone-tactical.png)     |   2 | 25.300965 px/tile      | 33,185 | `8789251d5454be26e5579ea170b30394c0a51d738cc6c61c29f01bd7c6275d2f` |
-| [Phone detail](renewal-candidates/phone-detail.png)         |   2 | 49.415889 px/tile      | 49,774 | `f0ded7c85e3d0052f07a1d222334bc2c1a9641f3a1d99ce394e8075929bc0c4b` |
+| [Phone tactical](renewal-candidates/phone-tactical.png)     |   2 | 25.300965 px/tile      | 33,256 | `4c722485249acd082a5bedbb0a0b62636e8c3437ae79deba00a5a157accfecc1` |
+| [Phone detail](renewal-candidates/phone-detail.png)         |   2 | 49.415889 px/tile      | 49,886 | `034a00c80f4d6195310084e735e9539d532dd5ef7971e4038c39e7af28fda7f1` |
 
 All six are true indexed PNGs at 1440×900 or 390×844 and remain below 300 KiB.
 Original-detail native inspection found complete fonts and art, no clipped label, missing
 image, document overflow, or map error, and a minimum visible direct target of 44 CSS px.
-The Fit scale diagnostic saturated in the capture environment, so it is recorded as
-non-authoritative; the prescribed Fit control state and visibly complete full-map framing
-establish the two overview frames. Tactical and detail retain their direct tile measurements.
+The minimap-derived Fit diagnostics saturated at `0.46875` on desktop and `0.126953` on
+phone, so they are explicitly recorded as non-authoritative. The prescribed shipping Fit
+action and the shipping fit-camera calculation establish the overview states; the mostly fogged
+desktop result truthfully reflects the round-1 revealed cluster after the single-player fog-leak
+repair. Phone tactical and detail retain their direct tile measurements; the desktop states
+retain their literal semantic-band observations.
 
 ## Exact capture recipe
 

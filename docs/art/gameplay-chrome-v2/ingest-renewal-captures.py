@@ -16,7 +16,7 @@ from pathlib import Path
 from PIL import Image, ImageChops
 
 
-SOURCE_HEAD = "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2"
+SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
 CONFIRMATION = "PREPARE_UNAPPROVED_RENEWAL"
 MAX_BYTES = 300 * 1024
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"

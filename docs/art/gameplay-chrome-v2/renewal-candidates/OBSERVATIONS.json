@@ -1,8 +1,8 @@
 {
   "schema": "aop-cross-evidence-observations-v1",
   "issue": 613,
-  "source_head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
-  "source_tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+  "source_head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+  "source_tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
   "captured_on": "2026-09-05",
   "browser": "Codex in-app Browser (Chrome)",
   "screenshot_dimensions": "CSS viewport pixels",
@@ -36,7 +36,7 @@
       "id": "chrome-phone-world",
       "scene": "chrome-world",
       "viewport": [375, 812],
-      "device_pixel_ratio": 1,
+      "device_pixel_ratio": 2,
       "settle_ms": 1200,
       "measurements": {
         "document_client": [375, 812],
@@ -44,6 +44,8 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44
@@ -75,9 +77,10 @@
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
         "overlay_rect": [0, 0, 1440, 900],
-        "scene_rect": [25, 101, 1000, 692.8125],
+        "scene_rect": [25, 101, 1000, 696.3125],
         "inspector_rect": [1037, 89, 390, 798],
-        "selected_building": "Shipyard"
+        "selected_building": "Shipyard",
+        "focused_control": "Close building details"
       },
       "native_inspection": {
         "original_size": true,
@@ -107,7 +110,7 @@
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
         "overlay_rect": [0, 0, 1440, 960],
-        "scene_rect": [26, 104.34375, 998, 686.125],
+        "scene_rect": [25, 101, 1000, 756.3125],
         "inspector_rect": [1037, 89, 390, 858],
         "selected_building": "Town Hall",
         "focused_control": "Close building details",
@@ -138,12 +141,16 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
         "camera": {
           "band": "overview",
           "control": "Fit",
+          "scale_diagnostic": 0.46875,
+          "fit_scale_diagnostic_saturated": true,
           "fit_scale_diagnostic_authoritative": false
         }
       },
@@ -168,13 +175,14 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
         "camera": {
           "band": "tactical",
-          "control": "Center map",
-          "tile_px": 25.875944
+          "control": "Center map"
         }
       },
       "native_inspection": {
@@ -198,13 +206,14 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
         "camera": {
           "band": "detail",
-          "control": "Center map",
-          "tile_px": 49.4159
+          "control": "Center map"
         }
       },
       "native_inspection": {
@@ -228,6 +237,8 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
@@ -236,6 +247,7 @@
           "control": "Fit",
           "scale_diagnostic": 0.126953,
           "tile_px_diagnostic": 4.0625,
+          "fit_scale_diagnostic_saturated": true,
           "fit_scale_diagnostic_authoritative": false
         }
       },
@@ -260,6 +272,8 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
@@ -290,6 +304,8 @@
         "busy": false,
         "map_error": false,
         "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
         "incomplete_images": 0,
         "undersized_direct_targets": 0,
         "minimum_direct_target": 44,
@@ -308,5 +324,107 @@
         "map_error": false
       }
     }
-  ]
+  ],
+  "more_states": [
+    {
+      "id": "desktop-more-open",
+      "scene": "chrome-world",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "command_dock": [0, 766.2031, 1440, 133.7969],
+        "more": {
+          "state": "open",
+          "open": true,
+          "details": [861.7891, 800, 198.2109, 88],
+          "toggle": [861.7891, 844, 198.2109, 44],
+          "menu": [840, 800, 220, 44],
+          "actions": [
+            {
+              "label": "Saves",
+              "rect": [844, 800, 47.8203, 44]
+            },
+            {
+              "label": "Resign",
+              "rect": [895.8203, 800, 52.0625, 44]
+            }
+          ],
+          "positive_intersections": [],
+          "menu_within_viewport": true,
+          "menu_within_command_dock": true
+        }
+      }
+    },
+    {
+      "id": "desktop-more-confirm",
+      "scene": "chrome-world",
+      "viewport": [1440, 900],
+      "device_pixel_ratio": 1,
+      "settle_ms": 1200,
+      "measurements": {
+        "document_client": [1440, 900],
+        "document_scroll": [1440, 900],
+        "busy": false,
+        "map_error": false,
+        "fonts_status": "loaded",
+        "loaded_images": 4,
+        "total_images": 4,
+        "incomplete_images": 0,
+        "undersized_direct_targets": 0,
+        "minimum_direct_target": 44,
+        "command_dock": [0, 766.2031, 1440, 133.7969],
+        "more": {
+          "state": "confirm",
+          "open": true,
+          "details": [861.7891, 800, 198.2109, 88],
+          "toggle": [861.7891, 844, 198.2109, 44],
+          "menu": [840, 800, 220, 44],
+          "actions": [
+            {
+              "label": "Saves",
+              "rect": [844, 800, 47.8203, 44]
+            },
+            {
+              "label": "Confirm Resign",
+              "rect": [895.8203, 800, 96.8438, 44]
+            },
+            {
+              "label": "Cancel",
+              "rect": [996.6641, 800, 52.6563, 44]
+            }
+          ],
+          "positive_intersections": [],
+          "menu_within_viewport": true,
+          "menu_within_command_dock": true
+        }
+      }
+    }
+  ],
+  "more_supplemental": {
+    "status": "captured-for-separate-map-ux-evidence",
+    "state": "confirm",
+    "raw_format": "JPEG",
+    "raw_dimensions": [1440, 900],
+    "raw_bytes": 47351,
+    "raw_sha256": "8660a4d5ba63ce2db2b39a2e25b97158390f4e8d8bde5ed32942c3927d8fc481",
+    "committed_in_this_proposal": false,
+    "native_inspection": {
+      "original_size": true,
+      "actions_complete": true,
+      "clipped_label": false,
+      "missing_image": false,
+      "positive_intersections": 0
+    }
+  }
 }

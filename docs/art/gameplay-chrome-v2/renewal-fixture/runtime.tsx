@@ -30,11 +30,88 @@ declare global {
 
 function rectangle(selector: string): [number, number, number, number] | null {
   const element = document.querySelector<HTMLElement>(selector)
-  if (!element) return null
+  return element ? elementRectangle(element) : null
+}
+
+function elementRectangle(element: Element): [number, number, number, number] {
   const value = element.getBoundingClientRect()
   return [value.x, value.y, value.width, value.height].map(
     (part) => Math.round(part * 10_000) / 10_000,
   ) as [number, number, number, number]
+}
+
+function intersectionArea(first: DOMRect, second: DOMRect): number {
+  const width = Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left))
+  const height = Math.max(
+    0,
+    Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top),
+  )
+  return Math.round(width * height * 10_000) / 10_000
+}
+
+function collisionLabel(element: Element): string {
+  if (element.matches('.map-container')) return 'map'
+  return (
+    element.getAttribute('data-map-overlay-region') ??
+    element.getAttribute('aria-label') ??
+    element.textContent?.replace(/\s+/g, ' ').trim() ??
+    element.tagName.toLowerCase()
+  )
+}
+
+function moreGeometry() {
+  const details = document.querySelector<HTMLDetailsElement>('.map-command-more')
+  const toggle = details?.querySelector<HTMLElement>('.map-command-more__toggle')
+  const menu = details?.querySelector<HTMLElement>('.map-command-more__menu')
+  const dock = document.querySelector<HTMLElement>('.gameplay-command-dock')
+  if (!details || !toggle || !menu || !dock) return null
+
+  const actions = [...menu.querySelectorAll<HTMLButtonElement>('button')]
+  const state = !details.open
+    ? 'closed'
+    : actions.some((action) => action.textContent?.trim() === 'Confirm Resign')
+      ? 'confirm'
+      : 'open'
+  const menuBox = menu.getBoundingClientRect()
+  const collisionCandidates = [
+    ...document.querySelectorAll<HTMLElement>(
+      '.map-container, [data-map-overlay-region], .selection-info, .idle-city-hint, .map-command-layout > button, .map-command-more__toggle',
+    ),
+  ]
+  const positiveIntersections = details.open
+    ? collisionCandidates
+        .map((candidate) => ({
+          with: collisionLabel(candidate),
+          area: intersectionArea(menuBox, candidate.getBoundingClientRect()),
+        }))
+        .filter(({ area }) => area > 0)
+    : []
+  const dockBox = dock.getBoundingClientRect()
+  return {
+    state,
+    open: details.open,
+    details: elementRectangle(details),
+    toggle: elementRectangle(toggle),
+    menu: elementRectangle(menu),
+    actions: actions.map((action) => ({
+      label: action.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      disabled: action.disabled,
+      rect: elementRectangle(action),
+    })),
+    positive_intersections: positiveIntersections,
+    menu_within_viewport:
+      !details.open ||
+      (menuBox.left >= 0 &&
+        menuBox.top >= 0 &&
+        menuBox.right <= window.innerWidth &&
+        menuBox.bottom <= window.innerHeight),
+    menu_within_command_dock:
+      !details.open ||
+      (menuBox.left >= dockBox.left &&
+        menuBox.top >= dockBox.top &&
+        menuBox.right <= dockBox.right &&
+        menuBox.bottom <= dockBox.bottom),
+  }
 }
 
 function directTargetMinimum(): { minimum: number | null; undersized: string[] } {
@@ -98,6 +175,7 @@ function measure() {
       scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
     },
     fonts_status: document.fonts.status,
+    busy: Boolean(document.querySelector('[aria-busy="true"]')),
     images: {
       count: images.length,
       incomplete: images.filter((image) => !image.complete || image.naturalWidth === 0).length,
@@ -120,6 +198,7 @@ function measure() {
     target_minimum: targets.minimum,
     undersized_targets: targets.undersized,
     camera: cameraMeasurement(),
+    more: moreGeometry(),
   }
 }
 
@@ -150,7 +229,8 @@ window.__AOP_CROSS_EVIDENCE__ = {
   measure,
 }
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')!
+createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
       <GameScreen
@@ -167,3 +247,28 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+const evidenceOutput = document.createElement('output')
+evidenceOutput.id = 'aop-cross-evidence-measurement'
+evidenceOutput.hidden = true
+document.body.append(evidenceOutput)
+
+let measurementPending = false
+function publishMeasurement() {
+  measurementPending = false
+  evidenceOutput.textContent = JSON.stringify(measure())
+}
+function scheduleMeasurement() {
+  if (measurementPending) return
+  measurementPending = true
+  requestAnimationFrame(publishMeasurement)
+}
+
+new MutationObserver(scheduleMeasurement).observe(rootElement, {
+  attributes: true,
+  childList: true,
+  subtree: true,
+})
+window.addEventListener('resize', scheduleMeasurement)
+document.fonts.ready.then(scheduleMeasurement)
+scheduleMeasurement()

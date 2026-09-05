@@ -8,8 +8,8 @@ const fixtureRoot = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(fixtureRoot, '../../../..')
 const outputPath = join(fixtureRoot, 'CAPTURE-READY.json')
 
-export const sourceHead = 'a5a8fd5f8c522ebddfb146510b492bcea1c28ee2'
-export const sourceTree = '71328fc4b018f021686ecefcd21f89a0ffc04c6a'
+export const sourceHead = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
+export const sourceTree = '68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d'
 export const origin = 'http://127.0.0.1:4627'
 
 const historical = {
@@ -86,6 +86,25 @@ export const fixturePaths = [
   'docs/art/gameplay-chrome-v2/renewal-fixture/vite.config.ts',
 ]
 
+const moreCommandRepairPaths = [
+  'apps/web/src/screens/GameScreen.tsx',
+  'apps/web/src/styles.css',
+  'apps/web/src/mapCommandLayout.test.ts',
+]
+
+const moreCommandRequiredStyles = [
+  '.map-command-layout {',
+  'align-items: end;',
+  '.map-command-more[open] {',
+  'min-height: 88px;',
+  '.map-command-more__menu {',
+  'position: absolute;',
+  'top: 0;',
+  'right: 0;',
+  'grid-auto-flow: column;',
+  'overflow-x: auto;',
+]
+
 const commonAssetPaths = [
   'apps/web/public/art/resources/gold.png',
   'apps/web/public/art/resources/iron.png',
@@ -159,7 +178,7 @@ function receiptAssets() {
 function assertScope() {
   const allowed = ['docs/art/gameplay-chrome-v2/', 'docs/art/world-map-v2/terrain/']
   const status = git(['status', '--porcelain=v1', '--untracked-files=all'], 'utf8')
-  for (const line of status.trim().split('\n').filter(Boolean)) {
+  for (const line of status.split('\n').filter(Boolean)) {
     const path = line.slice(3).replace(/^"|"$/g, '')
     if (!allowed.some((prefix) => path.startsWith(prefix))) {
       throw new Error(`worktree write escaped evidence scope: ${path}`)
@@ -192,6 +211,13 @@ export function buildCaptureReady() {
   const runtimeAssets = receiptAssets().map(targetRecord)
   const rendererFiles = rendererSourcePaths.map(targetRecord)
   const fixtures = fixturePaths.map((path) => record(path))
+  const moreCommandRepairFiles = moreCommandRepairPaths.map(targetRecord)
+  const styles = regularFile('apps/web/src/styles.css').toString('utf8')
+  for (const declaration of moreCommandRequiredStyles) {
+    if (!styles.includes(declaration)) {
+      throw new Error(`More command repair declaration missing: ${declaration}`)
+    }
+  }
   const history = Object.values(historical).map((item) => ({
     ...item,
     observed_sha256: sha256(regularFile(item.path)),
@@ -234,6 +260,13 @@ export function buildCaptureReady() {
         'Real shipping GameScreen, MapCanvas, CityScreen, and CityScene; only audio feedback is inert.',
       files: fixtures,
       material: descriptor(fixtures),
+    },
+    more_command_repair: {
+      policy:
+        'Exact repaired shipping command component/style bytes and their zero-intersection regression test; live open/confirm geometry is bound by the proposal observations.',
+      required_styles: moreCommandRequiredStyles,
+      files: moreCommandRepairFiles,
+      material: descriptor(moreCommandRepairFiles),
     },
     historical_approvals: history,
     server: {
@@ -307,6 +340,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   })
   expectRejected('fixture drift', first, (record) => {
     record.fixture.files[0].bytes += 1
+  })
+  expectRejected('More repair omission', first, (record) => {
+    record.more_command_repair.files.pop()
   })
   expectRejected('historical approval reuse', first, (record) => {
     record.historical_approvals[0].reusable = true

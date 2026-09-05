@@ -7,16 +7,16 @@
     "record": null
   },
   "source": {
-    "head": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
-    "tree": "71328fc4b018f021686ecefcd21f89a0ffc04c6a",
+    "head": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+    "tree": "68b5529d91f15cdbfeeb0f612da5ee0c7ebd547d",
     "policy": "All non-test web runtime files, all engine/shared/content source files, build inputs, renderer receipts, and runtime assets must equal target-source bytes.",
-    "shipping_file_count": 217,
+    "shipping_file_count": 218,
     "build_input_count": 22,
     "runtime_asset_count": 105,
     "material": {
       "algorithm": "sha256",
-      "sha256": "d73e22c3d03110d8884b74c684fe6def907993b11f9f3eb4b25a0aa68fe798ed",
-      "bytes": 47818
+      "sha256": "660f3330994e60a819cb6125818df4c2c72325d5e8ed8d68a5c56b6fdacb128d",
+      "bytes": 47959
     },
     "files": [
       {
@@ -61,8 +61,8 @@
       },
       {
         "path": "apps/web/src/MapCanvas.tsx",
-        "bytes": 105452,
-        "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+        "bytes": 105347,
+        "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
       },
       {
         "path": "apps/web/src/Minimap.tsx",
@@ -341,8 +341,8 @@
       },
       {
         "path": "apps/web/src/mapCursor.ts",
-        "bytes": 4705,
-        "sha256": "0d85c560acc019d43a7d9b891c8a2b773714c06e35af8f272073a4f027dd0df9"
+        "bytes": 5090,
+        "sha256": "9a1719a60f94482dbadd0e058412f89d6b25ce74ee5768672f7befc98e13c236"
       },
       {
         "path": "apps/web/src/mapEditor/CommunityLibraryPanel.tsx",
@@ -641,8 +641,8 @@
       },
       {
         "path": "apps/web/src/screens/GameScreen.tsx",
-        "bytes": 89200,
-        "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
       },
       {
         "path": "apps/web/src/screens/LeaderboardScreen.tsx",
@@ -715,14 +715,19 @@
         "sha256": "e5bbf3aa8535fdacdb356db1aaaf10e40a075f2b089a5bbeaabfa599eb6e4171"
       },
       {
+        "path": "apps/web/src/singlePlayerPresentation.ts",
+        "bytes": 3053,
+        "sha256": "2fbb980910db79bd014b19192068033078eb3220adc1bd1644ffb4213ed21c44"
+      },
+      {
         "path": "apps/web/src/storage.ts",
         "bytes": 6527,
         "sha256": "8fdcdfe3b2069ce096b6f5b5d509994b707ef96394043bc42d6f8977d30bc035"
       },
       {
         "path": "apps/web/src/styles.css",
-        "bytes": 88328,
-        "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
       },
       {
         "path": "apps/web/src/textureLoader.ts",
@@ -1762,7 +1767,7 @@
     "runtime_asset_count": 105,
     "material": {
       "algorithm": "sha256",
-      "sha256": "f5955173d179f6919f5c6c7e127af3cb43f63df7ce58de7293cd030e3f71e423",
+      "sha256": "11210617b874cad4202650b545c21f2bd1010fd68326e05ee92cd161e8614eb2",
       "bytes": 18357
     },
     "files": [
@@ -1778,8 +1783,8 @@
       },
       {
         "path": "apps/web/src/MapCanvas.tsx",
-        "bytes": 105452,
-        "sha256": "511e2f517a86e47955d95c3297e71996526bf844d5a3609a2d84c4bc4c586218"
+        "bytes": 105347,
+        "sha256": "75836c4778c312e807b277dcfafc2b38629fb9aeda9c90934fde88394af227d9"
       },
       {
         "path": "apps/web/src/Minimap.tsx",
@@ -1833,13 +1838,13 @@
       },
       {
         "path": "apps/web/src/screens/GameScreen.tsx",
-        "bytes": 89200,
-        "sha256": "45d5a9f5436b78f42635c8f10804dc8b5d1a0b905c840937e2c436814adb709c"
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
       },
       {
         "path": "apps/web/src/styles.css",
-        "bytes": 88328,
-        "sha256": "f58c73f68b341d0a00183c986c8d1a9b6c78ab650593e2088b64a133c54a96f7"
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
       },
       {
         "path": "apps/web/src/textureLoader.ts",
@@ -2409,7 +2414,7 @@
       {
         "path": "docs/art/gameplay-chrome-v2/renewal-fixture/fixtureData.ts",
         "bytes": 2464,
-        "sha256": "9e501e1c43350beffe9c62e493e92f61d64081f25a8259c0887e71a11288c0ec"
+        "sha256": "f7ea99236bda1642f1a44ec335c7302b88cd49315fa4aa451a4e67938ce00d18"
       },
       {
         "path": "docs/art/gameplay-chrome-v2/renewal-fixture/index.html",
@@ -2418,8 +2423,8 @@
       },
       {
         "path": "docs/art/gameplay-chrome-v2/renewal-fixture/runtime.tsx",
-        "bytes": 6033,
-        "sha256": "46b7bf48d19ef5fda6ae0be95470eb399b7b0219ebdc507c8c9fa33b84fb7565"
+        "bytes": 9695,
+        "sha256": "9cb142dfaea179f8c8832774d673d286d520a5d2130724f923aefb9d41cbdb83"
       },
       {
         "path": "docs/art/gameplay-chrome-v2/renewal-fixture/stubs/audioFeedback.ts",
@@ -2434,8 +2439,45 @@
     ],
     "material": {
       "algorithm": "sha256",
-      "sha256": "227c6258629eee7e8f26d6c0e5c4358fd84be3ff99e75f56ccceaf15a1fc9c82",
+      "sha256": "10570ec83e4577bcc5a853a7f8a1087bf93b443de1ea9ed1d776615ff569549d",
       "bytes": 795
+    }
+  },
+  "more_command_repair": {
+    "policy": "Exact repaired shipping command component/style bytes and their zero-intersection regression test; live open/confirm geometry is bound by the proposal observations.",
+    "required_styles": [
+      ".map-command-layout {",
+      "align-items: end;",
+      ".map-command-more[open] {",
+      "min-height: 88px;",
+      ".map-command-more__menu {",
+      "position: absolute;",
+      "top: 0;",
+      "right: 0;",
+      "grid-auto-flow: column;",
+      "overflow-x: auto;"
+    ],
+    "files": [
+      {
+        "path": "apps/web/src/screens/GameScreen.tsx",
+        "bytes": 89340,
+        "sha256": "995930299e84cc891d3b5d3cf57fffde3458ec1b05c66b1f095e129c97078a25"
+      },
+      {
+        "path": "apps/web/src/styles.css",
+        "bytes": 89210,
+        "sha256": "c7cfcd12b37babcc94944ff764b8d6fcb9ed2a3a90519e598eb557f44f13a3e0"
+      },
+      {
+        "path": "apps/web/src/mapCommandLayout.test.ts",
+        "bytes": 21011,
+        "sha256": "1855d8c84294b0809c3f14ca016cf80180e9b14857e8413e0d75ab6342b6554f"
+      }
+    ],
+    "material": {
+      "algorithm": "sha256",
+      "sha256": "6546842865cf6021e38ee34f52c14072260212589d5c134719100175ef5a3278",
+      "bytes": 402
     }
   },
   "historical_approvals": [
@@ -2481,5 +2523,5 @@
       ["phone-detail.png", 390, 844]
     ]
   },
-  "binding_sha256": "6678cab608897369cfa5ca08cfd36a71f3eddfad9da49fc8756ddc46e774abb3"
+  "binding_sha256": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1"
 }
