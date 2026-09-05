@@ -189,10 +189,7 @@
         "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
         "bytes": 920404,
         "duration_seconds": 38.876947,
-        "dimensions_pixels": [
-          720,
-          1566
-        ],
+        "dimensions_pixels": [720, 1566],
         "frame_count": 2249,
         "codec": "H.264 High / yuv420p / BT.709",
         "derivative_of_original_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
@@ -210,20 +207,14 @@
         "recording_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
         "recording_bytes": 19337683,
         "duration_seconds": 38.86,
-        "dimensions_pixels": [
-          1206,
-          2622
-        ],
+        "dimensions_pixels": [1206, 2622],
         "frame_count": 2293,
         "upload_candidate": {
           "path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2-github.mp4",
           "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
           "bytes": 920404,
           "duration_seconds": 38.876947,
-          "dimensions_pixels": [
-            720,
-            1566
-          ],
+          "dimensions_pixels": [720, 1566],
           "frame_count": 2249,
           "codec": "H.264 High / yuv420p / BT.709"
         },
