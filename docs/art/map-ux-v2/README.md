@@ -1,4 +1,4 @@
-# Map UX v2 — final exact-source candidate evidence
+# Map UX v2 — approved exact-source evidence
 
 This package records issue #613's responsive map overlays, accessible minimap, bounded camera,
 command hierarchy, city-overlay focus lifecycle, fog/privacy behavior, and reduced-motion
@@ -31,17 +31,19 @@ the only multiplayer seams replaced by deterministic evidence stubs.
 
 ## Approval boundary
 
-The seven images are final exact-source **candidate** captures. This package does not claim
-operator approval. It does not attach or claim durable integration of a touch recording. A separate
-exact-source iPhone Simulator XCTest and contiguous MOV did pass drag, pinch, minimap navigation,
-fleet recenter, fit, and route preview/confirmation. That external candidate is bound here by its
-metadata SHA-256 (`1618a296…`) and original MOV SHA-256 (`06523603…`); a 920,404-byte GitHub-safe
-derivative (`5ce7e920…`) is also identified. Upload/linking remains a pending integration gate.
+The operator approved all seven exact-source captures at evidence head
+`08717289778883d7adca6ff7a6f15b20fb7c6b25`; the permanent record is
+[issue #613](https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349). The same
+record links the [durable Simulator recording](https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453).
+The 920,404-byte GitHub-safe derivative is SHA-256 `5ce7e920…` and derives from the preserved
+19,337,683-byte original MOV, SHA-256 `06523603…`; its metadata is SHA-256 `1618a296…`.
+The exact-source iPhone Simulator XCTest passed drag, pinch, minimap navigation, fleet recenter,
+fit, and route preview/confirmation.
 
 The operator approved an M5 MacBook Air with Chrome as the available desktop performance
 reference and accepted that physical-phone performance measurements are unavailable. That ruling
-does not waive durable touch-evidence integration or the functional phone, keyboard,
-accessibility, privacy, and safe-layout evidence recorded here.
+does not represent physical-phone performance evidence. The functional phone, keyboard,
+accessibility, privacy, and safe-layout evidence is recorded here.
 
 All seven frames were captured fresh after the MP-only fixture correction removed an impossible
 hidden enemy captain and after the compact multiplayer More-menu containment repair. The current

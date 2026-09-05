@@ -8,10 +8,12 @@ The live browser capture gate was refreshed on 2026-09-05 against exact #613 tar
 full fixtures. Shipping zoom controls were operated visibly. No storage mutation, direct
 post-construction `GameState` edit, or synthetic visual reimplementation was used.
 
-Direct operator approval of these eight replacement files is pending. The approval at
-evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c` is retained as a non-reusable
+The operator approved these eight replacement files at evidence head
+`08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable record is
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289). The
+earlier approval at evidence head `dc11b60738f4f14b896532bf2db323b2bd054f5c` is retained as a non-reusable
 historical record in
-[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263); it does
+[issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263) and does
 not approve the current bytes.
 
 The retained captures were taken after the production preview visibly settled with the

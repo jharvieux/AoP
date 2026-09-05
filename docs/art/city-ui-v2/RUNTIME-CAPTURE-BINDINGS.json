@@ -3,14 +3,14 @@
   "issue": 612,
   "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "captureSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
-  "captureStatus": "captured-pending-direct-operator-approval",
+  "captureStatus": "approved",
   "approval": {
-    "status": "pending-direct-operator-approval",
-    "evidenceHead": null,
-    "record": null
+    "status": "approved",
+    "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
   },
   "sourceTransition": {
-    "classification": "exact-source-recaptured-pending-approval",
+    "classification": "exact-source-recaptured-approved",
     "renderedMarkupChanged": true,
     "stylesChanged": true,
     "artChanged": false,

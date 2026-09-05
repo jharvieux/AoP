@@ -2,7 +2,7 @@
   "schema": 1,
   "issue": 612,
   "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
-  "captureStatus": "captured-pending-direct-operator-approval",
+  "captureStatus": "approved",
   "capturedOn": "2026-09-05",
   "captureOrigin": {
     "workflow": "truthful shipping-component import harness with visible shipping controls",
@@ -17,7 +17,7 @@
   "sourceTransition": {
     "from": "a5a8fd5f8c522ebddfb146510b492bcea1c28ee2",
     "to": "c1824f22bf14dca6d38f7519fd99affd789a8130",
-    "classification": "exact-source-recaptured-pending-approval",
+    "classification": "exact-source-recaptured-approved",
     "changedBehavior": "Final narrow-phone Defense status wrapping and command-dock containment changed shared city presentation after the superseded unapproved capture wave.",
     "renderedMarkupChanged": true,
     "stylesChanged": true,
@@ -42,10 +42,10 @@
       "scope": "Dedicated city direction plus the portrait-phone framing refinement"
     },
     "checkpoint2": {
-      "status": "pending-direct-operator-approval",
-      "scope": "Exact-source recapture and native-size review complete; direct approval for these pixels pending",
-      "evidenceHead": null,
-      "record": null,
+      "status": "approved",
+      "scope": "Exact-source recapture, native-size review, and direct operator approval for these pixels",
+      "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+      "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230",
       "historicalApproval": {
         "status": "historical-source-only",
         "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",

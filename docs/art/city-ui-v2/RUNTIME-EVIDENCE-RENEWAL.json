@@ -1,12 +1,19 @@
 {
   "schema": 1,
   "issue": 613,
-  "status": "pending-renewal",
+  "status": "approved-renewal",
   "targetSourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
   "policy": "Every listed frame must be recaptured from the exact target source. Historical pixels and approvals remain evidence for their former source only and cannot approve this renewal.",
   "approval": {
-    "status": "pending-direct-operator-approval",
-    "record": null
+    "status": "approved",
+    "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349",
+    "setRecords": {
+      "city-harbor-v2": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289",
+      "gameplay-chrome-v2": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774",
+      "world-map-terrain-v2": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496",
+      "city-ui-v2": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
+    }
   },
   "sourceCensus": [
     {
@@ -115,10 +122,12 @@
         "reusable": false
       },
       "renewal": {
-        "status": "captured-pending-direct-operator-approval",
+        "status": "approved-exact-source",
         "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
         "capturedOn": "2026-09-05",
-        "bindingSha256": "dd29d59a255ccef2e12f441e121905fe19a2b40a4eed68f1a72381982e255d00",
+        "evidenceBindingSha256": "dd29d59a255ccef2e12f441e121905fe19a2b40a4eed68f1a72381982e255d00",
+        "bindingSha256": "221596bec6f35deacc838f6f503cdfe29c1cb301952985125b798466f7814f4f",
         "workflow": "truthful shipping-component import harness with visible shipping controls",
         "uniqueBrowserFramesInSharedCityBatch": 22,
         "sharedCrossSetCopies": 6,
@@ -136,8 +145,9 @@
           "reusable": false
         },
         "approval": {
-          "status": "pending-direct-operator-approval",
-          "record": null
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
         }
       },
       "captureRoot": "docs/art/city-ui-v2/runtime-captures",
@@ -179,10 +189,12 @@
         "reusable": false
       },
       "renewal": {
-        "status": "captured-pending-direct-operator-approval",
+        "status": "approved-exact-source",
         "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
         "capturedOn": "2026-09-05",
-        "bindingSha256": "e5f032212ed70ff3e0b37b5ff1ae76d382b987e3028845f26a3c1b93b2dde1ae",
+        "evidenceBindingSha256": "e5f032212ed70ff3e0b37b5ff1ae76d382b987e3028845f26a3c1b93b2dde1ae",
+        "bindingSha256": "9e453520c9f48c48625a7b5111d797554b028bd82e2ea25260607ba28d6cdf3d",
         "workflow": "truthful shipping-component import harness with visible shipping controls",
         "uniqueBrowserFramesInSharedCityBatch": 22,
         "sharedCrossSetCopies": 6,
@@ -200,8 +212,9 @@
           "reusable": false
         },
         "approval": {
-          "status": "pending-direct-operator-approval",
-          "record": null
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289"
         }
       },
       "captureRoot": "docs/art/city-harbor-v2/runtime-captures",
@@ -225,13 +238,49 @@
         "path": "docs/art/gameplay-chrome-v2/RUNTIME-CAPTURE-BINDINGS.json",
         "sha256": "60b09cb87a52321c578ca818752178837b1d5c809e621df3f20e05c4442b015c",
         "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
+        "recordHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
         "approvalRecord": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5551752271",
         "reusable": false
       },
-      "immutableMaterialAnchor": {
+      "historicalMaterialAnchor": {
         "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
         "sha256": "49a94705bd486738002c2f90e1ef58a64e68cad12072470e0972e1d899258bde",
-        "mayChangeDuringPreparation": false
+        "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "0c8f70c3401592c2d4fb69355dc5105614c23562260f64910dd167d7e5b6fc75",
+        "evidenceProposal": {
+          "path": "docs/art/gameplay-chrome-v2/renewal-candidates/PROPOSAL.json",
+          "sha256": "36ba925745d28171a09ca1a691be3d0c1625dbb9bcffc4a28b420d8e9bec8804",
+          "captureRoot": "docs/art/gameplay-chrome-v2/renewal-candidates",
+          "candidateDigest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+          "captureReadyBinding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1"
+        },
+        "materialBaseline": {
+          "path": "docs/art/gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json",
+          "sha256": "2343b68c79cefaaa0f1b9a13a0e93ea49149da805026d6fa8acb8c90c0af25ce",
+          "materialSha256": "37e0bc426ae2fabc80d4d1115121727bb241505071e337a34b5b1f12ba5d62f8",
+          "bytes": 60124,
+          "counts": {
+            "shippingSources": 218,
+            "buildInputs": 22,
+            "runtimeAssets": 96,
+            "captures": 3,
+            "canvasTokens": 28
+          }
+        },
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-independent-verifier",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774"
+        }
       },
       "captureRoot": "docs/art/gameplay-chrome-v2/runtime-captures",
       "recipe": "Recreate the default-theme frozen states in RUNTIME-VERIFICATION.md: phone world with no city/course/event feed, full city with Shipyard inspector, and full city with Town Hall interaction states. Capture true PNG after visible settle and native inspection; retain the required PNG color type.",
@@ -249,8 +298,32 @@
         "path": "docs/art/world-map-v2/terrain/runtime-capture-receipt.json",
         "sha256": "24081cd29ef5ee5bba0f2633487dd7bc0c7ecaca4445cd1ea25883a469a38293",
         "sourceHead": "272c8ded20d97f3ab770e803b1b4d819e5546527",
+        "recordHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
         "approvalRecord": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5546965944",
         "reusable": false
+      },
+      "renewal": {
+        "status": "approved-exact-source",
+        "sourceHead": "c1824f22bf14dca6d38f7519fd99affd789a8130",
+        "promotionHead": "ec86cebf1d0d4c70c2a670f142bdddf6fab265ee",
+        "capturedOn": "2026-09-05",
+        "bindingSha256": "b5bee695068d5bd15c342e78f1a5e4312d7627029d851d93b643d11997660e37",
+        "evidenceProposal": {
+          "path": "docs/art/world-map-v2/terrain/renewal-candidates/PROPOSAL.json",
+          "sha256": "758b4b8d1b84fc31372b541d9e7681443454c5ca8037ef008ebdb8819aa38357",
+          "captureRoot": "docs/art/world-map-v2/terrain/renewal-candidates",
+          "candidateDigest": "86dc0f7afa29a73c3983942d39a43d7dd9a0e681189216457374d93fcd59e3db",
+          "captureReadyBinding": "5e45088359d894c5b12a5ff633c901d5b07e7f62ce29f83aef0533e9116171a1"
+        },
+        "rendererAndRuntimeAssetDigest": "20c0309a32c23c6e7d34e084a06d93e87f00f1ae591941075ba19f4ead9bda6a",
+        "visualSettleInspection": "completed-by-integration-owner",
+        "nativeSizeInspection": "completed-by-independent-verifier",
+        "historicalPixelsReused": false,
+        "approval": {
+          "status": "approved",
+          "evidenceHead": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+          "record": "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496"
+        }
       },
       "captureRoot": "docs/art/world-map-v2/terrain/runtime-captures",
       "recipe": "Start one fresh-origin, default-theme, untouched round-1 xlarge 96x96 session. Without gameplay actions, capture overview, tactical, and detail on 1440x900 desktop and 390x844 phone using the fit/zoom/recenter sequence in RUNTIME-CAPTURES.md; settle after every final camera operation.",

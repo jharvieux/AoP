@@ -9,6 +9,10 @@ const repoRoot = resolve(packageRoot, '../../..')
 export const sourceHead = 'c1824f22bf14dca6d38f7519fd99affd789a8130'
 export const sourceArchiveSha256 =
   '0464a34facfca2b4838983fccb0faa90932212d1c6e27932cca936f0f9e27903'
+export const approvedEvidenceHead = '08717289778883d7adca6ff7a6f15b20fb7c6b25'
+export const approvalRecord = 'https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349'
+export const touchAttachmentUrl =
+  'https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453'
 
 export const externalTouchCandidate = {
   status: 'recorded-and-xctest-passed; pending durable integration',
@@ -34,6 +38,22 @@ export const externalTouchCandidate = {
   },
   harness_head: 'd4c3ef1e0f0aea21c858fed37baf68b5e0abf405',
   harness_binding_sha256: '7ef355a8e088daf20614014ed0a9ef481eab64146977fab044a844cb8bd9389b',
+}
+
+export const durableTouchAttachment = {
+  status: 'durably-attached-to-issue',
+  issue: 613,
+  url: touchAttachmentUrl,
+  sha256: externalTouchCandidate.upload_candidate.sha256,
+  bytes: externalTouchCandidate.upload_candidate.bytes,
+  duration_seconds: externalTouchCandidate.upload_candidate.duration_seconds,
+  dimensions_pixels: externalTouchCandidate.upload_candidate.dimensions_pixels,
+  frame_count: externalTouchCandidate.upload_candidate.frame_count,
+  codec: externalTouchCandidate.upload_candidate.codec,
+  derivative_of_original_sha256: externalTouchCandidate.recording_sha256,
+  simulator: 'iPhone 17 Pro / iOS 26.5',
+  verification: 'XCUITest PASS 1/1',
+  physical_phone_capture: false,
 }
 
 export const sourcePaths = [
@@ -177,16 +197,36 @@ export function validateReceipt(receipt) {
   if (receipt.source_archive_sha256 !== sourceArchiveSha256) {
     throw new Error('source archive binding drift')
   }
-  if (receipt.approval.captures_operator_approved) throw new Error('operator approval is unclaimed')
-  if (receipt.approval.touch_recording_attached) throw new Error('touch recording is unclaimed')
-  if (receipt.capability_gates.touch_recording.status !== 'pending-integration') {
-    throw new Error('touch gate must remain pending-integration')
+  if (
+    receipt.approval.captures_operator_approved !== true ||
+    receipt.approval.evidence_head !== approvedEvidenceHead ||
+    receipt.approval.record !== approvalRecord
+  ) {
+    throw new Error('operator approval binding drift')
+  }
+  if (
+    receipt.approval.touch_recording_attached !== true ||
+    receipt.approval.touch_recording_attachment !== touchAttachmentUrl
+  ) {
+    throw new Error('touch recording approval drift')
+  }
+  if (receipt.approval.physical_phone_performance_available !== false) {
+    throw new Error('physical phone limitation drift')
+  }
+  if (receipt.capability_gates.touch_recording.status !== 'pass') {
+    throw new Error('touch gate must pass')
   }
   if (
     JSON.stringify(receipt.capability_gates.touch_recording.external_candidate) !==
     JSON.stringify(externalTouchCandidate)
   ) {
     throw new Error('external touch candidate drift')
+  }
+  if (
+    JSON.stringify(receipt.capability_gates.touch_recording.attachment) !==
+    JSON.stringify(durableTouchAttachment)
+  ) {
+    throw new Error('durable touch attachment drift')
   }
   const required = new Set(['375x667', '390x844', '844x390', '768x1024', '1024x768', '1440x900'])
   const primary = receipt.captures.filter((capture) => capture.primary)
@@ -257,15 +297,19 @@ export function buildReceipt() {
     source_files: sourceFiles,
     measurements,
     approval: {
-      captures_operator_approved: false,
-      touch_recording_attached: false,
+      captures_operator_approved: true,
+      evidence_head: approvedEvidenceHead,
+      record: approvalRecord,
+      touch_recording_attached: true,
+      touch_recording_attachment: touchAttachmentUrl,
       physical_phone_performance_available: false,
     },
     capability_gates: {
       touch_recording: {
-        status: 'pending-integration',
+        status: 'pass',
         reason:
-          'The exact-source Simulator run passed, but its MOV and metadata are not attached to this package.',
+          'The exact-source Simulator run passed and its GitHub-safe derivative is durably attached to issue #613.',
+        attachment: durableTouchAttachment,
         external_candidate: externalTouchCandidate,
       },
     },

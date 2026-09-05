@@ -65,9 +65,10 @@ nonessential DOM motion.
 A separate exact-`c1824f22` iPhone 17 Pro Simulator run used native press-and-drag and
 `XCUIElement.pinch`, then navigated the minimap, recentered on the fleet, fit the map, and completed
 the two-tap route preview/confirmation flow in one contiguous 38.86-second MOV. XCTest passed 1/1.
-The original 1206 × 2622 MOV is SHA-256 `06523603…`; its metadata is SHA-256 `1618a296…`. A
-720 × 1566 GitHub-safe derivative is SHA-256 `5ce7e920…`. Those files remain external to this
-evidence commit, so durable attachment/linking is truthfully **pending integration**, not PASS.
+The original 1206 × 2622 MOV is SHA-256 `06523603…`; its metadata is SHA-256 `1618a296…`. The
+720 × 1566 GitHub-safe derivative is SHA-256 `5ce7e920…` and is durably attached to
+[issue #613](https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453).
+This is Simulator evidence, not physical-hardware performance evidence.
 
 ## Verification
 
@@ -80,6 +81,7 @@ evidence commit, so durable attachment/linking is truthfully **pending integrati
 - All seven JPEG/JFIF RGB captures are below 300 KiB.
 - The deterministic receipt rebuild and validator pass with negative controls for source, material,
   archive, hash, dimensions, budgets, required viewports/DPRs, overlay collisions, More-menu
-  containment, action clipping, supplemental MP proof, approval, and the pending touch integration.
-
-Operator approval and durable touch-artifact integration are intentionally not claimed here.
+  containment, action clipping, supplemental MP proof, approval, and durable touch integration.
+- The operator approval is bound to evidence head
+  `08717289778883d7adca6ff7a6f15b20fb7c6b25` in
+  [issue #613](https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349).

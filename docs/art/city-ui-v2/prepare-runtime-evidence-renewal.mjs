@@ -17,6 +17,16 @@ const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
 const maxCaptureBytes = 300 * 1024
 const capturedPendingStatus = 'captured-pending-direct-operator-approval'
 const recaptureRequiredStatus = 'recapture-required-for-final-source'
+const approvedRenewalStatus = 'approved-exact-source'
+const approvedEvidenceHead = '08717289778883d7adca6ff7a6f15b20fb7c6b25'
+const promotionHead = 'ec86cebf1d0d4c70c2a670f142bdddf6fab265ee'
+const approvedRecords = new Map([
+  ['city-harbor-v2', 'https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289'],
+  ['gameplay-chrome-v2', 'https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774'],
+  ['world-map-terrain-v2', 'https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496'],
+  ['city-ui-v2', 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230'],
+])
+const renewalRecord = 'https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349'
 
 function fail(message) {
   throw new Error(message)
@@ -224,6 +234,87 @@ function validateManifest() {
   assert(total === 37, `expected 37 captures, found ${total}`)
 }
 
+function validateApprovedManifest() {
+  assert(manifest.schema === 1 && manifest.issue === 613, 'unexpected renewal manifest identity')
+  assert(manifest.status === 'approved-renewal', 'renewal is not approved')
+  assert(
+    JSON.stringify(manifest.approval) ===
+      JSON.stringify({
+        status: 'approved',
+        evidenceHead: approvedEvidenceHead,
+        record: renewalRecord,
+        setRecords: Object.fromEntries(approvedRecords),
+      }),
+    'cross-evidence approval binding drift',
+  )
+  assert(manifest.targetSourceHead === 'c1824f22bf14dca6d38f7519fd99affd789a8130')
+  assert(manifest.sets.length === 4, 'expected four evidence sets')
+  const expectedCounts = new Map([
+    ['city-ui-v2', 20],
+    ['city-harbor-v2', 8],
+    ['gameplay-chrome-v2', 3],
+    ['world-map-terrain-v2', 6],
+  ])
+  const captureKeys = new Set()
+  let total = 0
+  for (const set of manifest.sets) {
+    const renewal = set.renewal
+    assert(expectedCounts.get(set.id) === set.count, `${set.id}: unexpected required count`)
+    assert(set.captures.length === set.count, `${set.id}: capture inventory count drift`)
+    assert(set.historicalBinding.reusable === false, `${set.id}: old approval became reusable`)
+    assert(set.historicalBinding.approvalRecord, `${set.id}: missing historical approval record`)
+    assert(renewal?.status === approvedRenewalStatus, `${set.id}: renewal is not approved`)
+    assert(renewal.sourceHead === manifest.targetSourceHead, `${set.id}: renewal source head drift`)
+    assert(renewal.promotionHead === promotionHead, `${set.id}: promotion head drift`)
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(renewal.capturedOn), `${set.id}: invalid capture date`)
+    assert(/^[0-9a-f]{64}$/.test(renewal.bindingSha256), `${set.id}: invalid binding hash`)
+    assert(renewal.historicalPixelsReused === false, `${set.id}: historical pixel reuse drift`)
+    assert(
+      renewal.visualSettleInspection === 'completed-by-integration-owner',
+      `${set.id}: visual-settle inspection drift`,
+    )
+    assert(
+      ['completed-by-integration-owner', 'completed-by-independent-verifier'].includes(
+        renewal.nativeSizeInspection,
+      ),
+      `${set.id}: native-size inspection drift`,
+    )
+    assert(
+      JSON.stringify(renewal.approval) ===
+        JSON.stringify({
+          status: 'approved',
+          evidenceHead: approvedEvidenceHead,
+          record: approvedRecords.get(set.id),
+        }),
+      `${set.id}: approval binding drift`,
+    )
+    assert(/^[0-9a-f]{40}$/.test(set.historicalBinding.recordHead), `${set.id}: record head drift`)
+    if (renewal.evidenceBindingSha256) {
+      assert(
+        /^[0-9a-f]{64}$/.test(renewal.evidenceBindingSha256),
+        `${set.id}: evidence binding drift`,
+      )
+    }
+    if (renewal.evidenceProposal) {
+      assert(
+        /^[0-9a-f]{64}$/.test(renewal.evidenceProposal.sha256) &&
+          /^[0-9a-f]{64}$/.test(renewal.evidenceProposal.candidateDigest) &&
+          /^[0-9a-f]{64}$/.test(renewal.evidenceProposal.captureReadyBinding),
+        `${set.id}: proposal provenance drift`,
+      )
+    }
+    assert(set.recipe.length > 100, `${set.id}: capture recipe is incomplete`)
+    for (const spec of set.captures) {
+      assert(spec.length === 4, `${set.id}: malformed capture specification`)
+      const key = `${set.id}/${spec[0]}`
+      assert(!captureKeys.has(key), `${set.id}: duplicate capture ${spec[0]}`)
+      captureKeys.add(key)
+      total += 1
+    }
+  }
+  assert(total === 37, `expected 37 captures, found ${total}`)
+}
+
 function validateTargetSource() {
   try {
     git(['cat-file', '-e', `${manifest.targetSourceHead}^{commit}`])
@@ -368,6 +459,165 @@ function validateHistoricalEvidence() {
       const [left, right] = capture.targets.map((path) => readRegular(repoPath(path)))
       assert(left.equals(right), `${capture.id}: cross-set copies differ`)
     }
+  }
+}
+
+function validateApprovedEvidence() {
+  for (const set of manifest.sets) {
+    const renewal = set.renewal
+    const bindingBytes = readRegular(repoPath(set.historicalBinding.path))
+    const binding = JSON.parse(bindingBytes)
+    assert(sha256(bindingBytes) === renewal.bindingSha256, `${set.id}: current binding drift`)
+
+    if (['city-ui-v2', 'city-harbor-v2'].includes(set.id)) {
+      assert(binding.sourceHead === manifest.targetSourceHead, `${set.id}: source head drift`)
+      assert(binding.captureStatus === 'approved', `${set.id}: capture status drift`)
+      assert(
+        JSON.stringify(binding.approval) === JSON.stringify(renewal.approval),
+        `${set.id}: binding approval drift`,
+      )
+      const evidenceBinding = git(
+        ['show', `${approvedEvidenceHead}:${set.historicalBinding.path}`],
+        { encoding: 'buffer' },
+      )
+      assert(
+        sha256(evidenceBinding) === renewal.evidenceBindingSha256,
+        `${set.id}: approved evidence binding drift`,
+      )
+    } else if (set.id === 'gameplay-chrome-v2') {
+      const baseline = JSON.parse(readRegular(repoPath(renewal.materialBaseline.path)))
+      const counts = baseline.material.counts
+      assert(binding.capture_baseline.source_head === promotionHead, 'chrome promotion head drift')
+      assert(
+        binding.material_baseline.sha256 === renewal.materialBaseline.sha256 &&
+          binding.material_baseline.material_sha256 === renewal.materialBaseline.materialSha256 &&
+          binding.material_baseline.capture_record_sha256 === sha256(renewal.approval.record),
+        'chrome binding material baseline drift',
+      )
+      assert(
+        sha256(readRegular(repoPath(renewal.materialBaseline.path))) ===
+          renewal.materialBaseline.sha256 &&
+          baseline.capture_head === promotionHead &&
+          baseline.capture_record_sha256 === sha256(renewal.approval.record) &&
+          baseline.material.sha256 === renewal.materialBaseline.materialSha256 &&
+          baseline.material.bytes === renewal.materialBaseline.bytes &&
+          counts.shipping_sources === renewal.materialBaseline.counts.shippingSources &&
+          counts.build_inputs === renewal.materialBaseline.counts.buildInputs &&
+          counts.runtime_assets === renewal.materialBaseline.counts.runtimeAssets &&
+          counts.captures === renewal.materialBaseline.counts.captures &&
+          counts.canvas_tokens === renewal.materialBaseline.counts.canvasTokens,
+        'chrome material baseline drift',
+      )
+    } else if (set.id === 'world-map-terrain-v2') {
+      assert(
+        binding.runtime_binding.immutable_starting_head === promotionHead &&
+          binding.runtime_binding.application_source_head === manifest.targetSourceHead &&
+          binding.runtime_binding.renderer_and_runtime_asset_digest ===
+            renewal.rendererAndRuntimeAssetDigest,
+        'terrain runtime binding drift',
+      )
+      assert(
+        binding.operator_approval.status === 'approved' &&
+          binding.operator_approval.source_head === promotionHead &&
+          binding.operator_approval.application_source_head === manifest.targetSourceHead &&
+          binding.operator_approval.issue_comment === renewal.approval.record,
+        'terrain approval binding drift',
+      )
+      assert(
+        terrainRendererDigest() === renewal.rendererAndRuntimeAssetDigest,
+        'terrain renderer digest drift',
+      )
+    }
+
+    const recorded = recordedCaptureMap(set, binding)
+    const directoryNames = readdirSync(repoPath(set.captureRoot)).sort()
+    const expectedNames = set.captures.map(([name]) => name).sort()
+    assert(
+      JSON.stringify(directoryNames) === JSON.stringify(expectedNames),
+      `${set.id}: capture directory inventory drift`,
+    )
+    const evidenceRoot = renewal.evidenceProposal?.captureRoot ?? set.captureRoot
+    for (const spec of set.captures) {
+      const repositoryPath = join(set.captureRoot, spec[0])
+      const bytes = readRegular(repoPath(repositoryPath))
+      const observed = inspectCapture(bytes, spec, repositoryPath)
+      const record = recorded.get(repositoryPath)
+      assert(record, `${set.id}: binding omitted ${repositoryPath}`)
+      const recordedDimensions = record.dimensions ?? [record.width, record.height]
+      assert(record.bytes === observed.bytes, `${repositoryPath}: byte record drift`)
+      assert(record.sha256 === observed.sha256, `${repositoryPath}: hash record drift`)
+      assert(
+        JSON.stringify(recordedDimensions) === JSON.stringify(observed.dimensions),
+        `${repositoryPath}: dimension record drift`,
+      )
+      const approvedBytes = git(
+        ['show', `${approvedEvidenceHead}:${join(evidenceRoot, spec[0])}`],
+        { encoding: 'buffer' },
+      )
+      assert(bytes.equals(approvedBytes), `${repositoryPath}: differs from approved evidence`)
+    }
+
+    const historicalBytes = git(
+      ['show', `${set.historicalBinding.recordHead}:${set.historicalBinding.path}`],
+      { encoding: 'buffer' },
+    )
+    assert(
+      sha256(historicalBytes) === set.historicalBinding.sha256,
+      `${set.id}: historical binding provenance drift`,
+    )
+    const historical = recordedCaptureMap(set, JSON.parse(historicalBytes))
+    for (const spec of set.captures) {
+      const repositoryPath = join(set.captureRoot, spec[0])
+      assert(
+        sha256(readRegular(repoPath(repositoryPath))) !== historical.get(repositoryPath).sha256,
+        `${repositoryPath}: historical capture bytes were reused`,
+      )
+    }
+
+    if (renewal.evidenceProposal) {
+      const proposalBytes = git(
+        ['show', `${approvedEvidenceHead}:${renewal.evidenceProposal.path}`],
+        { encoding: 'buffer' },
+      )
+      assert(
+        sha256(proposalBytes) === renewal.evidenceProposal.sha256,
+        `${set.id}: approved proposal provenance drift`,
+      )
+    }
+    if (renewal.supersededCapture) {
+      const supersededBytes = git(
+        ['show', `${renewal.supersededCapture.recordHead}:${set.historicalBinding.path}`],
+        { encoding: 'buffer' },
+      )
+      assert(
+        sha256(supersededBytes) === renewal.supersededCapture.bindingSha256,
+        `${set.id}: superseded binding provenance drift`,
+      )
+      const superseded = recordedCaptureMap(set, JSON.parse(supersededBytes))
+      for (const spec of set.captures) {
+        const repositoryPath = join(set.captureRoot, spec[0])
+        assert(
+          sha256(readRegular(repoPath(repositoryPath))) !== superseded.get(repositoryPath).sha256,
+          `${repositoryPath}: superseded capture bytes were reused`,
+        )
+      }
+    }
+  }
+
+  const fixtures = JSON.parse(
+    readRegular(repoPath('docs/art/city-ui-v2/tools/runtime-harness/fixtures.json')),
+  )
+  const cityTargets = fixtures.captures.flatMap((capture) => capture.targets)
+  assert(cityTargets.length === 28, 'renewed city target count drift')
+  assert(
+    new Set(cityTargets.map((path) => sha256(readRegular(repoPath(path))))).size === 22,
+    'renewed city batch must contain exactly 22 unique browser frames',
+  )
+  const shared = fixtures.captures.filter((capture) => capture.targets.length === 2)
+  assert(shared.length === 6, 'renewed city shared-copy count drift')
+  for (const capture of shared) {
+    const [left, right] = capture.targets.map((path) => readRegular(repoPath(path)))
+    assert(left.equals(right), `${capture.id}: cross-set copies differ`)
   }
 }
 
@@ -543,6 +793,27 @@ function checkPending() {
   return stale
 }
 
+function validateApproved() {
+  validateApprovedManifest()
+  validateTargetSource()
+  validateApprovedEvidence()
+  console.log(
+    JSON.stringify(
+      {
+        status: manifest.status,
+        targetSourceHead: manifest.targetSourceHead,
+        promotionHead,
+        approvedEvidenceHead,
+        captureCount: manifest.sets.reduce((total, set) => total + set.count, 0),
+        setCount: manifest.sets.length,
+        approval: manifest.approval,
+      },
+      null,
+      2,
+    ),
+  )
+}
+
 function parseArgs(args) {
   const command = args[0]
   if (
@@ -636,7 +907,7 @@ function buildProposal(values) {
 }
 
 function selfTest() {
-  validateManifest()
+  validateApprovedManifest()
   const jpegSet = manifest.sets.find((set) => set.id === 'city-ui-v2')
   const jpegSpec = jpegSet.captures[0]
   const jpeg = readRegular(repoPath(join(jpegSet.captureRoot, jpegSpec[0])))
@@ -672,9 +943,4 @@ const { command, values } = parseArgs(process.argv.slice(2))
 if (command === '--check-pending') checkPending()
 if (command === '--self-test') selfTest()
 if (command === '--proposal') buildProposal(values)
-if (command === '--validate-approved') {
-  checkPending()
-  fail(
-    'runtime evidence renewal is pending: outstanding exact-source captures and direct approval required',
-  )
-}
+if (command === '--validate-approved') validateApproved()

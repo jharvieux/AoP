@@ -2,39 +2,36 @@
 
 ## Status
 
-All approvals inherited from issues #608, #610, #611, and #612 are historical evidence for
-their former source revisions and do **not** carry to repaired #613 source
-`c1824f22bf14dca6d38f7519fd99affd789a8130`. The 28 city UI and city-art targets have now
-been replaced with 22 fresh browser frames, including six byte-identical cross-set copies.
-They have passed native inspection. The three gameplay-chrome and six terrain frames were
-also captured and validated as separate unapproved renewal proposals. All 37 target paths are
-now reviewable, but direct operator approval remains pending; the retained #610 and #611
-approval-bound sets and material anchors remain unchanged until that approval.
+The operator approved all 37 exact-source targets for issues #608, #610, #611, and #612 at
+evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`. The permanent set-specific
+records are linked from `RUNTIME-EVIDENCE-RENEWAL.json`; the #613 cross-evidence record is
+[issue #613](https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349). All frames
+picture repaired application source `c1824f22bf14dca6d38f7519fd99affd789a8130`. The city
+sets contain 28 targets from 22 fresh browser frames, including six byte-identical cross-set
+copies. The three gameplay-chrome and six terrain frames were promoted byte-identically from
+their approved proposals at promotion head `ec86cebf1d0d4c70c2a670f142bdddf6fab265ee`.
 
-`RUNTIME-EVIDENCE-RENEWAL.json` is the fail-loud pending record. It binds the 18 source and
-test inputs changed by #613, records the four historical binding identities, declares the
-exact 37-frame inventory, and records per-set renewal progress. Direct operator approval is
-deliberately null until all replacement pixels are reviewable and the operator approves the
-exact final evidence head.
+`RUNTIME-EVIDENCE-RENEWAL.json` is the fail-loud approval record. It binds the 18 source and
+test inputs changed by #613, all four historical binding identities, the exact 37-frame
+inventory, promoted binding/receipt hashes, and the permanent approval records.
 
-Run the pending-state check from the repository root:
-
-```bash
-node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --check-pending
-```
-
-The command succeeds only when the target source census is intact, every former approval is
-marked non-reusable, each renewed set matches its exact pending binding, each unrenewed set
-still matches its historical binding, and #610's immutable material anchor is unchanged. It
-also rejects reuse of any historical city pixel and verifies the six declared cross-set
-copies. The approval gate is a separate failing-direction check:
+Run the approved-state check from the repository root:
 
 ```bash
 node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --validate-approved
 ```
 
-That command must fail until the capture replacement, native validators, direct operator
-approval, and reviewed receipt updates are complete.
+The command succeeds only when the target source census is intact, every former approval is
+marked non-reusable, each promoted set matches its final binding or receipt, all 37 retained
+files equal the approved evidence bytes, and every approval URL and material anchor is exact.
+It also rejects reuse of historical pixels and verifies the six declared cross-set copies.
+The old pending-state command is now a failing-direction check:
+
+```bash
+node docs/art/city-ui-v2/prepare-runtime-evidence-renewal.mjs --check-pending
+```
+
+That command must fail after the approved renewal replaces the pending state.
 
 ## Capture recipe
 
@@ -96,17 +93,11 @@ output and creates a new output file rather than overwriting one. It never edits
 captures, bindings, receipts, reports, approval fields, or
 `../gameplay-chrome-v2/RUNTIME-MATERIAL-BASELINE.json`.
 
-## Integration order
+## Completed integration order
 
-1. Land the final #613 source and re-run `--check-pending`. If any source byte changes from
-   the target census, refresh this preparation before capturing.
-2. Capture all 37 frames, generate unapproved proposals, and independently inspect the exact
-   staged bytes. The city batch uses the stricter 22-frame/28-target validator documented in
-   `tools/runtime-harness/README.md`.
-3. Replace the four retained capture sets and mechanically update their native receipts,
-   bindings, and reports from the proposal. Do not copy an old approval record forward.
-4. Run the #612, #608, #610, and #611 native validators plus the repository verification
-   gate. #610's normal builder must remain blocked by the old material anchor at this stage.
-5. Present permanent links for the exact new files and obtain direct operator approval.
-6. Only after that approval, update the four approval records and renew #610's material
-   anchor with a separately reviewed `apply_patch`; rebuild bindings and rerun all validators.
+1. The final #613 application source was frozen and all 37 frames were captured.
+2. Independent native-size review and proposal negative controls passed.
+3. The operator approved the exact displayed evidence and permanent issue records were posted.
+4. The #610 and #611 captures were promoted byte-identically and their material anchors renewed.
+5. All four set-specific records and this cross-evidence validator were rebound to the approved
+   evidence, promotion head, and permanent comments.

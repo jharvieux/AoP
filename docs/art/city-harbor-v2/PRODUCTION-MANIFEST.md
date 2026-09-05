@@ -7,8 +7,10 @@ package includes the requested faction mast, pin, and V-brace physically mounted
 Hall’s central dome. Fresh live starting/midgame/full, phone, desktop, and maximum-zoom
 captures are bound to exact target source
 `c1824f22bf14dca6d38f7519fd99affd789a8130` in `RUNTIME-CAPTURE-BINDINGS.json`.
-Integration-owner visual-settle and native-size review is complete, while direct operator
-approval of these new pixels remains pending. The approval at evidence head
+Integration-owner visual-settle and native-size review is complete. The operator approved the
+new pixels at evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable
+record is [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289).
+The earlier approval at evidence head
 `dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
 [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263).
 

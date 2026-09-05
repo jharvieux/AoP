@@ -16,9 +16,10 @@ claimed. The integration owner inspected all retained files at native size after
 settling.
 
 Checkpoint 1 approved the dedicated city direction and subsequent portrait-phone framing
-refinement. Exact-head recapture and native-size review are complete, but direct operator
-approval of these replacement pixels is pending. Checkpoint 2 is pending direct operator
-approval. The earlier approval at evidence head
+refinement. Exact-head recapture and native-size review are complete. The operator approved
+checkpoint 2 at evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`; the durable
+record is [issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230).
+The earlier approval at evidence head
 `dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
 [issue #612](https://github.com/jharvieux/AoP/issues/612#issuecomment-5551752344).
 
@@ -62,5 +63,6 @@ counts and SHA-256 hashes; parses JPEG/JFIF structure, baseline precision, three
 mode, and dimensions; enforces the 300 KiB ceiling; and rejects drift in rounds, 2/8/14 visible
 building counts, six breakpoint pairs, 1×/3× coverage, panel coverage, or checkpoint status.
 It also requires an exact captured-to-current source match, completed integration-owner
-inspection, and null direct-approval fields. A successful run validates the archive's
-integrity; it cannot independently grant or renew operator approval.
+inspection, and the exact evidence-head plus permanent issue-comment approval binding. A
+successful run validates the archive's integrity; it cannot independently grant or renew
+operator approval.

@@ -171,14 +171,35 @@
     "sha256": "cbcf03f19932bef4382c0cb5a51e78439604571db671414d729bb02553a35552"
   },
   "approval": {
-    "captures_operator_approved": false,
-    "touch_recording_attached": false,
+    "captures_operator_approved": true,
+    "evidence_head": "08717289778883d7adca6ff7a6f15b20fb7c6b25",
+    "record": "https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349",
+    "touch_recording_attached": true,
+    "touch_recording_attachment": "https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453",
     "physical_phone_performance_available": false
   },
   "capability_gates": {
     "touch_recording": {
-      "status": "pending-integration",
-      "reason": "The exact-source Simulator run passed, but its MOV and metadata are not attached to this package.",
+      "status": "pass",
+      "reason": "The exact-source Simulator run passed and its GitHub-safe derivative is durably attached to issue #613.",
+      "attachment": {
+        "status": "durably-attached-to-issue",
+        "issue": 613,
+        "url": "https://github.com/user-attachments/assets/764e3854-47ee-4c34-bd7a-8c859a76d453",
+        "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
+        "bytes": 920404,
+        "duration_seconds": 38.876947,
+        "dimensions_pixels": [
+          720,
+          1566
+        ],
+        "frame_count": 2249,
+        "codec": "H.264 High / yuv420p / BT.709",
+        "derivative_of_original_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
+        "simulator": "iPhone 17 Pro / iOS 26.5",
+        "verification": "XCUITest PASS 1/1",
+        "physical_phone_capture": false
+      },
       "external_candidate": {
         "status": "recorded-and-xctest-passed; pending durable integration",
         "attached_to_this_package": false,
@@ -189,14 +210,20 @@
         "recording_sha256": "0652360345bcd5f25ff0897a12d0b911b54510587d653d21b1c1d256364cb3c3",
         "recording_bytes": 19337683,
         "duration_seconds": 38.86,
-        "dimensions_pixels": [1206, 2622],
+        "dimensions_pixels": [
+          1206,
+          2622
+        ],
         "frame_count": 2293,
         "upload_candidate": {
           "path": "/private/tmp/aop-613-touch-final-c1824f2/artifacts/aop-613-touch-final-c1824f2-github.mp4",
           "sha256": "5ce7e92020d77acfb342890a914e9d9e609ccdeba70b33d34547ebf1ec5661d0",
           "bytes": 920404,
           "duration_seconds": 38.876947,
-          "dimensions_pixels": [720, 1566],
+          "dimensions_pixels": [
+            720,
+            1566
+          ],
           "frame_count": 2249,
           "codec": "H.264 High / yuv420p / BT.709"
         },
@@ -277,5 +304,5 @@
       "sha256": "821f4562890163835e0e1e4c6f7fe5f2193862e3733d7400531b6d75d2dc3f9f"
     }
   ],
-  "binding_sha256": "418d0f4bf0e87eae23c272df70b40ee6baf0e0aa536c0c609bdae578259428aa"
+  "binding_sha256": "e375f90cdad6d939b82d603a6d2328b4611a86c41c81cf05ba17522186eea30a"
 }

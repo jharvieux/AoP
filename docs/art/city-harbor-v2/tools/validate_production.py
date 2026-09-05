@@ -73,7 +73,26 @@ RUNTIME_CAPTURE_NAMES = (
     "full-desktop-3x-1440x900.jpg",
 )
 RUNTIME_SOURCE_HEAD = "c1824f22bf14dca6d38f7519fd99affd789a8130"
-RUNTIME_PENDING_STATUS = "captured-pending-direct-operator-approval"
+RUNTIME_APPROVED_STATUS = "approved"
+RUNTIME_APPROVAL_EVIDENCE_HEAD = "08717289778883d7adca6ff7a6f15b20fb7c6b25"
+RUNTIME_APPROVAL_RECORD = (
+    "https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289"
+)
+RENEWAL_APPROVAL_RECORD = (
+    "https://github.com/jharvieux/AoP/issues/613#issuecomment-5555054349"
+)
+RENEWAL_SET_RECORDS = {
+    "city-harbor-v2": RUNTIME_APPROVAL_RECORD,
+    "gameplay-chrome-v2": (
+        "https://github.com/jharvieux/AoP/issues/610#issuecomment-5555063774"
+    ),
+    "world-map-terrain-v2": (
+        "https://github.com/jharvieux/AoP/issues/611#issuecomment-5555066496"
+    ),
+    "city-ui-v2": (
+        "https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230"
+    ),
+}
 RUNTIME_HISTORICAL_APPROVAL = {
     "status": "historical-source-only",
     "sourceHead": "45a206f760eacce50dc8dd1dc656c5d4e789cb3c",
@@ -518,25 +537,28 @@ def validate_runtime_captures() -> None:
         assert renewal_set.get("count") == len(RUNTIME_CAPTURE_NAMES), (
             "#613 city-harbor-v2 renewal count drift"
         )
-        assert renewal.get("status") == "pending-renewal", (
+        assert renewal.get("status") == "approved-renewal", (
             "invalid #613 renewal status"
         )
         assert renewal.get("approval") == {
-            "status": "pending-direct-operator-approval",
-            "record": None,
-        }, "#613 direct approval must remain pending"
+            "status": "approved",
+            "evidenceHead": RUNTIME_APPROVAL_EVIDENCE_HEAD,
+            "record": RENEWAL_APPROVAL_RECORD,
+            "setRecords": RENEWAL_SET_RECORDS,
+        }, "#613 approval record drift"
         set_renewal = renewal_set.get("renewal")
         assert set_renewal is not None, (
             "#613 city-harbor-v2 replacement capture record is missing"
         )
-        assert set_renewal.get("status") == RUNTIME_PENDING_STATUS
+        assert set_renewal.get("status") == "approved-exact-source"
         assert set_renewal.get("sourceHead") == RUNTIME_SOURCE_HEAD
         assert set_renewal.get("historicalPixelsReused") is False
         assert set_renewal.get("supersededCapture") == RUNTIME_SUPERSEDED_CAPTURE
         assert set_renewal.get("approval") == {
-            "status": "pending-direct-operator-approval",
-            "record": None,
-        }, "city-harbor-v2 direct approval must remain pending"
+            "status": "approved",
+            "evidenceHead": RUNTIME_APPROVAL_EVIDENCE_HEAD,
+            "record": RUNTIME_APPROVAL_RECORD,
+        }, "city-harbor-v2 approval record drift"
         assert set_renewal.get("visualSettleInspection") == (
             "completed-by-integration-owner"
         )
@@ -554,12 +576,12 @@ def validate_runtime_captures() -> None:
     assert binding["schema"] == 3
     assert binding["sourceHead"] == RUNTIME_SOURCE_HEAD
     assert binding["captureSourceHead"] == RUNTIME_SOURCE_HEAD
-    assert binding["captureStatus"] == RUNTIME_PENDING_STATUS
+    assert binding["captureStatus"] == RUNTIME_APPROVED_STATUS
     assert binding["approval"] == {
-        "status": "pending-direct-operator-approval",
-        "evidenceHead": None,
-        "record": None,
-    }, "runtime direct approval must remain pending"
+        "status": "approved",
+        "evidenceHead": RUNTIME_APPROVAL_EVIDENCE_HEAD,
+        "record": RUNTIME_APPROVAL_RECORD,
+    }, "runtime approval binding drift"
     assert binding["historicalApproval"] == RUNTIME_HISTORICAL_APPROVAL
     assert binding["supersededCapture"] == RUNTIME_SUPERSEDED_CAPTURE
     assert binding["captureOrigin"]["workflow"] == (
@@ -646,8 +668,8 @@ def validate_runtime_captures() -> None:
         assert RUNTIME_SOURCE_HEAD in approval_source, (
             f"runtime target source record drift: {relative}"
         )
-        assert "pending" in approval_source.lower(), (
-            f"runtime pending approval status drift: {relative}"
+        assert RUNTIME_APPROVAL_RECORD in approval_source, (
+            f"runtime approval status drift: {relative}"
         )
 
     historical_binding_bytes = subprocess.run(

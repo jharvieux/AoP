@@ -12,7 +12,9 @@ const HISTORICAL_APPROVED_SOURCE_HEAD = '45a206f760eacce50dc8dd1dc656c5d4e789cb3
 const ENGINE_VERSION = '850a9013b70e38a7'
 const CAPTURE_ROOT = 'docs/art/city-ui-v2/runtime-captures'
 const MAX_CAPTURE_BYTES = 300 * 1024
-const PENDING_STATUS = 'captured-pending-direct-operator-approval'
+const APPROVED_STATUS = 'approved'
+const APPROVAL_EVIDENCE_HEAD = '08717289778883d7adca6ff7a6f15b20fb7c6b25'
+const APPROVAL_RECORD = 'https://github.com/jharvieux/AoP/issues/612#issuecomment-5555069230'
 const HISTORICAL_APPROVAL = {
   status: 'historical-source-only',
   sourceHead: HISTORICAL_APPROVED_SOURCE_HEAD,
@@ -361,13 +363,13 @@ const record = readFileSync(resolve(DOCS_DIR, 'RUNTIME-CAPTURES.md'), 'utf8')
 assert(binding.schema === 1 && binding.issue === 612, 'unexpected binding identity')
 assert(binding.sourceHead === SOURCE_HEAD, 'binding source head drift')
 assert(binding.captureSourceHead === CAPTURE_SOURCE_HEAD, 'capture source head drift')
-assert(binding.captureStatus === PENDING_STATUS, 'capture status drift')
+assert(binding.captureStatus === APPROVED_STATUS, 'capture status drift')
 assert(receipt.schema === 1 && receipt.issue === 612, 'unexpected receipt identity')
 assert(receipt.sourceHead === SOURCE_HEAD, 'receipt source head drift')
-assert(receipt.captureStatus === PENDING_STATUS, 'receipt capture status drift')
+assert(receipt.captureStatus === APPROVED_STATUS, 'receipt capture status drift')
 assert(receipt.captureOrigin.sourceHead === CAPTURE_SOURCE_HEAD, 'receipt capture origin drift')
 assert(
-  binding.sourceTransition.classification === 'exact-source-recaptured-pending-approval' &&
+  binding.sourceTransition.classification === 'exact-source-recaptured-approved' &&
     binding.sourceTransition.renderedMarkupChanged === true &&
     binding.sourceTransition.stylesChanged === true &&
     binding.sourceTransition.artChanged === false &&
@@ -377,7 +379,7 @@ assert(
 assert(
   receipt.sourceTransition.from === PRIOR_CAPTURE_SOURCE_HEAD &&
     receipt.sourceTransition.to === SOURCE_HEAD &&
-    receipt.sourceTransition.classification === 'exact-source-recaptured-pending-approval' &&
+    receipt.sourceTransition.classification === 'exact-source-recaptured-approved' &&
     receipt.sourceTransition.renderedMarkupChanged === true &&
     receipt.sourceTransition.stylesChanged === true &&
     receipt.sourceTransition.artChanged === false &&
@@ -411,16 +413,13 @@ assert(
   'integration-owner visual inspection record drift',
 )
 assert(receipt.checkpoints.checkpoint1.status === 'approved', 'checkpoint 1 status drift')
+assert(receipt.checkpoints.checkpoint2.status === 'approved', 'checkpoint 2 status drift')
 assert(
-  receipt.checkpoints.checkpoint2.status === 'pending-direct-operator-approval',
-  'checkpoint 2 status drift',
-)
-assert(
-  binding.approval.status === 'pending-direct-operator-approval' &&
-    binding.approval.evidenceHead === null &&
-    binding.approval.record === null &&
-    receipt.checkpoints.checkpoint2.evidenceHead === null &&
-    receipt.checkpoints.checkpoint2.record === null &&
+  binding.approval.status === 'approved' &&
+    binding.approval.evidenceHead === APPROVAL_EVIDENCE_HEAD &&
+    binding.approval.record === APPROVAL_RECORD &&
+    receipt.checkpoints.checkpoint2.evidenceHead === APPROVAL_EVIDENCE_HEAD &&
+    receipt.checkpoints.checkpoint2.record === APPROVAL_RECORD &&
     stable(binding.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
     stable(receipt.checkpoints.checkpoint2.historicalApproval) === stable(HISTORICAL_APPROVAL) &&
     stable(binding.supersededCapture) === stable(SUPERSEDED_CAPTURE) &&
@@ -569,12 +568,12 @@ assert(
 
 assert(record.includes(SOURCE_HEAD), 'capture record source head drift')
 assert(
-  /pending\s+direct\s+operator\s+approval/.test(record),
+  record.includes('operator approved') && record.includes(APPROVAL_RECORD),
   'capture record checkpoint status drift',
 )
 for (const name of captureNames)
   assert(record.includes(`\`${name}\``), `capture missing from record: ${name}`)
 
 console.log(
-  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; native inspection complete and direct operator approval pending.`,
+  `City UI v2 archive valid: ${binding.sourceFiles.length} current source anchors and ${binding.captures.length} exact-source RGB/JFIF captures; native inspection and direct operator approval bound to ${APPROVAL_EVIDENCE_HEAD}.`,
 )

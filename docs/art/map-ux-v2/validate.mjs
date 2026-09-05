@@ -217,14 +217,23 @@ function expectRejected(label, mutate) {
 expectRejected('source head drift', (receipt) => {
   receipt.source_head = '0'.repeat(40)
 })
-expectRejected('premature operator approval', (receipt) => {
-  receipt.approval.captures_operator_approved = true
+expectRejected('missing operator approval', (receipt) => {
+  receipt.approval.captures_operator_approved = false
 })
-expectRejected('false touch attachment', (receipt) => {
-  receipt.approval.touch_recording_attached = true
+expectRejected('approval evidence-head drift', (receipt) => {
+  receipt.approval.evidence_head = '0'.repeat(40)
 })
-expectRejected('premature touch integration', (receipt) => {
-  receipt.capability_gates.touch_recording.status = 'pass'
+expectRejected('approval record drift', (receipt) => {
+  receipt.approval.record = 'https://example.invalid/approval'
+})
+expectRejected('missing touch attachment', (receipt) => {
+  receipt.approval.touch_recording_attached = false
+})
+expectRejected('touch attachment URL drift', (receipt) => {
+  receipt.capability_gates.touch_recording.attachment.url = 'https://example.invalid/video.mp4'
+})
+expectRejected('touch gate regression', (receipt) => {
+  receipt.capability_gates.touch_recording.status = 'pending-integration'
 })
 expectRejected('external touch candidate drift', (receipt) => {
   receipt.capability_gates.touch_recording.external_candidate.recording_sha256 = '0'.repeat(64)

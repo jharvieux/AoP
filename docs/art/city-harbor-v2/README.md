@@ -1,15 +1,15 @@
 # Gilded Harbor city art — production candidate
 
-> **#613 runtime approval pending:** the eight replacement captures were produced and
-> inspected against exact source `c1824f22bf14dca6d38f7519fd99affd789a8130`, but their
-> historical approval cannot approve these new pixels. The exact 37-frame renewal record lives in
-> [`../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md`](../city-ui-v2/RUNTIME-EVIDENCE-RENEWAL.md).
+> **#613 runtime evidence approved:** the operator approved these eight replacement captures at
+> evidence head `08717289778883d7adca6ff7a6f15b20fb7c6b25`. They were produced and inspected
+> against exact source `c1824f22bf14dca6d38f7519fd99affd789a8130`; the durable record is
+> [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5555061289).
 
 **Status:** checkpoint 1 and the Direction B art refinement remain approved. The issue #608
 runtime candidate includes the requested Town Hall flag mount. Deterministic evidence is
 complete, and the replacement live captures are bound to the target shipping sources with
 integration-owner visual-settle and native-size review complete. Direct approval of the new
-capture bytes is pending. The approval at evidence head
+capture bytes is bound above. The earlier approval at evidence head
 `dc11b60738f4f14b896532bf2db323b2bd054f5c` remains a non-reusable historical record in
 [issue #608](https://github.com/jharvieux/AoP/issues/608#issuecomment-5551752263).
 
@@ -27,7 +27,7 @@ working-district silhouettes.
 The operator approved the underlying complete starting-to-full city direction, including the
 Town Hall-mounted faction flag, smaller phone read, recruitment progression, low
 fortification perimeter, and connected shoreline Shipyard. The newly captured runtime pixels
-showing that result remain pending direct approval. See
+showing that result are approved at the exact evidence head recorded above. See
 [PRODUCTION-MANIFEST.md](PRODUCTION-MANIFEST.md) for the complete contract, inventory,
 evidence, budgets, and known boundary.
 
