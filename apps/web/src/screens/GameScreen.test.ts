@@ -2,7 +2,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { GAME_SETUP, buildContentCatalog } from '@aop/content'
-import { createGame, hexDistance, type Captain, type GameConfig, type GameMap } from '@aop/engine'
+import {
+  createGame,
+  hexDistance,
+  tileKey,
+  type Captain,
+  type GameConfig,
+  type GameMap,
+} from '@aop/engine'
 import type { Coord } from '@aop/shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -485,5 +492,84 @@ describe('GameScreen', () => {
     expect(button('Cancel')).not.toBeNull()
     fireEvent.click(button('Cancel'))
     expect(button('Resign')).not.toBeNull()
+  })
+
+  function cityCaptureFixture(explored: boolean) {
+    const config: GameConfig = {
+      seed: 623,
+      mapSize: 'small',
+      setup: GAME_SETUP,
+      players: [
+        { id: 'player-0', name: 'Anne', faction: 'pirates', isAI: false },
+        { id: 'player-1', name: 'Morgan', faction: 'british', isAI: true },
+      ],
+    }
+    const initial = createGame(config)
+    const enemyCity = initial.cities.find((city) => city.ownerId === 'player-1')!
+    const exploredKeys = (initial.exploredTiles['player-0'] ?? []).filter(
+      (key) => key !== tileKey(enemyCity.position),
+    )
+    if (explored) exploredKeys.push(tileKey(enemyCity.position))
+    const game = {
+      ...initial,
+      exploredTiles: {
+        ...initial.exploredTiles,
+        'player-0': exploredKeys,
+      },
+    }
+    return {
+      game,
+      enemyCity,
+      props: {
+        battleReport: null,
+        onDismissBattleReport: vi.fn(),
+        itemFound: null,
+        onAction: vi.fn(),
+        onSaveSlot: async () => undefined,
+        onLoadSlot: async () => undefined,
+        onWatchSlot: vi.fn(),
+        autosaveFailing: false,
+      },
+    }
+  }
+
+  it('keeps never-explored city captures out of the event feed', () => {
+    const { game, enemyCity, props } = cityCaptureFixture(false)
+    const { rerender } = render(createElement(GameScreen, { ...props, game }))
+
+    rerender(
+      createElement(GameScreen, {
+        ...props,
+        game: {
+          ...game,
+          cities: game.cities.map((city) =>
+            city.id === enemyCity.id ? { ...city, ownerId: 'neutral' } : city,
+          ),
+        },
+      }),
+    )
+
+    expect(screen.queryByText(new RegExp(`${enemyCity.name} captured`, 'i'))).toBeNull()
+  })
+
+  it('reports a capture for a city whose landmark was explored', () => {
+    const { game, enemyCity, props } = cityCaptureFixture(true)
+    const { rerender } = render(createElement(GameScreen, { ...props, game }))
+
+    rerender(
+      createElement(GameScreen, {
+        ...props,
+        game: {
+          ...game,
+          cities: game.cities.map((city) =>
+            city.id === enemyCity.id ? { ...city, ownerId: 'neutral' } : city,
+          ),
+        },
+      }),
+    )
+
+    expect(
+      screen.getByText(new RegExp(`${enemyCity.name} captured by neutral`, 'i')),
+    ).not.toBeNull()
   })
 })

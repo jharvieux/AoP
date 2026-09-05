@@ -244,4 +244,36 @@ describe('describeMapTile', () => {
     expect(text).toContain('open water')
     expect(text).not.toContain('ship')
   })
+
+  it('announces an unexplored tile without reading its terrain or raw entities', () => {
+    const text = describeMapTile({
+      ...base,
+      terrain: 'port',
+      explored: false,
+      visible: false,
+      captains: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+      cities: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+      encounters: [{ position: { x: 3, y: 4 }, kind: 'merchant', active: true }],
+      parties: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+    })
+
+    expect(text).toBe('Tile column 4, row 5, unexplored')
+    expect(text).not.toMatch(/port|ship|city|party|merchant/)
+  })
+
+  it('announces remembered terrain and cities without hidden mobile entities', () => {
+    const text = describeMapTile({
+      ...base,
+      terrain: 'port',
+      explored: true,
+      visible: false,
+      captains: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+      cities: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+      encounters: [{ position: { x: 3, y: 4 }, kind: 'merchant', active: true }],
+      parties: [{ position: { x: 3, y: 4 }, ownerId: 'p2' }],
+    })
+
+    expect(text).toContain('enemy city')
+    expect(text).not.toMatch(/ship|party|merchant/)
+  })
 })

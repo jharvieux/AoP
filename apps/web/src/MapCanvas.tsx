@@ -26,6 +26,7 @@ import {
 } from 'pixi.js'
 import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react'
 import { describeMapTile, moveCursor, panToKeepTileVisible } from './mapCursor'
+import { presentationCellOccupied } from './singlePlayerPresentation'
 import {
   PRESENTATION_LAYERS,
   TERRAIN_ART,
@@ -509,7 +510,9 @@ export function MapCanvas(props: MapCanvasProps) {
   const [touchPreviewHint, setTouchPreviewHint] = useState<string | null>(null)
 
   function announceTile(tile: Coord) {
-    const { map, captains, cities, encounters, parties, viewerId } = props
+    const { map, captains, cities, encounters, parties, viewerId, exploredKeys, visibleKeys } =
+      props
+    const key = `${tile.x},${tile.y}`
     setAnnouncement(
       describeMapTile({
         tile,
@@ -519,6 +522,8 @@ export function MapCanvas(props: MapCanvasProps) {
         encounters,
         ...(parties ? { parties } : {}),
         viewerId,
+        explored: exploredKeys.has(key),
+        visible: visibleKeys.has(key),
         factionNameOf: (ownerId) => {
           // Only ever called with a captain's ownerId (mapCursor.ts's
           // describeMapTile), which is always a real player — strict lookup.
@@ -2083,9 +2088,8 @@ export function MapCanvas(props: MapCanvasProps) {
      * from hover instead); tapping that same tile again confirms the
      * multi-turn course via `onSetCourse` — a sail order for a selected ship,
      * a march order for a selected party. Taps on anything already handled by
-     * #376's any-distance targeting (a captain, party, city, or active
-     * encounter) are left alone — those open their own confirm sheet, which is
-     * itself the confirmation step.
+     * #376's any-distance targeting (a captain, party, city, active encounter,
+     * or site) are left alone for the normal tile-action path.
      *
      * Returns true if it *consumed* the tap (showed or confirmed a course), so
      * the caller skips the normal `onTileClick` dispatch — that's what keeps the
@@ -2096,6 +2100,7 @@ export function MapCanvas(props: MapCanvasProps) {
         captains,
         cities,
         encounters,
+        landSites = [],
         landEncounters = [],
         parties = [],
         selectedCaptainId,
@@ -2111,13 +2116,14 @@ export function MapCanvas(props: MapCanvasProps) {
       const mover = selected ?? selectedParty
       const occupied =
         !!cell &&
-        (captains.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
-          cities.some((c) => c.position.x === cell.x && c.position.y === cell.y) ||
-          parties.some((p) => p.position.x === cell.x && p.position.y === cell.y) ||
-          encounters.some((e) => e.active && e.position.x === cell.x && e.position.y === cell.y) ||
-          landEncounters.some(
-            (e) => e.active && e.position.x === cell.x && e.position.y === cell.y,
-          ))
+        presentationCellOccupied(cell, {
+          captains,
+          cities,
+          parties,
+          encounters,
+          landSites,
+          landEncounters,
+        })
       if (!cell || !mover || occupied) {
         touchPreviewRef.current = null
         setTouchPreviewHint(null)

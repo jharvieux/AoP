@@ -87,6 +87,10 @@ interface DescribeTileParams {
   viewerId: string
   /** Display name for whichever faction owns a captain found on the tile, if any. */
   factionNameOf: (ownerId: string) => string
+  /** Whether the tile has ever been explored. Defaults to true for existing callers. */
+  explored?: boolean
+  /** Whether the tile is currently visible. Defaults to true for existing callers. */
+  visible?: boolean
 }
 
 const TERRAIN_LABEL: Record<TileType, string> = {
@@ -109,20 +113,24 @@ export function describeMapTile(params: DescribeTileParams): string {
     parties = [],
     viewerId,
     factionNameOf,
+    explored = true,
+    visible = true,
   } = params
   const at = (p: Coord) => p.x === tile.x && p.y === tile.y
   const parts = [`Tile column ${tile.x + 1}, row ${tile.y + 1}`]
 
-  const captain = captains.find((c) => at(c.position))
+  if (!explored) return [...parts, 'unexplored'].join(', ')
+
+  const captain = visible ? captains.find((c) => at(c.position)) : undefined
   if (captain) {
     const owned = captain.ownerId === viewerId ? 'Your' : 'Enemy'
     parts.push(`${owned} ${factionNameOf(captain.ownerId)} ship`)
   }
   const city = cities.find((c) => at(c.position))
   if (city) parts.push(city.ownerId === viewerId ? 'your city' : 'enemy city')
-  const party = parties.find((p) => at(p.position))
+  const party = visible ? parties.find((p) => at(p.position)) : undefined
   if (party) parts.push(party.ownerId === viewerId ? 'your landing party' : 'enemy landing party')
-  const encounter = encounters.find((e) => e.active && at(e.position))
+  const encounter = visible ? encounters.find((e) => e.active && at(e.position)) : undefined
   if (encounter) parts.push(`${encounter.kind} encounter`)
   if (!captain && !city && !party && !encounter) parts.push(TERRAIN_LABEL[terrain])
 
