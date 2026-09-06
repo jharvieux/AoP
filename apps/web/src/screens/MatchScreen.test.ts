@@ -287,7 +287,9 @@ describe('#613 map overlay and command contract', () => {
       /@media \(max-height: 419px\)[\s\S]*?\.map-minimap\s*\{\s*display: block;/,
     )
     expect(stylesSource).toMatch(/\.map-alert-picker\s*\{[^}]*min-width: 0/s)
-    expect(stylesSource).toMatch(/\.map-alert-picker select\s*\{[^}]*min-height: 44px/s)
+    expect(stylesSource).toMatch(
+      /\.map-alert-picker select\s*\{[^}]*min-height: 44px;[^}]*height: 44px;/s,
+    )
   })
 
   it('routes every SP and MP sail/march interruption through the shared one-card aggregator', () => {
